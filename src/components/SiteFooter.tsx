@@ -51,7 +51,7 @@ export default function SiteFooter() {
           </p>
 
           <p className="shrink-0 text-[11px] leading-5 text-[#1c2821]/60 dark:text-white/60 sm:text-xs lg:text-right">
-            © 2026 KAMPÜS. Tasarım ve geliştirme:{" "}
+            © 2026 KAMPÜS. //
             <span className="font-bold text-[#1c2821] dark:text-[#ece8e1]">Yağız Karagöz</span>
           </p>
         </div>

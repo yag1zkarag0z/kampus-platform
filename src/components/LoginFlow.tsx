@@ -84,10 +84,10 @@ export default function LoginFlow() {
               Giriş tamamlandı.
             </h2>
             <Link
-              href="/"
+              href="/akis"
               className="mt-7 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[#5a1f32] px-4 text-sm font-bold text-[#fffaf4] outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:bg-[#9a5944] dark:hover:bg-[#ad6b53]"
             >
-              Ana sayfaya dön
+              Akışa geç
             </Link>
           </div>
         ) : step === 1 ? (
