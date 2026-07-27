@@ -451,6 +451,139 @@ button:not(:disabled) {
   }
 }
 
+.campus-loading-screen {
+  background:
+    radial-gradient(
+      circle at 50% 43%,
+      rgb(154 89 68 / 13%) 0%,
+      rgb(154 89 68 / 5%) 21%,
+      transparent 44%
+    ),
+    #eee9e1;
+  animation: campus-loader-screen 1280ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+[data-theme="dark"] .campus-loading-screen {
+  background:
+    radial-gradient(
+      circle at 50% 43%,
+      rgb(199 137 109 / 12%) 0%,
+      rgb(119 67 91 / 7%) 23%,
+      transparent 46%
+    ),
+    #111315;
+}
+
+.campus-loading-logo {
+  animation: campus-loader-logo 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform;
+}
+
+.campus-loading-logo svg > path:first-of-type {
+  stroke-dasharray: 44;
+  stroke-dashoffset: 44;
+  animation: campus-loader-smile 680ms 160ms cubic-bezier(0.16, 1, 0.3, 1)
+    forwards;
+}
+
+.campus-loading-logo svg > rect {
+  animation: campus-loader-eyes 820ms 90ms ease-out both;
+}
+
+.campus-loading-wordmark {
+  opacity: 0;
+  animation: campus-loader-wordmark 380ms 330ms ease-out forwards;
+}
+
+.campus-loading-credit {
+  opacity: 0;
+  clip-path: inset(0 100% 0 0);
+  animation: campus-loader-credit 500ms 560ms cubic-bezier(0.16, 1, 0.3, 1)
+    forwards;
+  will-change: clip-path, opacity, transform;
+}
+
+@keyframes campus-loader-screen {
+  0%,
+  82% {
+    opacity: 1;
+  }
+
+  100% {
+    visibility: hidden;
+    opacity: 0;
+  }
+}
+
+@keyframes campus-loader-logo {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.9);
+  }
+
+  72% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.035);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes campus-loader-smile {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes campus-loader-eyes {
+  0% {
+    opacity: 0;
+  }
+
+  32%,
+  54% {
+    opacity: 1;
+  }
+
+  60% {
+    opacity: 0.18;
+  }
+
+  68%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes campus-loader-wordmark {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes campus-loader-credit {
+  from {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+    transform: translateX(-10px);
+  }
+
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    transform: translateX(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(*),
   ::view-transition-new(*),
@@ -488,6 +621,26 @@ button:not(:disabled) {
 
   .mobile-nav-panel {
     animation: none;
+  }
+
+  .campus-loading-screen,
+  .campus-loading-logo,
+  .campus-loading-logo svg > path:first-of-type,
+  .campus-loading-logo svg > rect,
+  .campus-loading-wordmark,
+  .campus-loading-credit {
+    animation: none;
+  }
+
+  .campus-loading-logo svg > path:first-of-type {
+    stroke-dashoffset: 0;
+  }
+
+  .campus-loading-wordmark,
+  .campus-loading-credit {
+    opacity: 1;
+    clip-path: none;
+    transform: none;
   }
 }
 

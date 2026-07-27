@@ -34,8 +34,6 @@ export default function CampusFeedPanel() {
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-[#1c2821]/62 dark:text-[#ece8e1]/58">
             <span className="text-[#9b3829] dark:text-[#d09272]">Anonim</span>
             <span aria-hidden="true">·</span>
-            <span>Mühendislik</span>
-            <span aria-hidden="true">·</span>
             <span>12 dk önce</span>
           </div>
 

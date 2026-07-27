@@ -1,16 +1,23 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   useRef,
   useState,
+  type ChangeEvent,
   type FormEvent,
   type KeyboardEvent,
 } from "react";
 
 import { useCampusData } from "@/components/CampusDataProvider";
-import type { CampusPostCategory } from "@/data/campusPosts";
+import type {
+  CampusListingCondition,
+  CampusListingType,
+  CampusPostCategory,
+  CampusPostImage,
+} from "@/data/campusPosts";
 
 const categories: {
   value: CampusPostCategory;
@@ -32,6 +39,38 @@ const categories: {
     value: "Kayıp Eşya",
     description: "Kayıp veya bulunan bir eşyayı bildir.",
   },
+  {
+    value: "Anket",
+    description: "Kampüsün fikrini seçeneklerle öğren.",
+  },
+  {
+    value: "İlan",
+    description: "Kampüs içinde sat, ara veya ücretsiz paylaş.",
+  },
+];
+
+const listingTypes: {
+  value: CampusListingType;
+  description: string;
+}[] = [
+  {
+    value: "Satılık",
+    description: "Bir ürününü fiyatıyla ilana çıkar.",
+  },
+  {
+    value: "Aranıyor",
+    description: "Aradığın ürünü ve bütçeni paylaş.",
+  },
+  {
+    value: "Ücretsiz",
+    description: "Kullanmadığın ürünü ücretsiz ver.",
+  },
+];
+
+const listingConditions: CampusListingCondition[] = [
+  "Yeni",
+  "Az kullanılmış",
+  "Kullanılmış",
 ];
 
 const quickEmojis = [
@@ -55,24 +94,95 @@ const quickEmojis = [
 
 const focusRing =
   "outline-none focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:focus-visible:ring-[#c7896d]/30";
+const MAX_SOURCE_IMAGE_SIZE = 5 * 1024 * 1024;
+const MAX_OUTPUT_IMAGE_SIZE = 700 * 1024;
+const acceptedImageTypes = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+
+function getDataUrlSize(dataUrl: string) {
+  const base64 = dataUrl.split(",", 2)[1] ?? "";
+  return Math.ceil((base64.length * 3) / 4);
+}
+
+async function createPostImage(
+  file: File,
+): Promise<Omit<CampusPostImage, "alt">> {
+  const sourceImage = await createImageBitmap(file);
+  const dimensionLimits = [1600, 1360, 1120, 900];
+  const qualityLevels = [0.82, 0.72, 0.62, 0.52];
+
+  try {
+    for (const dimensionLimit of dimensionLimits) {
+      const scale = Math.min(
+        1,
+        dimensionLimit / Math.max(sourceImage.width, sourceImage.height),
+      );
+      const width = Math.max(1, Math.round(sourceImage.width * scale));
+      const height = Math.max(1, Math.round(sourceImage.height * scale));
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
+
+      if (!context) {
+        throw new Error("Image canvas could not be created.");
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      context.drawImage(sourceImage, 0, 0, width, height);
+
+      for (const quality of qualityLevels) {
+        const src = canvas.toDataURL("image/webp", quality);
+
+        if (getDataUrlSize(src) <= MAX_OUTPUT_IMAGE_SIZE) {
+          return { src, width, height };
+        }
+      }
+    }
+
+    throw new Error("Processed image is too large.");
+  } finally {
+    sourceImage.close();
+  }
+}
 
 export default function CreateCampusPost() {
   const router = useRouter();
   const { createPost, isHydrated } = useCampusData();
   const titleInputRef = useRef<HTMLInputElement>(null);
   const bodyInputRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const listingPriceInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [category, setCategory] =
     useState<CampusPostCategory>("İtiraf");
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [imagePreview, setImagePreview] = useState<
+    Omit<CampusPostImage, "alt"> | undefined
+  >();
+  const [imageError, setImageError] = useState("");
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [isPollEnabled, setIsPollEnabled] = useState(false);
+  const [pollOptions, setPollOptions] = useState(["", ""]);
+  const [pollError, setPollError] = useState("");
+  const [listingType, setListingType] =
+    useState<CampusListingType>("Satılık");
+  const [listingCondition, setListingCondition] =
+    useState<CampusListingCondition>("Az kullanılmış");
+  const [listingPrice, setListingPrice] = useState("");
+  const [listingError, setListingError] = useState("");
   const [titleError, setTitleError] = useState("");
+  const [bodyError, setBodyError] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [statusTone, setStatusTone] = useState<
     "neutral" | "error" | "success"
   >("neutral");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isListing = category === "İlan";
 
   const appendEmoji = (emoji: string) => {
     const textarea = bodyInputRef.current;
@@ -111,11 +221,90 @@ export default function CreateCampusPost() {
     }
   };
 
+  const handleImageChange = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    setImageError("");
+    setStatusMessage("");
+
+    if (!acceptedImageTypes.has(file.type)) {
+      setImageError("JPEG, PNG veya WebP biçiminde bir fotoğraf seçmelisin.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_SOURCE_IMAGE_SIZE) {
+      setImageError("Fotoğraf en fazla 5 MB olabilir.");
+      event.target.value = "";
+      return;
+    }
+
+    setIsProcessingImage(true);
+
+    try {
+      setImagePreview(await createPostImage(file));
+    } catch {
+      setImageError(
+        "Fotoğraf işlenemedi. Daha küçük veya farklı bir görsel deneyebilirsin.",
+      );
+      event.target.value = "";
+    } finally {
+      setIsProcessingImage(false);
+    }
+  };
+
+  const removeImage = () => {
+    setImagePreview(undefined);
+    setImageError("");
+
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+  };
+
+  const updatePollOption = (index: number, value: string) => {
+    setPollOptions((currentOptions) =>
+      currentOptions.map((option, optionIndex) =>
+        optionIndex === index ? value : option,
+      ),
+    );
+    setPollError("");
+  };
+
+  const addPollOption = () => {
+    setPollOptions((currentOptions) =>
+      currentOptions.length < 4
+        ? [...currentOptions, ""]
+        : currentOptions,
+    );
+    setPollError("");
+  };
+
+  const removePollOption = (index: number) => {
+    setPollOptions((currentOptions) =>
+      currentOptions.length > 2
+        ? currentOptions.filter((_, optionIndex) => optionIndex !== index)
+        : currentOptions,
+    );
+    setPollError("");
+  };
+
   const submitPost = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const normalizedTitle = title.trim();
     const normalizedBody = body.trim();
+    const normalizedPollOptions = pollOptions.map((option) =>
+      option.trim(),
+    );
+    const normalizedListingPrice =
+      listingType === "Ücretsiz" ? 0 : Number(listingPrice);
 
     if (!isHydrated) {
       setStatusMessage("Konu alanı hazırlanıyor. Birkaç saniye sonra dene.");
@@ -124,15 +313,78 @@ export default function CreateCampusPost() {
     }
 
     if (!normalizedTitle) {
-      setTitleError("Konu başlığını yazmalısın.");
-      setStatusMessage("Konu yayımlanamadı. Başlık alanını kontrol et.");
+      setTitleError(
+        isListing
+          ? "İlan başlığını yazmalısın."
+          : "Konu başlığını yazmalısın.",
+      );
+      setStatusMessage(
+        isListing
+          ? "İlan yayımlanamadı. Başlık alanını kontrol et."
+          : "Konu yayımlanamadı. Başlık alanını kontrol et.",
+      );
       setStatusTone("error");
       titleInputRef.current?.focus();
       return;
     }
 
+    if (isListing && !normalizedBody) {
+      setBodyError("İlanın durumunu ve önemli ayrıntılarını yazmalısın.");
+      setStatusMessage(
+        "İlan yayımlanamadı. Açıklama alanını kontrol et.",
+      );
+      setStatusTone("error");
+      bodyInputRef.current?.focus();
+      return;
+    }
+
+    if (
+      isListing &&
+      listingType !== "Ücretsiz" &&
+      (!Number.isInteger(normalizedListingPrice) ||
+        normalizedListingPrice <= 0 ||
+        normalizedListingPrice > 1_000_000)
+    ) {
+      setListingError(
+        listingType === "Aranıyor"
+          ? "1 ile 1.000.000 TL arasında bir bütçe yazmalısın."
+          : "1 ile 1.000.000 TL arasında bir fiyat yazmalısın.",
+      );
+      setStatusMessage(
+        "İlan yayımlanamadı. Fiyat bilgisini kontrol et.",
+      );
+      setStatusTone("error");
+      listingPriceInputRef.current?.focus();
+      return;
+    }
+
+    if (
+      isPollEnabled &&
+      (normalizedPollOptions.some((option) => !option) ||
+        new Set(
+          normalizedPollOptions.map((option) =>
+            option.toLocaleLowerCase("tr-TR"),
+          ),
+        ).size !== normalizedPollOptions.length)
+    ) {
+      setPollError(
+        normalizedPollOptions.some((option) => !option)
+          ? "Anket için en az iki dolu seçenek yazmalısın."
+          : "Anket seçenekleri birbirinden farklı olmalı.",
+      );
+      setStatusMessage("Konu yayımlanamadı. Anket seçeneklerini kontrol et.");
+      setStatusTone("error");
+      document.getElementById("campus-poll-option-0")?.focus();
+      return;
+    }
+
+    setPollError("");
+    setListingError("");
     setTitleError("");
-    setStatusMessage("Konu yayımlanıyor…");
+    setBodyError("");
+    setStatusMessage(
+      isListing ? "İlan yayımlanıyor…" : "Konu yayımlanıyor…",
+    );
     setStatusTone("neutral");
     setIsSubmitting(true);
 
@@ -141,16 +393,40 @@ export default function CreateCampusPost() {
         title: normalizedTitle,
         body: normalizedBody,
         category,
-        isAnonymous,
+        isAnonymous: isListing ? false : isAnonymous,
+        image: imagePreview
+          ? {
+              ...imagePreview,
+              alt: isListing
+                ? `${normalizedTitle} ilanının fotoğrafı`
+                : `${normalizedTitle} gönderisine eklenen fotoğraf`,
+            }
+          : undefined,
+        pollOptions: isPollEnabled
+          ? normalizedPollOptions
+          : undefined,
+        listing: isListing
+          ? {
+              type: listingType,
+              condition: listingCondition,
+              price: normalizedListingPrice,
+            }
+          : undefined,
       });
 
-      setStatusMessage("Konu yayımlandı. Gönderiye yönlendiriliyorsun.");
+      setStatusMessage(
+        isListing
+          ? "İlan yayımlandı. Gönderiye yönlendiriliyorsun."
+          : "Konu yayımlandı. Gönderiye yönlendiriliyorsun.",
+      );
       setStatusTone("success");
       router.push(`/gonderi/${postId}`);
     } catch {
       setIsSubmitting(false);
       setStatusMessage(
-        "Konu şu anda yayımlanamadı. Bir kez daha deneyebilirsin."
+        isListing
+          ? "İlan şu anda yayımlanamadı. Bir kez daha deneyebilirsin."
+          : "Konu şu anda yayımlanamadı. Bir kez daha deneyebilirsin.",
       );
       setStatusTone("error");
     }
@@ -162,34 +438,30 @@ export default function CreateCampusPost() {
       className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#fbf8f1] text-[#1c2821] dark:bg-[#17191c] dark:text-[#ece8e1] md:min-h-svh"
     >
       <header className="sticky top-16 z-30 border-b border-[#1c2821]/14 bg-[#fbf8f1]/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#17191c]/95 md:top-0">
-        <div className="flex min-h-16 items-center gap-3 px-3 sm:px-5">
-          <Link
-            href="/akis"
-            aria-label="Kampüs akışına dön"
-            className={`grid size-11 shrink-0 place-items-center rounded-full text-xl text-[#1c2821]/70 transition-colors hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-white/65 dark:hover:bg-white/7 dark:hover:text-white ${focusRing}`}
-          >
-            <span aria-hidden="true">←</span>
-          </Link>
+        <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 sm:px-5">
+          <span aria-hidden="true" />
 
-          <div className="min-w-0">
+          <div className="min-w-0 justify-self-center text-center">
             <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#8f3427] dark:text-[#c7896d]">
-              Kampüse yaz
+              {isListing ? "Kampüs pazarı" : "Kampüse yaz"}
             </p>
             <h1
               id="create-post-title"
               className="truncate text-base font-black tracking-[-0.03em]"
             >
-              Yeni konu aç
+              {isListing ? "Yeni ilan oluştur" : "Yeni konu aç"}
             </h1>
           </div>
+          <span aria-hidden="true" />
         </div>
       </header>
 
       <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-8 lg:py-10">
         <div className="mb-6 sm:mb-8">
           <p className="max-w-xl text-sm leading-6 text-[#1c2821]/66 dark:text-white/62">
-            Sorunu, duyurunu veya kampüste konuşulmasını istediğin konuyu
-            anlaşılır bir başlıkla paylaş.
+            {isListing
+              ? "Ürünü açıkça tanımla, durumunu belirt ve kampüs içinde güvenli bir şekilde paylaş."
+              : "Sorunu, duyurunu veya kampüste konuşulmasını istediğin konuyu anlaşılır bir başlıkla paylaş."}
           </p>
         </div>
 
@@ -230,7 +502,11 @@ export default function CreateCampusPost() {
                 setStatusMessage("");
                 setStatusTone("neutral");
               }}
-              placeholder="Konu ne hakkında?"
+              placeholder={
+                isListing
+                  ? "Ne satıyor veya arıyorsun?"
+                  : "Konu ne hakkında?"
+              }
               className={`mt-2 min-h-12 w-full border bg-white/35 px-3.5 py-2.5 text-[15px] font-bold text-[#1c2821] placeholder:font-medium placeholder:text-[#1c2821]/38 dark:bg-white/[0.025] dark:text-[#ece8e1] dark:placeholder:text-white/32 ${
                 titleError
                   ? "border-[#9b3028] dark:border-[#df8b83]"
@@ -270,7 +546,21 @@ export default function CreateCampusPost() {
                       name="category"
                       value={option.value}
                       checked={isSelected}
-                      onChange={() => setCategory(option.value)}
+                      onChange={() => {
+                        setCategory(option.value);
+                        setIsPollEnabled(option.value === "Anket");
+                        setPollError("");
+                        setListingError("");
+                        setBodyError("");
+
+                        if (option.value === "İlan") {
+                          setIsAnonymous(false);
+                        } else {
+                          setListingType("Satılık");
+                          setListingCondition("Az kullanılmış");
+                          setListingPrice("");
+                        }
+                      }}
                       className="mt-0.5 size-4 shrink-0 accent-[#5a1f32] dark:accent-[#c7896d]"
                     />
                     <span>
@@ -287,16 +577,178 @@ export default function CreateCampusPost() {
             </div>
           </fieldset>
 
+          {isListing && (
+            <fieldset className="mt-7 border border-[#9a5944]/28 bg-[#9a5944]/5 p-4 dark:border-[#c7896d]/28 dark:bg-[#c7896d]/6 sm:p-5">
+              <legend className="px-1 text-sm font-black tracking-[-0.015em] text-[#5a1f32] dark:text-[#d09272]">
+                İlan bilgileri
+              </legend>
+              <p className="text-[11px] leading-5 text-[#1c2821]/60 dark:text-white/56">
+                İlan türünü, ürünün durumunu ve fiyatını belirt.
+              </p>
+
+              <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                {listingTypes.map((option) => {
+                  const isSelected = listingType === option.value;
+
+                  return (
+                    <label
+                      key={option.value}
+                      className={`flex min-h-20 cursor-pointer flex-col border px-3 py-3 transition-colors ${
+                        isSelected
+                          ? "border-[#5a1f32]/45 bg-[#5a1f32]/8 dark:border-[#c7896d]/48 dark:bg-[#c7896d]/9"
+                          : "border-[#1c2821]/12 bg-white/25 hover:border-[#5a1f32]/28 dark:border-white/10 dark:bg-white/[0.02] dark:hover:border-[#c7896d]/30"
+                      } ${focusRing}`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="listing-type"
+                          value={option.value}
+                          checked={isSelected}
+                          onChange={() => {
+                            setListingType(option.value);
+                            setListingError("");
+
+                            if (option.value === "Ücretsiz") {
+                              setListingPrice("");
+                            }
+                          }}
+                          className="size-4 shrink-0 accent-[#5a1f32] dark:accent-[#c7896d]"
+                        />
+                        <span className="text-xs font-black">
+                          {option.value}
+                        </span>
+                      </span>
+                      <span className="mt-1 pl-6 text-[10px] leading-4 text-[#1c2821]/55 dark:text-white/50">
+                        {option.description}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div>
+                  {listingType === "Ücretsiz" ? (
+                    <p className="text-xs font-black">Fiyat</p>
+                  ) : (
+                    <label
+                      htmlFor="campus-listing-price"
+                      className="text-xs font-black"
+                    >
+                      {listingType === "Aranıyor" ? "Bütçe" : "Fiyat"}
+                    </label>
+                  )}
+
+                  {listingType === "Ücretsiz" ? (
+                    <div className="mt-2 flex min-h-12 items-center border border-[#1c2821]/12 bg-white/22 px-3.5 text-sm font-black text-[#5a1f32] dark:border-white/10 dark:bg-white/[0.02] dark:text-[#d09272]">
+                      Fiyat gerekmiyor
+                    </div>
+                  ) : (
+                    <div className="relative mt-2">
+                      <input
+                        ref={listingPriceInputRef}
+                        id="campus-listing-price"
+                        name="listing-price"
+                        type="number"
+                        min={1}
+                        max={1_000_000}
+                        step={1}
+                        inputMode="numeric"
+                        value={listingPrice}
+                        required
+                        aria-invalid={Boolean(listingError)}
+                        aria-describedby={
+                          listingError
+                            ? "campus-listing-price-error"
+                            : "campus-listing-price-help"
+                        }
+                        onChange={(event) => {
+                          setListingPrice(event.target.value);
+                          setListingError("");
+                          setStatusMessage("");
+                        }}
+                        placeholder={
+                          listingType === "Aranıyor"
+                            ? "En yüksek bütçe"
+                            : "Satış fiyatı"
+                        }
+                        className={`min-h-12 w-full border bg-white/35 px-3.5 py-2.5 pr-12 text-sm font-bold placeholder:font-medium placeholder:text-[#1c2821]/38 dark:bg-white/[0.025] dark:placeholder:text-white/32 ${
+                          listingError
+                            ? "border-[#9b3028] dark:border-[#df8b83]"
+                            : "border-[#1c2821]/14 dark:border-white/12"
+                        } ${focusRing}`}
+                      />
+                      <span className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-xs font-black text-[#1c2821]/48 dark:text-white/45">
+                        TL
+                      </span>
+                    </div>
+                  )}
+
+                  {listingError ? (
+                    <p
+                      id="campus-listing-price-error"
+                      role="alert"
+                      className="mt-2 text-xs font-semibold text-[#8a2e25] dark:text-[#e0a083]"
+                    >
+                      {listingError}
+                    </p>
+                  ) : (
+                    <p
+                      id="campus-listing-price-help"
+                      className="mt-2 text-[10px] leading-4 text-[#1c2821]/50 dark:text-white/46"
+                    >
+                      Yalnızca tam sayı olarak Türk lirası gir.
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="campus-listing-condition"
+                    className="text-xs font-black"
+                  >
+                    Ürün durumu
+                  </label>
+                  <select
+                    id="campus-listing-condition"
+                    name="listing-condition"
+                    value={listingCondition}
+                    onChange={(event) =>
+                      setListingCondition(
+                        event.target.value as CampusListingCondition,
+                      )
+                    }
+                    className={`mt-2 min-h-12 w-full border border-[#1c2821]/14 bg-white/35 px-3.5 text-sm font-bold dark:border-white/12 dark:bg-[#1c1e21] ${focusRing}`}
+                  >
+                    {listingConditions.map((condition) => (
+                      <option key={condition} value={condition}>
+                        {condition}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <p className="mt-4 border-l-2 border-[#9a5944]/45 pl-3 text-[11px] leading-5 text-[#1c2821]/64 dark:border-[#c7896d]/48 dark:text-white/60">
+                İlanlar güven için profilinle yayımlanır. Telefon, e-posta veya
+                açık adresini açıklamaya yazma.
+              </p>
+            </fieldset>
+          )}
+
           <div className="mt-7">
             <div className="flex items-baseline justify-between gap-4">
               <label
                 htmlFor="campus-post-body"
                 className="text-sm font-black tracking-[-0.015em]"
               >
-                Açıklama{" "}
-                <span className="font-medium text-[#1c2821]/45 dark:text-white/42">
-                  (isteğe bağlı)
-                </span>
+                {isListing ? "İlan açıklaması" : "Açıklama"}{" "}
+                {!isListing && (
+                  <span className="font-medium text-[#1c2821]/45 dark:text-white/42">
+                    (isteğe bağlı)
+                  </span>
+                )}
               </label>
               <span className="font-mono text-[10px] font-bold text-[#1c2821]/45 dark:text-white/42">
                 {body.length}/500
@@ -309,23 +761,51 @@ export default function CreateCampusPost() {
               value={body}
               maxLength={500}
               rows={7}
-              aria-describedby="campus-post-body-help"
+              required={isListing}
+              aria-invalid={Boolean(bodyError)}
+              aria-describedby={
+                bodyError
+                  ? "campus-post-body-error campus-post-body-help"
+                  : "campus-post-body-help"
+              }
               onChange={(event) => {
                 setBody(event.target.value);
+                setBodyError("");
                 setStatusMessage("");
                 setStatusTone("neutral");
               }}
-              placeholder="Detay vermek istersen buraya yazabilirsin."
-              className={`mt-2 min-h-40 w-full resize-y border border-[#1c2821]/14 bg-white/35 px-3.5 py-3 text-sm leading-6 text-[#1c2821] placeholder:text-[#1c2821]/38 dark:border-white/12 dark:bg-white/[0.025] dark:text-[#ece8e1] dark:placeholder:text-white/32 ${focusRing}`}
+              placeholder={
+                isListing
+                  ? "Ürünün özelliklerini, kusurlarını ve teslim için uygun olduğun kampüs alanını yaz."
+                  : "Detay vermek istersen buraya yazabilirsin."
+              }
+              className={`mt-2 min-h-40 w-full resize-y border bg-white/35 px-3.5 py-3 text-sm leading-6 text-[#1c2821] placeholder:text-[#1c2821]/38 dark:bg-white/[0.025] dark:text-[#ece8e1] dark:placeholder:text-white/32 ${
+                bodyError
+                  ? "border-[#9b3028] dark:border-[#df8b83]"
+                  : "border-[#1c2821]/14 dark:border-white/12"
+              } ${focusRing}`}
             />
 
             <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-              <p
-                id="campus-post-body-help"
-                className="text-[11px] leading-5 text-[#1c2821]/52 dark:text-white/48"
-              >
-                Kişisel bilgi paylaşmamaya dikkat et.
-              </p>
+              <div>
+                {bodyError && (
+                  <p
+                    id="campus-post-body-error"
+                    role="alert"
+                    className="text-xs font-semibold text-[#8a2e25] dark:text-[#e0a083]"
+                  >
+                    {bodyError}
+                  </p>
+                )}
+                <p
+                  id="campus-post-body-help"
+                  className={`${bodyError ? "mt-1" : ""} text-[11px] leading-5 text-[#1c2821]/52 dark:text-white/48`}
+                >
+                  {isListing
+                    ? "Kişisel iletişim bilgilerini değil, ürünün ayrıntılarını paylaş."
+                    : "Kişisel bilgi paylaşmamaya dikkat et."}
+                </p>
+              </div>
 
               <div className="relative">
                 <button
@@ -370,23 +850,236 @@ export default function CreateCampusPost() {
           </div>
 
           <div className="mt-7 border-t border-[#1c2821]/10 pt-5 dark:border-white/8">
-            <label className="flex min-h-14 cursor-pointer items-center justify-between gap-4 border border-[#1c2821]/13 px-3.5 py-2.5 dark:border-white/11">
-              <span>
-                <span className="block text-xs font-black">
-                  Anonim paylaş
-                </span>
-                <span className="mt-0.5 block text-[11px] leading-4 text-[#1c2821]/55 dark:text-white/50">
-                  Adın ve bölüm bilgin gönderide görünmez.
-                </span>
-              </span>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-black tracking-[-0.015em]">
+                  {isListing ? "İlan fotoğrafı" : "Fotoğraf"}{" "}
+                  <span className="font-medium text-[#1c2821]/45 dark:text-white/42">
+                    {isListing ? "(önerilir)" : "(isteğe bağlı)"}
+                  </span>
+                </p>
+                <p className="mt-1 text-[11px] leading-5 text-[#1c2821]/52 dark:text-white/48">
+                  Tek fotoğraf · JPEG, PNG veya WebP · en fazla 5 MB
+                </p>
+              </div>
+
               <input
-                type="checkbox"
-                name="anonymous"
-                checked={isAnonymous}
-                onChange={(event) => setIsAnonymous(event.target.checked)}
-                className={`size-5 shrink-0 accent-[#5a1f32] dark:accent-[#c7896d] ${focusRing}`}
+                ref={imageInputRef}
+                id="campus-post-image"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleImageChange}
+                disabled={isProcessingImage}
+                className="sr-only"
               />
-            </label>
+
+              {!imagePreview && (
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={isProcessingImage}
+                  className={`inline-flex min-h-11 items-center justify-center border border-[#1c2821]/14 px-4 text-xs font-black transition-colors hover:border-[#5a1f32]/35 hover:bg-[#5a1f32]/6 disabled:cursor-wait disabled:opacity-50 dark:border-white/12 dark:hover:border-[#c7896d]/35 dark:hover:bg-[#c7896d]/8 ${focusRing}`}
+                >
+                  {isProcessingImage ? "İşleniyor…" : "Fotoğraf ekle"}
+                </button>
+              )}
+            </div>
+
+            {imagePreview && (
+              <div className="mt-4 overflow-hidden border border-[#1c2821]/12 bg-[#ece7df] dark:border-white/10 dark:bg-[#101214]">
+                <Image
+                  src={imagePreview.src}
+                  alt={
+                    isListing
+                      ? "Seçilen ilan fotoğrafının önizlemesi"
+                      : "Seçilen gönderi fotoğrafının önizlemesi"
+                  }
+                  width={imagePreview.width}
+                  height={imagePreview.height}
+                  sizes="(max-width: 768px) 100vw, 720px"
+                  unoptimized
+                  className="max-h-[30rem] h-auto w-full object-contain"
+                />
+                <div className="flex flex-wrap justify-end gap-2 border-t border-[#1c2821]/10 bg-[#fbf8f1]/80 p-3 dark:border-white/9 dark:bg-[#17191c]/86">
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    disabled={isProcessingImage}
+                    className={`inline-flex min-h-11 items-center justify-center border border-[#1c2821]/14 px-4 text-xs font-black transition-colors hover:bg-[#1c2821]/5 disabled:cursor-wait disabled:opacity-50 dark:border-white/12 dark:hover:bg-white/6 ${focusRing}`}
+                  >
+                    Değiştir
+                  </button>
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className={`inline-flex min-h-11 items-center justify-center px-4 text-xs font-black text-[#8b2f2a] transition-colors hover:bg-[#8b2f2a]/7 dark:text-[#e18a7d] dark:hover:bg-[#d27368]/9 ${focusRing}`}
+                  >
+                    Kaldır
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {imageError && (
+              <p
+                role="alert"
+                className="mt-3 text-xs font-semibold text-[#8a2e25] dark:text-[#e0a083]"
+              >
+                {imageError}
+              </p>
+            )}
+
+            {imagePreview && isAnonymous && (
+              <p className="mt-3 border-l-2 border-[#9a5944]/45 pl-3 text-[11px] leading-5 text-[#1c2821]/64 dark:border-[#c7896d]/48 dark:text-white/60">
+                Anonim paylaşımda fotoğraftaki yüz, plaka veya belgeler seni
+                belli edebilir.
+              </p>
+            )}
+          </div>
+
+          {!isListing && (
+            <div className="mt-7 border-t border-[#1c2821]/10 pt-5 dark:border-white/8">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-black tracking-[-0.015em]">
+                  Anket
+                </p>
+                <p className="mt-1 text-[11px] leading-5 text-[#1c2821]/52 dark:text-white/48">
+                  Başlığın anket sorusu, aşağıdakiler seçenekler olur.
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-pressed={isPollEnabled}
+                onClick={() => {
+                  const nextValue = !isPollEnabled;
+                  setIsPollEnabled(nextValue);
+                  setCategory(
+                    nextValue
+                      ? "Anket"
+                      : category === "Anket"
+                        ? "İtiraf"
+                        : category,
+                  );
+                  setPollError("");
+                }}
+                className={`inline-flex min-h-11 items-center justify-center border px-4 text-xs font-black transition-colors ${focusRing} ${
+                  isPollEnabled
+                    ? "border-[#5a1f32]/38 bg-[#5a1f32]/8 text-[#5a1f32] dark:border-[#c7896d]/42 dark:bg-[#c7896d]/10 dark:text-[#d09272]"
+                    : "border-[#1c2821]/14 hover:border-[#5a1f32]/35 hover:bg-[#5a1f32]/6 dark:border-white/12 dark:hover:border-[#c7896d]/35 dark:hover:bg-[#c7896d]/8"
+                }`}
+              >
+                {isPollEnabled ? "Anketi kaldır" : "Anket ekle"}
+              </button>
+              </div>
+
+            {isPollEnabled && (
+              <div className="mt-4">
+                <div className="grid gap-2">
+                  {pollOptions.map((option, index) => (
+                    <div
+                      key={index}
+                      className="flex min-w-0 items-center gap-2"
+                    >
+                      <label
+                        htmlFor={`campus-poll-option-${index}`}
+                        className="sr-only"
+                      >
+                        Anket seçeneği {index + 1}
+                      </label>
+                      <input
+                        id={`campus-poll-option-${index}`}
+                        type="text"
+                        value={option}
+                        maxLength={60}
+                        aria-invalid={Boolean(pollError)}
+                        aria-describedby={
+                          pollError ? "campus-poll-error" : undefined
+                        }
+                        onChange={(event) =>
+                          updatePollOption(index, event.target.value)
+                        }
+                        placeholder={`${index + 1}. seçenek`}
+                        className={`min-h-12 min-w-0 flex-1 border border-[#1c2821]/14 bg-white/35 px-3.5 text-sm font-semibold placeholder:text-[#1c2821]/38 dark:border-white/12 dark:bg-white/[0.025] dark:placeholder:text-white/32 ${focusRing}`}
+                      />
+                      {pollOptions.length > 2 && (
+                        <button
+                          type="button"
+                          aria-label={`${index + 1}. anket seçeneğini kaldır`}
+                          onClick={() => removePollOption(index)}
+                          className={`grid size-12 shrink-0 place-items-center text-lg font-bold text-[#8b2f2a] transition-colors hover:bg-[#8b2f2a]/7 dark:text-[#e18a7d] dark:hover:bg-[#d27368]/9 ${focusRing}`}
+                        >
+                          <span aria-hidden="true">×</span>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-[11px] font-semibold text-[#58635c] dark:text-[#aeb4af]">
+                    {pollOptions.length}/4 seçenek
+                  </p>
+                  {pollOptions.length < 4 && (
+                    <button
+                      type="button"
+                      onClick={addPollOption}
+                      className={`inline-flex min-h-11 items-center justify-center px-3 text-xs font-black text-[#5a1f32] transition-colors hover:bg-[#5a1f32]/6 dark:text-[#d09272] dark:hover:bg-[#c7896d]/8 ${focusRing}`}
+                    >
+                      Seçenek ekle
+                    </button>
+                  )}
+                </div>
+
+                {pollError && (
+                  <p
+                    id="campus-poll-error"
+                    role="alert"
+                    className="mt-2 text-xs font-semibold text-[#8a2e25] dark:text-[#e0a083]"
+                  >
+                    {pollError}
+                  </p>
+                )}
+              </div>
+            )}
+            </div>
+          )}
+
+          <div className="mt-7 border-t border-[#1c2821]/10 pt-5 dark:border-white/8">
+            {isListing ? (
+              <div className="flex min-h-16 items-center gap-3 border border-[#9a5944]/24 bg-[#9a5944]/5 px-3.5 py-3 dark:border-[#c7896d]/25 dark:bg-[#c7896d]/6">
+                <span
+                  aria-hidden="true"
+                  className="grid size-9 shrink-0 place-items-center border border-[#9a5944]/30 text-sm font-black text-[#5a1f32] dark:border-[#c7896d]/34 dark:text-[#d09272]"
+                >
+                  @
+                </span>
+                <div>
+                  <p className="text-xs font-black">Profilinle yayımlanacak</p>
+                  <p className="mt-0.5 text-[11px] leading-4 text-[#1c2821]/55 dark:text-white/50">
+                    İlanlarda güven ve iletişim için anonim paylaşım kapalıdır.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <label className="flex min-h-14 cursor-pointer items-center justify-between gap-4 border border-[#1c2821]/13 px-3.5 py-2.5 dark:border-white/11">
+                <span>
+                  <span className="block text-xs font-black">
+                    Anonim paylaş
+                  </span>
+                  <span className="mt-0.5 block text-[11px] leading-4 text-[#1c2821]/55 dark:text-white/50">
+                    Adın ve bölüm bilgin gönderide görünmez.
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  name="anonymous"
+                  checked={isAnonymous}
+                  onChange={(event) => setIsAnonymous(event.target.checked)}
+                  className={`size-5 shrink-0 accent-[#5a1f32] dark:accent-[#c7896d] ${focusRing}`}
+                />
+              </label>
+            )}
           </div>
 
           <div
@@ -416,13 +1109,21 @@ export default function CreateCampusPost() {
               </Link>
               <button
                 type="submit"
-                disabled={isSubmitting || !isHydrated}
+                disabled={
+                  isSubmitting || isProcessingImage || !isHydrated
+                }
                 className={`inline-flex min-h-11 min-w-28 items-center justify-center bg-[#5a1f32] px-5 text-xs font-bold text-white transition-colors hover:bg-[#6b2940] disabled:cursor-not-allowed disabled:opacity-45 dark:bg-[#9a5944] dark:text-[#121417] dark:hover:bg-[#ad6b53] ${focusRing}`}
               >
                 {isSubmitting
-                  ? "Yayımlanıyor…"
+                  ? isListing
+                    ? "İlan yayımlanıyor…"
+                    : "Yayımlanıyor…"
+                  : isProcessingImage
+                    ? "Fotoğraf işleniyor…"
                   : isHydrated
-                    ? "Konuyu yayımla"
+                    ? isListing
+                      ? "İlanı yayımla"
+                      : "Konuyu yayımla"
                     : "Hazırlanıyor…"}
               </button>
             </div>

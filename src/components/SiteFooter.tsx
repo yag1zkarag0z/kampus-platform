@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import CampusLogo from "@/components/CampusLogo";
 
 export default function SiteFooter() {
@@ -5,8 +7,8 @@ export default function SiteFooter() {
     <footer className="bg-[#fbf8f1] text-[#1c2821] dark:bg-[#121417] dark:text-[#ece8e1]">
       <div className="mx-auto w-full max-w-[1360px] px-5 py-8 sm:px-8 sm:py-10 lg:px-12">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          <a
-            href="#"
+          <Link
+            href="/"
             aria-label="KAMPÜS ana sayfa"
             className="inline-flex min-h-11 w-fit items-center outline-none transition-opacity hover:opacity-80 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-[#1c2821] dark:focus-visible:ring-white"
           >
@@ -14,30 +16,36 @@ export default function SiteFooter() {
               idPrefix="footer-logo"
               wordmarkClassName="text-xl"
             />
-          </a>
+          </Link>
 
           <nav
             aria-label="Alt menü"
             className="flex flex-wrap gap-x-5 gap-y-3 text-xs font-bold text-[#1c2821]/65 dark:text-white/65"
           >
-            <a
-              href="#kampus-nabzi"
+            <Link
+              href="/#kampus-nabzi"
               className="outline-none transition-colors hover:text-[#a83d2d] focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[#1c2821] dark:hover:text-[#c7896d] dark:focus-visible:ring-white"
             >
               Kampüs Nabzı
-            </a>
-            <a
-              href="#nasil-calisir"
+            </Link>
+            <Link
+              href="/#nasil-calisir"
               className="outline-none transition-colors hover:text-[#a83d2d] focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[#1c2821] dark:hover:text-[#c7896d] dark:focus-visible:ring-white"
             >
               Nasıl çalışır?
-            </a>
-            <a
-              href="#guvenlik"
+            </Link>
+            <Link
+              href="/#guvenlik"
               className="outline-none transition-colors hover:text-[#a83d2d] focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[#1c2821] dark:hover:text-[#c7896d] dark:focus-visible:ring-white"
             >
               Güvenlik
-            </a>
+            </Link>
+            <Link
+              href="/sozlesme"
+              className="outline-none transition-colors hover:text-[#a83d2d] focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[#1c2821] dark:hover:text-[#c7896d] dark:focus-visible:ring-white"
+            >
+              Kullanım Sözleşmesi
+            </Link>
           </nav>
         </div>
 

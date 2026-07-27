@@ -3,6 +3,8 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 
+import { activateCampusSession } from "@/components/CampusAccountProvider";
+
 type LoginStep = 1 | 2;
 
 const studentEmailPattern = /^[^\s@]+@stu\.yasar\.edu\.tr$/i;
@@ -38,6 +40,11 @@ export default function LoginFlow() {
 
     if (!/^\d{6}$/.test(code)) {
       setMessage("Giriş kodu 6 haneli olmalı.");
+      return;
+    }
+
+    if (!activateCampusSession()) {
+      setMessage("Oturum bu tarayıcıda başlatılamadı. Yeniden deneyebilirsin.");
       return;
     }
 

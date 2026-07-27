@@ -3,13 +3,30 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 
+import { persistRegisteredCampusAccount } from "@/components/CampusAccountProvider";
+import {
+  campusUsernamePattern,
+  reservedCampusUsernames,
+} from "@/data/campusAccountRules";
+import {
+  getCampusYearOptions,
+  yasarDepartmentGroups,
+} from "@/data/yasarDepartments";
+
 type RegisterStep = 1 | 2 | 3;
+type RegisterField =
+  | "email"
+  | "code"
+  | "username"
+  | "department"
+  | "year"
+  | "rules";
 
 const studentEmailPattern = /^[^\s@]+@stu\.yasar\.edu\.tr$/i;
-const usernamePattern = /^[a-z0-9_]{3,20}$/;
-
 const inputClassName =
-  "auth-input h-12 w-full rounded-xl border border-[#1c2821]/14 bg-white/55 px-3.5 text-base text-[#1c2821] outline-none transition placeholder:text-[#1c2821]/38 hover:border-[#1c2821]/28 focus:border-[#7d3c2d] focus:ring-3 focus:ring-[#9a5944]/14 dark:border-white/12 dark:bg-white/6 dark:text-[#ece8e1] dark:placeholder:text-white/34 dark:hover:border-white/24 dark:focus:border-[#c7896d] dark:focus:ring-[#c7896d]/16";
+  "auth-input h-12 w-full rounded-xl border border-[#1c2821]/14 bg-white/55 px-3.5 text-base text-[#1c2821] outline-none transition placeholder:text-[#68736c] hover:border-[#1c2821]/28 focus:border-[#7d3c2d] focus:ring-3 focus:ring-[#9a5944]/14 dark:border-white/12 dark:bg-white/6 dark:text-[#ece8e1] dark:placeholder:text-[#9ba39d] dark:hover:border-white/24 dark:focus:border-[#c7896d] dark:focus:ring-[#c7896d]/16";
+const helperTextClassName =
+  "mt-2 text-[11px] leading-5 text-[#58635c] dark:text-[#aeb4af]";
 
 export default function RegisterFlow() {
   const [step, setStep] = useState<RegisterStep>(1);
@@ -17,9 +34,20 @@ export default function RegisterFlow() {
   const [code, setCode] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
+  const [department, setDepartment] = useState("");
+  const [year, setYear] = useState("");
+  const [bio, setBio] = useState("");
+  const [showDepartment, setShowDepartment] = useState(false);
   const [acceptedRules, setAcceptedRules] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [invalidField, setInvalidField] =
+    useState<RegisterField | null>(null);
   const [complete, setComplete] = useState(false);
+  const availableYearOptions = getCampusYearOptions(department);
+  const clearMessage = () => {
+    setMessage(null);
+    setInvalidField(null);
+  };
 
   const submitEmail = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -29,11 +57,13 @@ export default function RegisterFlow() {
       setMessage(
         "Yalnızca @stu.yasar.edu.tr uzantılı öğrenci e-postası kullanabilirsin."
       );
+      setInvalidField("email");
+      document.getElementById("register-email")?.focus();
       return;
     }
 
     setEmail(normalizedEmail);
-    setMessage(null);
+    clearMessage();
     setStep(2);
   };
 
@@ -42,10 +72,12 @@ export default function RegisterFlow() {
 
     if (!/^\d{6}$/.test(code)) {
       setMessage("Doğrulama kodu 6 haneli olmalı.");
+      setInvalidField("code");
+      document.getElementById("register-code")?.focus();
       return;
     }
 
-    setMessage(null);
+    clearMessage();
     setStep(3);
   };
 
@@ -53,20 +85,62 @@ export default function RegisterFlow() {
     event.preventDefault();
     const normalizedUsername = username.trim().toLowerCase();
 
-    if (!usernamePattern.test(normalizedUsername)) {
+    if (!campusUsernamePattern.test(normalizedUsername)) {
       setMessage(
-        "Kullanıcı adı 3–20 karakter olmalı; yalnızca harf, sayı ve alt çizgi kullanabilirsin."
+        "Kullanıcı adı 3–24 karakter olmalı; harf veya rakamla başlayıp bitmeli."
       );
+      setInvalidField("username");
+      document.getElementById("register-username")?.focus();
+      return;
+    }
+
+    if (reservedCampusUsernames.has(normalizedUsername)) {
+      setMessage("Bu kullanıcı adı KAMPÜS tarafından ayrılmış.");
+      setInvalidField("username");
+      document.getElementById("register-username")?.focus();
+      return;
+    }
+
+    if (!department) {
+      setMessage("Bölümünü seçmelisin.");
+      setInvalidField("department");
+      document.getElementById("register-department")?.focus();
+      return;
+    }
+
+    if (!year) {
+      setMessage("Sınıfını seçmelisin.");
+      setInvalidField("year");
+      document.getElementById("register-year")?.focus();
       return;
     }
 
     if (!acceptedRules) {
       setMessage("Devam etmek için topluluk kurallarını kabul etmelisin.");
+      setInvalidField("rules");
+      document.getElementById("register-rules")?.focus();
+      return;
+    }
+
+    if (
+      !persistRegisteredCampusAccount({
+        username: normalizedUsername,
+        displayName,
+        department,
+        year,
+        bio,
+        showDepartment,
+      })
+    ) {
+      setMessage(
+        "Profil bu tarayıcıya kaydedilemedi. Depolama iznini kontrol edip yeniden dene.",
+      );
+      setInvalidField(null);
       return;
     }
 
     setUsername(normalizedUsername);
-    setMessage(null);
+    clearMessage();
     setComplete(true);
   };
 
@@ -87,7 +161,7 @@ export default function RegisterFlow() {
                 className={`border-t-2 pt-2 text-[10px] font-bold transition-colors ${
                   isCurrent || isDone
                     ? "border-[#9a5944] text-[#1c2821] dark:border-[#c7896d] dark:text-[#ece8e1]"
-                    : "border-[#1c2821]/12 text-[#1c2821]/42 dark:border-white/10 dark:text-white/38"
+                    : "border-[#1c2821]/12 text-[#58635c] dark:border-white/10 dark:text-[#aeb4af]"
                 }`}
                 aria-current={isCurrent ? "step" : undefined}
               >
@@ -141,16 +215,17 @@ export default function RegisterFlow() {
               value={email}
               onChange={(event) => {
                 setEmail(event.target.value);
-                setMessage(null);
+                clearMessage();
               }}
               placeholder="ad.soyad@stu.yasar.edu.tr"
               className={`${inputClassName} mt-2`}
+              aria-invalid={invalidField === "email"}
               aria-describedby="register-email-help register-message"
               required
             />
             <p
               id="register-email-help"
-              className="mt-2 text-[11px] leading-5 text-[#1c2821]/54 dark:text-white/50"
+              className={helperTextClassName}
             >
               E-posta adresin profilinde görünmez.
             </p>
@@ -193,17 +268,18 @@ export default function RegisterFlow() {
               value={code}
               onChange={(event) => {
                 setCode(event.target.value.replace(/\D/g, "").slice(0, 6));
-                setMessage(null);
+                clearMessage();
               }}
               placeholder="000000"
               maxLength={6}
               className={`${inputClassName} mt-2 text-center font-mono text-xl font-bold tracking-[0.35em]`}
+              aria-invalid={invalidField === "code"}
               aria-describedby="register-code-help register-message"
               required
             />
             <p
               id="register-code-help"
-              className="mt-2 text-[11px] leading-5 text-[#1c2821]/54 dark:text-white/50"
+              className={helperTextClassName}
             >
               Kodunu kimseyle paylaşma. KAMPÜS senden kodunu istemez.
             </p>
@@ -223,7 +299,7 @@ export default function RegisterFlow() {
               onClick={() => {
                 setStep(1);
                 setCode("");
-                setMessage(null);
+                clearMessage();
               }}
               className="mt-3 min-h-11 w-full text-xs font-bold text-[#1c2821]/62 underline decoration-[#1c2821]/22 underline-offset-4 dark:text-white/58 dark:decoration-white/20"
             >
@@ -233,10 +309,14 @@ export default function RegisterFlow() {
         ) : (
           <form onSubmit={submitProfile} noValidate>
             <h2 className="text-2xl font-black tracking-[-0.04em] sm:text-3xl">
-              KAMPÜS’te nasıl görüneceksin?
+              Kampüs profilini oluştur.
             </h2>
+            <p className="mt-3 text-sm leading-6 text-[#1c2821]/64 dark:text-white/62">
+              Yalnızca kullanıcı adın zorunlu olarak görünür. Diğer profil
+              bilgilerini sen yönetirsin.
+            </p>
 
-            <div className="mt-6 grid gap-5">
+            <div className="mt-6 grid gap-x-4 gap-y-5 sm:grid-cols-2">
               <div>
                 <label
                   htmlFor="register-username"
@@ -245,7 +325,7 @@ export default function RegisterFlow() {
                   Kullanıcı adı
                 </label>
                 <div className="relative mt-2">
-                  <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-sm font-bold text-[#1c2821]/42 dark:text-white/40">
+                  <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-sm font-bold text-[#58635c] dark:text-[#aeb4af]">
                     @
                   </span>
                   <input
@@ -256,19 +336,20 @@ export default function RegisterFlow() {
                     value={username}
                     onChange={(event) => {
                       setUsername(event.target.value.toLowerCase());
-                      setMessage(null);
+                      clearMessage();
                     }}
                     placeholder="kampuslu35"
                     className={`${inputClassName} pl-8`}
+                    aria-invalid={invalidField === "username"}
                     aria-describedby="register-username-help register-message"
                     required
                   />
                 </div>
                 <p
                   id="register-username-help"
-                  className="mt-2 text-[11px] leading-5 text-[#1c2821]/54 dark:text-white/50"
+                  className={helperTextClassName}
                 >
-                  3–20 karakter; harf, sayı ve alt çizgi kullanabilirsin.
+                  3–24 karakter; harf, sayı, nokta ve alt çizgi kullanabilirsin.
                 </p>
               </div>
 
@@ -285,28 +366,178 @@ export default function RegisterFlow() {
                   type="text"
                   autoComplete="name"
                   value={displayName}
-                  onChange={(event) => setDisplayName(event.target.value)}
+                  onChange={(event) => {
+                    setDisplayName(event.target.value);
+                    clearMessage();
+                  }}
                   placeholder="Adın veya rumuzun"
                   maxLength={40}
                   className={`${inputClassName} mt-2`}
                 />
               </div>
+
+              <div className="sm:col-span-2">
+                <label
+                  htmlFor="register-department"
+                  className="block text-xs font-bold"
+                >
+                  Bölüm
+                </label>
+                <select
+                  id="register-department"
+                  name="department"
+                  value={department}
+                  onChange={(event) => {
+                    const nextDepartment = event.target.value;
+
+                    setDepartment(nextDepartment);
+                    if (!getCampusYearOptions(nextDepartment).includes(year)) {
+                      setYear("");
+                    }
+                    clearMessage();
+                  }}
+                  className={`${inputClassName} mt-2 cursor-pointer pr-9`}
+                  aria-invalid={invalidField === "department"}
+                  aria-describedby="register-department-help register-message"
+                  required
+                >
+                  <option value="" disabled>
+                    Bölümünü seç
+                  </option>
+                  {yasarDepartmentGroups.map((group) => (
+                    <optgroup key={group.label} label={group.label}>
+                      {group.departments.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <p
+                  id="register-department-help"
+                  className={helperTextClassName}
+                >
+                  Listede bölümün yoksa “Listede olmayan program” seçeneğini
+                  kullanabilirsin.
+                </p>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="register-year"
+                  className="block text-xs font-bold"
+                >
+                  Sınıf
+                </label>
+                <select
+                  id="register-year"
+                  name="year"
+                  value={year}
+                  onChange={(event) => {
+                    setYear(event.target.value);
+                    clearMessage();
+                  }}
+                  className={`${inputClassName} mt-2 cursor-pointer pr-9`}
+                  aria-invalid={invalidField === "year"}
+                  aria-describedby="register-message"
+                  required
+                >
+                  <option value="" disabled>
+                    Sınıfını seç
+                  </option>
+                  {availableYearOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <label className="flex min-h-20 cursor-pointer items-start gap-3 rounded-xl border border-[#1c2821]/12 bg-white/35 p-3 text-xs leading-5 dark:border-white/10 dark:bg-white/4">
+                <input
+                  type="checkbox"
+                  name="showDepartment"
+                  checked={showDepartment}
+                  onChange={(event) => {
+                    setShowDepartment(event.target.checked);
+                    clearMessage();
+                  }}
+                  className="mt-0.5 size-4 shrink-0 accent-[#7d3c2d] outline-none focus-visible:ring-3 focus-visible:ring-[#7d3c2d]/25 dark:accent-[#c7896d] dark:focus-visible:ring-[#c7896d]/30"
+                />
+                <span>
+                  <span className="block font-bold">
+                    Bölüm ve sınıfımı göster
+                  </span>
+                  <span className="mt-1 block text-[#58635c] dark:text-[#aeb4af]">
+                    İstersen daha sonra ayarlardan değiştirebilirsin.
+                  </span>
+                </span>
+              </label>
+
+              <div className="sm:col-span-2">
+                <div className="flex items-baseline justify-between gap-3">
+                  <label
+                    htmlFor="register-bio"
+                    className="block text-xs font-bold"
+                  >
+                    Biyografi{" "}
+                    <span className="font-normal">(isteğe bağlı)</span>
+                  </label>
+                  <span className="font-mono text-[10px] font-bold text-[#58635c] dark:text-[#aeb4af]">
+                    {bio.length}/160
+                  </span>
+                </div>
+                <textarea
+                  id="register-bio"
+                  name="bio"
+                  value={bio}
+                  onChange={(event) => {
+                    setBio(event.target.value);
+                    clearMessage();
+                  }}
+                  placeholder="Kendinden veya kampüste ilgilendiğin şeylerden kısaca bahset."
+                  maxLength={160}
+                  rows={4}
+                  className={`${inputClassName} mt-2 h-auto min-h-28 resize-y py-3 leading-6`}
+                />
+              </div>
             </div>
 
-            <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-xl border border-[#1c2821]/12 bg-white/35 p-3 text-xs leading-5 dark:border-white/10 dark:bg-white/4">
+            <div className="mt-6 flex items-start gap-3 rounded-xl border border-[#1c2821]/12 bg-white/35 p-3 text-xs leading-5 dark:border-white/10 dark:bg-white/4">
               <input
+                id="register-rules"
                 type="checkbox"
                 checked={acceptedRules}
                 onChange={(event) => {
                   setAcceptedRules(event.target.checked);
-                  setMessage(null);
+                  clearMessage();
                 }}
-                className="mt-0.5 size-4 shrink-0 accent-[#7d3c2d] dark:accent-[#c7896d]"
+                required
+                aria-invalid={invalidField === "rules"}
+                aria-describedby="register-message"
+                className="mt-0.5 size-4 shrink-0 accent-[#7d3c2d] outline-none focus-visible:ring-3 focus-visible:ring-[#7d3c2d]/25 dark:accent-[#c7896d] dark:focus-visible:ring-[#c7896d]/30"
               />
-              <span>
-                Topluluk kurallarını okudum ve kabul ediyorum.
-              </span>
-            </label>
+              <div>
+                <label
+                  htmlFor="register-rules"
+                  className="cursor-pointer font-bold"
+                >
+                  Kullanım ve Topluluk Sözleşmesi’ni okudum ve kabul
+                  ediyorum.
+                </label>
+                <Link
+                  href="/sozlesme"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 block w-fit font-bold text-[#7d3c2d] underline decoration-[#9a5944]/35 underline-offset-4 outline-none hover:text-[#5a1f32] focus-visible:ring-2 focus-visible:ring-[#7d3c2d]/25 dark:text-[#d09272] dark:hover:text-[#e0a083] dark:focus-visible:ring-[#c7896d]/30"
+                >
+                  Sözleşmeyi oku
+                  <span className="sr-only"> (yeni sekmede açılır)</span>
+                  <span aria-hidden="true"> ↗</span>
+                </Link>
+              </div>
+            </div>
 
             <FormMessage message={message} />
 
@@ -322,7 +553,7 @@ export default function RegisterFlow() {
               type="button"
               onClick={() => {
                 setStep(2);
-                setMessage(null);
+                clearMessage();
               }}
               className="mt-3 min-h-11 w-full text-xs font-bold text-[#1c2821]/62 underline decoration-[#1c2821]/22 underline-offset-4 dark:text-white/58 dark:decoration-white/20"
             >
@@ -333,7 +564,7 @@ export default function RegisterFlow() {
       </div>
 
       {!complete && (
-        <div className="border-t border-[#1c2821]/10 bg-white/24 px-5 py-4 text-center text-[11px] text-[#1c2821]/58 dark:border-white/8 dark:bg-black/8 dark:text-white/52 sm:px-7">
+        <div className="border-t border-[#1c2821]/10 bg-white/24 px-5 py-4 text-center text-[11px] text-[#58635c] dark:border-white/8 dark:bg-black/8 dark:text-[#aeb4af] sm:px-7">
           Zaten hesabın var mı?{" "}
           <Link
             href="/giris"

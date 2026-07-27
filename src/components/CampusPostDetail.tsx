@@ -3,7 +3,16 @@
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
+import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import { useCampusData } from "@/components/CampusDataProvider";
+import CampusListingMeta from "@/components/CampusListingMeta";
+import CampusPoll from "@/components/CampusPoll";
+import CampusPostImage from "@/components/CampusPostImage";
+import {
+  isAnonymousCampusAuthor,
+  isSameVisibleCampusAuthor,
+  LOCAL_ACCOUNT_OWNER_ID,
+} from "@/data/campusPosts";
 
 const quickEmojis = [
   { value: "👍", label: "Beğeni" },
@@ -70,6 +79,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
   };
 
   const commentsTitleId = `post-comments-${postId}`;
+  const commentIdentityId = `post-comment-identity-${postId}`;
 
   if (!post) {
     return isHydrated ? <MissingPost /> : <PostDetailLoading />;
@@ -78,16 +88,16 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
   return (
     <section className="min-h-full min-w-0 bg-[#fbf8f1] text-[#1c2821] dark:bg-[#17191c] dark:text-[#ece8e1]">
       <header className="sticky top-16 z-30 border-b border-[#1c2821]/14 bg-[#fbf8f1]/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#17191c]/95 md:top-0">
-        <div className="flex min-h-16 items-center gap-3 px-3 sm:px-5">
+        <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 sm:px-5">
           <Link
             href="/akis"
             aria-label="Kampüs akışına dön"
-            className={`grid size-11 shrink-0 place-items-center rounded-full text-[#1c2821]/70 transition-colors hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-white/65 dark:hover:bg-white/7 dark:hover:text-white ${focusRing}`}
+            className={`grid size-11 shrink-0 place-items-center justify-self-start rounded-full text-[#1c2821]/70 transition-colors hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-white/65 dark:hover:bg-white/7 dark:hover:text-white ${focusRing}`}
           >
             <BackIcon />
           </Link>
 
-          <div className="min-w-0">
+          <div className="min-w-0 justify-self-center text-center">
             <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#8f3427] dark:text-[#c7896d]">
               Gönderi
             </p>
@@ -95,27 +105,38 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
               {post.category}
             </p>
           </div>
+          <span aria-hidden="true" />
         </div>
       </header>
 
       <article className="border-b border-[#1c2821]/14 px-4 py-6 dark:border-white/10 sm:m-3 sm:border sm:bg-white/20 sm:px-6 sm:py-7 dark:sm:bg-white/[0.015]">
-        <header className="flex flex-wrap items-start justify-between gap-x-5 gap-y-2">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#8f3427] dark:text-[#d09272]">
-                {post.category}
-              </span>
-              <span
-                aria-hidden="true"
-                className="size-1 rotate-45 bg-[#9a5944]/55 dark:bg-[#c7896d]/60"
-              />
-              <span className="text-xs font-black">{post.author}</span>
+        <header className="flex items-start justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <CampusAuthorAvatar
+              author={post.author}
+              authorId={post.authorId}
+              isAnonymous={post.isAnonymous}
+            />
+            <div className="min-w-0 pt-0.5">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#8f3427] dark:text-[#d09272]">
+                  {post.category}
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="size-1 rotate-45 bg-[#9a5944]/55 dark:bg-[#c7896d]/60"
+                />
+                <span className="truncate text-xs font-black">
+                  {post.author}
+                </span>
+              </div>
+              {!isAnonymousCampusAuthor(post) &&
+                post.detail && (
+                  <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-[#1c2821]/52 dark:text-white/48">
+                    {post.detail}
+                  </p>
+                )}
             </div>
-            {post.detail && (
-              <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-[#1c2821]/52 dark:text-white/48">
-                {post.detail}
-              </p>
-            )}
           </div>
           <time className="shrink-0 text-[11px] font-semibold text-[#1c2821]/52 dark:text-white/48">
             {post.time}
@@ -126,10 +147,21 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
           {post.title}
         </h1>
 
+        {post.listing && (
+          <CampusListingMeta listing={post.listing} variant="detail" />
+        )}
+
         {post.body && (
           <p className="mt-4 max-w-[78ch] whitespace-pre-wrap text-[15px] leading-7 tracking-[-0.01em] text-[#1c2821]/82 dark:text-white/80 sm:text-base sm:leading-7">
             {post.body}
           </p>
+        )}
+
+        {post.image && (
+          <CampusPostImage image={post.image} variant="detail" />
+        )}
+        {post.poll && (
+          <CampusPoll postId={post.id} poll={post.poll} />
         )}
 
         <footer className="mt-6 flex items-center justify-between gap-3 border-t border-[#1c2821]/10 pt-3 dark:border-white/8">
@@ -194,12 +226,30 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
           onSubmit={submitComment}
           className="border-b border-[#1c2821]/10 py-5 dark:border-white/8"
         >
-          <label
-            htmlFor={`post-comment-input-${post.id}`}
-            className="text-sm font-black tracking-[-0.015em]"
-          >
-            Yorumunu ekle
-          </label>
+          <div className="flex items-center gap-2.5">
+            <CampusAuthorAvatar
+              author={isAnonymous ? "Anonim" : "@sen"}
+              authorId={LOCAL_ACCOUNT_OWNER_ID}
+              isAnonymous={isAnonymous}
+              size="sm"
+            />
+            <div>
+              <label
+                htmlFor={`post-comment-input-${post.id}`}
+                className="text-sm font-black tracking-[-0.015em]"
+              >
+                Yorumunu ekle
+              </label>
+              <p
+                id={commentIdentityId}
+                className="mt-0.5 text-[11px] font-semibold text-[#58635c] dark:text-[#aeb4af]"
+              >
+                {isAnonymous
+                  ? "Diğer öğrenciler seni anonim görecek."
+                  : "Profilinle görünecek."}
+              </p>
+            </div>
+          </div>
           <textarea
             id={`post-comment-input-${post.id}`}
             value={commentDraft}
@@ -210,7 +260,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
             maxLength={500}
             rows={4}
             placeholder="Ne düşünüyorsun?"
-            aria-describedby={`post-comment-help-${post.id}`}
+            aria-describedby={`${commentIdentityId} post-comment-help-${post.id}`}
             className={`mt-3 min-h-28 w-full resize-y border border-[#1c2821]/14 bg-white/25 px-3.5 py-3 text-sm leading-6 placeholder:text-[#1c2821]/38 dark:border-white/12 dark:bg-white/[0.02] dark:placeholder:text-white/32 ${focusRing}`}
           />
 
@@ -279,32 +329,35 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
           <ol className="divide-y divide-[#1c2821]/10 dark:divide-white/8">
             {post.comments.map((comment) => (
               <li key={comment.id}>
-                <article className="relative py-5 pl-4 sm:py-6 sm:pl-5">
-                  <span
-                    aria-hidden="true"
-                    className="absolute inset-y-5 left-0 w-0.5 bg-[#9a5944]/28 dark:bg-[#c7896d]/25 sm:inset-y-6"
+                <article className="flex items-start gap-3 py-5 sm:py-6">
+                  <CampusAuthorAvatar
+                    author={comment.author}
+                    authorId={comment.authorId}
+                    isAnonymous={comment.isAnonymous}
+                    size="sm"
                   />
-                  <header className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="text-xs font-black">
-                      {comment.author}
-                    </span>
-                    <span
-                      aria-hidden="true"
-                      className="size-1 rounded-full bg-[#1c2821]/25 dark:bg-white/24"
-                    />
-                    <time className="text-[11px] font-semibold text-[#1c2821]/52 dark:text-white/48">
-                      {comment.time}
-                    </time>
-                    {post.author !== "Anonim" &&
-                      post.author === comment.author && (
-                      <span className="border border-[#9a5944]/25 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-[#8f3427] dark:border-[#c7896d]/25 dark:text-[#d09272]">
-                        Gönderi sahibi
+                  <div className="min-w-0 flex-1">
+                    <header className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="text-xs font-black">
+                        {comment.author}
                       </span>
+                      <span
+                        aria-hidden="true"
+                        className="size-1 rounded-full bg-[#1c2821]/25 dark:bg-white/24"
+                      />
+                      <time className="text-[11px] font-semibold text-[#1c2821]/52 dark:text-white/48">
+                        {comment.time}
+                      </time>
+                      {isSameVisibleCampusAuthor(post, comment) && (
+                        <span className="border border-[#9a5944]/25 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-[#8f3427] dark:border-[#c7896d]/25 dark:text-[#d09272]">
+                          Gönderi sahibi
+                        </span>
                       )}
-                  </header>
-                  <p className="mt-2 max-w-[78ch] whitespace-pre-wrap text-sm leading-6 text-[#1c2821]/80 dark:text-white/78 sm:text-[15px] sm:leading-7">
-                    {comment.body}
-                  </p>
+                    </header>
+                    <p className="mt-2 max-w-[78ch] whitespace-pre-wrap text-sm leading-6 text-[#1c2821]/80 dark:text-white/78 sm:text-[15px] sm:leading-7">
+                      {comment.body}
+                    </p>
+                  </div>
                 </article>
               </li>
             ))}

@@ -2,27 +2,26 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+
+import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
+import CampusCategoryNav, {
+  type CampusCategoryFilter,
+} from "@/components/CampusCategoryNav";
 import { useCampusData } from "@/components/CampusDataProvider";
+import CampusListingMeta from "@/components/CampusListingMeta";
+import CampusPoll from "@/components/CampusPoll";
+import CampusPostImage from "@/components/CampusPostImage";
 import {
+  isAnonymousCampusAuthor,
   type CampusPost,
-  type CampusPostCategory,
 } from "@/data/campusPosts";
 
 type ExploreSort = "rising" | "latest" | "liked";
-type CategoryFilter = "Tümü" | CampusPostCategory;
 
 const sortOptions: { id: ExploreSort; label: string }[] = [
   { id: "rising", label: "Yükselen" },
   { id: "latest", label: "Yeni" },
   { id: "liked", label: "En çok beğenilen" },
-];
-
-const categories: CategoryFilter[] = [
-  "Tümü",
-  "İtiraf",
-  "Soru",
-  "Etkinlik",
-  "Kayıp Eşya",
 ];
 
 const focusRing =
@@ -45,31 +44,8 @@ export default function CampusExplore() {
   const { posts } = useCampusData();
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] =
-    useState<CategoryFilter>("Tümü");
+    useState<CampusCategoryFilter>("Tümü");
   const [activeSort, setActiveSort] = useState<ExploreSort>("rising");
-
-  const categorySummaries = useMemo(
-    () =>
-      categories.slice(1).map((category) => {
-        const categoryPosts = posts.filter(
-          (post) => post.category === category
-        );
-
-        return {
-          category,
-          posts: categoryPosts.length,
-          likes: categoryPosts.reduce(
-            (total, post) => total + post.likes,
-            0
-          ),
-          comments: categoryPosts.reduce(
-            (total, post) => total + post.comments.length,
-            0
-          ),
-        };
-      }),
-    [posts]
-  );
 
   const visiblePosts = useMemo(() => {
     const normalizedQuery = normalizeSearchValue(query);
@@ -83,7 +59,12 @@ export default function CampusExplore() {
           post.body,
           post.category,
           post.author,
-          post.detail ?? "",
+          isAnonymousCampusAuthor(post) ? "" : (post.detail ?? ""),
+          post.poll?.options.map((option) => option.text).join(" ") ??
+            "",
+          post.listing
+            ? `${post.listing.type} ${post.listing.condition} ${post.listing.price} TL`
+            : "",
         ].join(" ")
       );
 
@@ -138,8 +119,9 @@ export default function CampusExplore() {
       className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#fbf8f1] text-[#1c2821] dark:bg-[#17191c] dark:text-[#ece8e1] md:min-h-svh"
     >
       <header className="sticky top-16 z-30 border-b border-[#1c2821]/12 bg-[#fbf8f1]/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#17191c]/95 md:top-0">
-        <div className="flex min-h-16 items-center justify-between gap-3 px-4 sm:px-6">
-          <div className="min-w-0">
+        <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 sm:px-6">
+          <span aria-hidden="true" />
+          <div className="min-w-0 justify-self-center text-center">
             <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-[#7d3c2d] dark:text-[#c7896d]">
               Kampüste ara
             </p>
@@ -154,7 +136,7 @@ export default function CampusExplore() {
             role="status"
             aria-live="polite"
             aria-atomic="true"
-            className="shrink-0 text-xs font-bold text-[#1c2821]/55 dark:text-white/52"
+            className="shrink-0 justify-self-end text-right text-xs font-bold text-[#1c2821]/55 dark:text-white/52"
           >
             {visiblePosts.length} sonuç
           </p>
@@ -189,90 +171,17 @@ export default function CampusExplore() {
         </div>
       </header>
 
-      <div className="border-b border-[#1c2821]/10 px-3 py-4 dark:border-white/8 sm:px-5 sm:py-5 lg:px-6">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-[#7d3c2d] dark:text-[#c7896d]">
-              Genel görünüm
-            </p>
-            <h2 className="mt-1 text-base font-black tracking-[-0.03em]">
-              Konular
-            </h2>
-          </div>
-          {activeCategory !== "Tümü" && (
-            <button
-              type="button"
-              onClick={() => setActiveCategory("Tümü")}
-              className={`min-h-11 px-2 text-xs font-bold text-[#7d3c2d] underline decoration-[#9a5944]/35 underline-offset-4 dark:text-[#d09272] ${focusRing}`}
-            >
-              Tümünü göster
-            </button>
-          )}
-        </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
-          {categorySummaries.map((summary) => {
-            const isActive = activeCategory === summary.category;
-
-            return (
-              <button
-                key={summary.category}
-                type="button"
-                aria-pressed={isActive}
-                onClick={() => setActiveCategory(summary.category)}
-                className={`min-h-24 border p-3 text-left transition-colors ${focusRing} ${
-                  isActive
-                    ? "border-[#9a5944]/55 bg-[#9a5944]/9 dark:border-[#c7896d]/55 dark:bg-[#c7896d]/10"
-                    : "border-[#1c2821]/11 bg-white/25 hover:border-[#9a5944]/38 hover:bg-white/55 dark:border-white/9 dark:bg-white/[0.025] dark:hover:border-[#c7896d]/34 dark:hover:bg-white/5"
-                }`}
-              >
-                <span className="block text-xs font-black leading-5">
-                  {summary.category}
-                </span>
-                <span className="mt-1 block font-mono text-[11px] font-bold uppercase tracking-[0.06em] text-[#1c2821]/56 dark:text-white/52">
-                  {summary.posts} konu
-                </span>
-                <span className="mt-2 block text-[11px] leading-4 text-[#1c2821]/62 dark:text-white/58">
-                  {summary.likes} beğeni · {summary.comments} yorum
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       <div className="border-b border-[#1c2821]/10 dark:border-white/8">
-        <nav
-          aria-label="Keşfet kategorileri"
-          className="overflow-x-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          <div className="flex min-w-max">
-            {categories.map((category) => {
-              const isActive = activeCategory === category;
-
-              return (
-                <button
-                  key={category}
-                  type="button"
-                  aria-pressed={isActive}
-                  onClick={() => setActiveCategory(category)}
-                  className={`min-h-11 border-b-2 px-3 text-[11px] font-bold transition-colors sm:px-4 sm:text-xs ${focusRing} ${
-                    isActive
-                      ? "border-[#9a5944] text-[#5a1f32] dark:border-[#c7896d] dark:text-[#d09272]"
-                      : "border-transparent text-[#1c2821]/58 hover:text-[#1c2821] dark:text-white/54 dark:hover:text-white"
-                  }`}
-                >
-                  {category}
-                </button>
-              );
-            })}
-          </div>
-        </nav>
+        <CampusCategoryNav
+          activeCategory={activeCategory}
+          ariaLabel="Keşfet kategorileri"
+          onCategoryChange={setActiveCategory}
+        />
 
         <div
           role="group"
           aria-label="Arama sonuçlarını sırala"
-          className="flex flex-wrap gap-1 border-t border-[#1c2821]/8 px-3 py-2 dark:border-white/7 sm:px-5 lg:px-6"
+          className="flex flex-wrap gap-1 px-3 py-2 sm:px-5 lg:px-6"
         >
           {sortOptions.map((sort) => {
             const isActive = activeSort === sort.id;
@@ -304,29 +213,40 @@ export default function CampusExplore() {
               className="border-b border-[#1c2821]/11 last:border-b-0 dark:border-white/9 2xl:border 2xl:bg-white/20 2xl:px-5 2xl:last:border-b dark:2xl:bg-white/[0.015]"
             >
               <article className="py-5 sm:py-6">
-                <header className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#7d3c2d] dark:text-[#d09272]">
-                    {post.category}
-                  </span>
-                  <span
-                    aria-hidden="true"
-                    className="size-1 rotate-45 bg-[#9a5944]/55 dark:bg-[#c7896d]/58"
+                <header className="flex items-start gap-2.5">
+                  <CampusAuthorAvatar
+                    author={post.author}
+                    authorId={post.authorId}
+                    isAnonymous={post.isAnonymous}
+                    size="sm"
                   />
-                  <span className="text-xs font-black">{post.author}</span>
-                  {post.detail && (
-                    <span className="text-[11px] font-semibold text-[#1c2821]/50 dark:text-white/46">
-                      {post.detail}
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
+                    <span className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#7d3c2d] dark:text-[#d09272]">
+                      {post.category}
                     </span>
-                  )}
-                  <span
-                    aria-hidden="true"
-                    className="text-[#1c2821]/32 dark:text-white/28"
-                  >
-                    ·
-                  </span>
-                  <time className="text-[11px] font-semibold text-[#1c2821]/50 dark:text-white/46">
-                    {post.time}
-                  </time>
+                    <span
+                      aria-hidden="true"
+                      className="size-1 rotate-45 bg-[#9a5944]/55 dark:bg-[#c7896d]/58"
+                    />
+                    <span className="truncate text-xs font-black">
+                      {post.author}
+                    </span>
+                    {!isAnonymousCampusAuthor(post) &&
+                      post.detail && (
+                        <span className="text-[11px] font-semibold text-[#1c2821]/50 dark:text-white/46">
+                          {post.detail}
+                        </span>
+                      )}
+                    <span
+                      aria-hidden="true"
+                      className="text-[#1c2821]/32 dark:text-white/28"
+                    >
+                      ·
+                    </span>
+                    <time className="text-[11px] font-semibold text-[#1c2821]/50 dark:text-white/46">
+                      {post.time}
+                    </time>
+                  </div>
                 </header>
 
                 <h2 className="mt-2.5 max-w-[78ch] text-lg font-black leading-6 tracking-[-0.025em] sm:text-xl sm:leading-7">
@@ -337,9 +257,26 @@ export default function CampusExplore() {
                     {post.title}
                   </Link>
                 </h2>
+                {post.listing && (
+                  <CampusListingMeta
+                    listing={post.listing}
+                    variant="compact"
+                  />
+                )}
                 <p className="mt-2 max-w-[78ch] text-sm leading-6 tracking-[-0.01em] text-[#1c2821]/76 dark:text-white/74 sm:text-[15px] sm:leading-7">
                   {post.body}
                 </p>
+
+                {post.image && (
+                  <CampusPostImage image={post.image} variant="compact" />
+                )}
+                {post.poll && (
+                  <CampusPoll
+                    postId={post.id}
+                    poll={post.poll}
+                    compact
+                  />
+                )}
 
                 <footer className="mt-4 flex min-h-11 items-center gap-4 text-xs font-bold text-[#1c2821]/54 dark:text-white/50">
                   <span className="inline-flex items-center gap-1.5">

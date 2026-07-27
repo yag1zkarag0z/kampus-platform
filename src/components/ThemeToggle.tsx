@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 type ThemeToggleProps = {
   showLabel?: boolean;
   className?: string;
@@ -11,12 +13,37 @@ export default function ThemeToggle({
   showLabel = false,
   className = "",
 }: ThemeToggleProps) {
+  const [isDarkTheme, setIsDarkTheme] = useState(false);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    let isActive = true;
+    const syncTheme = () => {
+      if (isActive) {
+        setIsDarkTheme(root.dataset.theme === "dark");
+      }
+    };
+    const observer = new MutationObserver(syncTheme);
+
+    queueMicrotask(syncTheme);
+    observer.observe(root, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+
+    return () => {
+      isActive = false;
+      observer.disconnect();
+    };
+  }, []);
+
   const toggleTheme = () => {
     const root = document.documentElement;
     const nextTheme = root.dataset.theme === "dark" ? "light" : "dark";
 
     root.dataset.theme = nextTheme;
     root.style.colorScheme = nextTheme;
+    setIsDarkTheme(nextTheme === "dark");
 
     try {
       localStorage.setItem(STORAGE_KEY, nextTheme);
@@ -29,8 +56,9 @@ export default function ThemeToggle({
     <button
       type="button"
       onClick={toggleTheme}
-      aria-label="Renk temasını değiştir"
-      title="Renk temasını değiştir"
+      aria-label={isDarkTheme ? "Açık temaya geç" : "Koyu temaya geç"}
+      aria-pressed={isDarkTheme}
+      title={isDarkTheme ? "Açık temaya geç" : "Koyu temaya geç"}
       className={`theme-toggle inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#1c2821]/16 bg-[#fffaf4]/58 px-3 text-[#1c2821] shadow-[0_8px_24px_rgba(59,32,40,0.06)] outline-none transition-colors hover:border-[#5a1f32]/35 hover:bg-[#fffaf4]/90 focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:border-white/14 dark:bg-white/6 dark:text-[#ece8e1] dark:shadow-none dark:hover:border-[#c7896d]/45 dark:hover:bg-white/10 ${className}`}
     >
       <svg
@@ -60,7 +88,11 @@ export default function ThemeToggle({
           strokeLinecap="round"
         />
       </svg>
-      {showLabel && <span className="text-xs font-bold">Tema</span>}
+      {showLabel && (
+        <span className="text-xs font-bold">
+          {isDarkTheme ? "Açık tema" : "Koyu tema"}
+        </span>
+      )}
     </button>
   );
 }

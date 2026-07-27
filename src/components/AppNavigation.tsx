@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
+import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusLogo from "@/components/CampusLogo";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -127,6 +129,37 @@ function ShareIcon({ className = "size-5" }: { className?: string }) {
 
 export default function AppNavigation() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { signOut } = useCampusAccount();
+  const [isDesktopNavigationOpen, setIsDesktopNavigationOpen] =
+    useState(false);
+
+  useEffect(() => {
+    if (!isDesktopNavigationOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    const closeWithEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsDesktopNavigationOpen(false);
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeWithEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeWithEscape);
+    };
+  }, [isDesktopNavigationOpen]);
+
+  const handleSignOut = () => {
+    setIsDesktopNavigationOpen(false);
+    signOut();
+    router.replace("/giris");
+  };
 
   return (
     <>
@@ -142,33 +175,85 @@ export default function AppNavigation() {
           />
         </Link>
 
-        <ThemeToggle />
+        <div className="flex items-center gap-1">
+          <Link
+            href="/kaydedilenler"
+            aria-label="Kaydedilen konuları aç"
+            aria-current={
+              isActivePath(pathname, "/kaydedilenler") ? "page" : undefined
+            }
+            className={`grid size-11 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:focus-visible:ring-[#c7896d]/40 ${
+              isActivePath(pathname, "/kaydedilenler")
+                ? "bg-[#5a2538]/10 text-[#5a2538] dark:bg-[#c7896d]/12 dark:text-[#d09272]"
+                : "text-[#1c2821]/62 hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-white/58 dark:hover:bg-white/8 dark:hover:text-[#ece8e1]"
+            }`}
+          >
+            <NavigationIcon name="saved" className="size-[1.15rem]" />
+          </Link>
+          <ThemeToggle />
+        </div>
       </header>
 
-      <aside className="sticky top-0 z-30 hidden h-svh min-w-0 self-start border-r border-[#1c2821]/12 bg-[#fbf8f1]/95 text-[#1c2821] shadow-[10px_0_36px_rgba(28,40,33,0.045)] backdrop-blur-xl dark:border-white/10 dark:bg-[#121417]/95 dark:text-[#ece8e1] dark:shadow-[10px_0_36px_rgba(0,0,0,0.18)] md:flex">
-        <div className="flex h-full min-h-0 w-full flex-col px-3 py-4 xl:px-5 xl:py-5">
-          <Link
-            href="/akis"
-            aria-label="KAMPÜS akışına git"
-            className="inline-flex min-h-12 items-center justify-center rounded-xl outline-none transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:focus-visible:ring-[#c7896d]/40 xl:justify-start xl:px-2"
-          >
-            <span className="xl:hidden">
-              <CampusLogo
-                variant="mark"
-                idPrefix="desktop-app-navigation-mark"
-                markClassName="h-8 w-7"
-              />
-            </span>
-            <span className="hidden xl:inline-flex">
-              <CampusLogo
-                idPrefix="desktop-app-navigation-lockup"
-                wordmarkClassName="text-2xl"
-              />
-            </span>
-          </Link>
+      <header className="fixed left-3 top-2 z-[70] hidden h-12 items-center gap-1 bg-transparent text-[#1c2821] md:flex dark:text-[#ece8e1]">
+        <button
+          type="button"
+          aria-label={
+            isDesktopNavigationOpen
+              ? "Masaüstü menüsünü kapat"
+              : "Masaüstü menüsünü aç"
+          }
+          aria-expanded={isDesktopNavigationOpen}
+          aria-controls="desktop-app-navigation"
+          onClick={() =>
+            setIsDesktopNavigationOpen((current) => !current)
+          }
+          className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full outline-none transition-colors hover:bg-[#1c2821]/7 focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:hover:bg-white/8 dark:focus-visible:ring-[#c7896d]/40"
+        >
+          <span aria-hidden="true" className="grid gap-1">
+            <span className="block h-px w-5 rounded-full bg-current" />
+            <span className="block h-px w-5 rounded-full bg-current" />
+            <span className="block h-px w-5 rounded-full bg-current" />
+          </span>
+        </button>
 
-          <nav aria-label="Uygulama menüsü" className="mt-7">
-            <ul className="grid gap-1.5">
+        <Link
+          href="/akis"
+          aria-label="KAMPÜS akışına git"
+          onClick={() => setIsDesktopNavigationOpen(false)}
+          className="inline-flex min-h-11 items-center rounded-xl px-1 outline-none transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:focus-visible:ring-[#c7896d]/40"
+        >
+          <CampusLogo
+            idPrefix="desktop-app-navigation-logo"
+            wordmarkClassName="text-xl"
+          />
+        </Link>
+      </header>
+
+      <button
+        type="button"
+        aria-label="Masaüstü menüsünü kapat"
+        aria-hidden={!isDesktopNavigationOpen}
+        tabIndex={isDesktopNavigationOpen ? 0 : -1}
+        onClick={() => setIsDesktopNavigationOpen(false)}
+        className={`fixed inset-0 z-40 hidden cursor-default bg-[#101113]/30 transition-opacity duration-200 motion-reduce:transition-none md:block dark:bg-black/45 ${
+          isDesktopNavigationOpen
+            ? "pointer-events-auto opacity-100"
+            : "pointer-events-none opacity-0"
+        }`}
+      />
+
+      <aside
+        id="desktop-app-navigation"
+        aria-label="Masaüstü uygulama menüsü"
+        aria-hidden={!isDesktopNavigationOpen}
+        inert={!isDesktopNavigationOpen}
+        className={`fixed inset-y-0 left-0 z-50 hidden w-24 overflow-hidden border-r border-[#1c2821]/12 bg-[#fbf8f1]/98 pt-20 text-[#1c2821] shadow-[12px_0_36px_rgba(28,40,33,0.14)] backdrop-blur-xl transition-transform duration-200 ease-out motion-reduce:transition-none dark:border-white/10 dark:bg-[#121417]/98 dark:text-[#ece8e1] dark:shadow-[12px_0_38px_rgba(0,0,0,0.34)] md:flex ${
+          isDesktopNavigationOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex h-full min-h-0 w-full flex-col overflow-x-hidden overflow-y-auto px-2 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <nav aria-label="Uygulama menüsü">
+            <ul className="grid gap-1">
               {navigationItems.map((item) => {
                 const isActive = isActivePath(pathname, item.href);
 
@@ -178,19 +263,18 @@ export default function AppNavigation() {
                       href={item.href}
                       aria-current={isActive ? "page" : undefined}
                       title={item.label}
-                      className={`group relative flex min-h-11 items-center justify-center gap-3 rounded-xl px-3 text-sm font-bold outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:focus-visible:ring-[#c7896d]/40 xl:justify-start xl:px-4 ${
+                      onClick={() => setIsDesktopNavigationOpen(false)}
+                      className={`group relative flex min-h-[4.35rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-center text-[10px] font-black leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:focus-visible:ring-[#c7896d]/40 ${
                         isActive
-                          ? "bg-[#5a2538] text-[#fbf8f1] shadow-[0_8px_20px_rgba(90,37,56,0.16)] dark:bg-[#c7896d] dark:text-[#121417] dark:shadow-none"
+                          ? "bg-[#5a2538]/11 text-[#5a2538] dark:bg-[#c7896d]/13 dark:text-[#d09272]"
                           : "text-[#1c2821]/66 hover:bg-[#1c2821]/7 hover:text-[#1c2821] dark:text-white/62 dark:hover:bg-white/8 dark:hover:text-[#ece8e1]"
                       }`}
                     >
                       <NavigationIcon
                         name={item.icon}
-                        className="size-[1.15rem] shrink-0"
+                        className="size-[1.35rem] shrink-0"
                       />
-                      <span className="hidden min-w-0 truncate xl:block">
-                        {item.label}
-                      </span>
+                      <span className="max-w-full truncate">{item.label}</span>
                     </Link>
                   </li>
                 );
@@ -205,19 +289,25 @@ export default function AppNavigation() {
               isActivePath(pathname, "/konu-olustur") ? "page" : undefined
             }
             title="Konu aç"
-            className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-[#1c2821] px-3 text-sm font-black text-[#fbf8f1] shadow-[0_10px_24px_rgba(28,40,33,0.16)] outline-none transition-colors hover:bg-[#5a2538] focus-visible:ring-3 focus-visible:ring-[#5a2538]/30 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fbf8f1] dark:bg-[#c7896d] dark:text-[#121417] dark:shadow-none dark:hover:bg-[#d09272] dark:focus-visible:ring-[#c7896d]/45 dark:focus-visible:ring-offset-[#121417]"
+            onClick={() => setIsDesktopNavigationOpen(false)}
+            className="mt-2 inline-flex min-h-[4.35rem] w-full flex-col items-center justify-center gap-1.5 rounded-xl bg-[#1c2821] px-1 text-[10px] font-black leading-none text-[#fbf8f1] shadow-[0_8px_20px_rgba(28,40,33,0.14)] outline-none transition-colors hover:bg-[#5a2538] focus-visible:ring-3 focus-visible:ring-[#5a2538]/30 dark:bg-[#c7896d] dark:text-[#121417] dark:shadow-none dark:hover:bg-[#d09272] dark:focus-visible:ring-[#c7896d]/45"
           >
-            <ShareIcon className="size-[1.15rem] shrink-0" />
-            <span className="hidden xl:inline">Konu aç</span>
+            <ShareIcon className="size-[1.35rem] shrink-0" />
+            <span>Konu aç</span>
           </Link>
 
-          <div className="mt-auto flex justify-center border-t border-[#1c2821]/10 pt-4 dark:border-white/10 xl:block">
-            <div className="xl:hidden">
+          <div className="mt-auto grid gap-1 border-t border-[#1c2821]/10 pt-3 dark:border-white/10">
+            <div className="flex justify-center">
               <ThemeToggle />
             </div>
-            <div className="hidden xl:block">
-              <ThemeToggle showLabel className="w-full xl:justify-start" />
-            </div>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              title="Çıkış yap"
+              className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-xl px-1 text-[10px] font-black text-[#7f302b] outline-none transition-colors hover:bg-[#8b2f2a]/7 focus-visible:ring-3 focus-visible:ring-[#8b2f2a]/25 dark:text-[#e18a7d] dark:hover:bg-[#d27368]/9 dark:focus-visible:ring-[#d27368]/35"
+            >
+              Çıkış
+            </button>
           </div>
         </div>
       </aside>

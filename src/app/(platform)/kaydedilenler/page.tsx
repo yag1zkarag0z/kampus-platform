@@ -1,16 +1,12 @@
 import type { Metadata } from "next";
-import PlatformEmptyState from "@/components/PlatformEmptyState";
+import CampusSavedPosts from "@/components/CampusSavedPosts";
 
 export const metadata: Metadata = {
   title: "Kaydedilenler | KAMPÜS.",
+  description:
+    "Daha sonra dönmek için kaydettiğin kampüs konularını tek yerde görüntüle.",
 };
 
 export default function BookmarksPage() {
-  return (
-    <PlatformEmptyState
-      eyebrow="Kişisel alan"
-      title="Kaydedilenler"
-      description="Daha sonra dönmek istediğin gönderileri yalnızca senin görebileceğin bu alanda tutacağız."
-    />
-  );
+  return <CampusSavedPosts />;
 }
