@@ -1,23 +1,52 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-import { activateCampusSession } from "@/components/CampusAccountProvider";
+import {
+  activateCampusGuestSession,
+  activateCampusSession,
+} from "@/components/CampusAccountProvider";
+import {
+  useDemoVerificationCode,
+  VerificationCodePanel,
+} from "@/components/AuthVerificationCode";
 
 type LoginStep = 1 | 2;
 
 const studentEmailPattern = /^[^\s@]+@stu\.yasar\.edu\.tr$/i;
 
 const inputClassName =
-  "auth-input h-12 w-full rounded-xl border border-[#1c2821]/14 bg-white/55 px-3.5 text-base text-[#1c2821] outline-none transition placeholder:text-[#1c2821]/38 hover:border-[#1c2821]/28 focus:border-[#7d3c2d] focus:ring-3 focus:ring-[#9a5944]/14 dark:border-white/12 dark:bg-white/6 dark:text-[#ece8e1] dark:placeholder:text-white/34 dark:hover:border-white/24 dark:focus:border-[#c7896d] dark:focus:ring-[#c7896d]/16";
+  "auth-input h-12 w-full rounded-xl border border-[#1c2821]/14 bg-white/55 px-3.5 text-base text-[#1c2821] outline-none transition placeholder:text-[#68736c] hover:border-[#1c2821]/28 focus:border-[#7d3c2d] focus:ring-3 focus:ring-[#9a5944]/14 dark:border-white/12 dark:bg-white/6 dark:text-[#ece8e1] dark:placeholder:text-[#9ba39d] dark:hover:border-white/24 dark:focus:border-[#c7896d] dark:focus:ring-[#c7896d]/16";
 
 export default function LoginFlow() {
+  const router = useRouter();
   const [step, setStep] = useState<LoginStep>(1);
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const [complete, setComplete] = useState(false);
+  const verification = useDemoVerificationCode();
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+
+    if (searchParams.get("reason") !== "session-expired") {
+      return;
+    }
+
+    const noticeTimer = window.setTimeout(
+      () =>
+        setSessionNotice(
+          "Oturum süren doldu. Hesabını korumak için yeniden giriş yapmalısın.",
+        ),
+      0,
+    );
+
+    return () => window.clearTimeout(noticeTimer);
+  }, []);
 
   const submitEmail = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -32,6 +61,7 @@ export default function LoginFlow() {
 
     setEmail(normalizedEmail);
     setMessage(null);
+    verification.issueCode();
     setStep(2);
   };
 
@@ -43,6 +73,29 @@ export default function LoginFlow() {
       return;
     }
 
+    const verificationResult = verification.verifyCode(code);
+
+    if (verificationResult.status === "expired") {
+      setMessage(
+        "Bu giriş kodunun süresi doldu. Aşağıdan yeni bir kod isteyebilirsin.",
+      );
+      return;
+    }
+
+    if (verificationResult.status === "locked") {
+      setMessage(
+        "Çok fazla hatalı deneme yaptın. Devam etmek için yeni bir kod iste.",
+      );
+      return;
+    }
+
+    if (verificationResult.status === "incorrect") {
+      setMessage(
+        `Kod eşleşmedi. ${verificationResult.attemptsLeft} deneme hakkın kaldı.`,
+      );
+      return;
+    }
+
     if (!activateCampusSession()) {
       setMessage("Oturum bu tarayıcıda başlatılamadı. Yeniden deneyebilirsin.");
       return;
@@ -50,6 +103,29 @@ export default function LoginFlow() {
 
     setMessage(null);
     setComplete(true);
+  };
+
+  const resendCode = async () => {
+    const didResend = await verification.resendCode();
+
+    if (!didResend) {
+      return;
+    }
+
+    setCode("");
+    setMessage(null);
+    window.requestAnimationFrame(() => {
+      document.getElementById("login-code")?.focus();
+    });
+  };
+
+  const continueAsGuest = () => {
+    if (!activateCampusGuestSession()) {
+      setMessage("Misafir oturumu bu tarayıcıda başlatılamadı.");
+      return;
+    }
+
+    router.push("/akis");
   };
 
   return (
@@ -67,7 +143,7 @@ export default function LoginFlow() {
                 className={`border-t-2 pt-2 text-[10px] font-bold transition-colors ${
                   isCurrent || isDone
                     ? "border-[#9a5944] text-[#1c2821] dark:border-[#c7896d] dark:text-[#ece8e1]"
-                    : "border-[#1c2821]/12 text-[#1c2821]/42 dark:border-white/10 dark:text-white/38"
+                    : "border-[#1c2821]/12 text-[#68736c] dark:border-white/10 dark:text-[#9ba39d]"
                 }`}
                 aria-current={isCurrent ? "step" : undefined}
               >
@@ -79,6 +155,14 @@ export default function LoginFlow() {
       </div>
 
       <div className="px-5 py-6 sm:px-7 sm:py-7">
+        {sessionNotice && !complete && (
+          <div
+            role="status"
+            className="mb-5 border border-[#9a5944]/24 bg-[#9a5944]/8 px-3.5 py-3 text-xs font-bold leading-5 text-[#6f3528] dark:border-[#c7896d]/25 dark:bg-[#c7896d]/9 dark:text-[#e3ad91]"
+          >
+            {sessionNotice}
+          </div>
+        )}
         {complete ? (
           <div aria-live="polite">
             <span
@@ -103,7 +187,8 @@ export default function LoginFlow() {
               Tekrar hoş geldin.
             </h2>
             <p className="mt-3 text-sm leading-6 text-[#1c2821]/64 dark:text-white/62">
-              Öğrenci e-postana tek kullanımlık giriş kodu göndereceğiz.
+              Öğrenci e-postanı kontrol edip bu demo için tek kullanımlık kod
+              hazırlayacağız.
             </p>
 
             <label
@@ -125,6 +210,8 @@ export default function LoginFlow() {
               }}
               placeholder="ad.soyad@stu.yasar.edu.tr"
               className={`${inputClassName} mt-2`}
+              aria-invalid={message !== null}
+              aria-errormessage={message ? "login-message" : undefined}
               aria-describedby="login-message"
               required
             />
@@ -135,7 +222,7 @@ export default function LoginFlow() {
               type="submit"
               className="mt-6 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-[#5a1f32] px-4 text-sm font-bold text-[#fffaf4] outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:bg-[#9a5944] dark:hover:bg-[#ad6b53]"
             >
-              Giriş kodu gönder
+              Demo giriş kodunu hazırla
               <span aria-hidden="true">→</span>
             </button>
           </form>
@@ -149,7 +236,7 @@ export default function LoginFlow() {
               <strong className="font-bold text-[#1c2821] dark:text-[#ece8e1]">
                 {email}
               </strong>{" "}
-              adresine gönderdik.
+              adresi için hazırladık.
             </p>
 
             <label
@@ -164,29 +251,72 @@ export default function LoginFlow() {
               type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
+              autoFocus
               value={code}
               onChange={(event) => {
                 setCode(event.target.value.replace(/\D/g, "").slice(0, 6));
                 setMessage(null);
               }}
+              onPaste={(event) => {
+                const pastedCode = event.clipboardData
+                  .getData("text")
+                  .replace(/\D/g, "")
+                  .slice(0, 6);
+
+                if (!pastedCode) {
+                  return;
+                }
+
+                event.preventDefault();
+                setCode(pastedCode);
+                setMessage(null);
+              }}
               placeholder="000000"
               maxLength={6}
-              className={`${inputClassName} mt-2 text-center font-mono text-xl font-bold tracking-[0.35em]`}
+              disabled={
+                verification.isExpired ||
+                verification.isLocked ||
+                verification.isResending
+              }
+              className={`${inputClassName} mt-2 text-center font-mono text-xl font-bold tracking-[0.35em] disabled:cursor-not-allowed disabled:opacity-55`}
+              aria-invalid={message !== null}
+              aria-errormessage={message ? "login-message" : undefined}
               aria-describedby="login-code-help login-message"
               required
             />
             <p
               id="login-code-help"
-              className="mt-2 text-[11px] leading-5 text-[#1c2821]/54 dark:text-white/50"
+              className="mt-2 text-[11px] leading-5 text-[#58635c] dark:text-[#aeb4af]"
             >
-              Kodunu kimseyle paylaşma. KAMPÜS senden kodunu istemez.
+              Kodu e-postadan kopyalayıp buraya yapıştırabilirsin. Kodunu
+              kimseyle paylaşma.
             </p>
 
             <FormMessage message={message} />
 
+            <VerificationCodePanel
+              attemptsLeft={verification.attemptsLeft}
+              canResend={verification.canResend}
+              expiresInSeconds={verification.expiresInSeconds}
+              inputId="login-code"
+              isExpired={verification.isExpired}
+              isLocked={verification.isLocked}
+              isResending={verification.isResending}
+              issueCount={verification.issueCount}
+              resendInSeconds={verification.resendInSeconds}
+              onResend={() => {
+                void resendCode();
+              }}
+            />
+
             <button
               type="submit"
-              className="mt-6 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-[#5a1f32] px-4 text-sm font-bold text-[#fffaf4] outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:bg-[#9a5944] dark:hover:bg-[#ad6b53]"
+              disabled={
+                verification.isExpired ||
+                verification.isLocked ||
+                verification.isResending
+              }
+              className="mt-5 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-[#5a1f32] px-4 text-sm font-bold text-[#fffaf4] outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 disabled:cursor-not-allowed disabled:opacity-55 dark:bg-[#9a5944] dark:hover:bg-[#ad6b53]"
             >
               Giriş yap
               <span aria-hidden="true">→</span>
@@ -198,8 +328,9 @@ export default function LoginFlow() {
                 setStep(1);
                 setCode("");
                 setMessage(null);
+                verification.resetVerification();
               }}
-              className="mt-3 min-h-11 w-full text-xs font-bold text-[#1c2821]/62 underline decoration-[#1c2821]/22 underline-offset-4 dark:text-white/58 dark:decoration-white/20"
+              className="mt-3 min-h-11 w-full text-xs font-bold text-[#58635c] underline decoration-[#1c2821]/22 underline-offset-4 dark:text-[#aeb4af] dark:decoration-white/20"
             >
               E-posta adresini değiştir
             </button>
@@ -208,14 +339,23 @@ export default function LoginFlow() {
       </div>
 
       {!complete && (
-        <div className="border-t border-[#1c2821]/10 bg-white/24 px-5 py-4 text-center text-[11px] text-[#1c2821]/58 dark:border-white/8 dark:bg-black/8 dark:text-white/52 sm:px-7">
-          Hesabın yok mu?{" "}
-          <Link
-            href="/kayit"
-            className="font-bold text-[#7d3c2d] underline decoration-[#9a5944]/30 underline-offset-4 dark:text-[#d09272]"
+        <div className="border-t border-[#1c2821]/10 bg-white/24 px-5 py-4 text-center text-[11px] text-[#58635c] dark:border-white/8 dark:bg-black/8 dark:text-[#aeb4af] sm:px-7">
+          <p>
+            Hesabın yok mu?{" "}
+            <Link
+              href="/kayit"
+              className="font-bold text-[#7d3c2d] underline decoration-[#9a5944]/30 underline-offset-4 dark:text-[#d09272]"
+            >
+              Kayıt ol
+            </Link>
+          </p>
+          <button
+            type="button"
+            onClick={continueAsGuest}
+            className="mt-3 min-h-11 w-full border border-[#1c2821]/13 px-4 text-xs font-black text-[#1c2821] transition-colors hover:border-[#7d3c2d]/30 hover:bg-[#7d3c2d]/6 dark:border-white/12 dark:text-[#ece8e1] dark:hover:border-[#c7896d]/35 dark:hover:bg-[#c7896d]/8"
           >
-            Kayıt ol
-          </Link>
+            Misafir olarak göz at
+          </button>
         </div>
       )}
     </div>
@@ -226,8 +366,8 @@ function FormMessage({ message }: { message: string | null }) {
   return (
     <p
       id="login-message"
-      role="status"
-      aria-live="polite"
+      role={message ? "alert" : "status"}
+      aria-live={message ? "assertive" : "polite"}
       className="mt-4 min-h-5 text-xs font-medium leading-5 text-[#8a2e25] dark:text-[#e0a083]"
     >
       {message}

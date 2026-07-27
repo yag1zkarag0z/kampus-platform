@@ -1,13 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 
+import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
+import CampusAuthorProfileLink from "@/components/CampusAuthorProfileLink";
+import CampusCommentActions from "@/components/CampusCommentActions";
 import { useCampusData } from "@/components/CampusDataProvider";
 import CampusListingMeta from "@/components/CampusListingMeta";
 import CampusPoll from "@/components/CampusPoll";
+import CampusPostActions from "@/components/CampusPostActions";
 import CampusPostImage from "@/components/CampusPostImage";
+import { useFeedback } from "@/components/FeedbackProvider";
 import {
   isAnonymousCampusAuthor,
   isSameVisibleCampusAuthor,
@@ -37,6 +47,8 @@ const focusRing =
   "outline-none focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:focus-visible:ring-[#c7896d]/30";
 
 export default function CampusPostDetail({ postId }: { postId: string }) {
+  const { showToast } = useFeedback();
+  const { isGuest } = useCampusAccount();
   const {
     posts,
     isHydrated,
@@ -48,7 +60,59 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [formMessage, setFormMessage] = useState("");
+  const [replyTargetId, setReplyTargetId] = useState<string | null>(null);
+  const [isNotificationTarget, setIsNotificationTarget] = useState(false);
+  const [targetCommentId, setTargetCommentId] = useState<string | null>(
+    null,
+  );
+  const commentInputRef = useRef<HTMLTextAreaElement>(null);
+  const commentsSectionRef = useRef<HTMLElement>(null);
   const post = posts.find((currentPost) => currentPost.id === postId);
+  const replyTarget = post?.comments.find(
+    (comment) => comment.id === replyTargetId && !comment.isDeleted,
+  );
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const shouldHighlightComments =
+      searchParams.get("hedef") === "yorum" ||
+      window.location.hash === "#yorumlar";
+    const requestedCommentId = searchParams.get("yorum");
+
+    if (!shouldHighlightComments) {
+      return;
+    }
+
+    const scrollTimer = window.setTimeout(() => {
+      const targetElement = requestedCommentId
+        ? document.getElementById(`yorum-${requestedCommentId}`) ??
+          commentsSectionRef.current
+        : commentsSectionRef.current;
+
+      targetElement?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
+          .matches
+          ? "auto"
+          : "smooth",
+        block: "start",
+      });
+      setIsNotificationTarget(true);
+      setTargetCommentId(requestedCommentId);
+    }, 120);
+    const highlightTimer = window.setTimeout(() => {
+      setIsNotificationTarget(false);
+      setTargetCommentId(null);
+    }, 2400);
+
+    return () => {
+      window.clearTimeout(scrollTimer);
+      window.clearTimeout(highlightTimer);
+    };
+  }, [isHydrated, postId]);
 
   const appendEmoji = (emoji: string) => {
     setCommentDraft((currentDraft) =>
@@ -62,6 +126,11 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
 
   const submitComment = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (isGuest) {
+      return;
+    }
+
     const body = commentDraft.trim();
 
     if (!body) {
@@ -72,10 +141,16 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
     addComment(postId, {
       body,
       isAnonymous,
+      parentId: replyTarget?.id,
     });
     setCommentDraft("");
+    setReplyTargetId(null);
     setIsEmojiPickerOpen(false);
-    setFormMessage("Yorumun eklendi.");
+    setFormMessage("");
+    showToast({
+      message: "Yorumun gönderiye eklendi.",
+      tone: "success",
+    });
   };
 
   const commentsTitleId = `post-comments-${postId}`;
@@ -112,11 +187,20 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
       <article className="border-b border-[#1c2821]/14 px-4 py-6 dark:border-white/10 sm:m-3 sm:border sm:bg-white/20 sm:px-6 sm:py-7 dark:sm:bg-white/[0.015]">
         <header className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-3">
-            <CampusAuthorAvatar
+            <CampusAuthorProfileLink
               author={post.author}
               authorId={post.authorId}
               isAnonymous={post.isAnonymous}
-            />
+              ariaLabel={`${post.author} profilini aç`}
+              className="shrink-0"
+              linkClassName={`rounded-full transition-opacity hover:opacity-80 ${focusRing}`}
+            >
+              <CampusAuthorAvatar
+                author={post.author}
+                authorId={post.authorId}
+                isAnonymous={post.isAnonymous}
+              />
+            </CampusAuthorProfileLink>
             <div className="min-w-0 pt-0.5">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#8f3427] dark:text-[#d09272]">
@@ -126,89 +210,143 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                   aria-hidden="true"
                   className="size-1 rotate-45 bg-[#9a5944]/55 dark:bg-[#c7896d]/60"
                 />
-                <span className="truncate text-xs font-black">
-                  {post.author}
-                </span>
+                <CampusAuthorProfileLink
+                  author={post.author}
+                  authorId={post.authorId}
+                  isAnonymous={post.isAnonymous}
+                  ariaLabel={`${post.author} profilini aç`}
+                  className="min-w-0"
+                  linkClassName={`truncate text-xs font-black transition-colors hover:text-[#5a1f32] dark:hover:text-[#d09272] ${focusRing}`}
+                >
+                  <span className="truncate text-xs font-black">
+                    {post.author}
+                  </span>
+                </CampusAuthorProfileLink>
               </div>
               {!isAnonymousCampusAuthor(post) &&
                 post.detail && (
-                  <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-[#1c2821]/52 dark:text-white/48">
+                  <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-[#58635c] dark:text-[#aeb4af]">
                     {post.detail}
                   </p>
                 )}
             </div>
           </div>
-          <time className="shrink-0 text-[11px] font-semibold text-[#1c2821]/52 dark:text-white/48">
-            {post.time}
-          </time>
+          <div className="-mr-2 flex shrink-0 items-center gap-0.5">
+            <time className="text-[11px] font-semibold text-[#58635c] dark:text-[#aeb4af]">
+              {post.time}
+              {post.edited && !post.isDeleted ? " · düzenlendi" : ""}
+            </time>
+            <CampusPostActions
+              post={post}
+              redirectAfterBlock
+              redirectAfterDelete
+            />
+          </div>
         </header>
 
-        <h1 className="mt-5 max-w-[78ch] text-[1.65rem] font-black leading-[1.12] tracking-[-0.04em] sm:text-3xl sm:leading-[1.1]">
-          {post.title}
-        </h1>
+        {post.isDeleted ? (
+          <div className="mt-5 border border-dashed border-[#1c2821]/16 bg-[#eee9e1]/55 px-4 py-5 dark:border-white/12 dark:bg-white/[0.025]">
+            <p className="text-sm font-black">Bu gönderi kaldırıldı.</p>
+            <p className="mt-1 text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]">
+              Yorumların sırası ve konuşma bağlamı korunmaya devam ediyor.
+            </p>
+          </div>
+        ) : (
+          <>
+            {post.title && (
+              <h1 className="mt-5 max-w-[78ch] break-words text-[1.65rem] font-black leading-[1.12] tracking-[-0.04em] sm:text-3xl sm:leading-[1.1]">
+                {post.title}
+              </h1>
+            )}
 
-        {post.listing && (
-          <CampusListingMeta listing={post.listing} variant="detail" />
+            {post.listing && (
+              <CampusListingMeta listing={post.listing} variant="detail" />
+            )}
+
+            {post.body && (
+              <p className="mt-4 max-w-[78ch] whitespace-pre-wrap break-words text-[15px] leading-7 tracking-[-0.01em] text-[#1c2821]/82 dark:text-white/80 sm:text-base sm:leading-7">
+                {post.body}
+              </p>
+            )}
+
+            {post.image && (
+              <CampusPostImage image={post.image} variant="detail" />
+            )}
+            {post.poll && (
+              <CampusPoll postId={post.id} poll={post.poll} />
+            )}
+
+            <footer className="mt-6 border-t border-[#1c2821]/10 pt-3 dark:border-white/8">
+          {isGuest ? (
+            <div className="flex min-h-11 flex-wrap items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-2 px-2 text-xs font-bold text-[#58635c] dark:text-[#aeb4af]">
+                <HeartIcon filled={false} />
+                {post.likes} beğeni
+              </span>
+              <Link
+                href="/giris"
+                className={`inline-flex min-h-11 items-center px-3 text-xs font-black text-[#5a1f32] transition-colors hover:text-[#7a2c45] dark:text-[#d09272] dark:hover:text-[#e3a386] ${focusRing}`}
+              >
+                Etkileşim için giriş yap
+              </Link>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                aria-pressed={post.liked}
+                aria-label={
+                  post.liked
+                    ? `Beğeniyi kaldır, ${post.likes} beğeni`
+                    : `Gönderiyi beğen, ${post.likes} beğeni`
+                }
+                onClick={() => toggleLike(post.id)}
+                className={`inline-flex min-h-11 items-center gap-2 px-2 text-xs font-bold transition-colors ${focusRing} ${
+                  post.liked
+                    ? "text-[#8f2336] dark:text-[#df8b83]"
+                    : "text-[#1c2821]/58 hover:text-[#8f2336] dark:text-white/54 dark:hover:text-[#df8b83]"
+                }`}
+              >
+                <HeartIcon filled={post.liked} />
+                <span aria-live="polite" aria-atomic="true">
+                  {post.likes}
+                </span>
+                <span>beğeni</span>
+              </button>
+
+              <button
+                type="button"
+                aria-pressed={post.bookmarked}
+                aria-label={
+                  post.bookmarked
+                    ? "Kaydedilenlerden çıkar"
+                    : "Gönderiyi kaydet"
+                }
+                onClick={() => toggleBookmark(post.id)}
+                className={`grid size-11 shrink-0 place-items-center rounded-full transition-colors ${focusRing} ${
+                  post.bookmarked
+                    ? "text-[#5a1f32] dark:text-[#d09272]"
+                    : "text-[#1c2821]/50 hover:bg-[#1c2821]/5 hover:text-[#5a1f32] dark:text-white/48 dark:hover:bg-white/6 dark:hover:text-[#d09272]"
+                }`}
+              >
+                <BookmarkIcon filled={post.bookmarked} />
+              </button>
+            </div>
+          )}
+            </footer>
+          </>
         )}
-
-        {post.body && (
-          <p className="mt-4 max-w-[78ch] whitespace-pre-wrap text-[15px] leading-7 tracking-[-0.01em] text-[#1c2821]/82 dark:text-white/80 sm:text-base sm:leading-7">
-            {post.body}
-          </p>
-        )}
-
-        {post.image && (
-          <CampusPostImage image={post.image} variant="detail" />
-        )}
-        {post.poll && (
-          <CampusPoll postId={post.id} poll={post.poll} />
-        )}
-
-        <footer className="mt-6 flex items-center justify-between gap-3 border-t border-[#1c2821]/10 pt-3 dark:border-white/8">
-          <button
-            type="button"
-            aria-pressed={post.liked}
-            aria-label={
-              post.liked
-                ? `Beğeniyi kaldır, ${post.likes} beğeni`
-                : `Gönderiyi beğen, ${post.likes} beğeni`
-            }
-            onClick={() => toggleLike(post.id)}
-            className={`inline-flex min-h-11 items-center gap-2 px-2 text-xs font-bold transition-colors ${focusRing} ${
-              post.liked
-                ? "text-[#8f2336] dark:text-[#df8b83]"
-                : "text-[#1c2821]/58 hover:text-[#8f2336] dark:text-white/54 dark:hover:text-[#df8b83]"
-            }`}
-          >
-            <HeartIcon filled={post.liked} />
-            <span aria-live="polite" aria-atomic="true">
-              {post.likes}
-            </span>
-            <span>beğeni</span>
-          </button>
-
-          <button
-            type="button"
-            aria-pressed={post.bookmarked}
-            aria-label={
-              post.bookmarked ? "Kaydedilenlerden çıkar" : "Gönderiyi kaydet"
-            }
-            onClick={() => toggleBookmark(post.id)}
-            className={`grid size-11 shrink-0 place-items-center rounded-full transition-colors ${focusRing} ${
-              post.bookmarked
-                ? "text-[#5a1f32] dark:text-[#d09272]"
-                : "text-[#1c2821]/50 hover:bg-[#1c2821]/5 hover:text-[#5a1f32] dark:text-white/48 dark:hover:bg-white/6 dark:hover:text-[#d09272]"
-            }`}
-          >
-            <BookmarkIcon filled={post.bookmarked} />
-          </button>
-        </footer>
       </article>
 
       <section
+        ref={commentsSectionRef}
         id="yorumlar"
         aria-labelledby={commentsTitleId}
-        className="scroll-mt-44 px-4 pt-2 pb-8 sm:px-6 sm:pt-3 md:scroll-mt-28"
+        className={`scroll-mt-44 px-4 pt-2 pb-8 transition-[background-color,box-shadow] duration-700 motion-reduce:duration-0 sm:px-6 sm:pt-3 md:scroll-mt-28 ${
+          isNotificationTarget
+            ? "bg-[#d46a2f]/8 shadow-[inset_4px_0_0_#d46a2f] dark:bg-[#d09272]/8 dark:shadow-[inset_4px_0_0_#d09272]"
+            : ""
+        }`}
       >
         <div className="flex min-h-14 items-center justify-between gap-4 border-b border-[#1c2821]/10 dark:border-white/8">
           <h2
@@ -217,15 +355,60 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
           >
             Yorumlar
           </h2>
-          <span className="font-mono text-[11px] font-bold text-[#1c2821]/48 dark:text-white/44">
+          <span className="font-mono text-[11px] font-bold text-[#58635c] dark:text-[#aeb4af]">
             {post.comments.length}
           </span>
         </div>
 
-        <form
-          onSubmit={submitComment}
-          className="border-b border-[#1c2821]/10 py-5 dark:border-white/8"
-        >
+        {post.isDeleted ? (
+          <div className="border-b border-[#1c2821]/10 py-5 dark:border-white/8">
+            <p className="text-sm font-black">
+              Kaldırılmış gönderilere yeni yorum eklenemez.
+            </p>
+          </div>
+        ) : isGuest ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1c2821]/10 py-5 dark:border-white/8">
+            <div>
+              <p className="text-sm font-black">Yorum yapmak için giriş yap.</p>
+              <p className="mt-1 text-xs text-[#58635c] dark:text-[#aeb4af]">
+                Misafirler gönderileri yalnızca görüntüleyebilir.
+              </p>
+            </div>
+            <Link
+              href="/giris"
+              className={`inline-flex min-h-11 items-center justify-center bg-[#5a1f32] px-4 text-xs font-bold text-white transition-colors hover:bg-[#6b2940] dark:bg-[#9a5944] dark:text-[#121417] dark:hover:bg-[#ad6b53] ${focusRing}`}
+            >
+              Giriş yap
+            </Link>
+          </div>
+        ) : (
+          <form
+            onSubmit={submitComment}
+            className="border-b border-[#1c2821]/10 py-5 dark:border-white/8"
+          >
+          {replyTarget && (
+            <div className="mb-3 flex min-h-11 items-center justify-between gap-3 border-l-2 border-[#9a5944] bg-[#9a5944]/7 px-3 text-xs dark:border-[#c7896d] dark:bg-[#c7896d]/8">
+              <p className="min-w-0 truncate">
+                <CampusAuthorProfileLink
+                  author={replyTarget.author}
+                  authorId={replyTarget.authorId}
+                  isAnonymous={replyTarget.isAnonymous}
+                  ariaLabel={`${replyTarget.author} profilini aç`}
+                  linkClassName={`font-black transition-colors hover:text-[#5a1f32] dark:hover:text-[#e0aa8d] ${focusRing}`}
+                >
+                  <span className="font-black">{replyTarget.author}</span>
+                </CampusAuthorProfileLink>{" "}
+                kullanıcısına yanıt yazıyorsun.
+              </p>
+              <button
+                type="button"
+                onClick={() => setReplyTargetId(null)}
+                className={`min-h-10 shrink-0 cursor-pointer px-2 font-black text-[#7d3c2d] dark:text-[#d09272] ${focusRing}`}
+              >
+                Vazgeç
+              </button>
+            </div>
+          )}
           <div className="flex items-center gap-2.5">
             <CampusAuthorAvatar
               author={isAnonymous ? "Anonim" : "@sen"}
@@ -251,6 +434,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
             </div>
           </div>
           <textarea
+            ref={commentInputRef}
             id={`post-comment-input-${post.id}`}
             value={commentDraft}
             onChange={(event) => {
@@ -261,7 +445,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
             rows={4}
             placeholder="Ne düşünüyorsun?"
             aria-describedby={`${commentIdentityId} post-comment-help-${post.id}`}
-            className={`mt-3 min-h-28 w-full resize-y border border-[#1c2821]/14 bg-white/25 px-3.5 py-3 text-sm leading-6 placeholder:text-[#1c2821]/38 dark:border-white/12 dark:bg-white/[0.02] dark:placeholder:text-white/32 ${focusRing}`}
+            className={`mt-3 min-h-28 w-full resize-y border border-[#1c2821]/14 bg-white/25 px-3.5 py-3 text-sm leading-6 placeholder:text-[#667169] dark:border-white/12 dark:bg-white/[0.02] dark:placeholder:text-[#9ca39f] ${focusRing}`}
           />
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -323,30 +507,72 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
               {commentDraft.length}/500
             </span>
           </div>
-        </form>
+          </form>
+        )}
 
         {post.comments.length > 0 ? (
           <ol className="divide-y divide-[#1c2821]/10 dark:divide-white/8">
-            {post.comments.map((comment) => (
-              <li key={comment.id}>
-                <article className="flex items-start gap-3 py-5 sm:py-6">
-                  <CampusAuthorAvatar
+            {post.comments.map((comment) => {
+              const parentComment = comment.parentId
+                ? post.comments.find(
+                    (candidate) => candidate.id === comment.parentId,
+                  )
+                : undefined;
+
+              return (
+              <li
+                key={comment.id}
+                id={`yorum-${comment.id}`}
+                className="scroll-mt-40"
+              >
+                <article
+                  className={`flex items-start gap-3 py-5 sm:py-6 ${
+                    comment.parentId
+                      ? "ml-7 border-l-2 border-[#9a5944]/18 pl-3 sm:ml-12 sm:pl-4 dark:border-[#c7896d]/18"
+                      : ""
+                  } ${
+                    targetCommentId === comment.id
+                      ? "bg-[#d46a2f]/8 shadow-[inset_3px_0_0_#d46a2f] dark:bg-[#d09272]/8 dark:shadow-[inset_3px_0_0_#d09272]"
+                      : ""
+                  }`}
+                >
+                  <CampusAuthorProfileLink
                     author={comment.author}
                     authorId={comment.authorId}
                     isAnonymous={comment.isAnonymous}
-                    size="sm"
-                  />
+                    ariaLabel={`${comment.author} profilini aç`}
+                    className="shrink-0"
+                    linkClassName={`rounded-full transition-opacity hover:opacity-80 ${focusRing}`}
+                  >
+                    <CampusAuthorAvatar
+                      author={comment.author}
+                      authorId={comment.authorId}
+                      isAnonymous={comment.isAnonymous}
+                      size="sm"
+                    />
+                  </CampusAuthorProfileLink>
                   <div className="min-w-0 flex-1">
                     <header className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="text-xs font-black">
-                        {comment.author}
-                      </span>
+                      <CampusAuthorProfileLink
+                        author={comment.author}
+                        authorId={comment.authorId}
+                        isAnonymous={comment.isAnonymous}
+                        ariaLabel={`${comment.author} profilini aç`}
+                        linkClassName={`text-xs font-black transition-colors hover:text-[#5a1f32] dark:hover:text-[#d09272] ${focusRing}`}
+                      >
+                        <span className="text-xs font-black">
+                          {comment.author}
+                        </span>
+                      </CampusAuthorProfileLink>
                       <span
                         aria-hidden="true"
                         className="size-1 rounded-full bg-[#1c2821]/25 dark:bg-white/24"
                       />
-                      <time className="text-[11px] font-semibold text-[#1c2821]/52 dark:text-white/48">
+                      <time className="text-[11px] font-semibold text-[#58635c] dark:text-[#aeb4af]">
                         {comment.time}
+                        {comment.edited && !comment.isDeleted
+                          ? " · düzenlendi"
+                          : ""}
                       </time>
                       {isSameVisibleCampusAuthor(post, comment) && (
                         <span className="border border-[#9a5944]/25 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-[#8f3427] dark:border-[#c7896d]/25 dark:text-[#d09272]">
@@ -354,19 +580,70 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                         </span>
                       )}
                     </header>
-                    <p className="mt-2 max-w-[78ch] whitespace-pre-wrap text-sm leading-6 text-[#1c2821]/80 dark:text-white/78 sm:text-[15px] sm:leading-7">
-                      {comment.body}
-                    </p>
+                    {parentComment && (
+                      <p className="mt-1 text-[11px] font-bold text-[#7d3c2d] dark:text-[#d09272]">
+                        {parentComment.isDeleted ? (
+                          "Kaldırılmış yoruma yanıt"
+                        ) : (
+                          <>
+                            <CampusAuthorProfileLink
+                              author={parentComment.author}
+                              authorId={parentComment.authorId}
+                              isAnonymous={parentComment.isAnonymous}
+                              ariaLabel={`${parentComment.author} profilini aç`}
+                              linkClassName={`transition-colors hover:text-[#5a1f32] dark:hover:text-[#e0aa8d] ${focusRing}`}
+                            >
+                              <span>{parentComment.author}</span>
+                            </CampusAuthorProfileLink>{" "}
+                            kullanıcısına yanıt
+                          </>
+                        )}
+                      </p>
+                    )}
+                    {comment.isDeleted ? (
+                      <div className="mt-2 border border-dashed border-[#1c2821]/14 bg-[#eee9e1]/45 px-3 py-3 dark:border-white/11 dark:bg-white/[0.02]">
+                        <p className="text-xs font-bold text-[#58635c] dark:text-[#aeb4af]">
+                          Bu yorum kaldırıldı.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="mt-2 max-w-[78ch] whitespace-pre-wrap break-words text-sm leading-6 text-[#1c2821]/80 dark:text-white/78 sm:text-[15px] sm:leading-7">
+                          {comment.body}
+                        </p>
+                        <CampusCommentActions
+                          postId={post.id}
+                          comment={comment}
+                          onReply={() => {
+                            setReplyTargetId(comment.id);
+                            window.setTimeout(() => {
+                              commentInputRef.current?.focus();
+                              commentInputRef.current?.scrollIntoView({
+                                behavior: window.matchMedia(
+                                  "(prefers-reduced-motion: reduce)",
+                                ).matches
+                                  ? "auto"
+                                  : "smooth",
+                                block: "center",
+                              });
+                            }, 0);
+                          }}
+                        />
+                      </>
+                    )}
                   </div>
                 </article>
               </li>
-            ))}
+              );
+            })}
           </ol>
         ) : (
           <div className="py-12 text-center">
             <p className="text-sm font-black">Henüz yorum yok.</p>
-            <p className="mt-1 text-xs leading-5 text-[#1c2821]/55 dark:text-white/50">
-              Bu konuya ilk yanıtı sen bırak.
+            <p className="mt-1 text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]">
+              {isGuest
+                ? "Yorum yapmak için üye girişi gerekir."
+                : "Bu konuya ilk yanıtı sen bırak."}
             </p>
           </div>
         )}
@@ -385,7 +662,7 @@ function PostDetailLoading() {
       <div className="text-center">
         <span
           aria-hidden="true"
-          className="mx-auto block size-7 animate-spin rounded-full border-2 border-[#1c2821]/15 border-t-[#8f3427] dark:border-white/14 dark:border-t-[#c7896d]"
+          className="mx-auto block size-7 animate-spin rounded-full border-2 border-[#1c2821]/15 border-t-[#8f3427] motion-reduce:animate-none dark:border-white/14 dark:border-t-[#c7896d]"
         />
         <p className="mt-4 text-sm font-bold text-[#1c2821]/62 dark:text-white/60">
           Gönderi yükleniyor…
@@ -405,7 +682,7 @@ function MissingPost() {
         <h1 className="mt-3 text-3xl font-black tracking-[-0.05em]">
           Bu konu artık burada değil.
         </h1>
-        <p className="mt-3 text-sm leading-6 text-[#1c2821]/62 dark:text-white/58">
+        <p className="mt-3 text-sm leading-6 text-[#58635c] dark:text-[#aeb4af]">
           Gönderi kaldırılmış veya tarayıcı verileri temizlenmiş olabilir.
         </p>
         <Link

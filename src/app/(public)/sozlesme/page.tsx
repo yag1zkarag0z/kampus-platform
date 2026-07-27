@@ -186,9 +186,11 @@ export default function TermsPage() {
                   <p>
                     Giriş yapmayan ziyaretçiler yalnızca KAMPÜS ekibi tarafından
                     hazırlanmış veya misafir görünümüne özel olarak yayımlanmış
-                    seçili içerikleri okuyabilir. Misafirler öğrenci
-                    gönderilerini, yorumlarını ve profillerini göremez; beğeni,
-                    yorum, kaydetme veya paylaşım işlemi yapamaz.
+                    20 seçili içeriği okuyabilir. Bu içeriklerin yorumları,
+                    misafir bildirimleri ve isimsiz salt okunur profil
+                    görüntülenebilir; ana öğrenci akışına erişilemez. Misafirler
+                    beğeni, yorum, kaydetme, oy verme veya paylaşım işlemi
+                    yapamaz.
                   </p>
                   <p>
                     Bir öğrencinin içeriği, öğrenciden ayrıca izin alınmadan
@@ -366,24 +368,13 @@ export default function TermsPage() {
                 <TermsSection
                   number="11"
                   id="degisiklikler"
-                  title="Değişiklikler ve iletişim"
+                  title="Değişiklikler"
                 >
                   <p>
                     Sözleşme değiştiğinde sürüm numarası ve güncelleme tarihi bu
                     sayfada gösterilir. Kullanıcı haklarını veya yükümlülüklerini
                     önemli ölçüde etkileyen değişikliklerde yeniden onay
                     istenebilir.
-                  </p>
-                  <p>
-                    Sözleşme, moderasyon kararı veya hesap işlemleriyle ilgili
-                    sorularını{" "}
-                    <a
-                      href="mailto:help@yagizkaragoz.com"
-                      className={`font-bold text-[#7d3c2d] underline decoration-[#9a5944]/35 underline-offset-4 hover:text-[#5a1f32] dark:text-[#d09272] dark:hover:text-[#e0a083] ${focusRing}`}
-                    >
-                      help@yagizkaragoz.com
-                    </a>{" "}
-                    adresine iletebilirsin.
                   </p>
                 </TermsSection>
 

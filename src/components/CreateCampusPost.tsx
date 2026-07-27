@@ -12,6 +12,10 @@ import {
 } from "react";
 
 import { useCampusData } from "@/components/CampusDataProvider";
+import {
+  CAMPUS_POST_BODY_MAX_LENGTH,
+  CAMPUS_POST_TITLE_MAX_LENGTH,
+} from "@/data/campusContentRules";
 import type {
   CampusListingCondition,
   CampusListingType,
@@ -23,6 +27,10 @@ const categories: {
   value: CampusPostCategory;
   description: string;
 }[] = [
+  {
+    value: "Sohbet",
+    description: "Gündelik bir düşünceyi veya sohbeti paylaş.",
+  },
   {
     value: "İtiraf",
     description: "Aklında kalanı kampüsle paylaş.",
@@ -158,7 +166,7 @@ export default function CreateCampusPost() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [category, setCategory] =
-    useState<CampusPostCategory>("İtiraf");
+    useState<CampusPostCategory>("Sohbet");
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState<
@@ -191,8 +199,10 @@ export default function CreateCampusPost() {
     const nextBody =
       body.slice(0, selectionStart) + emoji + body.slice(selectionEnd);
 
-    if (nextBody.length > 500) {
-      setStatusMessage("Açıklama en fazla 500 karakter olabilir.");
+    if (nextBody.length > CAMPUS_POST_BODY_MAX_LENGTH) {
+      setStatusMessage(
+        `Açıklama en fazla ${CAMPUS_POST_BODY_MAX_LENGTH} karakter olabilir.`,
+      );
       setStatusTone("error");
       return;
     }
@@ -478,8 +488,8 @@ export default function CreateCampusPost() {
               >
                 Başlık
               </label>
-              <span className="font-mono text-[10px] font-bold text-[#1c2821]/45 dark:text-white/42">
-                {title.length}/100
+              <span className="font-mono text-[10px] font-bold text-[#58635c] dark:text-[#aeb4af]">
+                {title.length}/{CAMPUS_POST_TITLE_MAX_LENGTH}
               </span>
             </div>
             <input
@@ -488,7 +498,7 @@ export default function CreateCampusPost() {
               name="title"
               type="text"
               value={title}
-              maxLength={100}
+              maxLength={CAMPUS_POST_TITLE_MAX_LENGTH}
               required
               autoFocus
               autoComplete="off"
@@ -507,7 +517,7 @@ export default function CreateCampusPost() {
                   ? "Ne satıyor veya arıyorsun?"
                   : "Konu ne hakkında?"
               }
-              className={`mt-2 min-h-12 w-full border bg-white/35 px-3.5 py-2.5 text-[15px] font-bold text-[#1c2821] placeholder:font-medium placeholder:text-[#1c2821]/38 dark:bg-white/[0.025] dark:text-[#ece8e1] dark:placeholder:text-white/32 ${
+              className={`mt-2 min-h-12 w-full border bg-white/35 px-3.5 py-2.5 text-[15px] font-bold text-[#1c2821] placeholder:font-medium placeholder:text-[#667169] dark:bg-white/[0.025] dark:text-[#ece8e1] dark:placeholder:text-[#9ca39f] ${
                 titleError
                   ? "border-[#9b3028] dark:border-[#df8b83]"
                   : "border-[#1c2821]/14 dark:border-white/12"
@@ -567,7 +577,7 @@ export default function CreateCampusPost() {
                       <span className="block text-xs font-black">
                         {option.value}
                       </span>
-                      <span className="mt-0.5 block text-[11px] leading-4 text-[#1c2821]/57 dark:text-white/53">
+                      <span className="mt-0.5 block text-[11px] leading-4 text-[#58635c] dark:text-[#aeb4af]">
                         {option.description}
                       </span>
                     </span>
@@ -582,7 +592,7 @@ export default function CreateCampusPost() {
               <legend className="px-1 text-sm font-black tracking-[-0.015em] text-[#5a1f32] dark:text-[#d09272]">
                 İlan bilgileri
               </legend>
-              <p className="text-[11px] leading-5 text-[#1c2821]/60 dark:text-white/56">
+              <p className="text-[11px] leading-5 text-[#58635c] dark:text-[#aeb4af]">
                 İlan türünü, ürünün durumunu ve fiyatını belirt.
               </p>
 
@@ -619,7 +629,7 @@ export default function CreateCampusPost() {
                           {option.value}
                         </span>
                       </span>
-                      <span className="mt-1 pl-6 text-[10px] leading-4 text-[#1c2821]/55 dark:text-white/50">
+                      <span className="mt-1 pl-6 text-[10px] leading-4 text-[#58635c] dark:text-[#aeb4af]">
                         {option.description}
                       </span>
                     </label>
@@ -673,13 +683,13 @@ export default function CreateCampusPost() {
                             ? "En yüksek bütçe"
                             : "Satış fiyatı"
                         }
-                        className={`min-h-12 w-full border bg-white/35 px-3.5 py-2.5 pr-12 text-sm font-bold placeholder:font-medium placeholder:text-[#1c2821]/38 dark:bg-white/[0.025] dark:placeholder:text-white/32 ${
+                        className={`min-h-12 w-full border bg-white/35 px-3.5 py-2.5 pr-12 text-sm font-bold placeholder:font-medium placeholder:text-[#667169] dark:bg-white/[0.025] dark:placeholder:text-[#9ca39f] ${
                           listingError
                             ? "border-[#9b3028] dark:border-[#df8b83]"
                             : "border-[#1c2821]/14 dark:border-white/12"
                         } ${focusRing}`}
                       />
-                      <span className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-xs font-black text-[#1c2821]/48 dark:text-white/45">
+                      <span className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-xs font-black text-[#58635c] dark:text-[#aeb4af]">
                         TL
                       </span>
                     </div>
@@ -696,7 +706,7 @@ export default function CreateCampusPost() {
                   ) : (
                     <p
                       id="campus-listing-price-help"
-                      className="mt-2 text-[10px] leading-4 text-[#1c2821]/50 dark:text-white/46"
+                      className="mt-2 text-[10px] leading-4 text-[#58635c] dark:text-[#aeb4af]"
                     >
                       Yalnızca tam sayı olarak Türk lirası gir.
                     </p>
@@ -745,13 +755,13 @@ export default function CreateCampusPost() {
               >
                 {isListing ? "İlan açıklaması" : "Açıklama"}{" "}
                 {!isListing && (
-                  <span className="font-medium text-[#1c2821]/45 dark:text-white/42">
+                  <span className="font-medium text-[#58635c] dark:text-[#aeb4af]">
                     (isteğe bağlı)
                   </span>
                 )}
               </label>
-              <span className="font-mono text-[10px] font-bold text-[#1c2821]/45 dark:text-white/42">
-                {body.length}/500
+              <span className="font-mono text-[10px] font-bold text-[#58635c] dark:text-[#aeb4af]">
+                {body.length}/{CAMPUS_POST_BODY_MAX_LENGTH}
               </span>
             </div>
             <textarea
@@ -759,7 +769,7 @@ export default function CreateCampusPost() {
               id="campus-post-body"
               name="body"
               value={body}
-              maxLength={500}
+              maxLength={CAMPUS_POST_BODY_MAX_LENGTH}
               rows={7}
               required={isListing}
               aria-invalid={Boolean(bodyError)}
@@ -779,7 +789,7 @@ export default function CreateCampusPost() {
                   ? "Ürünün özelliklerini, kusurlarını ve teslim için uygun olduğun kampüs alanını yaz."
                   : "Detay vermek istersen buraya yazabilirsin."
               }
-              className={`mt-2 min-h-40 w-full resize-y border bg-white/35 px-3.5 py-3 text-sm leading-6 text-[#1c2821] placeholder:text-[#1c2821]/38 dark:bg-white/[0.025] dark:text-[#ece8e1] dark:placeholder:text-white/32 ${
+              className={`mt-2 min-h-40 w-full resize-y border bg-white/35 px-3.5 py-3 text-sm leading-6 text-[#1c2821] placeholder:text-[#667169] dark:bg-white/[0.025] dark:text-[#ece8e1] dark:placeholder:text-[#9ca39f] ${
                 bodyError
                   ? "border-[#9b3028] dark:border-[#df8b83]"
                   : "border-[#1c2821]/14 dark:border-white/12"
@@ -799,7 +809,7 @@ export default function CreateCampusPost() {
                 )}
                 <p
                   id="campus-post-body-help"
-                  className={`${bodyError ? "mt-1" : ""} text-[11px] leading-5 text-[#1c2821]/52 dark:text-white/48`}
+                  className={`${bodyError ? "mt-1" : ""} text-[11px] leading-5 text-[#58635c] dark:text-[#aeb4af]`}
                 >
                   {isListing
                     ? "Kişisel iletişim bilgilerini değil, ürünün ayrıntılarını paylaş."
@@ -854,11 +864,11 @@ export default function CreateCampusPost() {
               <div>
                 <p className="text-sm font-black tracking-[-0.015em]">
                   {isListing ? "İlan fotoğrafı" : "Fotoğraf"}{" "}
-                  <span className="font-medium text-[#1c2821]/45 dark:text-white/42">
+                  <span className="font-medium text-[#58635c] dark:text-[#aeb4af]">
                     {isListing ? "(önerilir)" : "(isteğe bağlı)"}
                   </span>
                 </p>
-                <p className="mt-1 text-[11px] leading-5 text-[#1c2821]/52 dark:text-white/48">
+                <p className="mt-1 text-[11px] leading-5 text-[#58635c] dark:text-[#aeb4af]">
                   Tek fotoğraf · JPEG, PNG veya WebP · en fazla 5 MB
                 </p>
               </div>
@@ -944,7 +954,7 @@ export default function CreateCampusPost() {
                 <p className="text-sm font-black tracking-[-0.015em]">
                   Anket
                 </p>
-                <p className="mt-1 text-[11px] leading-5 text-[#1c2821]/52 dark:text-white/48">
+                <p className="mt-1 text-[11px] leading-5 text-[#58635c] dark:text-[#aeb4af]">
                   Başlığın anket sorusu, aşağıdakiler seçenekler olur.
                 </p>
               </div>
@@ -958,7 +968,7 @@ export default function CreateCampusPost() {
                     nextValue
                       ? "Anket"
                       : category === "Anket"
-                        ? "İtiraf"
+                        ? "Sohbet"
                         : category,
                   );
                   setPollError("");
@@ -1000,7 +1010,7 @@ export default function CreateCampusPost() {
                           updatePollOption(index, event.target.value)
                         }
                         placeholder={`${index + 1}. seçenek`}
-                        className={`min-h-12 min-w-0 flex-1 border border-[#1c2821]/14 bg-white/35 px-3.5 text-sm font-semibold placeholder:text-[#1c2821]/38 dark:border-white/12 dark:bg-white/[0.025] dark:placeholder:text-white/32 ${focusRing}`}
+                        className={`min-h-12 min-w-0 flex-1 border border-[#1c2821]/14 bg-white/35 px-3.5 text-sm font-semibold placeholder:text-[#667169] dark:border-white/12 dark:bg-white/[0.025] dark:placeholder:text-[#9ca39f] ${focusRing}`}
                       />
                       {pollOptions.length > 2 && (
                         <button
@@ -1056,7 +1066,7 @@ export default function CreateCampusPost() {
                 </span>
                 <div>
                   <p className="text-xs font-black">Profilinle yayımlanacak</p>
-                  <p className="mt-0.5 text-[11px] leading-4 text-[#1c2821]/55 dark:text-white/50">
+                  <p className="mt-0.5 text-[11px] leading-4 text-[#58635c] dark:text-[#aeb4af]">
                     İlanlarda güven ve iletişim için anonim paylaşım kapalıdır.
                   </p>
                 </div>
@@ -1067,7 +1077,7 @@ export default function CreateCampusPost() {
                   <span className="block text-xs font-black">
                     Anonim paylaş
                   </span>
-                  <span className="mt-0.5 block text-[11px] leading-4 text-[#1c2821]/55 dark:text-white/50">
+                  <span className="mt-0.5 block text-[11px] leading-4 text-[#58635c] dark:text-[#aeb4af]">
                     Adın ve bölüm bilgin gönderide görünmez.
                   </span>
                 </span>
@@ -1094,7 +1104,7 @@ export default function CreateCampusPost() {
                   ? "text-[#8a2e25] dark:text-[#e0a083]"
                   : statusTone === "success"
                     ? "text-[#416649] dark:text-[#9fc5a3]"
-                    : "text-[#1c2821]/54 dark:text-white/50"
+                    : "text-[#58635c] dark:text-[#aeb4af]"
               }`}
             >
               {statusMessage}

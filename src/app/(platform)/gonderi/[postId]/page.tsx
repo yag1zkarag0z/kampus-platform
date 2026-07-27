@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 
 import CampusPostDetail from "@/components/CampusPostDetail";
-import { campusPosts, getCampusPost } from "@/data/campusPosts";
+import {
+  CAMPUS_OFFICIAL_AUTHOR_ID,
+  campusPosts,
+  getCampusPost,
+} from "@/data/campusPosts";
 
 type PostDetailPageProps = {
   params: Promise<{ postId: string }>;
@@ -17,10 +21,10 @@ export async function generateMetadata({
   const { postId } = await params;
   const post = getCampusPost(postId);
 
-  if (!post) {
+  if (!post || post.authorId !== CAMPUS_OFFICIAL_AUTHOR_ID) {
     return {
-      title: "Kampüs Konusu | KAMPÜS.",
-      description: "KAMPÜS topluluğunda paylaşılan öğrenci konusu.",
+      title: "Gönderi | KAMPÜS.",
+      description: "KAMPÜS topluluğunda paylaşılan bir gönderi.",
     };
   }
 

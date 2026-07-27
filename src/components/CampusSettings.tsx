@@ -12,7 +12,10 @@ import {
 } from "react";
 
 import { useCampusAccount } from "@/components/CampusAccountProvider";
+import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import { useCampusData } from "@/components/CampusDataProvider";
+import { useCampusModeration } from "@/components/CampusModerationProvider";
+import { useFeedback } from "@/components/FeedbackProvider";
 import ThemeToggle from "@/components/ThemeToggle";
 
 const DELETE_CONFIRMATION = "SIFIRLA";
@@ -53,6 +56,7 @@ function getInitials(displayName: string) {
 
 export default function CampusSettings() {
   const router = useRouter();
+  const { confirm: confirmAction, showToast } = useFeedback();
   const {
     profile,
     settings,
@@ -62,6 +66,12 @@ export default function CampusSettings() {
     signOut,
   } = useCampusAccount();
   const { resetCampusData } = useCampusData();
+  const {
+    blockedUsers,
+    isHydrated: isModerationHydrated,
+    resetModeration,
+    unblockUser,
+  } = useCampusModeration();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const deleteTriggerRef = useRef<HTMLButtonElement>(null);
@@ -149,13 +159,26 @@ export default function CampusSettings() {
     }
 
     resetCampusData();
+    resetModeration();
     resetAccount();
     signOut();
     setIsDeleteDialogOpen(false);
     router.replace("/kayit");
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    const confirmed = await confirmAction({
+      title: "Çıkış yapmak istiyor musun?",
+      description:
+        "Profilin ve gönderilerin bu cihazda kalır. Yalnızca oturumun kapanır.",
+      confirmLabel: "Çıkış yap",
+      tone: "danger",
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
     signOut();
     router.replace("/giris");
   };
@@ -361,17 +384,69 @@ export default function CampusSettings() {
             <SettingsSection
               eyebrow="Güvenlik"
               title="Engellenen kullanıcılar"
-              description="Görmek istemediğin hesapları bu alandan yönetebileceksin."
+              description="Gönderi ve yorumlarını görmek istemediğin hesapları buradan yönet."
             >
-              <div className="border border-dashed border-[#1c2821]/15 px-4 py-5 text-center dark:border-white/13">
-                <p className="text-sm font-black">
-                  Engellenmiş bir kullanıcı yok
-                </p>
-                <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]">
-                  Engelleme özelliği moderasyon sistemiyle birlikte
-                  etkinleştirilecek. Şu anda burada işlem yapman gerekmiyor.
-                </p>
-              </div>
+              {!isModerationHydrated ? (
+                <div
+                  aria-busy="true"
+                  aria-label="Engellenen kullanıcılar yükleniyor"
+                  className="grid gap-3"
+                >
+                  {[0, 1].map((item) => (
+                    <div
+                      key={item}
+                      aria-hidden="true"
+                      className="h-14 animate-pulse bg-[#1c2821]/6 dark:bg-white/6 motion-reduce:animate-none"
+                    />
+                  ))}
+                </div>
+              ) : blockedUsers.length > 0 ? (
+                <ul className="divide-y divide-[#1c2821]/9 dark:divide-white/8">
+                  {blockedUsers.map((user) => (
+                    <li
+                      key={user.authorId}
+                      className="flex min-w-0 items-center gap-3 py-3 first:pt-0 last:pb-0"
+                    >
+                      <CampusAuthorAvatar
+                        author={user.author}
+                        authorId={user.authorId}
+                        size="sm"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-black">
+                          {user.author}
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-[#58635c] dark:text-[#aeb4af]">
+                          Gönderileri ve yorumları gizleniyor
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          unblockUser(user.authorId);
+                          showToast({
+                            message: `${user.author} için engel kaldırıldı.`,
+                            tone: "success",
+                          });
+                        }}
+                        className={`min-h-11 shrink-0 cursor-pointer px-3 text-xs font-black text-[#7d3c2d] transition-colors hover:bg-[#7d3c2d]/7 dark:text-[#d09272] dark:hover:bg-[#c7896d]/8 ${focusRing}`}
+                      >
+                        Engeli kaldır
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="border border-dashed border-[#1c2821]/15 px-4 py-5 text-center dark:border-white/13">
+                  <p className="text-sm font-black">
+                    Engellenmiş bir kullanıcı yok
+                  </p>
+                  <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]">
+                    Bir gönderinin seçeneklerinden kullanıcıyı
+                    engelleyebilirsin.
+                  </p>
+                </div>
+              )}
             </SettingsSection>
 
             <SettingsSection

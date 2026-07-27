@@ -29,7 +29,7 @@ export default function PlatformEmptyState({
           <h1 className="mt-2 text-3xl font-black tracking-[-0.055em] sm:text-4xl">
             {title}
           </h1>
-          <p className="mt-3 text-sm leading-6 text-[#1c2821]/60 dark:text-white/56">
+          <p className="mt-3 text-sm leading-6 text-[#58635c] dark:text-[#aeb4af]">
             {description}
           </p>
         </div>

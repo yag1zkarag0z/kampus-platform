@@ -774,14 +774,14 @@ function EditProfileLoading() {
       className="min-h-[calc(100svh-4rem)] bg-[#fbf8f1] text-[#1c2821] dark:bg-[#17191c] dark:text-[#ece8e1] md:min-h-svh"
     >
       <div className="flex min-h-16 items-center gap-3 border-b border-[#1c2821]/12 px-4 dark:border-white/10">
-        <div className="size-11 animate-pulse rounded-full bg-[#1c2821]/8 dark:bg-white/8" />
-        <div className="h-5 w-32 animate-pulse bg-[#1c2821]/8 dark:bg-white/8" />
+        <div className="size-11 animate-pulse rounded-full bg-[#1c2821]/8 motion-reduce:animate-none dark:bg-white/8" />
+        <div className="h-5 w-32 animate-pulse bg-[#1c2821]/8 motion-reduce:animate-none dark:bg-white/8" />
       </div>
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        <div className="size-24 animate-pulse rounded-full bg-[#1c2821]/8 dark:bg-white/8" />
+        <div className="size-24 animate-pulse rounded-full bg-[#1c2821]/8 motion-reduce:animate-none dark:bg-white/8" />
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          <div className="h-80 animate-pulse bg-[#1c2821]/6 dark:bg-white/6" />
-          <div className="h-80 animate-pulse bg-[#1c2821]/6 dark:bg-white/6" />
+          <div className="h-80 animate-pulse bg-[#1c2821]/6 motion-reduce:animate-none dark:bg-white/6" />
+          <div className="h-80 animate-pulse bg-[#1c2821]/6 motion-reduce:animate-none dark:bg-white/6" />
         </div>
         <span className="sr-only">Profil düzenleme alanı yükleniyor…</span>
       </div>

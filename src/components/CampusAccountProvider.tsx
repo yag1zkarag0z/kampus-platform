@@ -14,9 +14,13 @@ import {
   campusUsernamePattern,
   reservedCampusUsernames,
 } from "@/data/campusAccountRules";
+import type { CampusAdminRole } from "@/data/campusAdmin";
 
 const STORAGE_KEY = "kampus-account-v1";
 const SESSION_KEY = "kampus-session-v1";
+const SESSION_EXPIRES_KEY = "kampus-session-expires-v1";
+const MEMBER_SESSION_DURATION = 8 * 60 * 60 * 1000;
+const GUEST_SESSION_DURATION = 2 * 60 * 60 * 1000;
 
 export type CampusProfile = {
   username: string;
@@ -39,11 +43,18 @@ export type CampusAccountSettings = {
 type StoredCampusAccount = {
   profile: CampusProfile;
   settings: CampusAccountSettings;
+  role?: CampusAdminRole;
 };
 
+export type CampusSessionMode = "member" | "guest" | "signed-out";
+
 type CampusAccountContextValue = StoredCampusAccount & {
+  role: CampusAdminRole;
   isHydrated: boolean;
   isSignedIn: boolean;
+  isGuest: boolean;
+  sessionExpired: boolean;
+  sessionMode: CampusSessionMode;
   updateProfile: (updates: Partial<CampusProfile>) => void;
   updateSettings: (updates: Partial<CampusAccountSettings>) => void;
   removeAvatar: () => void;
@@ -60,6 +71,15 @@ const defaultProfile: CampusProfile = {
   joinedLabel: "Temmuz 2026",
 };
 
+const guestProfile: CampusProfile = {
+  username: "isimsiz",
+  displayName: "İsimsiz Kullanıcı",
+  department: "",
+  year: "",
+  bio: "KAMPÜS’ü misafir olarak görüntülüyorsun.",
+  joinedLabel: "Misafir hesap",
+};
+
 const defaultSettings: CampusAccountSettings = {
   showDepartment: true,
   notifyReplies: true,
@@ -67,6 +87,28 @@ const defaultSettings: CampusAccountSettings = {
   notifyAnnouncements: true,
   emailNotifications: true,
 };
+
+const demoOwnerUsernames = new Set([
+  "yagizkaragoz",
+  "yag1zkarag0z",
+]);
+
+function isDemoOwnerProfile(profile: CampusProfile) {
+  const normalizedUsername = profile.username
+    .trim()
+    .toLocaleLowerCase("tr-TR");
+  const normalizedDisplayName = profile.displayName
+    .trim()
+    .toLocaleLowerCase("tr-TR")
+    .replaceAll("ğ", "g")
+    .replaceAll("ı", "i")
+    .replace(/\s+/g, " ");
+
+  return (
+    demoOwnerUsernames.has(normalizedUsername) ||
+    normalizedDisplayName === "yagiz karagoz"
+  );
+}
 
 const CampusAccountContext = createContext<
   CampusAccountContextValue | undefined
@@ -76,12 +118,30 @@ function getDefaultAccount(): StoredCampusAccount {
   return {
     profile: { ...defaultProfile },
     settings: { ...defaultSettings },
+    role: "admin",
   };
 }
 
 export function activateCampusSession() {
   try {
-    window.localStorage.setItem(SESSION_KEY, "active");
+    window.localStorage.setItem(SESSION_KEY, "member");
+    window.localStorage.setItem(
+      SESSION_EXPIRES_KEY,
+      String(Date.now() + MEMBER_SESSION_DURATION),
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function activateCampusGuestSession() {
+  try {
+    window.localStorage.setItem(SESSION_KEY, "guest");
+    window.localStorage.setItem(
+      SESSION_EXPIRES_KEY,
+      String(Date.now() + GUEST_SESSION_DURATION),
+    );
     return true;
   } catch {
     return false;
@@ -139,6 +199,7 @@ export function persistRegisteredCampusAccount({
     ...account.settings,
     showDepartment,
   };
+  account.role = "member";
 
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(account));
@@ -213,7 +274,11 @@ function isStoredAccount(value: unknown): value is StoredCampusAccount {
   return (
     isRecord(value) &&
     isStoredProfile(value.profile) &&
-    isStoredSettings(value.settings)
+    isStoredSettings(value.settings) &&
+    (value.role === undefined ||
+      value.role === "admin" ||
+      value.role === "moderator" ||
+      value.role === "member")
   );
 }
 
@@ -222,7 +287,12 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
     getDefaultAccount,
   );
   const [isHydrated, setIsHydrated] = useState(false);
-  const [isSignedIn, setIsSignedIn] = useState(true);
+  const [sessionMode, setSessionMode] =
+    useState<CampusSessionMode>("signed-out");
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [sessionStorageRevision, setSessionStorageRevision] = useState(0);
+  const isSignedIn = sessionMode !== "signed-out";
+  const isGuest = sessionMode === "guest";
 
   useEffect(() => {
     let isCancelled = false;
@@ -233,9 +303,46 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        setIsSignedIn(
-          window.localStorage.getItem(SESSION_KEY) !== "signed-out",
+        const storedSession = window.localStorage.getItem(SESSION_KEY);
+        const normalizedSession =
+          storedSession === "member" || storedSession === "active"
+            ? "member"
+            : storedSession === "guest"
+              ? "guest"
+              : "signed-out";
+        const storedExpiration = Number(
+          window.localStorage.getItem(SESSION_EXPIRES_KEY),
         );
+        const hasExpired =
+          normalizedSession !== "signed-out" &&
+          Number.isFinite(storedExpiration) &&
+          storedExpiration > 0 &&
+          storedExpiration <= Date.now();
+
+        if (hasExpired) {
+          setSessionMode("signed-out");
+          setSessionExpired(true);
+          window.localStorage.setItem(SESSION_KEY, "signed-out");
+          window.localStorage.removeItem(SESSION_EXPIRES_KEY);
+        } else {
+          setSessionMode(normalizedSession);
+          setSessionExpired(false);
+
+          if (
+            normalizedSession !== "signed-out" &&
+            (!Number.isFinite(storedExpiration) || storedExpiration <= 0)
+          ) {
+            window.localStorage.setItem(
+              SESSION_EXPIRES_KEY,
+              String(
+                Date.now() +
+                  (normalizedSession === "guest"
+                    ? GUEST_SESSION_DURATION
+                    : MEMBER_SESSION_DURATION),
+              ),
+            );
+          }
+        }
         const storedValue = window.localStorage.getItem(STORAGE_KEY);
 
         if (storedValue) {
@@ -245,11 +352,16 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
             setAccount({
               profile: { ...parsedValue.profile },
               settings: { ...parsedValue.settings },
+              role:
+                parsedValue.role ??
+                (parsedValue.profile.username === defaultProfile.username
+                  ? "admin"
+                  : "member"),
             });
           }
         }
       } catch {
-        // Keep the demo account when storage is unavailable or invalid.
+        setSessionMode("signed-out");
       } finally {
         if (!isCancelled) {
           setIsHydrated(true);
@@ -274,7 +386,120 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
     }
   }, [account, isHydrated]);
 
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    const synchronizeStoredSession = (event: StorageEvent) => {
+      if (event.storageArea !== window.localStorage) {
+        return;
+      }
+
+      if (event.key === STORAGE_KEY) {
+        if (!event.newValue) {
+          setAccount(getDefaultAccount());
+          return;
+        }
+
+        try {
+          const parsedValue: unknown = JSON.parse(event.newValue);
+
+          if (isStoredAccount(parsedValue)) {
+            setAccount({
+              profile: { ...parsedValue.profile },
+              settings: { ...parsedValue.settings },
+              role:
+                parsedValue.role ??
+                (parsedValue.profile.username === defaultProfile.username
+                  ? "admin"
+                  : "member"),
+            });
+          }
+        } catch {
+          // Ignore malformed changes from another tab.
+        }
+        return;
+      }
+
+      if (
+        event.key !== SESSION_KEY &&
+        event.key !== SESSION_EXPIRES_KEY
+      ) {
+        return;
+      }
+
+      const storedSession = window.localStorage.getItem(SESSION_KEY);
+      const nextSessionMode: CampusSessionMode =
+        storedSession === "member" || storedSession === "active"
+          ? "member"
+          : storedSession === "guest"
+            ? "guest"
+            : "signed-out";
+      const storedExpiration = Number(
+        window.localStorage.getItem(SESSION_EXPIRES_KEY),
+      );
+      const hasExpired =
+        nextSessionMode !== "signed-out" &&
+        Number.isFinite(storedExpiration) &&
+        storedExpiration > 0 &&
+        storedExpiration <= Date.now();
+
+      setSessionExpired(hasExpired);
+      setSessionMode(hasExpired ? "signed-out" : nextSessionMode);
+      setSessionStorageRevision((current) => current + 1);
+    };
+
+    window.addEventListener("storage", synchronizeStoredSession);
+
+    return () =>
+      window.removeEventListener("storage", synchronizeStoredSession);
+  }, [isHydrated]);
+
+  useEffect(() => {
+    if (!isHydrated || sessionMode === "signed-out") {
+      return;
+    }
+
+    const storedExpiration = Number(
+      window.localStorage.getItem(SESSION_EXPIRES_KEY),
+    );
+
+    if (!Number.isFinite(storedExpiration) || storedExpiration <= 0) {
+      return;
+    }
+
+    const expireSession = () => {
+      try {
+        window.localStorage.setItem(SESSION_KEY, "signed-out");
+        window.localStorage.removeItem(SESSION_EXPIRES_KEY);
+      } catch {
+        // The in-memory session can still expire when storage is unavailable.
+      }
+
+      setSessionExpired(true);
+      setSessionMode("signed-out");
+    };
+    const remainingDuration = storedExpiration - Date.now();
+
+    if (remainingDuration <= 0) {
+      const expirationTimer = window.setTimeout(expireSession, 0);
+      return () => window.clearTimeout(expirationTimer);
+    }
+
+    const expirationTimer = window.setTimeout(
+      expireSession,
+      remainingDuration,
+    );
+
+    return () => window.clearTimeout(expirationTimer);
+  }, [isHydrated, sessionMode, sessionStorageRevision]);
+
   const updateProfile = useCallback((updates: Partial<CampusProfile>) => {
+    if (sessionMode !== "member") {
+      return;
+    }
+
     setAccount((currentAccount) => ({
       ...currentAccount,
       profile: {
@@ -282,10 +507,14 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
         ...updates,
       },
     }));
-  }, []);
+  }, [sessionMode]);
 
   const updateSettings = useCallback(
     (updates: Partial<CampusAccountSettings>) => {
+      if (sessionMode !== "member") {
+        return;
+      }
+
       setAccount((currentAccount) => ({
         ...currentAccount,
         settings: {
@@ -294,10 +523,14 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
         },
       }));
     },
-    [],
+    [sessionMode],
   );
 
   const removeAvatar = useCallback(() => {
+    if (sessionMode !== "member") {
+      return;
+    }
+
     setAccount((currentAccount) => ({
       ...currentAccount,
       profile: {
@@ -305,9 +538,13 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
         avatarDataUrl: undefined,
       },
     }));
-  }, []);
+  }, [sessionMode]);
 
   const resetAccount = useCallback(() => {
+    if (sessionMode !== "member") {
+      return;
+    }
+
     try {
       window.localStorage.removeItem(STORAGE_KEY);
     } catch {
@@ -315,24 +552,36 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
     }
 
     setAccount(getDefaultAccount());
-  }, []);
+  }, [sessionMode]);
 
   const signOut = useCallback(() => {
     try {
       window.localStorage.setItem(SESSION_KEY, "signed-out");
+      window.localStorage.removeItem(SESSION_EXPIRES_KEY);
     } catch {
       // The current screen should still sign out when storage is unavailable.
     }
 
-    setIsSignedIn(false);
+    setSessionExpired(false);
+    setSessionMode("signed-out");
   }, []);
 
   const value = useMemo<CampusAccountContextValue>(
     () => ({
-      profile: account.profile,
-      settings: account.settings,
+      profile: isGuest ? guestProfile : account.profile,
+      settings: isGuest
+        ? { ...defaultSettings, showDepartment: false }
+        : account.settings,
+      role: isGuest
+        ? "member"
+        : isDemoOwnerProfile(account.profile)
+          ? "admin"
+          : (account.role ?? "member"),
       isHydrated,
       isSignedIn,
+      isGuest,
+      sessionExpired,
+      sessionMode,
       updateProfile,
       updateSettings,
       removeAvatar,
@@ -342,8 +591,12 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
     [
       account.profile,
       account.settings,
+      account.role,
       isHydrated,
+      isGuest,
       isSignedIn,
+      sessionExpired,
+      sessionMode,
       updateProfile,
       updateSettings,
       removeAvatar,

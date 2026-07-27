@@ -6,6 +6,7 @@ export type CampusCategoryFilter = "Tümü" | CampusPostCategory;
 
 export const campusCategoryFilters: CampusCategoryFilter[] = [
   "Tümü",
+  "Sohbet",
   "İtiraf",
   "Soru",
   "Etkinlik",

@@ -3,6 +3,10 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 
+import {
+  useDemoVerificationCode,
+  VerificationCodePanel,
+} from "@/components/AuthVerificationCode";
 import { persistRegisteredCampusAccount } from "@/components/CampusAccountProvider";
 import {
   campusUsernamePattern,
@@ -43,6 +47,7 @@ export default function RegisterFlow() {
   const [invalidField, setInvalidField] =
     useState<RegisterField | null>(null);
   const [complete, setComplete] = useState(false);
+  const verification = useDemoVerificationCode();
   const availableYearOptions = getCampusYearOptions(department);
   const clearMessage = () => {
     setMessage(null);
@@ -64,6 +69,7 @@ export default function RegisterFlow() {
 
     setEmail(normalizedEmail);
     clearMessage();
+    verification.issueCode();
     setStep(2);
   };
 
@@ -77,8 +83,49 @@ export default function RegisterFlow() {
       return;
     }
 
+    const verificationResult = verification.verifyCode(code);
+
+    if (verificationResult.status === "expired") {
+      setMessage(
+        "Bu doğrulama kodunun süresi doldu. Aşağıdan yeni bir kod isteyebilirsin.",
+      );
+      setInvalidField("code");
+      return;
+    }
+
+    if (verificationResult.status === "locked") {
+      setMessage(
+        "Çok fazla hatalı deneme yaptın. Devam etmek için yeni bir kod iste.",
+      );
+      setInvalidField("code");
+      return;
+    }
+
+    if (verificationResult.status === "incorrect") {
+      setMessage(
+        `Kod eşleşmedi. ${verificationResult.attemptsLeft} deneme hakkın kaldı.`,
+      );
+      setInvalidField("code");
+      document.getElementById("register-code")?.focus();
+      return;
+    }
+
     clearMessage();
     setStep(3);
+  };
+
+  const resendCode = async () => {
+    const didResend = await verification.resendCode();
+
+    if (!didResend) {
+      return;
+    }
+
+    setCode("");
+    clearMessage();
+    window.requestAnimationFrame(() => {
+      document.getElementById("register-code")?.focus();
+    });
   };
 
   const submitProfile = (event: FormEvent<HTMLFormElement>) => {
@@ -236,7 +283,7 @@ export default function RegisterFlow() {
               type="submit"
               className="mt-6 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-[#5a1f32] px-4 text-sm font-bold text-[#fffaf4] outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:bg-[#9a5944] dark:hover:bg-[#ad6b53] dark:focus-visible:ring-[#c7896d]/30"
             >
-              Doğrulama kodu gönder
+              Demo doğrulama kodunu hazırla
               <span aria-hidden="true">→</span>
             </button>
           </form>
@@ -246,11 +293,11 @@ export default function RegisterFlow() {
               Kod e-postanda.
             </h2>
             <p className="mt-3 text-sm leading-6 text-[#1c2821]/64 dark:text-white/62">
-              6 haneli doğrulama kodunu{" "}
+              6 haneli demo doğrulama kodunu{" "}
               <strong className="font-bold text-[#1c2821] dark:text-[#ece8e1]">
                 {email}
               </strong>{" "}
-              adresine gönderdik.
+              adresi için hazırladık.
             </p>
 
             <label
@@ -265,14 +312,34 @@ export default function RegisterFlow() {
               type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
+              autoFocus
               value={code}
               onChange={(event) => {
                 setCode(event.target.value.replace(/\D/g, "").slice(0, 6));
                 clearMessage();
               }}
+              onPaste={(event) => {
+                const pastedCode = event.clipboardData
+                  .getData("text")
+                  .replace(/\D/g, "")
+                  .slice(0, 6);
+
+                if (!pastedCode) {
+                  return;
+                }
+
+                event.preventDefault();
+                setCode(pastedCode);
+                clearMessage();
+              }}
               placeholder="000000"
               maxLength={6}
-              className={`${inputClassName} mt-2 text-center font-mono text-xl font-bold tracking-[0.35em]`}
+              disabled={
+                verification.isExpired ||
+                verification.isLocked ||
+                verification.isResending
+              }
+              className={`${inputClassName} mt-2 text-center font-mono text-xl font-bold tracking-[0.35em] disabled:cursor-not-allowed disabled:opacity-55`}
               aria-invalid={invalidField === "code"}
               aria-describedby="register-code-help register-message"
               required
@@ -281,14 +348,35 @@ export default function RegisterFlow() {
               id="register-code-help"
               className={helperTextClassName}
             >
-              Kodunu kimseyle paylaşma. KAMPÜS senden kodunu istemez.
+              Kodu e-postadan kopyalayıp buraya yapıştırabilirsin. Kodunu
+              kimseyle paylaşma.
             </p>
 
             <FormMessage message={message} />
 
+            <VerificationCodePanel
+              attemptsLeft={verification.attemptsLeft}
+              canResend={verification.canResend}
+              expiresInSeconds={verification.expiresInSeconds}
+              inputId="register-code"
+              isExpired={verification.isExpired}
+              isLocked={verification.isLocked}
+              isResending={verification.isResending}
+              issueCount={verification.issueCount}
+              resendInSeconds={verification.resendInSeconds}
+              onResend={() => {
+                void resendCode();
+              }}
+            />
+
             <button
               type="submit"
-              className="mt-6 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-[#5a1f32] px-4 text-sm font-bold text-[#fffaf4] outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:bg-[#9a5944] dark:hover:bg-[#ad6b53]"
+              disabled={
+                verification.isExpired ||
+                verification.isLocked ||
+                verification.isResending
+              }
+              className="mt-5 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-[#5a1f32] px-4 text-sm font-bold text-[#fffaf4] outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 disabled:cursor-not-allowed disabled:opacity-55 dark:bg-[#9a5944] dark:hover:bg-[#ad6b53]"
             >
               Kodu doğrula
               <span aria-hidden="true">→</span>
@@ -300,8 +388,9 @@ export default function RegisterFlow() {
                 setStep(1);
                 setCode("");
                 clearMessage();
+                verification.resetVerification();
               }}
-              className="mt-3 min-h-11 w-full text-xs font-bold text-[#1c2821]/62 underline decoration-[#1c2821]/22 underline-offset-4 dark:text-white/58 dark:decoration-white/20"
+              className="mt-3 min-h-11 w-full text-xs font-bold text-[#58635c] underline decoration-[#1c2821]/22 underline-offset-4 dark:text-[#aeb4af] dark:decoration-white/20"
             >
               E-posta adresini değiştir
             </button>
@@ -555,7 +644,7 @@ export default function RegisterFlow() {
                 setStep(2);
                 clearMessage();
               }}
-              className="mt-3 min-h-11 w-full text-xs font-bold text-[#1c2821]/62 underline decoration-[#1c2821]/22 underline-offset-4 dark:text-white/58 dark:decoration-white/20"
+              className="mt-3 min-h-11 w-full text-xs font-bold text-[#58635c] underline decoration-[#1c2821]/22 underline-offset-4 dark:text-[#aeb4af] dark:decoration-white/20"
             >
               Önceki adıma dön
             </button>
@@ -582,8 +671,8 @@ function FormMessage({ message }: { message: string | null }) {
   return (
     <p
       id="register-message"
-      role="status"
-      aria-live="polite"
+      role={message ? "alert" : "status"}
+      aria-live={message ? "assertive" : "polite"}
       className="mt-4 min-h-5 text-xs font-medium leading-5 text-[#8a2e25] dark:text-[#e0a083]"
     >
       {message}

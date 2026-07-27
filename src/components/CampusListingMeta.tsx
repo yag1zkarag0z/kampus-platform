@@ -40,7 +40,7 @@ export default function CampusListingMeta({
           {listing.type}
         </span>
       )}
-      <span className="border border-[#1c2821]/10 px-2 py-1 text-[10px] font-bold text-[#1c2821]/58 dark:border-white/9 dark:text-white/54">
+      <span className="border border-[#1c2821]/10 px-2 py-1 text-[10px] font-bold text-[#58635c] dark:border-white/9 dark:text-[#aeb4af]">
         {listing.condition}
       </span>
     </div>

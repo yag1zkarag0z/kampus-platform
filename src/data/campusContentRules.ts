@@ -1,0 +1,2 @@
+export const CAMPUS_POST_TITLE_MAX_LENGTH = 100;
+export const CAMPUS_POST_BODY_MAX_LENGTH = 500;

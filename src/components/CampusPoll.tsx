@@ -1,6 +1,8 @@
 "use client";
 
+import { useCampusAccount } from "@/components/CampusAccountProvider";
 import { useCampusData } from "@/components/CampusDataProvider";
+import { useFeedback } from "@/components/FeedbackProvider";
 import type { CampusPostPoll } from "@/data/campusPosts";
 
 const focusRing =
@@ -15,7 +17,9 @@ export default function CampusPoll({
   poll: CampusPostPoll;
   compact?: boolean;
 }) {
+  const { isGuest } = useCampusAccount();
   const { voteInPoll } = useCampusData();
+  const { showToast } = useFeedback();
   const totalVotes = poll.options.reduce(
     (total, option) => total + option.votes,
     0,
@@ -42,8 +46,18 @@ export default function CampusPoll({
               type="button"
               aria-pressed={isSelected}
               aria-label={`${option.text}, ${percentage} yüzde, ${option.votes} oy`}
-              onClick={() => voteInPoll(postId, option.id)}
-              className={`relative isolate min-h-12 overflow-hidden border px-3.5 py-2.5 text-left transition-colors ${focusRing} ${
+              onClick={() => {
+                if (isGuest) {
+                  showToast({
+                    message: "Oy vermek için giriş yap veya kayıt ol.",
+                    tone: "info",
+                  });
+                  return;
+                }
+
+                voteInPoll(postId, option.id);
+              }}
+              className={`relative isolate min-h-12 cursor-pointer overflow-hidden border px-3.5 py-2.5 text-left transition-colors ${focusRing} ${
                 isSelected
                   ? "border-[#5a1f32]/42 dark:border-[#c7896d]/48"
                   : "border-[#1c2821]/14 hover:border-[#5a1f32]/28 dark:border-white/12 dark:hover:border-[#c7896d]/30"
@@ -52,7 +66,7 @@ export default function CampusPoll({
               {hasVoted && (
                 <span
                   aria-hidden="true"
-                  className={`absolute inset-y-0 left-0 -z-10 transition-[width] duration-300 ${
+                  className={`absolute inset-y-0 left-0 -z-10 transition-[width] duration-300 motion-reduce:transition-none ${
                     isSelected
                       ? "bg-[#5a1f32]/13 dark:bg-[#c7896d]/18"
                       : "bg-[#1c2821]/6 dark:bg-white/7"
@@ -84,7 +98,9 @@ export default function CampusPoll({
         <span>
           {hasVoted
             ? "Seçimini değiştirebilirsin."
-            : "Bir seçenek seçerek oy ver."}
+            : isGuest
+              ? "Oy vermek için giriş yap."
+              : "Bir seçenek seçerek oy ver."}
         </span>
       </p>
     </div>

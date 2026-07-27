@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusLogo from "@/components/CampusLogo";
+import { useCampusNotificationStore } from "@/components/CampusNotificationStore";
+import { useFeedback } from "@/components/FeedbackProvider";
 import ThemeToggle from "@/components/ThemeToggle";
 
 type NavigationIconName =
@@ -14,13 +16,15 @@ type NavigationIconName =
   | "share"
   | "notifications"
   | "saved"
-  | "profile";
+  | "profile"
+  | "admin";
 
 type NavigationItem = {
   href: string;
   label: string;
   icon: NavigationIconName;
   primary?: boolean;
+  privilegedOnly?: boolean;
 };
 
 const navigationItems: readonly NavigationItem[] = [
@@ -33,6 +37,12 @@ const navigationItems: readonly NavigationItem[] = [
   },
   { href: "/kaydedilenler", label: "Kaydedilenler", icon: "saved" },
   { href: "/profil", label: "Profil", icon: "profile" },
+  {
+    href: "/admin",
+    label: "Yönetim",
+    icon: "admin",
+    privilegedOnly: true,
+  },
 ];
 
 const mobileNavigationItems: readonly NavigationItem[] = [
@@ -49,6 +59,10 @@ const mobileNavigationItems: readonly NavigationItem[] = [
 
 function isActivePath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function isGuestProtectedPath(href: string) {
+  return href === "/konu-olustur";
 }
 
 function NavigationIconGlyph({ name }: { name: NavigationIconName }) {
@@ -83,6 +97,13 @@ function NavigationIconGlyph({ name }: { name: NavigationIconName }) {
         <>
           <circle cx="12" cy="8.2" r="3.3" />
           <path d="M5.2 19.5c.7-3.6 3.1-5.5 6.8-5.5s6.1 1.9 6.8 5.5" />
+        </>
+      );
+    case "admin":
+      return (
+        <>
+          <path d="M12 3.5 19 6v5.2c0 4.3-2.7 7.7-7 9.3-4.3-1.6-7-5-7-9.3V6l7-2.5Z" />
+          <path d="m9.2 12 1.8 1.8 3.9-4" />
         </>
       );
   }
@@ -127,38 +148,88 @@ function ShareIcon({ className = "size-5" }: { className?: string }) {
   );
 }
 
+function NotificationBadge({ count }: { count: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="absolute -right-2 -top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#a63f32] px-1 font-mono text-[8px] font-black leading-none text-white ring-2 ring-[#f8f4ed] dark:bg-[#e18a70] dark:text-[#121417] dark:ring-[#141619]"
+    >
+      {count > 9 ? "9+" : count}
+    </span>
+  );
+}
+
 export default function AppNavigation() {
   const pathname = usePathname();
   const router = useRouter();
-  const { signOut } = useCampusAccount();
+  const { signOut, isGuest, role } = useCampusAccount();
+  const {
+    isHydrated: areNotificationsHydrated,
+    unreadCount,
+  } = useCampusNotificationStore();
+  const { confirm: confirmAction, showToast } = useFeedback();
   const [isDesktopNavigationOpen, setIsDesktopNavigationOpen] =
-    useState(false);
+    useState(true);
 
   useEffect(() => {
     if (!isDesktopNavigationOpen) {
       return;
     }
 
-    const previousOverflow = document.body.style.overflow;
     const closeWithEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setIsDesktopNavigationOpen(false);
       }
     };
 
-    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", closeWithEscape);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", closeWithEscape);
     };
   }, [isDesktopNavigationOpen]);
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    const confirmed = await confirmAction({
+      title: isGuest
+        ? "Misafir görünümünden çıkmak istiyor musun?"
+        : "Çıkış yapmak istiyor musun?",
+      description: isGuest
+        ? "Giriş ekranına döneceksin."
+        : "Profilin ve gönderilerin bu cihazda kalır. Yalnızca oturumun kapanır.",
+      confirmLabel: "Çıkış yap",
+      tone: "danger",
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
     setIsDesktopNavigationOpen(false);
     signOut();
     router.replace("/giris");
+  };
+
+  const showGuestAuthToast = () => {
+    showToast({
+      message: "Bu özellik için giriş yap veya kayıt ol.",
+      tone: "info",
+      action: {
+        label: "Giriş yap",
+        onClick: () => router.push("/giris"),
+      },
+    });
+  };
+
+  const handleGuestProtectedNavigation = (
+    event: MouseEvent<HTMLAnchorElement>,
+  ) => {
+    if (!isGuest) {
+      return;
+    }
+
+    event.preventDefault();
+    showGuestAuthToast();
   };
 
   return (
@@ -176,11 +247,29 @@ export default function AppNavigation() {
         </Link>
 
         <div className="flex items-center gap-1">
+          {!isGuest && role !== "member" && (
+            <Link
+              href="/admin"
+              aria-label="Yönetim panelini aç"
+              aria-current={
+                isActivePath(pathname, "/admin") ? "page" : undefined
+              }
+              className={`grid size-11 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:focus-visible:ring-[#c7896d]/40 ${
+                isActivePath(pathname, "/admin")
+                  ? "bg-[#5a2538]/10 text-[#5a2538] dark:bg-[#c7896d]/12 dark:text-[#d09272]"
+                  : "text-[#58635c] hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-[#aeb4af] dark:hover:bg-white/8 dark:hover:text-[#ece8e1]"
+              }`}
+            >
+              <NavigationIcon name="admin" className="size-[1.15rem]" />
+            </Link>
+          )}
           <Link
             href="/kaydedilenler"
             aria-label="Kaydedilen konuları aç"
             aria-current={
-              isActivePath(pathname, "/kaydedilenler") ? "page" : undefined
+              isActivePath(pathname, "/kaydedilenler")
+                ? "page"
+                : undefined
             }
             className={`grid size-11 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:focus-visible:ring-[#c7896d]/40 ${
               isActivePath(pathname, "/kaydedilenler")
@@ -190,133 +279,189 @@ export default function AppNavigation() {
           >
             <NavigationIcon name="saved" className="size-[1.15rem]" />
           </Link>
+          {isGuest && (
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full px-3 text-xs font-black text-[#7f302b] outline-none transition-colors hover:bg-[#8b2f2a]/7 focus-visible:ring-3 focus-visible:ring-[#8b2f2a]/25 dark:text-[#e18a7d] dark:hover:bg-[#d27368]/9 dark:focus-visible:ring-[#d27368]/35"
+            >
+              Çıkış
+            </button>
+          )}
           <ThemeToggle />
         </div>
       </header>
 
-      <header className="fixed left-3 top-2 z-[70] hidden h-12 items-center gap-1 bg-transparent text-[#1c2821] md:flex dark:text-[#ece8e1]">
-        <button
-          type="button"
-          aria-label={
-            isDesktopNavigationOpen
-              ? "Masaüstü menüsünü kapat"
-              : "Masaüstü menüsünü aç"
-          }
-          aria-expanded={isDesktopNavigationOpen}
-          aria-controls="desktop-app-navigation"
-          onClick={() =>
-            setIsDesktopNavigationOpen((current) => !current)
-          }
-          className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full outline-none transition-colors hover:bg-[#1c2821]/7 focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:hover:bg-white/8 dark:focus-visible:ring-[#c7896d]/40"
-        >
-          <span aria-hidden="true" className="grid gap-1">
-            <span className="block h-px w-5 rounded-full bg-current" />
-            <span className="block h-px w-5 rounded-full bg-current" />
-            <span className="block h-px w-5 rounded-full bg-current" />
-          </span>
-        </button>
-
-        <Link
-          href="/akis"
-          aria-label="KAMPÜS akışına git"
-          onClick={() => setIsDesktopNavigationOpen(false)}
-          className="inline-flex min-h-11 items-center rounded-xl px-1 outline-none transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:focus-visible:ring-[#c7896d]/40"
-        >
-          <CampusLogo
-            idPrefix="desktop-app-navigation-logo"
-            wordmarkClassName="text-xl"
-          />
-        </Link>
-      </header>
-
-      <button
-        type="button"
-        aria-label="Masaüstü menüsünü kapat"
-        aria-hidden={!isDesktopNavigationOpen}
-        tabIndex={isDesktopNavigationOpen ? 0 : -1}
-        onClick={() => setIsDesktopNavigationOpen(false)}
-        className={`fixed inset-0 z-40 hidden cursor-default bg-[#101113]/30 transition-opacity duration-200 motion-reduce:transition-none md:block dark:bg-black/45 ${
-          isDesktopNavigationOpen
-            ? "pointer-events-auto opacity-100"
-            : "pointer-events-none opacity-0"
-        }`}
-      />
-
-      <aside
-        id="desktop-app-navigation"
-        aria-label="Masaüstü uygulama menüsü"
-        aria-hidden={!isDesktopNavigationOpen}
-        inert={!isDesktopNavigationOpen}
-        className={`fixed inset-y-0 left-0 z-50 hidden w-24 overflow-hidden border-r border-[#1c2821]/12 bg-[#fbf8f1]/98 pt-20 text-[#1c2821] shadow-[12px_0_36px_rgba(28,40,33,0.14)] backdrop-blur-xl transition-transform duration-200 ease-out motion-reduce:transition-none dark:border-white/10 dark:bg-[#121417]/98 dark:text-[#ece8e1] dark:shadow-[12px_0_38px_rgba(0,0,0,0.34)] md:flex ${
-          isDesktopNavigationOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="flex h-full min-h-0 w-full flex-col overflow-x-hidden overflow-y-auto px-2 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <nav aria-label="Uygulama menüsü">
-            <ul className="grid gap-1">
-              {navigationItems.map((item) => {
-                const isActive = isActivePath(pathname, item.href);
-
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      aria-current={isActive ? "page" : undefined}
-                      title={item.label}
-                      onClick={() => setIsDesktopNavigationOpen(false)}
-                      className={`group relative flex min-h-[4.35rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-center text-[10px] font-black leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:focus-visible:ring-[#c7896d]/40 ${
-                        isActive
-                          ? "bg-[#5a2538]/11 text-[#5a2538] dark:bg-[#c7896d]/13 dark:text-[#d09272]"
-                          : "text-[#1c2821]/66 hover:bg-[#1c2821]/7 hover:text-[#1c2821] dark:text-white/62 dark:hover:bg-white/8 dark:hover:text-[#ece8e1]"
-                      }`}
-                    >
-                      <NavigationIcon
-                        name={item.icon}
-                        className="size-[1.35rem] shrink-0"
-                      />
-                      <span className="max-w-full truncate">{item.label}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-
-          <Link
-            href="/konu-olustur"
-            aria-label="Yeni konu aç"
-            aria-current={
-              isActivePath(pathname, "/konu-olustur") ? "page" : undefined
+      <div className="relative z-40 hidden min-w-0 text-[#1c2821] md:col-start-1 md:row-start-1 md:flex md:justify-end dark:text-[#ece8e1]">
+        <div className="sticky top-0 flex h-svh min-h-0 w-full max-w-[15rem] flex-col items-center px-2 py-2 lg:items-stretch lg:px-3">
+          <button
+            type="button"
+            aria-label={
+              isDesktopNavigationOpen
+                ? "Masaüstü menüsünü kapat"
+                : "Masaüstü menüsünü aç"
             }
-            title="Konu aç"
-            onClick={() => setIsDesktopNavigationOpen(false)}
-            className="mt-2 inline-flex min-h-[4.35rem] w-full flex-col items-center justify-center gap-1.5 rounded-xl bg-[#1c2821] px-1 text-[10px] font-black leading-none text-[#fbf8f1] shadow-[0_8px_20px_rgba(28,40,33,0.14)] outline-none transition-colors hover:bg-[#5a2538] focus-visible:ring-3 focus-visible:ring-[#5a2538]/30 dark:bg-[#c7896d] dark:text-[#121417] dark:shadow-none dark:hover:bg-[#d09272] dark:focus-visible:ring-[#c7896d]/45"
+            aria-expanded={isDesktopNavigationOpen}
+            aria-controls="desktop-app-navigation"
+            onClick={() =>
+              setIsDesktopNavigationOpen((current) => !current)
+            }
+            className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full outline-none transition-colors hover:bg-[#1c2821]/7 focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:hover:bg-white/8 dark:focus-visible:ring-[#c7896d]/40 lg:self-start"
           >
-            <ShareIcon className="size-[1.35rem] shrink-0" />
-            <span>Konu aç</span>
-          </Link>
+            <span aria-hidden="true" className="relative block size-5">
+              <span
+                className={`absolute left-0 top-1 block h-px w-5 rounded-full bg-current transition-transform duration-200 motion-reduce:transition-none ${
+                  isDesktopNavigationOpen
+                    ? "translate-y-1.5 rotate-45"
+                    : ""
+                }`}
+              />
+              <span
+                className={`absolute left-0 top-2.5 block h-px w-5 rounded-full bg-current transition-opacity duration-200 motion-reduce:transition-none ${
+                  isDesktopNavigationOpen ? "opacity-0" : "opacity-100"
+                }`}
+              />
+              <span
+                className={`absolute left-0 top-4 block h-px w-5 rounded-full bg-current transition-transform duration-200 motion-reduce:transition-none ${
+                  isDesktopNavigationOpen
+                    ? "-translate-y-1.5 -rotate-45"
+                    : ""
+                }`}
+              />
+            </span>
+          </button>
 
-          <div className="mt-auto grid gap-1 border-t border-[#1c2821]/10 pt-3 dark:border-white/10">
-            <div className="flex justify-center">
-              <ThemeToggle />
+          <aside
+            id="desktop-app-navigation"
+            aria-label="Masaüstü uygulama menüsü"
+            aria-hidden={!isDesktopNavigationOpen}
+            inert={!isDesktopNavigationOpen}
+            className={`mt-1 flex min-h-0 w-full flex-1 overflow-hidden transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none ${
+              isDesktopNavigationOpen
+                ? "visible translate-x-0 opacity-100"
+                : "pointer-events-none invisible -translate-x-2 opacity-0"
+            }`}
+          >
+            <div className="flex h-full min-h-0 w-full flex-col overflow-x-hidden overflow-y-auto px-1 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <Link
+                href="/akis"
+                aria-label="KAMPÜS akışına git"
+                className="mb-2 flex min-h-12 items-center justify-center rounded-xl outline-none transition-colors hover:bg-[#1c2821]/6 focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:hover:bg-white/7 dark:focus-visible:ring-[#c7896d]/40 lg:justify-start lg:px-3"
+              >
+                <CampusLogo
+                  variant="mark"
+                  idPrefix="desktop-app-navigation-logo"
+                  markClassName="h-8 w-6"
+                  className="lg:hidden"
+                />
+                <CampusLogo
+                  idPrefix="desktop-app-navigation-lockup"
+                  className="hidden lg:inline-flex"
+                  wordmarkClassName="text-xl xl:text-2xl"
+                />
+              </Link>
+
+              <nav aria-label="Uygulama menüsü">
+                <ul className="grid gap-1">
+                  {navigationItems
+                    .filter(
+                      (item) =>
+                        !item.privilegedOnly ||
+                        (!isGuest && role !== "member"),
+                    )
+                    .map((item) => {
+                    const isActive = isActivePath(pathname, item.href);
+
+                    return (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          onClick={
+                            isGuest && isGuestProtectedPath(item.href)
+                              ? handleGuestProtectedNavigation
+                              : undefined
+                          }
+                          aria-current={isActive ? "page" : undefined}
+                          aria-label={
+                            item.icon === "notifications" &&
+                            areNotificationsHydrated &&
+                            unreadCount > 0
+                              ? `${item.label}, ${unreadCount} okunmamış bildirim`
+                              : undefined
+                          }
+                          title={item.label}
+                          className={`group relative flex min-h-[4.1rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-center text-[10px] font-black leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:focus-visible:ring-[#c7896d]/40 lg:min-h-12 lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:text-left lg:text-sm ${
+                            isActive
+                              ? "bg-[#5a2538]/11 text-[#5a2538] dark:bg-[#c7896d]/13 dark:text-[#d09272]"
+                              : "text-[#1c2821]/66 hover:bg-[#1c2821]/7 hover:text-[#1c2821] dark:text-white/62 dark:hover:bg-white/8 dark:hover:text-[#ece8e1]"
+                          }`}
+                        >
+                          <span className="relative grid size-[1.35rem] shrink-0 place-items-center">
+                            <NavigationIcon
+                              name={item.icon}
+                              className="size-[1.35rem]"
+                            />
+                            {item.icon === "notifications" &&
+                              areNotificationsHydrated &&
+                              unreadCount > 0 && (
+                                <NotificationBadge
+                                  count={unreadCount}
+                                />
+                              )}
+                          </span>
+                          <span className="max-w-full truncate">
+                            {item.label}
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                    })}
+                </ul>
+              </nav>
+
+              <Link
+                href="/konu-olustur"
+                onClick={
+                  isGuest ? handleGuestProtectedNavigation : undefined
+                }
+                aria-label="Yeni konu aç"
+                aria-current={
+                  isActivePath(pathname, "/konu-olustur")
+                    ? "page"
+                    : undefined
+                }
+                title="Konu aç"
+                className="mt-2 inline-flex min-h-[4.1rem] w-full flex-col items-center justify-center gap-1.5 rounded-xl bg-[#1c2821] px-1 text-[10px] font-black leading-none text-[#fbf8f1] shadow-[0_8px_20px_rgba(28,40,33,0.14)] outline-none transition-colors hover:bg-[#5a2538] focus-visible:ring-3 focus-visible:ring-[#5a2538]/30 dark:bg-[#c7896d] dark:text-[#121417] dark:shadow-none dark:hover:bg-[#d09272] dark:focus-visible:ring-[#c7896d]/45 lg:min-h-12 lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:text-sm"
+              >
+                <ShareIcon className="size-[1.35rem] shrink-0" />
+                <span>Konu aç</span>
+              </Link>
+
+              <div className="mt-auto grid gap-1 border-t border-[#1c2821]/10 pt-3 dark:border-white/10">
+                <div className="flex justify-center">
+                  <ThemeToggle />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  title="Çıkış yap"
+                  className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-xl px-1 text-[10px] font-black text-[#7f302b] outline-none transition-colors hover:bg-[#8b2f2a]/7 focus-visible:ring-3 focus-visible:ring-[#8b2f2a]/25 dark:text-[#e18a7d] dark:hover:bg-[#d27368]/9 dark:focus-visible:ring-[#d27368]/35"
+                >
+                  Çıkış
+                </button>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={handleSignOut}
-              title="Çıkış yap"
-              className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-xl px-1 text-[10px] font-black text-[#7f302b] outline-none transition-colors hover:bg-[#8b2f2a]/7 focus-visible:ring-3 focus-visible:ring-[#8b2f2a]/25 dark:text-[#e18a7d] dark:hover:bg-[#d27368]/9 dark:focus-visible:ring-[#d27368]/35"
-            >
-              Çıkış
-            </button>
-          </div>
+          </aside>
         </div>
-      </aside>
+      </div>
 
       <nav
         aria-label="Mobil uygulama menüsü"
         className="fixed inset-x-0 bottom-0 z-50 border-t border-[#1c2821]/12 bg-[#fbf8f1]/96 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-[#1c2821] shadow-[0_-12px_34px_rgba(28,40,33,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-[#121417]/96 dark:text-[#ece8e1] dark:shadow-[0_-12px_34px_rgba(0,0,0,0.24)] md:hidden"
       >
-        <ul className="mx-auto grid max-w-lg grid-cols-5 gap-1">
+        <ul
+          className="mx-auto grid max-w-lg grid-cols-5 gap-1"
+        >
           {mobileNavigationItems.map((item) => {
             const isActive = isActivePath(pathname, item.href);
 
@@ -324,9 +469,20 @@ export default function AppNavigation() {
               <li key={item.href} className="min-w-0">
                 <Link
                   href={item.href}
+                  onClick={
+                    isGuest && isGuestProtectedPath(item.href)
+                      ? handleGuestProtectedNavigation
+                      : undefined
+                  }
                   aria-current={isActive ? "page" : undefined}
                   aria-label={
-                    item.primary ? "Yeni konu aç" : undefined
+                    item.primary
+                      ? "Yeni konu aç"
+                      : item.icon === "notifications" &&
+                          areNotificationsHydrated &&
+                          unreadCount > 0
+                        ? `${item.label}, ${unreadCount} okunmamış bildirim`
+                        : undefined
                   }
                   className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-bold leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:focus-visible:ring-[#c7896d]/40 ${
                     item.primary
@@ -339,8 +495,8 @@ export default function AppNavigation() {
                   <span
                     className={
                       item.primary
-                        ? "grid size-8 -translate-y-1 place-items-center rounded-full bg-[#5a2538] text-[#fbf8f1] shadow-[0_7px_18px_rgba(90,37,56,0.24)] dark:bg-[#c7896d] dark:text-[#121417] dark:shadow-none"
-                        : undefined
+                        ? "relative grid size-8 -translate-y-1 place-items-center rounded-full bg-[#5a2538] text-[#fbf8f1] shadow-[0_7px_18px_rgba(90,37,56,0.24)] dark:bg-[#c7896d] dark:text-[#121417] dark:shadow-none"
+                        : "relative grid size-8 place-items-center"
                     }
                   >
                     <NavigationIcon
@@ -351,6 +507,11 @@ export default function AppNavigation() {
                           : "size-[1.15rem] shrink-0"
                       }
                     />
+                    {item.icon === "notifications" &&
+                      areNotificationsHydrated &&
+                      unreadCount > 0 && (
+                        <NotificationBadge count={unreadCount} />
+                      )}
                   </span>
                   <span className="max-w-full truncate">{item.label}</span>
                 </Link>

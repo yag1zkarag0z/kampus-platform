@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
+import CampusAuthorProfileLink from "@/components/CampusAuthorProfileLink";
 import CampusCategoryNav, {
   type CampusCategoryFilter,
 } from "@/components/CampusCategoryNav";
@@ -51,6 +52,10 @@ export default function CampusExplore() {
     const normalizedQuery = normalizeSearchValue(query);
 
     const filteredPosts = posts.filter((post) => {
+      if (post.isDeleted) {
+        return false;
+      }
+
       const matchesCategory =
         activeCategory === "Tümü" || post.category === activeCategory;
       const searchableContent = normalizeSearchValue(
@@ -136,7 +141,7 @@ export default function CampusExplore() {
             role="status"
             aria-live="polite"
             aria-atomic="true"
-            className="shrink-0 justify-self-end text-right text-xs font-bold text-[#1c2821]/55 dark:text-white/52"
+            className="shrink-0 justify-self-end text-right text-xs font-bold text-[#58635c] dark:text-[#aeb4af]"
           >
             {visiblePosts.length} sonuç
           </p>
@@ -155,14 +160,14 @@ export default function CampusExplore() {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Başlık, kategori veya kullanıcı ara"
               autoComplete="off"
-              className={`min-h-12 w-full rounded-full border border-[#1c2821]/14 bg-[#f8f4ed]/84 py-2.5 pr-12 pl-11 text-sm font-medium text-[#1c2821] placeholder:text-[#1c2821]/42 dark:border-white/12 dark:bg-white/5 dark:text-[#ece8e1] dark:placeholder:text-white/38 ${focusRing}`}
+              className={`min-h-12 w-full rounded-full border border-[#1c2821]/14 bg-[#f8f4ed]/84 py-2.5 pr-12 pl-11 text-sm font-medium text-[#1c2821] placeholder:text-[#667169] dark:border-white/12 dark:bg-white/5 dark:text-[#ece8e1] dark:placeholder:text-[#9ca39f] ${focusRing}`}
             />
             {query && (
               <button
                 type="button"
                 aria-label="Aramayı temizle"
                 onClick={() => setQuery("")}
-                className={`absolute top-1/2 right-1 grid size-10 -translate-y-1/2 place-items-center rounded-full text-[#1c2821]/52 transition-colors hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-white/50 dark:hover:bg-white/7 dark:hover:text-white ${focusRing}`}
+                className={`absolute top-1/2 right-1 grid size-10 -translate-y-1/2 place-items-center rounded-full text-[#58635c] transition-colors hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-[#aeb4af] dark:hover:bg-white/7 dark:hover:text-white ${focusRing}`}
               >
                 <CloseIcon />
               </button>
@@ -195,7 +200,7 @@ export default function CampusExplore() {
                 className={`min-h-11 rounded-full px-3 text-[11px] font-bold transition-colors sm:px-4 sm:text-xs ${focusRing} ${
                   isActive
                     ? "bg-[#5a1f32] text-[#fffaf4] dark:bg-[#9a5944] dark:text-[#121417]"
-                    : "text-[#1c2821]/58 hover:bg-[#1c2821]/5 hover:text-[#1c2821] dark:text-white/54 dark:hover:bg-white/5 dark:hover:text-white"
+                    : "text-[#58635c] hover:bg-[#1c2821]/5 hover:text-[#1c2821] dark:text-[#aeb4af] dark:hover:bg-white/5 dark:hover:text-white"
                 }`}
               >
                 {sort.label}
@@ -214,12 +219,21 @@ export default function CampusExplore() {
             >
               <article className="py-5 sm:py-6">
                 <header className="flex items-start gap-2.5">
-                  <CampusAuthorAvatar
+                  <CampusAuthorProfileLink
                     author={post.author}
                     authorId={post.authorId}
                     isAnonymous={post.isAnonymous}
-                    size="sm"
-                  />
+                    ariaLabel={`${post.author} profilini aç`}
+                    className="shrink-0"
+                    linkClassName={`rounded-full transition-opacity hover:opacity-80 ${focusRing}`}
+                  >
+                    <CampusAuthorAvatar
+                      author={post.author}
+                      authorId={post.authorId}
+                      isAnonymous={post.isAnonymous}
+                      size="sm"
+                    />
+                  </CampusAuthorProfileLink>
                   <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
                     <span className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#7d3c2d] dark:text-[#d09272]">
                       {post.category}
@@ -228,12 +242,21 @@ export default function CampusExplore() {
                       aria-hidden="true"
                       className="size-1 rotate-45 bg-[#9a5944]/55 dark:bg-[#c7896d]/58"
                     />
-                    <span className="truncate text-xs font-black">
-                      {post.author}
-                    </span>
+                    <CampusAuthorProfileLink
+                      author={post.author}
+                      authorId={post.authorId}
+                      isAnonymous={post.isAnonymous}
+                      ariaLabel={`${post.author} profilini aç`}
+                      className="min-w-0"
+                      linkClassName={`truncate text-xs font-black transition-colors hover:text-[#5a1f32] dark:hover:text-[#d09272] ${focusRing}`}
+                    >
+                      <span className="truncate text-xs font-black">
+                        {post.author}
+                      </span>
+                    </CampusAuthorProfileLink>
                     {!isAnonymousCampusAuthor(post) &&
                       post.detail && (
-                        <span className="text-[11px] font-semibold text-[#1c2821]/50 dark:text-white/46">
+                        <span className="text-[11px] font-semibold text-[#58635c] dark:text-[#aeb4af]">
                           {post.detail}
                         </span>
                       )}
@@ -243,13 +266,13 @@ export default function CampusExplore() {
                     >
                       ·
                     </span>
-                    <time className="text-[11px] font-semibold text-[#1c2821]/50 dark:text-white/46">
+                    <time className="text-[11px] font-semibold text-[#58635c] dark:text-[#aeb4af]">
                       {post.time}
                     </time>
                   </div>
                 </header>
 
-                <h2 className="mt-2.5 max-w-[78ch] text-lg font-black leading-6 tracking-[-0.025em] sm:text-xl sm:leading-7">
+                <h2 className="mt-2.5 max-w-[78ch] break-words text-lg font-black leading-6 tracking-[-0.025em] [overflow-wrap:anywhere] sm:text-xl sm:leading-7">
                   <Link
                     href={`/gonderi/${post.id}`}
                     className={`decoration-[#9a5944]/30 underline-offset-4 transition-colors hover:text-[#7d3c2d] hover:underline dark:hover:text-[#d09272] ${focusRing}`}
@@ -263,7 +286,7 @@ export default function CampusExplore() {
                     variant="compact"
                   />
                 )}
-                <p className="mt-2 max-w-[78ch] text-sm leading-6 tracking-[-0.01em] text-[#1c2821]/76 dark:text-white/74 sm:text-[15px] sm:leading-7">
+                <p className="mt-2 max-w-[78ch] whitespace-pre-wrap break-words text-sm leading-6 tracking-[-0.01em] text-[#1c2821]/76 [overflow-wrap:anywhere] dark:text-white/74 sm:text-[15px] sm:leading-7">
                   {post.body}
                 </p>
 
@@ -278,7 +301,7 @@ export default function CampusExplore() {
                   />
                 )}
 
-                <footer className="mt-4 flex min-h-11 items-center gap-4 text-xs font-bold text-[#1c2821]/54 dark:text-white/50">
+                <footer className="mt-4 flex min-h-11 items-center gap-4 text-xs font-bold text-[#58635c] dark:text-[#aeb4af]">
                   <span className="inline-flex items-center gap-1.5">
                     <HeartIcon />
                     {post.likes} beğeni
@@ -304,7 +327,7 @@ export default function CampusExplore() {
             <h2 className="mt-5 text-lg font-black tracking-[-0.03em]">
               Eşleşen bir konu bulunamadı
             </h2>
-            <p className="mt-2 text-sm leading-6 text-[#1c2821]/60 dark:text-white/56">
+            <p className="mt-2 text-sm leading-6 text-[#58635c] dark:text-[#aeb4af]">
               Arama kelimeni değiştir veya tüm kategorilere geri dön.
             </p>
             <button

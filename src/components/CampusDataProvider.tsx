@@ -13,6 +13,7 @@ import {
 
 import {
   campusPosts,
+  guestCampusPosts,
   isAnonymousCampusAuthor,
   LOCAL_ACCOUNT_OWNER_ID,
   type CampusPost,
@@ -21,10 +22,17 @@ import {
   type CampusPostListing,
   type CampusPostPoll,
 } from "@/data/campusPosts";
+import {
+  CAMPUS_POST_BODY_MAX_LENGTH,
+  CAMPUS_POST_TITLE_MAX_LENGTH,
+} from "@/data/campusContentRules";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
+import { useCampusModeration } from "@/components/CampusModerationProvider";
 
 const STORAGE_KEY = "kampus-posts-v2";
+const guestPreviewPosts = guestCampusPosts;
 const validCategories = new Set<CampusPostCategory>([
+  "Sohbet",
   "İtiraf",
   "Soru",
   "Etkinlik",
@@ -44,7 +52,7 @@ const validListingConditions = new Set<CampusPostListing["condition"]>([
 ]);
 
 export type CreateCampusPostInput = {
-  title: string;
+  title?: string;
   body: string;
   category: CampusPostCategory;
   isAnonymous: boolean;
@@ -56,6 +64,12 @@ export type CreateCampusPostInput = {
 export type AddCampusCommentInput = {
   body: string;
   isAnonymous: boolean;
+  parentId?: string;
+};
+
+export type UpdateCampusPostInput = {
+  title: string;
+  body: string;
 };
 
 type CampusDataContextValue = {
@@ -66,6 +80,19 @@ type CampusDataContextValue = {
   toggleBookmark: (postId: string) => void;
   voteInPoll: (postId: string, optionId: string) => void;
   addComment: (postId: string, input: AddCampusCommentInput) => void;
+  updatePost: (postId: string, input: UpdateCampusPostInput) => boolean;
+  deletePost: (postId: string) => boolean;
+  updateComment: (
+    postId: string,
+    commentId: string,
+    body: string,
+  ) => boolean;
+  deleteComment: (postId: string, commentId: string) => boolean;
+  moderateDeletePost: (postId: string) => boolean;
+  moderateDeleteComment: (
+    postId: string,
+    commentId: string,
+  ) => boolean;
   renameAuthoredContent: (
     previousUsername: string,
     nextUsername: string,
@@ -107,6 +134,10 @@ function isStoredComment(value: unknown) {
     (value.authorId === undefined || typeof value.authorId === "string") &&
     (value.isAnonymous === undefined ||
       typeof value.isAnonymous === "boolean") &&
+    (value.parentId === undefined || typeof value.parentId === "string") &&
+    (value.edited === undefined || typeof value.edited === "boolean") &&
+    (value.isDeleted === undefined ||
+      typeof value.isDeleted === "boolean") &&
     typeof value.body === "string" &&
     typeof value.time === "string"
   );
@@ -119,7 +150,8 @@ function isStoredPostImage(value: unknown): value is CampusPostImage {
 
   return (
     typeof value.src === "string" &&
-    value.src.startsWith("data:image/") &&
+    (value.src.startsWith("data:image/") ||
+      value.src.startsWith("/images/campus-feed/")) &&
     typeof value.width === "number" &&
     Number.isInteger(value.width) &&
     value.width > 0 &&
@@ -200,6 +232,9 @@ function isStoredPost(value: unknown): value is CampusPost {
     (value.authorId === undefined || typeof value.authorId === "string") &&
     (value.isAnonymous === undefined ||
       typeof value.isAnonymous === "boolean") &&
+    (value.edited === undefined || typeof value.edited === "boolean") &&
+    (value.isDeleted === undefined ||
+      typeof value.isDeleted === "boolean") &&
     (value.detail === undefined || typeof value.detail === "string") &&
     typeof value.category === "string" &&
     validCategories.has(value.category as CampusPostCategory) &&
@@ -280,12 +315,30 @@ function migrateLegacyOwnership(posts: CampusPost[]) {
 }
 
 export function CampusDataProvider({ children }: { children: ReactNode }) {
-  const { profile, settings } = useCampusAccount();
-  const [posts, setPosts] = useState<CampusPost[]>(() =>
+  const {
+    profile,
+    settings,
+    isGuest,
+    sessionMode,
+    role,
+  } = useCampusAccount();
+  const { blockedAuthorIds, managedUsers } = useCampusModeration();
+  const [posts, setPostsState] = useState<CampusPost[]>(() =>
     clonePosts(campusPosts),
   );
+  const postsRef = useRef(posts);
   const [isHydrated, setIsHydrated] = useState(false);
   const latestCreatedAtRef = useRef(getLatestCreatedAt(campusPosts));
+  const replacePosts = useCallback((nextPosts: CampusPost[]) => {
+    postsRef.current = nextPosts;
+    setPostsState(nextPosts);
+  }, []);
+  const updatePosts = useCallback(
+    (updater: (currentPosts: CampusPost[]) => CampusPost[]) => {
+      replacePosts(updater(postsRef.current));
+    },
+    [replacePosts],
+  );
 
   useEffect(() => {
     let isCancelled = false;
@@ -306,7 +359,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
               clonePosts(parsedValue),
             );
             latestCreatedAtRef.current = getLatestCreatedAt(storedPosts);
-            setPosts(storedPosts);
+            replacePosts(storedPosts);
           }
         }
       } catch {
@@ -321,7 +374,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [replacePosts]);
 
   useEffect(() => {
     if (!isHydrated) {
@@ -337,13 +390,22 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
 
   const createPost = useCallback(
     (input: CreateCampusPostInput) => {
-      const title = input.title.trim();
+      if (sessionMode !== "member") {
+        throw new Error("This session is read-only.");
+      }
+
+      const title = input.title?.trim() ?? "";
+      const body = input.body.trim();
       const pollOptions = input.pollOptions
         ?.map((option) => option.trim())
         .filter(Boolean);
 
-      if (!title) {
-        throw new Error("A post title is required.");
+      if (
+        (!title && !body) ||
+        title.length > CAMPUS_POST_TITLE_MAX_LENGTH ||
+        body.length > CAMPUS_POST_BODY_MAX_LENGTH
+      ) {
+        throw new Error("Post content is invalid.");
       }
 
       if (
@@ -369,7 +431,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         (input.listing && !isStoredPostListing(input.listing)) ||
         (input.listing && pollOptions) ||
         (input.listing && input.isAnonymous) ||
-        (input.listing && !input.body.trim())
+        (input.listing && !body)
       ) {
         throw new Error("Listing details are invalid.");
       }
@@ -395,7 +457,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
             ? "İlan"
             : input.category,
         title,
-        body: input.body.trim(),
+        body,
         image: input.image ? { ...input.image } : undefined,
         poll: pollOptions
           ? {
@@ -415,21 +477,27 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         bookmarked: false,
       };
 
-      setPosts((currentPosts) => [post, ...currentPosts]);
+      updatePosts((currentPosts) => [post, ...currentPosts]);
       return id;
     },
     [
       profile.department,
       profile.username,
       profile.year,
+      sessionMode,
       settings.showDepartment,
+      updatePosts,
     ],
   );
 
   const toggleLike = useCallback((postId: string) => {
-    setPosts((currentPosts) =>
+    if (sessionMode !== "member") {
+      return;
+    }
+
+    updatePosts((currentPosts) =>
       currentPosts.map((post) => {
-        if (post.id !== postId) {
+        if (post.id !== postId || post.isDeleted) {
           return post;
         }
 
@@ -442,24 +510,33 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         };
       }),
     );
-  }, []);
+  }, [sessionMode, updatePosts]);
 
   const toggleBookmark = useCallback((postId: string) => {
-    setPosts((currentPosts) =>
-      currentPosts.map((post) =>
-        post.id === postId
+    if (sessionMode !== "member") {
+      return;
+    }
+
+    updatePosts((currentPosts) =>
+        currentPosts.map((post) =>
+        post.id === postId && !post.isDeleted
           ? { ...post, bookmarked: !post.bookmarked }
           : post,
       ),
     );
-  }, []);
+  }, [sessionMode, updatePosts]);
 
   const voteInPoll = useCallback(
     (postId: string, optionId: string) => {
-      setPosts((currentPosts) =>
+      if (sessionMode !== "member") {
+        return;
+      }
+
+      updatePosts((currentPosts) =>
         currentPosts.map((post) => {
           if (
             post.id !== postId ||
+            post.isDeleted ||
             !post.poll ||
             post.poll.selectedOptionId === optionId ||
             !post.poll.options.some((option) => option.id === optionId)
@@ -487,43 +564,342 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         }),
       );
     },
-    [],
+    [sessionMode, updatePosts],
   );
 
   const addComment = useCallback(
     (postId: string, input: AddCampusCommentInput) => {
+      if (sessionMode !== "member") {
+        return;
+      }
+
       const body = input.body.trim();
 
       if (!body) {
         return;
       }
 
-      const comment = {
-        id: `comment-${postId}-${Date.now()}`,
-        author: input.isAnonymous ? "Anonim" : `@${profile.username}`,
-        authorId: LOCAL_ACCOUNT_OWNER_ID,
-        isAnonymous: input.isAnonymous,
-        body,
-        time: "Şimdi",
-      };
+      updatePosts((currentPosts) =>
+        currentPosts.map((post) => {
+          if (post.id !== postId || post.isDeleted) {
+            return post;
+          }
 
-      setPosts((currentPosts) =>
-        currentPosts.map((post) =>
-          post.id === postId
-            ? { ...post, comments: [...post.comments, comment] }
-            : post,
-        ),
+          const requestedParent = input.parentId
+            ? post.comments.find(
+                (comment) =>
+                  comment.id === input.parentId && !comment.isDeleted,
+              )
+            : undefined;
+          const parentId = requestedParent
+            ? requestedParent.parentId ?? requestedParent.id
+            : undefined;
+          const comment = {
+            id: `comment-${postId}-${Date.now()}`,
+            author: input.isAnonymous ? "Anonim" : `@${profile.username}`,
+            authorId: LOCAL_ACCOUNT_OWNER_ID,
+            isAnonymous: input.isAnonymous,
+            parentId,
+            body,
+            time: "Şimdi",
+          };
+
+          return { ...post, comments: [...post.comments, comment] };
+        }),
       );
     },
-    [profile.username],
+    [profile.username, sessionMode, updatePosts],
+  );
+
+  const updatePost = useCallback(
+    (postId: string, input: UpdateCampusPostInput) => {
+      if (sessionMode !== "member") {
+        return false;
+      }
+
+      const title = input.title.trim();
+      const body = input.body.trim();
+
+      if (
+        (!title && !body) ||
+        title.length > CAMPUS_POST_TITLE_MAX_LENGTH ||
+        body.length > CAMPUS_POST_BODY_MAX_LENGTH
+      ) {
+        return false;
+      }
+
+      const canUpdate = postsRef.current.some(
+        (post) =>
+          post.id === postId &&
+          post.authorId === LOCAL_ACCOUNT_OWNER_ID &&
+          !post.isDeleted,
+      );
+
+      if (!canUpdate) {
+        return false;
+      }
+
+      updatePosts((currentPosts) =>
+        currentPosts.map((post) => {
+          if (
+            post.id !== postId ||
+            post.authorId !== LOCAL_ACCOUNT_OWNER_ID ||
+            post.isDeleted
+          ) {
+            return post;
+          }
+
+          return { ...post, title, body, edited: true };
+        }),
+      );
+
+      return true;
+    },
+    [sessionMode, updatePosts],
+  );
+
+  const deletePost = useCallback(
+    (postId: string) => {
+      if (sessionMode !== "member") {
+        return false;
+      }
+
+      const canDelete = postsRef.current.some(
+        (post) =>
+          post.id === postId &&
+          post.authorId === LOCAL_ACCOUNT_OWNER_ID &&
+          !post.isDeleted,
+      );
+
+      if (!canDelete) {
+        return false;
+      }
+
+      updatePosts((currentPosts) =>
+        currentPosts.map((post) => {
+          if (
+            post.id !== postId ||
+            post.authorId !== LOCAL_ACCOUNT_OWNER_ID ||
+            post.isDeleted
+          ) {
+            return post;
+          }
+
+          return {
+            ...post,
+            title: "",
+            body: "",
+            image: undefined,
+            poll: undefined,
+            listing: undefined,
+            liked: false,
+            bookmarked: false,
+            isDeleted: true,
+          };
+        }),
+      );
+
+      return true;
+    },
+    [sessionMode, updatePosts],
+  );
+
+  const updateComment = useCallback(
+    (postId: string, commentId: string, nextBody: string) => {
+      if (sessionMode !== "member") {
+        return false;
+      }
+
+      const body = nextBody.trim();
+
+      if (!body || body.length > 500) {
+        return false;
+      }
+
+      const canUpdate = postsRef.current.some(
+        (post) =>
+          post.id === postId &&
+          post.comments.some(
+            (comment) =>
+              comment.id === commentId &&
+              comment.authorId === LOCAL_ACCOUNT_OWNER_ID &&
+              !comment.isDeleted,
+          ),
+      );
+
+      if (!canUpdate) {
+        return false;
+      }
+
+      updatePosts((currentPosts) =>
+        currentPosts.map((post) => {
+          if (post.id !== postId) {
+            return post;
+          }
+
+          return {
+            ...post,
+            comments: post.comments.map((comment) => {
+              if (
+                comment.id !== commentId ||
+                comment.authorId !== LOCAL_ACCOUNT_OWNER_ID ||
+                comment.isDeleted
+              ) {
+                return comment;
+              }
+
+              return { ...comment, body, edited: true };
+            }),
+          };
+        }),
+      );
+
+      return true;
+    },
+    [sessionMode, updatePosts],
+  );
+
+  const deleteComment = useCallback(
+    (postId: string, commentId: string) => {
+      if (sessionMode !== "member") {
+        return false;
+      }
+
+      const canDelete = postsRef.current.some(
+        (post) =>
+          post.id === postId &&
+          post.comments.some(
+            (comment) =>
+              comment.id === commentId &&
+              comment.authorId === LOCAL_ACCOUNT_OWNER_ID &&
+              !comment.isDeleted,
+          ),
+      );
+
+      if (!canDelete) {
+        return false;
+      }
+
+      updatePosts((currentPosts) =>
+        currentPosts.map((post) => {
+          if (post.id !== postId) {
+            return post;
+          }
+
+          return {
+            ...post,
+            comments: post.comments.map((comment) => {
+              if (
+                comment.id !== commentId ||
+                comment.authorId !== LOCAL_ACCOUNT_OWNER_ID ||
+                comment.isDeleted
+              ) {
+                return comment;
+              }
+
+              return { ...comment, body: "", isDeleted: true };
+            }),
+          };
+        }),
+      );
+
+      return true;
+    },
+    [sessionMode, updatePosts],
+  );
+
+  const moderateDeletePost = useCallback(
+    (postId: string) => {
+      if (sessionMode !== "member" || role === "member") {
+        return false;
+      }
+
+      const canDelete = postsRef.current.some(
+        (post) => post.id === postId && !post.isDeleted,
+      );
+
+      if (!canDelete) {
+        return false;
+      }
+
+      updatePosts((currentPosts) =>
+        currentPosts.map((post) => {
+          if (post.id !== postId || post.isDeleted) {
+            return post;
+          }
+
+          return {
+            ...post,
+            title: "",
+            body: "",
+            image: undefined,
+            poll: undefined,
+            listing: undefined,
+            liked: false,
+            bookmarked: false,
+            isDeleted: true,
+          };
+        }),
+      );
+
+      return true;
+    },
+    [role, sessionMode, updatePosts],
+  );
+
+  const moderateDeleteComment = useCallback(
+    (postId: string, commentId: string) => {
+      if (sessionMode !== "member" || role === "member") {
+        return false;
+      }
+
+      const canDelete = postsRef.current.some(
+        (post) =>
+          post.id === postId &&
+          post.comments.some(
+            (comment) =>
+              comment.id === commentId && !comment.isDeleted,
+          ),
+      );
+
+      if (!canDelete) {
+        return false;
+      }
+
+      updatePosts((currentPosts) =>
+        currentPosts.map((post) => {
+          if (post.id !== postId) {
+            return post;
+          }
+
+          return {
+            ...post,
+            comments: post.comments.map((comment) => {
+              if (comment.id !== commentId || comment.isDeleted) {
+                return comment;
+              }
+
+              return { ...comment, body: "", isDeleted: true };
+            }),
+          };
+        }),
+      );
+
+      return true;
+    },
+    [role, sessionMode, updatePosts],
   );
 
   const renameAuthoredContent = useCallback(
     (previousUsername: string, nextUsername: string) => {
+      if (sessionMode !== "member") {
+        return;
+      }
+
       void previousUsername;
       const nextAuthor = `@${nextUsername}`;
 
-      setPosts((currentPosts) =>
+      updatePosts((currentPosts) =>
         currentPosts.map((post) => ({
           ...post,
           author:
@@ -544,69 +920,102 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         })),
       );
     },
-    [],
+    [sessionMode, updatePosts],
   );
 
   const resetCampusData = useCallback(() => {
+    if (sessionMode !== "member") {
+      return;
+    }
+
     const initialPosts = clonePosts(campusPosts);
     latestCreatedAtRef.current = getLatestCreatedAt(initialPosts);
-    setPosts(initialPosts);
+    replacePosts(initialPosts);
 
     try {
       window.localStorage.removeItem(STORAGE_KEY);
     } catch {
       // Reset should still complete in memory when storage is unavailable.
     }
-  }, []);
+  }, [replacePosts, sessionMode]);
 
   const visiblePosts = useMemo(() => {
     const accountDetail = settings.showDepartment
       ? `${profile.department} · ${profile.year}`
       : "Öğrenci";
     const accountAuthor = `@${profile.username}`;
+    const sourcePosts = isGuest
+      ? clonePosts(guestPreviewPosts)
+      : posts;
+    const suspendedAuthorIds = new Set(
+      managedUsers
+        .filter((user) => user.status === "suspended")
+        .map((user) => user.authorId),
+    );
 
-    return posts.map((post) => {
+    return sourcePosts
+      .filter(
+        (post) =>
+          isGuest ||
+          !post.authorId ||
+          (!blockedAuthorIds.has(post.authorId) &&
+            !suspendedAuthorIds.has(post.authorId)),
+      )
+      .map((post) => {
       const isAnonymous = isAnonymousCampusAuthor(post);
-      const isLocalAccount =
-        !isAnonymous &&
-        (post.authorId === LOCAL_ACCOUNT_OWNER_ID ||
-          post.author === "@sen");
+        const isLocalAccount =
+          !isGuest &&
+          !isAnonymous &&
+          (post.authorId === LOCAL_ACCOUNT_OWNER_ID ||
+            post.author === "@sen");
 
-      return {
-        ...post,
-        author: isAnonymous
-          ? "Anonim"
-          : isLocalAccount
-            ? accountAuthor
-            : post.author,
-        isAnonymous,
-        detail: isAnonymous
-          ? undefined
-          : isLocalAccount
-            ? accountDetail
-            : post.detail,
-        comments: post.comments.map((comment) => {
-          const isAnonymousComment =
-            isAnonymousCampusAuthor(comment);
-          const isLocalAccountComment =
-            !isAnonymousComment &&
-            (comment.authorId === LOCAL_ACCOUNT_OWNER_ID ||
-              comment.author === "@sen");
+        return {
+          ...post,
+          author: isAnonymous
+            ? "Anonim"
+            : isLocalAccount
+              ? accountAuthor
+              : post.author,
+          isAnonymous,
+          detail: isAnonymous
+            ? undefined
+            : isLocalAccount
+              ? accountDetail
+              : post.detail,
+          comments: post.comments
+            .filter(
+              (comment) =>
+                isGuest ||
+                !comment.authorId ||
+                (!blockedAuthorIds.has(comment.authorId) &&
+                  !suspendedAuthorIds.has(comment.authorId)),
+            )
+            .map((comment) => {
+            const isAnonymousComment =
+              isAnonymousCampusAuthor(comment);
+            const isLocalAccountComment =
+              !isGuest &&
+              !isAnonymousComment &&
+              (comment.authorId === LOCAL_ACCOUNT_OWNER_ID ||
+                comment.author === "@sen");
 
-          return {
-            ...comment,
-            author: isAnonymousComment
-              ? "Anonim"
-              : isLocalAccountComment
-                ? accountAuthor
-                : comment.author,
-            isAnonymous: isAnonymousComment,
-          };
-        }),
-      };
-    });
+            return {
+              ...comment,
+              author: isAnonymousComment
+                ? "Anonim"
+                : isLocalAccountComment
+                  ? accountAuthor
+                  : comment.author,
+              isAnonymous: isAnonymousComment,
+            };
+            }),
+        };
+      });
   }, [
+    blockedAuthorIds,
+    managedUsers,
     posts,
+    isGuest,
     profile.department,
     profile.username,
     profile.year,
@@ -622,6 +1031,12 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
       toggleBookmark,
       voteInPoll,
       addComment,
+      updatePost,
+      deletePost,
+      updateComment,
+      deleteComment,
+      moderateDeletePost,
+      moderateDeleteComment,
       renameAuthoredContent,
       resetCampusData,
     }),
@@ -633,6 +1048,12 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
       toggleBookmark,
       voteInPoll,
       addComment,
+      updatePost,
+      deletePost,
+      updateComment,
+      deleteComment,
+      moderateDeletePost,
+      moderateDeleteComment,
       renameAuthoredContent,
       resetCampusData,
     ],

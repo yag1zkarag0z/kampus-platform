@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { useCampusAccount } from "@/components/CampusAccountProvider";
@@ -12,8 +12,25 @@ export default function CampusSessionGate({
   children: ReactNode;
 }) {
   const router = useRouter();
-  const { isHydrated, isSignedIn } = useCampusAccount();
+  const pathname = usePathname();
+  const {
+    isHydrated,
+    isSignedIn,
+    isGuest,
+    sessionExpired,
+    role,
+  } = useCampusAccount();
   const [isIntroComplete, setIsIntroComplete] = useState(false);
+  const isGuestRouteAllowed =
+    pathname === "/akis" ||
+    pathname === "/kesfet" ||
+    pathname === "/bildirimler" ||
+    pathname === "/kaydedilenler" ||
+    pathname === "/profil" ||
+    pathname.startsWith("/profil/") ||
+    pathname.startsWith("/gonderi/");
+  const canAccessAdmin =
+    pathname !== "/admin" || role === "admin" || role === "moderator";
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia(
@@ -29,9 +46,23 @@ export default function CampusSessionGate({
 
   useEffect(() => {
     if (isHydrated && !isSignedIn) {
-      router.replace("/giris");
+      router.replace(
+        sessionExpired ? "/giris?reason=session-expired" : "/giris",
+      );
+    } else if (isHydrated && isGuest && !isGuestRouteAllowed) {
+      router.replace("/akis");
+    } else if (isHydrated && isSignedIn && !canAccessAdmin) {
+      router.replace("/akis");
     }
-  }, [isHydrated, isSignedIn, router]);
+  }, [
+    isGuest,
+    isGuestRouteAllowed,
+    canAccessAdmin,
+    isHydrated,
+    isSignedIn,
+    router,
+    sessionExpired,
+  ]);
 
   if (!isHydrated || (isSignedIn && !isIntroComplete)) {
     return <CampusLoadingScreen />;
@@ -39,6 +70,14 @@ export default function CampusSessionGate({
 
   if (!isSignedIn) {
     return <CampusLoadingScreen statusText="Çıkış yapılıyor" />;
+  }
+
+  if (isGuest && !isGuestRouteAllowed) {
+    return <CampusLoadingScreen statusText="Misafir görünümüne dönülüyor" />;
+  }
+
+  if (!canAccessAdmin) {
+    return <CampusLoadingScreen statusText="Akışa dönülüyor" />;
   }
 
   return children;

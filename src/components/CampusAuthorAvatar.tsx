@@ -64,13 +64,14 @@ export default function CampusAuthorAvatar({
   size?: AvatarSize;
   className?: string;
 }) {
-  const { profile } = useCampusAccount();
+  const { profile, sessionMode } = useCampusAccount();
   const isAnonymous = isAnonymousCampusAuthor({
     author,
     authorId,
     isAnonymous: isAnonymousProp,
   });
   const isLocalAccount =
+    sessionMode === "member" &&
     !isAnonymous &&
     (authorId === LOCAL_ACCOUNT_OWNER_ID || author === "@sen");
   const avatarDataUrl = isLocalAccount ? profile.avatarDataUrl : undefined;

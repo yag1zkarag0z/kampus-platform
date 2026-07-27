@@ -31,7 +31,7 @@ export default function CampusLoadingScreen({
           <span className="text-[#9a5944] dark:text-[#d09272]">.</span>
         </p>
 
-        <p className="campus-loading-credit mt-4 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#1c2821]/48 dark:text-white/46 sm:text-[11px]">
+        <p className="campus-loading-credit mt-4 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#58635c] dark:text-[#aeb4af] sm:text-[11px]">
           by <span className="text-[#7d3c2d] dark:text-[#d09272]">Yagiz Karagoz</span>
         </p>
       </div>

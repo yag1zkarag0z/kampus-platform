@@ -48,6 +48,8 @@ const navItems = [
 
 export default function Hero() {
   const heroRef = useRef<HTMLElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileNavigationRef = useRef<HTMLElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const navigateTo = (
@@ -74,12 +76,60 @@ export default function Hero() {
   useEffect(() => {
     if (!menuOpen) return;
 
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuOpen(false);
+    const previousOverflow = document.body.style.overflow;
+    const menuButton = menuButtonRef.current;
+    const focusFrame = window.requestAnimationFrame(() => {
+      mobileNavigationRef.current
+        ?.querySelector<HTMLElement>("a, button")
+        ?.focus();
+    });
+    const handleMenuKeyboard = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMenuOpen(false);
+        return;
+      }
+
+      if (event.key !== "Tab" || !mobileNavigationRef.current) {
+        return;
+      }
+
+      const focusableElements = [
+        menuButton,
+        ...Array.from(
+          mobileNavigationRef.current.querySelectorAll<HTMLElement>(
+            "a[href], button:not([disabled])",
+          ),
+        ),
+      ].filter((element): element is HTMLElement => Boolean(element));
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements.at(-1);
+
+      if (!firstElement || !lastElement) {
+        return;
+      }
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (
+        !event.shiftKey &&
+        document.activeElement === lastElement
+      ) {
+        event.preventDefault();
+        firstElement.focus();
+      }
     };
 
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleMenuKeyboard);
+
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleMenuKeyboard);
+      menuButton?.focus();
+    };
   }, [menuOpen]);
 
   useGSAP(
@@ -245,6 +295,7 @@ export default function Hero() {
             </div>
 
             <button
+              ref={menuButtonRef}
               type="button"
               aria-expanded={menuOpen}
               aria-controls="mobile-navigation"
@@ -275,6 +326,7 @@ export default function Hero() {
 
           {menuOpen && (
             <nav
+              ref={mobileNavigationRef}
               id="mobile-navigation"
               aria-label="Mobil menü"
               className="mobile-nav-panel absolute inset-x-0 top-[calc(100%+0.65rem)] z-[60] overflow-hidden rounded-2xl border border-[#5a1f32]/16 bg-[#fffaf4]/98 p-2 text-sm font-bold shadow-[0_24px_70px_rgba(55,29,35,0.2)] backdrop-blur-xl dark:border-[#9a5944]/30 dark:bg-[#191b1f]/98 dark:text-[#ece8e1] md:hidden"
@@ -323,13 +375,17 @@ export default function Hero() {
         {menuOpen && (
           <button
             type="button"
+            tabIndex={-1}
             aria-label="Menüyü kapat"
             onClick={() => setMenuOpen(false)}
             className="fixed inset-0 z-40 cursor-default bg-[#251820]/12 backdrop-blur-[1px] dark:bg-black/35 md:hidden"
           />
         )}
 
-        <main className="grid flex-1 gap-8 py-8 sm:gap-10 sm:py-11 lg:grid-cols-[minmax(0,1fr)_minmax(390px,470px)] lg:items-center lg:gap-x-14 lg:gap-y-8 lg:py-10 xl:gap-x-24 xl:py-14">
+        <main
+          inert={menuOpen}
+          className="grid flex-1 gap-8 py-8 sm:gap-10 sm:py-11 lg:grid-cols-[minmax(0,1fr)_minmax(390px,470px)] lg:items-center lg:gap-x-14 lg:gap-y-8 lg:py-10 xl:gap-x-24 xl:py-14"
+        >
           <div className="min-w-0 lg:col-start-1 lg:row-start-1 lg:self-end">
             <div className="hero-kicker mb-6 flex items-center gap-3 sm:mb-7">
               <span

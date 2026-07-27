@@ -51,38 +51,54 @@ function getInitials(displayName: string) {
 }
 
 export default function CampusProfile() {
-  const { profile, settings, isHydrated: isAccountHydrated } =
+  const {
+    profile,
+    settings,
+    isGuest,
+    isHydrated: isAccountHydrated,
+  } =
     useCampusAccount();
   const { posts, isHydrated: isDataHydrated } = useCampusData();
   const [activeTab, setActiveTab] = useState<ProfileTab>("topics");
 
   const authoredTopics = useMemo(
     () =>
-      posts
-        .filter((post) => isCurrentUserAuthor(post))
-        .sort(
-          (first, second) =>
-            second.createdAt - first.createdAt ||
-            second.id.localeCompare(first.id, "tr"),
-        ),
-    [posts],
+      isGuest
+        ? []
+        : posts
+            .filter(
+              (post) =>
+                !post.isDeleted && isCurrentUserAuthor(post),
+            )
+            .sort(
+              (first, second) =>
+                second.createdAt - first.createdAt ||
+                second.id.localeCompare(first.id, "tr"),
+            ),
+    [isGuest, posts],
   );
 
   const authoredComments = useMemo(
     () =>
-      [...posts]
-        .sort(
-          (first, second) =>
-            second.createdAt - first.createdAt ||
-            second.id.localeCompare(first.id, "tr"),
-        )
-        .flatMap((post) =>
-          [...post.comments]
-            .reverse()
-            .filter((comment) => isCurrentUserAuthor(comment))
-            .map((comment) => ({ comment, post })),
-        ),
-    [posts],
+      isGuest
+        ? []
+        : [...posts]
+            .sort(
+              (first, second) =>
+                second.createdAt - first.createdAt ||
+                second.id.localeCompare(first.id, "tr"),
+            )
+            .flatMap((post) =>
+              [...post.comments]
+                .reverse()
+                .filter(
+                  (comment) =>
+                    !comment.isDeleted &&
+                    isCurrentUserAuthor(comment),
+                )
+                .map((comment) => ({ comment, post })),
+            ),
+    [isGuest, posts],
   );
 
   const receivedLikes = authoredTopics.reduce(
@@ -137,7 +153,7 @@ export default function CampusProfile() {
           <span aria-hidden="true" />
           <div className="min-w-0 justify-self-center text-center">
             <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#7d3c2d] dark:text-[#c7896d]">
-              Hesabın
+              {isGuest ? "Misafir hesabı" : "Hesabın"}
             </p>
             <h1
               id="profile-title"
@@ -147,13 +163,19 @@ export default function CampusProfile() {
             </h1>
           </div>
 
-          <Link
-            href="/ayarlar"
-            aria-label="Hesap ayarlarını aç"
-            className={`grid size-11 shrink-0 place-items-center justify-self-end rounded-full text-[#58635c] transition-colors hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-[#aeb4af] dark:hover:bg-white/7 dark:hover:text-white ${focusRing}`}
-          >
-            <SettingsIcon />
-          </Link>
+          {isGuest ? (
+            <span className="justify-self-end bg-[#1c2821]/6 px-2.5 py-1.5 font-mono text-[9px] font-black uppercase tracking-[0.1em] text-[#58635c] dark:bg-white/7 dark:text-[#aeb4af]">
+              Salt okunur
+            </span>
+          ) : (
+            <Link
+              href="/ayarlar"
+              aria-label="Hesap ayarlarını aç"
+              className={`grid size-11 shrink-0 place-items-center justify-self-end rounded-full text-[#58635c] transition-colors hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-[#aeb4af] dark:hover:bg-white/7 dark:hover:text-white ${focusRing}`}
+            >
+              <SettingsIcon />
+            </Link>
+          )}
         </div>
       </header>
 
@@ -189,23 +211,42 @@ export default function CampusProfile() {
                 </div>
 
                 <div className="flex flex-col gap-2 min-[360px]:flex-row lg:shrink-0">
-                  <Link
-                    href="/profil/duzenle"
-                    className={`inline-flex min-h-11 items-center justify-center bg-[#5a1f32] px-4 text-xs font-black text-white transition-colors hover:bg-[#6b2940] dark:bg-[#9a5944] dark:text-[#121417] dark:hover:bg-[#ad6b53] ${focusRing}`}
-                  >
-                    Profili düzenle
-                  </Link>
-                  <Link
-                    href="/ayarlar"
-                    className={`inline-flex min-h-11 items-center justify-center border border-[#1c2821]/14 px-4 text-xs font-black transition-colors hover:border-[#5a1f32]/30 hover:bg-[#5a1f32]/5 dark:border-white/12 dark:hover:border-[#c7896d]/32 dark:hover:bg-[#c7896d]/7 ${focusRing}`}
-                  >
-                    Ayarlar
-                  </Link>
+                  {isGuest ? (
+                    <>
+                      <Link
+                        href="/giris"
+                        className={`inline-flex min-h-11 items-center justify-center bg-[#5a1f32] px-4 text-xs font-black text-white transition-colors hover:bg-[#6b2940] dark:bg-[#9a5944] dark:text-[#121417] dark:hover:bg-[#ad6b53] ${focusRing}`}
+                      >
+                        Giriş yap
+                      </Link>
+                      <Link
+                        href="/kayit"
+                        className={`inline-flex min-h-11 items-center justify-center border border-[#1c2821]/14 px-4 text-xs font-black transition-colors hover:border-[#5a1f32]/30 hover:bg-[#5a1f32]/5 dark:border-white/12 dark:hover:border-[#c7896d]/32 dark:hover:bg-[#c7896d]/7 ${focusRing}`}
+                      >
+                        Kayıt ol
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        href="/profil/duzenle"
+                        className={`inline-flex min-h-11 items-center justify-center bg-[#5a1f32] px-4 text-xs font-black text-white transition-colors hover:bg-[#6b2940] dark:bg-[#9a5944] dark:text-[#121417] dark:hover:bg-[#ad6b53] ${focusRing}`}
+                      >
+                        Profili düzenle
+                      </Link>
+                      <Link
+                        href="/ayarlar"
+                        className={`inline-flex min-h-11 items-center justify-center border border-[#1c2821]/14 px-4 text-xs font-black transition-colors hover:border-[#5a1f32]/30 hover:bg-[#5a1f32]/5 dark:border-white/12 dark:hover:border-[#c7896d]/32 dark:hover:bg-[#c7896d]/7 ${focusRing}`}
+                      >
+                        Ayarlar
+                      </Link>
+                    </>
+                  )}
                 </div>
               </div>
 
               {profile.bio ? (
-                <p className="mt-5 max-w-2xl whitespace-pre-wrap text-sm leading-6 text-[#1c2821]/78 dark:text-white/74">
+                <p className="mt-5 max-w-2xl whitespace-pre-wrap break-words text-sm leading-6 text-[#1c2821]/78 [overflow-wrap:anywhere] dark:text-white/74">
                   {profile.bio}
                 </p>
               ) : (
@@ -278,7 +319,7 @@ export default function CampusProfile() {
                         </time>
                       </div>
 
-                      <h3 className="mt-2.5 text-lg font-black leading-6 tracking-[-0.025em]">
+                      <h3 className="mt-2.5 break-words text-lg font-black leading-6 tracking-[-0.025em] [overflow-wrap:anywhere]">
                         <Link
                           href={`/gonderi/${post.id}`}
                           className={`decoration-[#9a5944]/30 underline-offset-4 transition-colors hover:text-[#7d3c2d] hover:underline dark:hover:text-[#d09272] ${focusRing}`}
@@ -295,7 +336,7 @@ export default function CampusProfile() {
                       )}
 
                       {post.body && (
-                        <p className="mt-2 line-clamp-2 whitespace-pre-wrap text-sm leading-6 text-[#1c2821]/70 dark:text-white/68">
+                        <p className="mt-2 line-clamp-2 whitespace-pre-wrap break-words text-sm leading-6 text-[#1c2821]/70 [overflow-wrap:anywhere] dark:text-white/68">
                           {post.body}
                         </p>
                       )}
@@ -323,10 +364,14 @@ export default function CampusProfile() {
               </ol>
             ) : (
               <ProfileEmptyState
-                title="Henüz bir konu açmadın"
-                description="Kendi kullanıcı adınla açtığın konular burada görünür. Anonim konular profilinle ilişkilendirilmez."
-                actionLabel="Konu aç"
-                actionHref="/konu-olustur"
+                title={isGuest ? "Misafir profilinde konu yok" : "Henüz bir konu açmadın"}
+                description={
+                  isGuest
+                    ? "İsimsiz profil yalnızca görüntüleme içindir. Konu açmak için giriş yapabilirsin."
+                    : "Kendi kullanıcı adınla açtığın konular burada görünür. Anonim konular profilinle ilişkilendirilmez."
+                }
+                actionLabel={isGuest ? "Akışa göz at" : "Konu aç"}
+                actionHref={isGuest ? "/akis" : "/konu-olustur"}
               />
             )}
           </div>
@@ -355,7 +400,7 @@ export default function CampusProfile() {
                         </Link>{" "}
                         konusuna yorum
                       </p>
-                      <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#1c2821]/78 dark:text-white/74">
+                      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-[#1c2821]/78 [overflow-wrap:anywhere] dark:text-white/74">
                         {comment.body}
                       </p>
                       <div className="mt-3 flex items-center justify-between gap-3">
@@ -375,8 +420,12 @@ export default function CampusProfile() {
               </ol>
             ) : (
               <ProfileEmptyState
-                title="Henüz bir yorum yazmadın"
-                description="Kendi kullanıcı adınla yaptığın yorumlar burada görünür. Anonim yorumlar profilinde yer almaz."
+                title={isGuest ? "Misafir profilinde yorum yok" : "Henüz bir yorum yazmadın"}
+                description={
+                  isGuest
+                    ? "İsimsiz profil yalnızca görüntüleme içindir. Yorum yapmak için giriş yapabilirsin."
+                    : "Kendi kullanıcı adınla yaptığın yorumlar burada görünür. Anonim yorumlar profilinde yer almaz."
+                }
                 actionLabel="Akışa göz at"
                 actionHref="/akis"
               />
@@ -512,16 +561,16 @@ function ProfileLoading() {
       className="min-h-[calc(100svh-4rem)] bg-[#fbf8f1] text-[#1c2821] dark:bg-[#17191c] dark:text-[#ece8e1] md:min-h-svh"
     >
       <div className="flex min-h-16 items-center border-b border-[#1c2821]/12 px-4 dark:border-white/10 sm:px-6">
-        <div className="h-5 w-20 animate-pulse bg-[#1c2821]/8 dark:bg-white/8" />
+        <div className="h-5 w-20 animate-pulse bg-[#1c2821]/8 motion-reduce:animate-none dark:bg-white/8" />
       </div>
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <div className="flex items-start gap-5">
-          <div className="size-24 shrink-0 animate-pulse rounded-full bg-[#1c2821]/8 dark:bg-white/8 sm:size-28" />
+          <div className="size-24 shrink-0 animate-pulse rounded-full bg-[#1c2821]/8 motion-reduce:animate-none dark:bg-white/8 sm:size-28" />
           <div className="w-full max-w-lg">
-            <div className="h-7 w-44 animate-pulse bg-[#1c2821]/8 dark:bg-white/8" />
-            <div className="mt-3 h-4 w-28 animate-pulse bg-[#1c2821]/7 dark:bg-white/7" />
-            <div className="mt-7 h-4 w-full animate-pulse bg-[#1c2821]/7 dark:bg-white/7" />
-            <div className="mt-2 h-4 w-3/4 animate-pulse bg-[#1c2821]/7 dark:bg-white/7" />
+            <div className="h-7 w-44 animate-pulse bg-[#1c2821]/8 motion-reduce:animate-none dark:bg-white/8" />
+            <div className="mt-3 h-4 w-28 animate-pulse bg-[#1c2821]/7 motion-reduce:animate-none dark:bg-white/7" />
+            <div className="mt-7 h-4 w-full animate-pulse bg-[#1c2821]/7 motion-reduce:animate-none dark:bg-white/7" />
+            <div className="mt-2 h-4 w-3/4 animate-pulse bg-[#1c2821]/7 motion-reduce:animate-none dark:bg-white/7" />
           </div>
         </div>
         <span className="sr-only">Profil yükleniyor…</span>

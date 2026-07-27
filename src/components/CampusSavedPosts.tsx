@@ -1,30 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useRef } from "react";
 
+import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
+import CampusAuthorProfileLink from "@/components/CampusAuthorProfileLink";
 import { useCampusData } from "@/components/CampusDataProvider";
 import CampusListingMeta from "@/components/CampusListingMeta";
 import CampusPoll from "@/components/CampusPoll";
 import CampusPostImage from "@/components/CampusPostImage";
+import { useFeedback } from "@/components/FeedbackProvider";
 import { isAnonymousCampusAuthor } from "@/data/campusPosts";
 
 const focusRing =
   "outline-none focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fbf8f1] dark:focus-visible:ring-[#c7896d]/30 dark:focus-visible:ring-offset-[#17191c]";
 
 export default function CampusSavedPosts() {
+  const router = useRouter();
+  const { isGuest } = useCampusAccount();
   const { posts, isHydrated, toggleBookmark } = useCampusData();
+  const { showToast } = useFeedback();
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const [removedPost, setRemovedPost] = useState<{
-    id: string;
-    title: string;
-  } | null>(null);
 
   const savedPosts = useMemo(
     () =>
       posts
-        .filter((post) => post.bookmarked)
+        .filter((post) => post.bookmarked && !post.isDeleted)
         .sort(
           (first, second) =>
             second.createdAt - first.createdAt ||
@@ -34,18 +37,27 @@ export default function CampusSavedPosts() {
   );
 
   const removeSavedPost = (postId: string, title: string) => {
-    toggleBookmark(postId);
-    setRemovedPost({ id: postId, title });
-    requestAnimationFrame(() => titleRef.current?.focus());
-  };
-
-  const undoRemoval = () => {
-    if (!removedPost) {
+    if (isGuest) {
+      showToast({
+        message: "Kaydedilenleri değiştirmek için giriş yap veya kayıt ol.",
+        tone: "info",
+        action: {
+          label: "Giriş yap",
+          onClick: () => router.push("/giris"),
+        },
+      });
       return;
     }
 
-    toggleBookmark(removedPost.id);
-    setRemovedPost(null);
+    toggleBookmark(postId);
+    showToast({
+      message: `“${title || "Gönderi"}” kaydedilenlerden kaldırıldı.`,
+      tone: "info",
+      action: {
+        label: "Geri al",
+        onClick: () => toggleBookmark(postId),
+      },
+    });
     requestAnimationFrame(() => titleRef.current?.focus());
   };
 
@@ -76,7 +88,7 @@ export default function CampusSavedPosts() {
             role="status"
             aria-live="polite"
             aria-atomic="true"
-            className="sr-only shrink-0 justify-self-end text-right text-xs font-bold text-[#1c2821]/55 min-[420px]:not-sr-only dark:text-white/52"
+            className="sr-only shrink-0 justify-self-end text-right text-xs font-bold text-[#58635c] min-[420px]:not-sr-only dark:text-[#aeb4af]"
           >
             {isHydrated
               ? `${savedPosts.length} kayıt`
@@ -84,25 +96,6 @@ export default function CampusSavedPosts() {
           </p>
         </div>
       </header>
-
-      {removedPost && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="flex min-h-12 items-center justify-between gap-3 border-b border-[#1c2821]/10 bg-[#eee9e1]/65 px-4 text-xs font-semibold dark:border-white/8 dark:bg-white/[0.035] sm:px-6"
-        >
-          <span className="min-w-0 truncate">
-            “{removedPost.title}” kaydedilenlerden kaldırıldı.
-          </span>
-          <button
-            type="button"
-            onClick={undoRemoval}
-            className={`inline-flex min-h-11 shrink-0 items-center px-2 font-black text-[#7d3c2d] underline decoration-[#9a5944]/35 underline-offset-4 dark:text-[#d09272] ${focusRing}`}
-          >
-            Geri al
-          </button>
-        </div>
-      )}
 
       {!isHydrated ? (
         <SavedPostsLoading />
@@ -115,12 +108,21 @@ export default function CampusSavedPosts() {
             >
               <article className="flex h-full min-w-0 flex-col py-5 sm:py-6">
                 <header className="flex items-start gap-2.5">
-                  <CampusAuthorAvatar
+                  <CampusAuthorProfileLink
                     author={post.author}
                     authorId={post.authorId}
                     isAnonymous={post.isAnonymous}
-                    size="sm"
-                  />
+                    ariaLabel={`${post.author} profilini aç`}
+                    className="shrink-0"
+                    linkClassName={`rounded-full transition-opacity hover:opacity-80 ${focusRing}`}
+                  >
+                    <CampusAuthorAvatar
+                      author={post.author}
+                      authorId={post.authorId}
+                      isAnonymous={post.isAnonymous}
+                      size="sm"
+                    />
+                  </CampusAuthorProfileLink>
                   <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
                     <span className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#7d3c2d] dark:text-[#d09272]">
                       {post.category}
@@ -129,12 +131,21 @@ export default function CampusSavedPosts() {
                       aria-hidden="true"
                       className="size-1 rotate-45 bg-[#9a5944]/55 dark:bg-[#c7896d]/58"
                     />
-                    <span className="truncate text-xs font-black">
-                      {post.author}
-                    </span>
+                    <CampusAuthorProfileLink
+                      author={post.author}
+                      authorId={post.authorId}
+                      isAnonymous={post.isAnonymous}
+                      ariaLabel={`${post.author} profilini aç`}
+                      className="min-w-0"
+                      linkClassName={`truncate text-xs font-black transition-colors hover:text-[#5a1f32] dark:hover:text-[#d09272] ${focusRing}`}
+                    >
+                      <span className="truncate text-xs font-black">
+                        {post.author}
+                      </span>
+                    </CampusAuthorProfileLink>
                     {!isAnonymousCampusAuthor(post) &&
                       post.detail && (
-                        <span className="text-[11px] font-semibold text-[#1c2821]/50 dark:text-white/46">
+                        <span className="text-[11px] font-semibold text-[#58635c] dark:text-[#aeb4af]">
                           {post.detail}
                         </span>
                       )}
@@ -144,13 +155,13 @@ export default function CampusSavedPosts() {
                     >
                       ·
                     </span>
-                    <time className="text-[11px] font-semibold text-[#1c2821]/50 dark:text-white/46">
+                    <time className="text-[11px] font-semibold text-[#58635c] dark:text-[#aeb4af]">
                       {post.time}
                     </time>
                   </div>
                 </header>
 
-                <h2 className="mt-2.5 max-w-[78ch] text-lg font-black leading-6 tracking-[-0.025em] sm:text-xl sm:leading-7">
+                <h2 className="mt-2.5 max-w-[78ch] break-words text-lg font-black leading-6 tracking-[-0.025em] [overflow-wrap:anywhere] sm:text-xl sm:leading-7">
                   <Link
                     href={`/gonderi/${post.id}`}
                     className={`decoration-[#9a5944]/30 underline-offset-4 transition-colors hover:text-[#7d3c2d] hover:underline dark:hover:text-[#d09272] ${focusRing}`}
@@ -166,7 +177,7 @@ export default function CampusSavedPosts() {
                   />
                 )}
 
-                <p className="mt-2 line-clamp-3 max-w-[78ch] whitespace-pre-wrap text-sm leading-6 tracking-[-0.01em] text-[#1c2821]/76 dark:text-white/74 sm:text-[15px] sm:leading-7">
+                <p className="mt-2 line-clamp-3 max-w-[78ch] whitespace-pre-wrap break-words text-sm leading-6 tracking-[-0.01em] text-[#1c2821]/76 [overflow-wrap:anywhere] dark:text-white/74 sm:text-[15px] sm:leading-7">
                   {post.body}
                 </p>
 
@@ -181,7 +192,7 @@ export default function CampusSavedPosts() {
                   />
                 )}
 
-                <footer className="mt-auto flex min-h-14 flex-wrap items-center gap-x-4 gap-y-2 pt-4 text-xs font-bold text-[#1c2821]/54 dark:text-white/50">
+                <footer className="mt-auto flex min-h-14 flex-wrap items-center gap-x-4 gap-y-2 pt-4 text-xs font-bold text-[#58635c] dark:text-[#aeb4af]">
                   <span className="inline-flex min-h-11 items-center gap-1.5">
                     <HeartIcon />
                     {post.likes} beğeni
@@ -221,7 +232,7 @@ function SavedPostsLoading() {
       <div>
         <span
           aria-hidden="true"
-          className="mx-auto block size-7 animate-spin rounded-full border-2 border-[#1c2821]/15 border-t-[#8f3427] dark:border-white/14 dark:border-t-[#c7896d]"
+          className="mx-auto block size-7 animate-spin rounded-full border-2 border-[#1c2821]/15 border-t-[#8f3427] motion-reduce:animate-none dark:border-white/14 dark:border-t-[#c7896d]"
         />
         <p className="mt-4 text-sm font-bold text-[#1c2821]/62 dark:text-white/60">
           Kaydedilen gönderiler yükleniyor…
@@ -244,7 +255,7 @@ function SavedPostsEmptyState() {
         <h2 className="mt-5 text-lg font-black tracking-[-0.03em]">
           Henüz bir gönderi kaydetmedin
         </h2>
-        <p className="mt-2 text-sm leading-6 text-[#1c2821]/60 dark:text-white/56">
+        <p className="mt-2 text-sm leading-6 text-[#58635c] dark:text-[#aeb4af]">
           Sonra yeniden okumak istediğin konuları kaydettiğinde burada
           bulabilirsin.
         </p>
