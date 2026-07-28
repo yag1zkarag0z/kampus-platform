@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KAMPÜS
 
-## Getting Started
+KAMPÜS, Yaşar Üniversitesi öğrencileri için geliştirilen bağımsız bir kampüs
+topluluğu projesidir. Üniversitenin resmî ürünü değildir ve üniversite
+tarafından işletilmez.
 
-First, run the development server:
+## Teknolojiler
+
+- Next.js 16, React 19 ve TypeScript
+- Tailwind CSS ve GSAP
+- PostgreSQL
+- Drizzle ORM ve `node-postgres`
+- Vitest, Testing Library ve Playwright
+
+## Yerel geliştirme
+
+Bağımlılıkları kurup örnek ortam dosyasını kopyalayın:
 
 ```bash
+npm install
+cp .env.example .env
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Uygulama varsayılan olarak `http://localhost:3000` adresinde çalışır.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## PostgreSQL
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Yerel veritabanı tanımı [compose.yaml](./compose.yaml) içindedir. Docker
+kurulduktan sonra geliştirme veritabanını başlatın:
 
-## Learn More
+```bash
+npm run db:up
+npm run db:generate
+npm run db:migrate
+```
 
-To learn more about Next.js, take a look at the following resources:
+Kullanılabilir veritabanı komutları:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `npm run db:up`: geliştirme PostgreSQL servisini başlatır.
+- `npm run db:test:up`: izole test PostgreSQL servisini başlatır.
+- `npm run db:down`: servisleri durdurur, verileri silmez.
+- `npm run db:generate`: incelenebilir SQL migration dosyaları üretir.
+- `npm run db:migrate`: bekleyen migration dosyalarını uygular.
+- `npm run db:check`: migration geçmişinin tutarlılığını kontrol eder.
+- `npm run db:studio`: Drizzle Studio'yu açar.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`GET /v1/health`, uygulamanın PostgreSQL bağlantısını güvenli bir yanıtla
+kontrol eder. Bağlantı yoksa hassas hata ayrıntıları döndürmeden `503` verir.
 
-## Deploy on Vercel
+## Testler
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run lint
+npm run typecheck
+npm run test
+npm run test:e2e
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Gerçek PostgreSQL entegrasyon testi için önce test veritabanını başlatın:
+
+```bash
+npm run db:test:up
+npm run test:db
+```
+
+## Backend planı
+
+Veri modeli, API sınırları ve yetki kuralları
+[BACKEND_CONTRACT.md](./BACKEND_CONTRACT.md) içinde tanımlanmıştır. Mevcut
+frontend verileri backend endpoint'leri tamamlanana kadar demo amaçlı tarayıcı
+depolamasını kullanır.
