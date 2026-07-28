@@ -10,8 +10,10 @@ import {
 
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import { useCampusData } from "@/components/CampusDataProvider";
+import CampusFollowConnections from "@/components/CampusFollowConnections";
 import CampusListingMeta from "@/components/CampusListingMeta";
 import CampusPoll from "@/components/CampusPoll";
+import CampusPostCardSurface from "@/components/CampusPostCardSurface";
 import CampusPostImage from "@/components/CampusPostImage";
 import {
   isAnonymousCampusAuthor,
@@ -255,6 +257,17 @@ export default function CampusProfile() {
                   bahsedebilirsin.
                 </p>
               )}
+              {!isGuest && (
+                <CampusFollowConnections
+                  member={{
+                    authorId: LOCAL_ACCOUNT_OWNER_ID,
+                    username: normalizeAuthor(profile.username),
+                    author: `@${profile.username}`,
+                    displayName: profile.displayName,
+                  }}
+                  isSelf
+                />
+              )}
             </div>
           </div>
         </div>
@@ -305,7 +318,10 @@ export default function CampusProfile() {
                     key={post.id}
                     className="min-w-0 border-b border-[#1c2821]/10 last:border-b-0 dark:border-white/8 2xl:border 2xl:bg-white/20 2xl:px-5 2xl:last:border-b dark:2xl:bg-white/[0.015]"
                   >
-                    <article className="py-5 sm:py-6">
+                    <CampusPostCardSurface
+                      postId={post.id}
+                      className="py-5 sm:py-6"
+                    >
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <span className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[#7d3c2d] dark:text-[#d09272]">
                           {post.category}
@@ -358,7 +374,7 @@ export default function CampusProfile() {
                       <p className="mt-3 text-xs font-bold text-[#58635c] dark:text-[#aeb4af]">
                         {post.likes} beğeni · {post.comments.length} yorum
                       </p>
-                    </article>
+                    </CampusPostCardSurface>
                   </li>
                 ))}
               </ol>

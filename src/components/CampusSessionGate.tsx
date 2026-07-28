@@ -21,13 +21,16 @@ export default function CampusSessionGate({
     role,
   } = useCampusAccount();
   const [isIntroComplete, setIsIntroComplete] = useState(false);
+  const isGuestProfileRoute =
+    pathname === "/profil" ||
+    (pathname.startsWith("/profil/") &&
+      pathname !== "/profil/duzenle");
   const isGuestRouteAllowed =
     pathname === "/akis" ||
     pathname === "/kesfet" ||
     pathname === "/bildirimler" ||
     pathname === "/kaydedilenler" ||
-    pathname === "/profil" ||
-    pathname.startsWith("/profil/") ||
+    isGuestProfileRoute ||
     pathname.startsWith("/gonderi/");
   const canAccessAdmin =
     pathname !== "/admin" || role === "admin" || role === "moderator";

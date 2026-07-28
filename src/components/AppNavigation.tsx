@@ -293,7 +293,7 @@ export default function AppNavigation() {
       </header>
 
       <div className="relative z-40 hidden min-w-0 text-[#1c2821] md:col-start-1 md:row-start-1 md:flex md:justify-end dark:text-[#ece8e1]">
-        <div className="sticky top-0 flex h-svh min-h-0 w-full max-w-[15rem] flex-col items-center px-2 py-2 lg:items-stretch lg:px-3">
+        <div className="sticky top-0 flex h-svh min-h-0 w-full max-w-[15rem] flex-col items-center px-2 py-2 xl:items-stretch xl:px-3">
           <button
             type="button"
             aria-label={
@@ -306,7 +306,7 @@ export default function AppNavigation() {
             onClick={() =>
               setIsDesktopNavigationOpen((current) => !current)
             }
-            className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full outline-none transition-colors hover:bg-[#1c2821]/7 focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:hover:bg-white/8 dark:focus-visible:ring-[#c7896d]/40 lg:self-start"
+            className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full outline-none transition-colors hover:bg-[#1c2821]/7 focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:hover:bg-white/8 dark:focus-visible:ring-[#c7896d]/40 xl:self-start"
           >
             <span aria-hidden="true" className="relative block size-5">
               <span
@@ -346,18 +346,18 @@ export default function AppNavigation() {
               <Link
                 href="/akis"
                 aria-label="KAMPÜS akışına git"
-                className="mb-2 flex min-h-12 items-center justify-center rounded-xl outline-none transition-colors hover:bg-[#1c2821]/6 focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:hover:bg-white/7 dark:focus-visible:ring-[#c7896d]/40 lg:justify-start lg:px-3"
+                className="mb-2 flex min-h-12 items-center justify-center rounded-xl outline-none transition-colors hover:bg-[#1c2821]/6 focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:hover:bg-white/7 dark:focus-visible:ring-[#c7896d]/40 xl:justify-start xl:px-3"
               >
                 <CampusLogo
                   variant="mark"
                   idPrefix="desktop-app-navigation-logo"
                   markClassName="h-8 w-6"
-                  className="lg:hidden"
+                  className="xl:hidden"
                 />
                 <CampusLogo
                   idPrefix="desktop-app-navigation-lockup"
-                  className="hidden lg:inline-flex"
-                  wordmarkClassName="text-xl xl:text-2xl"
+                  className="hidden xl:inline-flex"
+                  wordmarkClassName="text-xl 2xl:text-2xl"
                 />
               </Link>
 
@@ -390,7 +390,7 @@ export default function AppNavigation() {
                               : undefined
                           }
                           title={item.label}
-                          className={`group relative flex min-h-[4.1rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-center text-[10px] font-black leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:focus-visible:ring-[#c7896d]/40 lg:min-h-12 lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:text-left lg:text-sm ${
+                          className={`group relative flex min-h-[4.1rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-center text-[10px] font-black leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:focus-visible:ring-[#c7896d]/40 xl:min-h-12 xl:flex-row xl:justify-start xl:gap-3 xl:px-3 xl:text-left xl:text-sm ${
                             isActive
                               ? "bg-[#5a2538]/11 text-[#5a2538] dark:bg-[#c7896d]/13 dark:text-[#d09272]"
                               : "text-[#1c2821]/66 hover:bg-[#1c2821]/7 hover:text-[#1c2821] dark:text-white/62 dark:hover:bg-white/8 dark:hover:text-[#ece8e1]"
@@ -431,7 +431,7 @@ export default function AppNavigation() {
                     : undefined
                 }
                 title="Konu aç"
-                className="mt-2 inline-flex min-h-[4.1rem] w-full flex-col items-center justify-center gap-1.5 rounded-xl bg-[#1c2821] px-1 text-[10px] font-black leading-none text-[#fbf8f1] shadow-[0_8px_20px_rgba(28,40,33,0.14)] outline-none transition-colors hover:bg-[#5a2538] focus-visible:ring-3 focus-visible:ring-[#5a2538]/30 dark:bg-[#c7896d] dark:text-[#121417] dark:shadow-none dark:hover:bg-[#d09272] dark:focus-visible:ring-[#c7896d]/45 lg:min-h-12 lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:text-sm"
+                className="mt-2 inline-flex min-h-[4.1rem] w-full flex-col items-center justify-center gap-1.5 rounded-xl bg-[#1c2821] px-1 text-[10px] font-black leading-none text-[#fbf8f1] shadow-[0_8px_20px_rgba(28,40,33,0.14)] outline-none transition-colors hover:bg-[#5a2538] focus-visible:ring-3 focus-visible:ring-[#5a2538]/30 dark:bg-[#c7896d] dark:text-[#121417] dark:shadow-none dark:hover:bg-[#d09272] dark:focus-visible:ring-[#c7896d]/45 xl:min-h-12 xl:flex-row xl:justify-start xl:gap-3 xl:px-3 xl:text-sm"
               >
                 <ShareIcon className="size-[1.35rem] shrink-0" />
                 <span>Konu aç</span>

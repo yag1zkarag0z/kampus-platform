@@ -33,6 +33,15 @@ const filterOptions: {
 ];
 
 function getNotificationHref(notification: CampusNotification) {
+  if (notification.kind === "follow") {
+    const username = notification.actor.username ?? notification.actor.id;
+    return `/profil/${encodeURIComponent(username)}`;
+  }
+
+  if (!notification.postId) {
+    return "/bildirimler";
+  }
+
   const searchParams = new URLSearchParams({
     bildirim: notification.id,
   });
@@ -234,6 +243,8 @@ function NotificationItem({
   onMarkAsRead: (notificationId: string) => void;
 }) {
   const label = `${notification.actor.name} ${notification.action}`;
+  const targetLabel =
+    notification.kind === "follow" ? "Profili aç." : "Gönderiyi aç.";
 
   return (
     <li
@@ -261,7 +272,7 @@ function NotificationItem({
         <Link
           href={getNotificationHref(notification)}
           onClick={() => onMarkAsRead(notification.id)}
-          aria-label={`${label} ${notification.preview}. ${notification.time} önce. Gönderiyi aç.`}
+          aria-label={`${label} ${notification.preview}. ${notification.time} önce. ${targetLabel}`}
           className={`min-w-0 rounded-sm ${focusRing}`}
         >
           <p className="text-sm leading-5.5">
@@ -280,10 +291,14 @@ function NotificationItem({
             {notification.preview}
           </p>
           <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#7d3c2d]/76 dark:text-[#d09272]/82">
-            <span className="max-w-full truncate">
-              {notification.postTitle}
-            </span>
-            <span aria-hidden="true">·</span>
+            {notification.postTitle && (
+              <>
+                <span className="max-w-full truncate">
+                  {notification.postTitle}
+                </span>
+                <span aria-hidden="true">·</span>
+              </>
+            )}
             <time>{notification.time}</time>
           </p>
         </Link>
@@ -392,6 +407,7 @@ function NotificationKindIcon({
     comment: "Yorum",
     reply: "Yanıt",
     mention: "Bahsetme",
+    follow: "Takip",
     announcement: "Duyuru",
   };
 
@@ -403,6 +419,8 @@ function NotificationKindIcon({
     >
       {kind === "like" ? (
         <HeartIcon />
+      ) : kind === "follow" ? (
+        <PersonPlusIcon />
       ) : kind === "announcement" ? (
         <MegaphoneIcon />
       ) : kind === "mention" ? (
@@ -465,6 +483,31 @@ function HeartIcon() {
         stroke="currentColor"
         strokeWidth="1.5"
         strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function PersonPlusIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      className="size-4"
+    >
+      <circle
+        cx="8"
+        cy="6.5"
+        r="2.8"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M3.7 15.8c.4-3 2-4.5 4.3-4.5s3.9 1.5 4.3 4.5M15.2 7.3v5M12.7 9.8h5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
       />
     </svg>
   );

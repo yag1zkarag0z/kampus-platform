@@ -3,6 +3,7 @@ export type CampusNotificationKind =
   | "comment"
   | "reply"
   | "mention"
+  | "follow"
   | "announcement";
 
 export type CampusNotification = {
@@ -11,17 +12,31 @@ export type CampusNotification = {
   actor: {
     name: string;
     id: string;
+    username?: string;
   };
   action: string;
   preview: string;
-  postId: string;
+  postId?: string;
   commentId?: string;
-  postTitle: string;
+  postTitle?: string;
   time: string;
   initiallyRead: boolean;
 };
 
 export const campusNotifications: CampusNotification[] = [
+  {
+    id: "notification-follow-mertcan",
+    kind: "follow",
+    actor: {
+      name: "Mert Can",
+      id: "seed-mertcan",
+      username: "mertcan",
+    },
+    action: "seni takip etmeye başladı.",
+    preview: "@mertcan artık paylaşımlarını takip ediyor.",
+    time: "Şimdi",
+    initiallyRead: false,
+  },
   {
     id: "notification-comment-library",
     kind: "comment",

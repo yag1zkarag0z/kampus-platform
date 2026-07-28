@@ -454,16 +454,16 @@ export default function Hero() {
 
           <div
             id="giris"
-            className="relative isolate mx-auto w-full max-w-[29.5rem] min-w-0 scroll-mt-6 pt-20 sm:pt-28 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mx-0 lg:pt-32 lg:justify-self-end lg:self-center"
+            className="relative isolate mr-auto w-full max-w-[29.5rem] min-w-0 scroll-mt-6 pt-20 sm:pt-28 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mr-0 lg:pt-0 lg:justify-self-end lg:self-center"
           >
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute -top-8 left-1/2 -z-10 h-64 w-[118%] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,rgba(119,116,138,0.24)_0%,rgba(154,89,68,0.18)_38%,transparent_72%)] blur-2xl"
+              className="pointer-events-none absolute -top-8 left-1/2 -z-10 h-64 w-[118%] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,rgba(119,116,138,0.24)_0%,rgba(154,89,68,0.18)_38%,transparent_72%)] blur-2xl lg:-top-40"
             />
 
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute left-4 top-3 z-20 w-14 -rotate-12 select-none sm:left-8 sm:top-6 sm:w-20 lg:left-2 lg:top-8 lg:w-24 xl:-left-8"
+              className="pointer-events-none absolute left-4 top-3 z-20 w-14 -rotate-12 select-none sm:left-8 sm:top-6 sm:w-20 lg:-top-24 lg:left-2 lg:w-24 xl:-left-8"
             >
               <div className="prism-emoji w-full will-change-transform">
                 <Image
@@ -480,7 +480,7 @@ export default function Hero() {
 
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute left-1/2 top-0 z-20 w-[4.5rem] -translate-x-1/2 rotate-3 select-none sm:-top-1 sm:w-24 lg:w-28"
+              className="pointer-events-none absolute left-1/2 top-0 z-20 w-[4.5rem] -translate-x-1/2 rotate-3 select-none sm:-top-1 sm:w-24 lg:-top-32 lg:w-28"
             >
               <div className="prism-emoji w-full will-change-transform">
                 <Image
@@ -497,7 +497,7 @@ export default function Hero() {
 
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute right-4 top-3 z-20 w-14 rotate-12 select-none sm:right-8 sm:top-6 sm:w-20 lg:right-2 lg:top-8 lg:w-24 xl:-right-8"
+              className="pointer-events-none absolute right-4 top-3 z-20 w-14 rotate-12 select-none sm:right-8 sm:top-6 sm:w-20 lg:-top-24 lg:right-2 lg:w-24 xl:-right-8"
             >
               <div className="prism-emoji w-full will-change-transform">
                 <Image

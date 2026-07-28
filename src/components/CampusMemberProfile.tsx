@@ -7,7 +7,9 @@ import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import { normalizeCampusProfileUsername } from "@/components/CampusAuthorProfileLink";
 import { useCampusData } from "@/components/CampusDataProvider";
+import CampusFollowConnections from "@/components/CampusFollowConnections";
 import { useCampusModeration } from "@/components/CampusModerationProvider";
+import CampusPostCardSurface from "@/components/CampusPostCardSurface";
 import {
   campusAdminRoleLabels,
   type CampusManagedUser,
@@ -352,9 +354,21 @@ export default function CampusMemberProfile({
                 {joinedLabel}
               </p>
               {!isSuspended && !isBlocked && (
-                <p className="mt-4 max-w-2xl whitespace-pre-wrap text-sm leading-6 text-[#1c2821]/78 dark:text-white/74">
-                  {bio}
-                </p>
+                <>
+                  <p className="mt-4 max-w-2xl whitespace-pre-wrap text-sm leading-6 text-[#1c2821]/78 dark:text-white/74">
+                    {bio}
+                  </p>
+                  <CampusFollowConnections
+                    member={{
+                      authorId:
+                        resolvedAuthorId ?? `profile-${username}`,
+                      username,
+                      author,
+                      displayName,
+                    }}
+                    isSelf={isSelf}
+                  />
+                </>
               )}
             </div>
           </div>
@@ -467,7 +481,7 @@ function MemberPosts({
               key={post.id}
               className="border-b border-[#1c2821]/11 py-5 last:border-0 dark:border-white/9"
             >
-              <article>
+              <CampusPostCardSurface postId={post.id}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-mono text-[10px] font-black uppercase tracking-[0.1em] text-[#7d3c2d] dark:text-[#d09272]">
                     {post.category}
@@ -494,7 +508,7 @@ function MemberPosts({
                   <span>{post.likes} beğeni</span>
                   <span>{post.comments.length} yorum</span>
                 </div>
-              </article>
+              </CampusPostCardSurface>
             </li>
           ))}
         </ol>

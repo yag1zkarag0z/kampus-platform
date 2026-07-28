@@ -11,6 +11,7 @@ import CampusCategoryNav, {
 import { useCampusData } from "@/components/CampusDataProvider";
 import CampusListingMeta from "@/components/CampusListingMeta";
 import CampusPoll from "@/components/CampusPoll";
+import CampusPostCardSurface from "@/components/CampusPostCardSurface";
 import CampusPostImage from "@/components/CampusPostImage";
 import {
   isAnonymousCampusAuthor,
@@ -217,7 +218,10 @@ export default function CampusExplore() {
               key={post.id}
               className="border-b border-[#1c2821]/11 last:border-b-0 dark:border-white/9 2xl:border 2xl:bg-white/20 2xl:px-5 2xl:last:border-b dark:2xl:bg-white/[0.015]"
             >
-              <article className="py-5 sm:py-6">
+              <CampusPostCardSurface
+                postId={post.id}
+                className="py-5 sm:py-6"
+              >
                 <header className="flex items-start gap-2.5">
                   <CampusAuthorProfileLink
                     author={post.author}
@@ -311,7 +315,7 @@ export default function CampusExplore() {
                     {post.comments.length} yorum
                   </span>
                 </footer>
-              </article>
+              </CampusPostCardSurface>
             </li>
           ))}
         </ol>

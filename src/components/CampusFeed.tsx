@@ -20,6 +20,7 @@ import { useCampusData } from "@/components/CampusDataProvider";
 import CampusListingMeta from "@/components/CampusListingMeta";
 import CampusPoll from "@/components/CampusPoll";
 import CampusPostActions from "@/components/CampusPostActions";
+import CampusPostCardSurface from "@/components/CampusPostCardSurface";
 import CampusPostImage from "@/components/CampusPostImage";
 import {
   isAnonymousCampusAuthor,
@@ -419,10 +420,13 @@ export default function CampusFeed() {
       )}
 
       {visiblePosts.length > 0 ? (
-        <ol className="sm:p-3">
+        <ol className="min-w-0">
           {visiblePosts.map((post) => (
-            <li key={post.id} className="sm:mb-3 sm:last:mb-0">
-              <article className="border-b border-[#1c2821]/14 px-4 py-5 dark:border-white/10 sm:border sm:bg-white/20 sm:px-5 sm:py-5 dark:sm:bg-white/[0.015]">
+            <li key={post.id}>
+              <CampusPostCardSurface
+                postId={post.id}
+                className="border-b border-[#1c2821]/14 px-4 py-5 dark:border-white/10 sm:bg-white/20 sm:px-5 sm:py-5 dark:sm:bg-white/[0.015]"
+              >
                 <header className="flex items-start justify-between gap-4">
                   <div className="flex min-w-0 items-start gap-3">
                     <CampusAuthorProfileLink
@@ -595,7 +599,7 @@ export default function CampusFeed() {
                     )}
                   </>
                 )}
-              </article>
+              </CampusPostCardSurface>
             </li>
           ))}
         </ol>

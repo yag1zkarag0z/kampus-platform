@@ -10,6 +10,7 @@ import CampusAuthorProfileLink from "@/components/CampusAuthorProfileLink";
 import { useCampusData } from "@/components/CampusDataProvider";
 import CampusListingMeta from "@/components/CampusListingMeta";
 import CampusPoll from "@/components/CampusPoll";
+import CampusPostCardSurface from "@/components/CampusPostCardSurface";
 import CampusPostImage from "@/components/CampusPostImage";
 import { useFeedback } from "@/components/FeedbackProvider";
 import { isAnonymousCampusAuthor } from "@/data/campusPosts";
@@ -106,7 +107,10 @@ export default function CampusSavedPosts() {
               key={post.id}
               className="min-w-0 border-b border-[#1c2821]/11 last:border-b-0 dark:border-white/9 2xl:border 2xl:bg-white/20 2xl:px-5 2xl:last:border-b dark:2xl:bg-white/[0.015]"
             >
-              <article className="flex h-full min-w-0 flex-col py-5 sm:py-6">
+              <CampusPostCardSurface
+                postId={post.id}
+                className="flex h-full min-w-0 flex-col py-5 sm:py-6"
+              >
                 <header className="flex items-start gap-2.5">
                   <CampusAuthorProfileLink
                     author={post.author}
@@ -211,7 +215,7 @@ export default function CampusSavedPosts() {
                     Kaydı kaldır
                   </button>
                 </footer>
-              </article>
+              </CampusPostCardSurface>
             </li>
           ))}
         </ol>
