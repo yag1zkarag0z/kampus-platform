@@ -23,6 +23,7 @@ import CampusPostActions from "@/components/CampusPostActions";
 import CampusPostCardSurface from "@/components/CampusPostCardSurface";
 import CampusPostImage from "@/components/CampusPostImage";
 import {
+  getCampusPostCommentCount,
   isAnonymousCampusAuthor,
   LOCAL_ACCOUNT_OWNER_ID,
 } from "@/data/campusPosts";
@@ -54,6 +55,9 @@ export default function CampusFeed() {
   const {
     posts,
     isHydrated,
+    hasMore,
+    isLoadingMore,
+    loadMore,
     createPost,
     toggleLike,
     toggleBookmark,
@@ -129,7 +133,8 @@ export default function CampusFeed() {
       if (activeView === "liked") {
         return (
           second.likes - first.likes ||
-          second.comments.length - first.comments.length ||
+          getCampusPostCommentCount(second) -
+            getCampusPostCommentCount(first) ||
           second.createdAt - first.createdAt
         );
       }
@@ -154,7 +159,7 @@ export default function CampusFeed() {
 
     try {
       await new Promise<void>((resolve) => window.setTimeout(resolve, 550));
-      createPost({
+      await createPost({
         body,
         category: "Sohbet",
         isAnonymous: false,
@@ -176,6 +181,17 @@ export default function CampusFeed() {
       });
     } finally {
       setIsQuickPostSubmitting(false);
+    }
+  };
+
+  const loadMorePosts = async () => {
+    try {
+      await loadMore();
+    } catch {
+      showToast({
+        message: "Gönderiler yüklenemedi. Tekrar dene.",
+        tone: "error",
+      });
     }
   };
 
@@ -420,9 +436,10 @@ export default function CampusFeed() {
       )}
 
       {visiblePosts.length > 0 ? (
-        <ol className="min-w-0">
-          {visiblePosts.map((post) => (
-            <li key={post.id}>
+        <>
+          <ol className="min-w-0">
+            {visiblePosts.map((post) => (
+              <li key={post.id}>
               <CampusPostCardSurface
                 postId={post.id}
                 className="border-b border-[#1c2821]/14 px-4 py-5 dark:border-white/10 sm:bg-white/20 sm:px-5 sm:py-5 dark:sm:bg-white/[0.015]"
@@ -491,12 +508,12 @@ export default function CampusFeed() {
                       Konuşma bağlamı korundu; varsa yorumları hâlâ
                       görüntüleyebilirsin.
                     </p>
-                    {post.comments.length > 0 && (
+                    {getCampusPostCommentCount(post) > 0 && (
                       <Link
                         href={`/gonderi/${post.id}#yorumlar`}
                         className={`mt-2 inline-flex min-h-11 items-center text-xs font-black text-[#7d3c2d] dark:text-[#d09272] ${focusRing}`}
                       >
-                        {post.comments.length} yorumu görüntüle
+                        {getCampusPostCommentCount(post)} yorumu görüntüle
                       </Link>
                     )}
                   </div>
@@ -569,11 +586,11 @@ export default function CampusFeed() {
 
                     <Link
                       href={`/gonderi/${post.id}#yorumlar`}
-                      aria-label={`${post.title || "Gönderi"} konusunun ${post.comments.length} yorumunu aç`}
+                      aria-label={`${post.title || "Gönderi"} konusunun ${getCampusPostCommentCount(post)} yorumunu aç`}
                       className={`inline-flex min-h-11 items-center gap-2 px-2 text-xs font-bold text-[#58635c] transition-colors hover:text-[#5a1f32] dark:text-[#aeb4af] dark:hover:text-[#d09272] ${focusRing}`}
                     >
                       <CommentIcon />
-                      <span>{post.comments.length}</span>
+                      <span>{getCampusPostCommentCount(post)}</span>
                       <span className="hidden min-[430px]:inline">yorum</span>
                     </Link>
                   </div>
@@ -600,9 +617,27 @@ export default function CampusFeed() {
                   </>
                 )}
               </CampusPostCardSurface>
-            </li>
-          ))}
-        </ol>
+              </li>
+            ))}
+          </ol>
+
+          {!isGuest && hasMore && (
+            <div className="border-b border-[#1c2821]/14 px-4 py-5 text-center dark:border-white/10 sm:px-5">
+              <button
+                type="button"
+                aria-label="Daha fazla gönderi yükle"
+                aria-busy={isLoadingMore}
+                disabled={isLoadingMore}
+                onClick={() => void loadMorePosts()}
+                className={`inline-flex min-h-11 items-center justify-center border border-[#1c2821]/16 bg-[#eee9e1]/70 px-5 text-xs font-black text-[#1c2821] transition-colors hover:bg-[#ddd2c7] disabled:cursor-wait disabled:opacity-60 dark:border-white/12 dark:bg-white/[0.035] dark:text-[#ece8e1] dark:hover:bg-white/[0.07] ${focusRing}`}
+              >
+                {isLoadingMore
+                  ? "Gönderiler yükleniyor…"
+                  : "Daha fazla gönderi yükle"}
+              </button>
+            </div>
+          )}
+        </>
       ) : (
         <div className="border-b border-[#1c2821]/14 px-4 py-14 text-center dark:border-white/10 sm:m-3 sm:border">
           <p className="text-sm font-black">

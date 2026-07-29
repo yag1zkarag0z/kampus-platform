@@ -14,6 +14,7 @@ import CampusPoll from "@/components/CampusPoll";
 import CampusPostCardSurface from "@/components/CampusPostCardSurface";
 import CampusPostImage from "@/components/CampusPostImage";
 import {
+  getCampusPostCommentCount,
   isAnonymousCampusAuthor,
   type CampusPost,
 } from "@/data/campusPosts";
@@ -84,7 +85,8 @@ export default function CampusExplore() {
       if (activeSort === "liked") {
         return (
           second.likes - first.likes ||
-          second.comments.length - first.comments.length ||
+          getCampusPostCommentCount(second) -
+            getCampusPostCommentCount(first) ||
           second.createdAt - first.createdAt ||
           comparePostIds(first, second)
         );
@@ -99,11 +101,11 @@ export default function CampusExplore() {
 
       const firstRisingScore =
         first.likes * 2 +
-        first.comments.length * 4 +
+        getCampusPostCommentCount(first) * 4 +
         first.createdAt * 3;
       const secondRisingScore =
         second.likes * 2 +
-        second.comments.length * 4 +
+        getCampusPostCommentCount(second) * 4 +
         second.createdAt * 3;
 
       return (
@@ -312,7 +314,7 @@ export default function CampusExplore() {
                   </span>
                   <span className="inline-flex items-center gap-1.5">
                     <CommentIcon />
-                    {post.comments.length} yorum
+                    {getCampusPostCommentCount(post)} yorum
                   </span>
                 </footer>
               </CampusPostCardSurface>

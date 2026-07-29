@@ -16,6 +16,7 @@ import {
 } from "@/data/campusAdmin";
 import {
   CAMPUS_OFFICIAL_AUTHOR_ID,
+  getCampusPostCommentCount,
   isAnonymousCampusAuthor,
   LOCAL_ACCOUNT_OWNER_ID,
   type CampusAuthorReference,
@@ -506,7 +507,7 @@ function MemberPosts({
                 )}
                 <div className="mt-3 flex items-center gap-4 text-xs font-bold text-[#58635c] dark:text-[#aeb4af]">
                   <span>{post.likes} beğeni</span>
-                  <span>{post.comments.length} yorum</span>
+                  <span>{getCampusPostCommentCount(post)} yorum</span>
                 </div>
               </CampusPostCardSurface>
             </li>

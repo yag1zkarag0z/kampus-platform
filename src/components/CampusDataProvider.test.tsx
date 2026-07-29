@@ -1,16 +1,34 @@
-import {
-  act,
-  renderHook,
-  waitFor,
-} from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AuthClientError } from "@/auth/client";
 import {
   CampusDataProvider,
   useCampusData,
 } from "@/components/CampusDataProvider";
-import { guestCampusPosts } from "@/data/campusPosts";
+import type {
+  ContentAuthorDto,
+  ContentCommentDto,
+  ContentPostDetailDto,
+  ContentPostDto,
+  ContentViewerStateDto,
+} from "@/content/types";
+import {
+  guestCampusPosts,
+  LOCAL_ACCOUNT_OWNER_ID,
+} from "@/data/campusPosts";
+
+const contentClientMocks = vi.hoisted(() => ({
+  listContentPosts: vi.fn(),
+  getContentPost: vi.fn(),
+  createContentPost: vi.fn(),
+  updateContentPost: vi.fn(),
+  deleteContentPost: vi.fn(),
+  createContentComment: vi.fn(),
+  updateContentComment: vi.fn(),
+  deleteContentComment: vi.fn(),
+}));
 
 const dataState = vi.hoisted(() => ({
   blockedAuthorIds: new Set<string>(),
@@ -19,10 +37,11 @@ const dataState = vi.hoisted(() => ({
     status: "active" | "suspended";
   }>,
   account: {
+    accountId: "member-account-id" as string | null,
     profile: {
       username: "yagizkaragoz",
-      department: "Yazılım Mühendisliği",
-      year: "2. sınıf",
+      department: "Yazilim Muhendisligi",
+      year: "2. sinif",
     },
     settings: {
       showDepartment: true,
@@ -30,7 +49,19 @@ const dataState = vi.hoisted(() => ({
     isGuest: false,
     sessionMode: "member" as "member" | "guest" | "signed-out",
     role: "member" as "member" | "moderator" | "admin",
+    retrySession: vi.fn(async () => undefined),
   },
+}));
+
+vi.mock("@/content/client", () => ({
+  listContentPosts: contentClientMocks.listContentPosts,
+  getContentPost: contentClientMocks.getContentPost,
+  createContentPost: contentClientMocks.createContentPost,
+  updateContentPost: contentClientMocks.updateContentPost,
+  deleteContentPost: contentClientMocks.deleteContentPost,
+  createContentComment: contentClientMocks.createContentComment,
+  updateContentComment: contentClientMocks.updateContentComment,
+  deleteContentComment: contentClientMocks.deleteContentComment,
 }));
 
 vi.mock("@/components/CampusAccountProvider", () => ({
@@ -48,150 +79,745 @@ const wrapper = ({ children }: { children: ReactNode }) => (
   <CampusDataProvider>{children}</CampusDataProvider>
 );
 
+const CREATED_AT = "2026-07-29T09:00:00.000Z";
+
+type PostDtoOverrides = Partial<
+  Omit<ContentPostDto, "author" | "viewerState">
+> & {
+  author?: Partial<ContentAuthorDto>;
+  viewerState?: Partial<ContentViewerStateDto>;
+};
+
+type CommentDtoOverrides = Partial<
+  Omit<ContentCommentDto, "author" | "viewerState">
+> & {
+  author?: Partial<ContentAuthorDto>;
+  viewerState?: Partial<ContentCommentDto["viewerState"]>;
+};
+
+function makePostDto(
+  overrides: PostDtoOverrides = {},
+): ContentPostDto {
+  const author: ContentAuthorDto = {
+    id: "author-1",
+    username: "author_one",
+    displayName: "Author One",
+    avatarUrl: null,
+  };
+  const viewerState: ContentViewerStateDto = {
+    isAuthor: false,
+    canEdit: false,
+    canDelete: false,
+    liked: false,
+    bookmarked: false,
+    selectedPollOptionId: null,
+  };
+
+  return {
+    id: "server-post-1",
+    category: "chat",
+    isAnonymous: false,
+    title: "Server post",
+    body: "Loaded from the content API.",
+    createdAt: CREATED_AT,
+    editedAt: null,
+    likeCount: 3,
+    commentCount: 0,
+    ...overrides,
+    author: {
+      ...author,
+      ...overrides.author,
+    },
+    viewerState: {
+      ...viewerState,
+      ...overrides.viewerState,
+    },
+  };
+}
+
+function makeCommentDto(
+  overrides: CommentDtoOverrides = {},
+): ContentCommentDto {
+  const author: ContentAuthorDto = {
+    id: "comment-author-1",
+    username: "comment_author",
+    displayName: "Comment Author",
+    avatarUrl: null,
+  };
+  const viewerState: ContentCommentDto["viewerState"] = {
+    isAuthor: false,
+    canEdit: false,
+    canDelete: false,
+  };
+
+  return {
+    id: "server-comment-1",
+    postId: "server-post-1",
+    parentId: null,
+    isAnonymous: false,
+    isDeleted: false,
+    body: "Server comment",
+    createdAt: CREATED_AT,
+    editedAt: null,
+    ...overrides,
+    author: {
+      ...author,
+      ...overrides.author,
+    },
+    viewerState: {
+      ...viewerState,
+      ...overrides.viewerState,
+    },
+  };
+}
+
+function makePostDetailDto(
+  overrides: PostDtoOverrides & {
+    comments?: ContentCommentDto[];
+  } = {},
+): ContentPostDetailDto {
+  const { comments = [], ...postOverrides } = overrides;
+
+  return {
+    ...makePostDto(postOverrides),
+    comments,
+  };
+}
+
+function makePostListDto(
+  data: ContentPostDto[] = [makePostDto()],
+  page: {
+    nextCursor: string | null;
+    hasMore: boolean;
+  } = {
+    nextCursor: null,
+    hasMore: false,
+  },
+) {
+  return {
+    data,
+    page,
+  };
+}
+
+function makeUnauthorizedError() {
+  return new AuthClientError(401, {
+    code: "UNAUTHORIZED",
+    message: "Authentication is required.",
+    fieldErrors: {},
+  });
+}
+
 describe("CampusDataProvider", () => {
   beforeEach(() => {
+    window.localStorage.clear();
     dataState.blockedAuthorIds.clear();
     dataState.managedUsers.length = 0;
     Object.assign(dataState.account, {
+      accountId: "member-account-id",
       isGuest: false,
       sessionMode: "member",
       role: "member",
     });
+    dataState.account.retrySession.mockReset();
+    dataState.account.retrySession.mockResolvedValue(undefined);
+
+    contentClientMocks.listContentPosts.mockReset();
+    contentClientMocks.getContentPost.mockReset();
+    contentClientMocks.createContentPost.mockReset();
+    contentClientMocks.updateContentPost.mockReset();
+    contentClientMocks.deleteContentPost.mockReset();
+    contentClientMocks.createContentComment.mockReset();
+    contentClientMocks.updateContentComment.mockReset();
+    contentClientMocks.deleteContentComment.mockReset();
+    contentClientMocks.listContentPosts.mockResolvedValue(
+      makePostListDto(),
+    );
   });
 
-  it("creates, edits and soft-deletes an owned post", async () => {
+  it("hydrates member posts from the API and applies moderation visibility", async () => {
+    dataState.blockedAuthorIds.add("blocked-author");
+    dataState.managedUsers.push({
+      authorId: "suspended-author",
+      status: "suspended",
+    });
+    contentClientMocks.listContentPosts.mockResolvedValue(makePostListDto([
+      makePostDto({
+        id: "visible-post",
+        commentCount: 7,
+        author: {
+          id: "visible-author",
+          username: "visible",
+        },
+      }),
+      makePostDto({
+        id: "blocked-post",
+        author: {
+          id: "blocked-author",
+          username: "blocked",
+        },
+      }),
+      makePostDto({
+        id: "suspended-post",
+        author: {
+          id: "suspended-author",
+          username: "suspended",
+        },
+      }),
+    ]));
+
+    const { result } = renderHook(() => useCampusData(), { wrapper });
+
+    await waitFor(() => expect(result.current.isHydrated).toBe(true));
+
+    expect(contentClientMocks.listContentPosts).toHaveBeenCalledTimes(1);
+    expect(result.current.posts.map((post) => post.id)).toEqual([
+      "visible-post",
+    ]);
+    expect(result.current.posts[0]).toMatchObject({
+      author: "@visible",
+      commentCount: 7,
+      comments: [],
+    });
+  });
+
+  it("loads the next cursor page and appends only new post IDs", async () => {
+    contentClientMocks.listContentPosts
+      .mockReset()
+      .mockResolvedValueOnce(
+        makePostListDto(
+          [
+            makePostDto({
+              id: "first-page-post",
+            }),
+          ],
+          {
+            nextCursor: "cursor-page-2",
+            hasMore: true,
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        makePostListDto([
+          makePostDto({
+            id: "first-page-post",
+            title: "Duplicate copy",
+          }),
+          makePostDto({
+            id: "second-page-post",
+          }),
+        ]),
+      );
+
+    const { result } = renderHook(() => useCampusData(), { wrapper });
+
+    await waitFor(() => expect(result.current.isHydrated).toBe(true));
+    expect(result.current.hasMore).toBe(true);
+
+    await act(async () => {
+      await result.current.loadMore();
+    });
+
+    expect(contentClientMocks.listContentPosts).toHaveBeenNthCalledWith(
+      2,
+      {
+        cursor: "cursor-page-2",
+      },
+    );
+    expect(result.current.posts.map((post) => post.id)).toEqual([
+      "first-page-post",
+      "second-page-post",
+    ]);
+    expect(result.current.posts[0].title).toBe("Server post");
+    expect(result.current.hasMore).toBe(false);
+    expect(result.current.isLoadingMore).toBe(false);
+  });
+
+  it("maps anonymous API ownership only from viewerState", async () => {
+    contentClientMocks.listContentPosts.mockResolvedValue(makePostListDto([
+      makePostDto({
+        id: "anonymous-other",
+        isAnonymous: true,
+        author: {
+          id: "leaked-other-id",
+          username: "hidden_other",
+        },
+        viewerState: {
+          isAuthor: false,
+          canEdit: false,
+          canDelete: false,
+        },
+      }),
+      makePostDto({
+        id: "anonymous-owner",
+        isAnonymous: true,
+        author: {
+          id: null,
+          username: null,
+          displayName: "Anonim",
+        },
+        viewerState: {
+          isAuthor: true,
+          canEdit: true,
+          canDelete: true,
+        },
+      }),
+    ]));
+    contentClientMocks.getContentPost.mockResolvedValue(
+      makePostDetailDto({
+        id: "anonymous-owner",
+        isAnonymous: true,
+        author: {
+          id: null,
+          username: null,
+          displayName: "Anonim",
+        },
+        viewerState: {
+          isAuthor: true,
+          canEdit: true,
+          canDelete: true,
+        },
+        commentCount: 2,
+        comments: [
+          makeCommentDto({
+            id: "anonymous-comment-other",
+            postId: "anonymous-owner",
+            isAnonymous: true,
+            author: {
+              id: "leaked-comment-author",
+              username: "hidden_commenter",
+            },
+            viewerState: {
+              isAuthor: false,
+              canEdit: false,
+              canDelete: false,
+            },
+          }),
+          makeCommentDto({
+            id: "anonymous-comment-owner",
+            postId: "anonymous-owner",
+            isAnonymous: true,
+            author: {
+              id: null,
+              username: null,
+              displayName: "Anonim",
+            },
+            viewerState: {
+              isAuthor: true,
+              canEdit: true,
+              canDelete: true,
+            },
+          }),
+        ],
+      }),
+    );
+
+    const { result } = renderHook(() => useCampusData(), { wrapper });
+    await waitFor(() => expect(result.current.isHydrated).toBe(true));
+
+    expect(
+      result.current.posts.find((post) => post.id === "anonymous-other"),
+    ).toMatchObject({
+      author: "Anonim",
+      isAnonymous: true,
+    });
+    expect(
+      result.current.posts.find((post) => post.id === "anonymous-other")
+        ?.authorId,
+    ).toBeUndefined();
+    expect(
+      result.current.posts.find((post) => post.id === "anonymous-owner")
+        ?.authorId,
+    ).toBe(LOCAL_ACCOUNT_OWNER_ID);
+
+    let loaded = false;
+    await act(async () => {
+      loaded = await result.current.loadPostDetail("anonymous-owner");
+    });
+
+    expect(loaded).toBe(true);
+    expect(contentClientMocks.getContentPost).toHaveBeenCalledWith(
+      "anonymous-owner",
+    );
+    const loadedComments = result.current.posts.find(
+      (post) => post.id === "anonymous-owner",
+    )?.comments;
+    expect(
+      loadedComments?.find(
+        (comment) => comment.id === "anonymous-comment-other",
+      )?.authorId,
+    ).toBeUndefined();
+    expect(
+      loadedComments?.find(
+        (comment) => comment.id === "anonymous-comment-owner",
+      )?.authorId,
+    ).toBe(LOCAL_ACCOUNT_OWNER_ID);
+  });
+
+  it("creates, updates and soft-deletes an owned post through the API", async () => {
+    contentClientMocks.listContentPosts.mockResolvedValue(
+      makePostListDto([]),
+    );
+    contentClientMocks.createContentPost.mockResolvedValue(
+      makePostDetailDto({
+        id: "created-post",
+        category: "question",
+        title: "New title",
+        body: "New body",
+        author: {
+          id: "member-account-id",
+          username: "yagizkaragoz",
+        },
+        viewerState: {
+          isAuthor: true,
+          canEdit: true,
+          canDelete: true,
+        },
+      }),
+    );
+    contentClientMocks.updateContentPost.mockResolvedValue(
+      makePostDetailDto({
+        id: "created-post",
+        category: "question",
+        title: "Edited title",
+        body: "Edited body",
+        editedAt: "2026-07-29T10:00:00.000Z",
+        author: {
+          id: "member-account-id",
+          username: "yagizkaragoz",
+        },
+        viewerState: {
+          isAuthor: true,
+          canEdit: true,
+          canDelete: true,
+        },
+      }),
+    );
+    contentClientMocks.deleteContentPost.mockResolvedValue(undefined);
+
     const { result } = renderHook(() => useCampusData(), { wrapper });
     await waitFor(() => expect(result.current.isHydrated).toBe(true));
 
     let postId = "";
-    act(() => {
-      postId = result.current.createPost({
-        title: "  Yeni başlık ",
-        body: "  Yeni içerik ",
+    await act(async () => {
+      postId = await result.current.createPost({
+        title: "  New title ",
+        body: "  New body ",
         category: "Soru",
         isAnonymous: false,
       });
     });
 
-    expect(result.current.posts.find((post) => post.id === postId)).toMatchObject({
-      title: "Yeni başlık",
-      body: "Yeni içerik",
+    expect(postId).toBe("created-post");
+    expect(contentClientMocks.createContentPost).toHaveBeenCalledWith({
+      category: "question",
+      title: "New title",
+      body: "New body",
+      isAnonymous: false,
+    });
+    expect(
+      result.current.posts.find((post) => post.id === postId),
+    ).toMatchObject({
+      title: "New title",
+      body: "New body",
       category: "Soru",
+      authorId: LOCAL_ACCOUNT_OWNER_ID,
     });
 
-    act(() => {
-      expect(
-        result.current.updatePost(postId, {
-          title: "Düzenlenmiş",
-          body: "Yeni gövde",
-        }),
-      ).toBe(true);
+    let updated = false;
+    await act(async () => {
+      updated = await result.current.updatePost(postId, {
+        title: "  Edited title ",
+        body: " Edited body  ",
+      });
     });
-    expect(result.current.posts.find((post) => post.id === postId)).toMatchObject({
-      title: "Düzenlenmiş",
-      body: "Yeni gövde",
+
+    expect(updated).toBe(true);
+    expect(contentClientMocks.updateContentPost).toHaveBeenCalledWith(
+      postId,
+      {
+        title: "Edited title",
+        body: "Edited body",
+      },
+    );
+    expect(
+      result.current.posts.find((post) => post.id === postId),
+    ).toMatchObject({
+      title: "Edited title",
+      body: "Edited body",
       edited: true,
     });
 
-    act(() => {
-      expect(result.current.deletePost(postId)).toBe(true);
+    let deleted = false;
+    await act(async () => {
+      deleted = await result.current.deletePost(postId);
     });
-    expect(result.current.posts.find((post) => post.id === postId)).toMatchObject({
+
+    expect(deleted).toBe(true);
+    expect(contentClientMocks.deleteContentPost).toHaveBeenCalledWith(
+      postId,
+    );
+    expect(
+      result.current.posts.find((post) => post.id === postId),
+    ).toMatchObject({
       title: "",
       body: "",
       isDeleted: true,
     });
   });
 
-  it("rejects empty content and malformed polls", async () => {
+  it("loads a post detail and replaces its comment summary", async () => {
+    contentClientMocks.listContentPosts.mockResolvedValue(makePostListDto([
+      makePostDto({
+        id: "detail-post",
+        commentCount: 1,
+      }),
+    ]));
+    contentClientMocks.getContentPost.mockResolvedValue(
+      makePostDetailDto({
+        id: "detail-post",
+        commentCount: 1,
+        comments: [
+          makeCommentDto({
+            id: "detail-comment",
+            postId: "detail-post",
+            body: "Hydrated detail comment",
+          }),
+        ],
+      }),
+    );
+
+    const { result } = renderHook(() => useCampusData(), { wrapper });
+    await waitFor(() => expect(result.current.isHydrated).toBe(true));
+    expect(result.current.posts[0].comments).toEqual([]);
+
+    let loaded = false;
+    await act(async () => {
+      loaded = await result.current.loadPostDetail("detail-post");
+    });
+
+    expect(loaded).toBe(true);
+    expect(result.current.posts[0].comments).toHaveLength(1);
+    expect(result.current.posts[0].comments[0]).toMatchObject({
+      id: "detail-comment",
+      body: "Hydrated detail comment",
+    });
+    expect(result.current.posts[0].commentCount).toBe(1);
+  });
+
+  it("creates, updates and deletes an owned comment through the API", async () => {
+    contentClientMocks.listContentPosts.mockResolvedValue(makePostListDto([
+      makePostDto({
+        id: "comment-post",
+        commentCount: 0,
+      }),
+    ]));
+    contentClientMocks.createContentComment.mockResolvedValue(
+      makeCommentDto({
+        id: "created-comment",
+        postId: "comment-post",
+        body: "New comment",
+        author: {
+          id: "member-account-id",
+          username: "yagizkaragoz",
+        },
+        viewerState: {
+          isAuthor: true,
+          canEdit: true,
+          canDelete: true,
+        },
+      }),
+    );
+    contentClientMocks.updateContentComment.mockResolvedValue(
+      makeCommentDto({
+        id: "created-comment",
+        postId: "comment-post",
+        body: "Edited comment",
+        editedAt: "2026-07-29T10:00:00.000Z",
+        author: {
+          id: "member-account-id",
+          username: "yagizkaragoz",
+        },
+        viewerState: {
+          isAuthor: true,
+          canEdit: true,
+          canDelete: true,
+        },
+      }),
+    );
+    contentClientMocks.deleteContentComment.mockResolvedValue(undefined);
+
     const { result } = renderHook(() => useCampusData(), { wrapper });
     await waitFor(() => expect(result.current.isHydrated).toBe(true));
 
-    expect(() =>
+    await act(async () => {
+      await result.current.addComment("comment-post", {
+        body: "  New comment ",
+        isAnonymous: false,
+      });
+    });
+
+    expect(contentClientMocks.createContentComment).toHaveBeenCalledWith(
+      "comment-post",
+      {
+        body: "New comment",
+        isAnonymous: false,
+        parentId: undefined,
+      },
+    );
+    expect(result.current.posts[0].comments[0]).toMatchObject({
+      id: "created-comment",
+      body: "New comment",
+      authorId: LOCAL_ACCOUNT_OWNER_ID,
+    });
+    expect(result.current.posts[0].commentCount).toBe(1);
+
+    let updated = false;
+    await act(async () => {
+      updated = await result.current.updateComment(
+        "comment-post",
+        "created-comment",
+        "  Edited comment ",
+      );
+    });
+
+    expect(updated).toBe(true);
+    expect(contentClientMocks.updateContentComment).toHaveBeenCalledWith(
+      "created-comment",
+      "Edited comment",
+    );
+    expect(result.current.posts[0].comments[0]).toMatchObject({
+      body: "Edited comment",
+      edited: true,
+    });
+
+    let deleted = false;
+    await act(async () => {
+      deleted = await result.current.deleteComment(
+        "comment-post",
+        "created-comment",
+      );
+    });
+
+    expect(deleted).toBe(true);
+    expect(contentClientMocks.deleteContentComment).toHaveBeenCalledWith(
+      "created-comment",
+    );
+    expect(result.current.posts[0].comments[0]).toMatchObject({
+      body: "",
+      isDeleted: true,
+    });
+    expect(result.current.posts[0].commentCount).toBe(0);
+  });
+
+  it("retries the member session after a 401 feed response", async () => {
+    contentClientMocks.listContentPosts.mockRejectedValue(
+      makeUnauthorizedError(),
+    );
+
+    const { result } = renderHook(() => useCampusData(), { wrapper });
+
+    await waitFor(() => expect(result.current.isHydrated).toBe(true));
+    await waitFor(() =>
+      expect(dataState.account.retrySession).toHaveBeenCalledTimes(1),
+    );
+    expect(result.current.posts).toEqual([]);
+  });
+
+  it("retries the member session after a 401 detail response", async () => {
+    contentClientMocks.getContentPost.mockRejectedValue(
+      makeUnauthorizedError(),
+    );
+    const { result } = renderHook(() => useCampusData(), { wrapper });
+    await waitFor(() => expect(result.current.isHydrated).toBe(true));
+
+    let loaded = true;
+    await act(async () => {
+      loaded = await result.current.loadPostDetail("server-post-1");
+    });
+
+    expect(loaded).toBe(false);
+    expect(dataState.account.retrySession).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects invalid and unsupported post content before calling the API", async () => {
+    const { result } = renderHook(() => useCampusData(), { wrapper });
+    await waitFor(() => expect(result.current.isHydrated).toBe(true));
+
+    await expect(
       result.current.createPost({
         body: "   ",
         category: "Sohbet",
         isAnonymous: false,
       }),
-    ).toThrow("Post content is invalid.");
+    ).rejects.toThrow("Post content is invalid.");
 
-    expect(() =>
+    await expect(
       result.current.createPost({
-        body: "Anket",
+        body: "Poll",
         category: "Anket",
         isAnonymous: false,
-        pollOptions: ["Aynı", "aynı"],
+        pollOptions: ["First", "Second"],
       }),
-    ).toThrow("Poll options are invalid.");
+    ).rejects.toThrow(
+      "Poll, listing and image persistence is not available yet.",
+    );
+    expect(contentClientMocks.createContentPost).not.toHaveBeenCalled();
   });
 
-  it("toggles likes and bookmarks", async () => {
+  it("keeps local likes and bookmarks interactive for members", async () => {
     const { result } = renderHook(() => useCampusData(), { wrapper });
     await waitFor(() => expect(result.current.isHydrated).toBe(true));
 
-    const initialPost = result.current.posts.find((post) => !post.isDeleted);
-    expect(initialPost).toBeDefined();
-
-    const initialLikes = initialPost?.likes ?? 0;
-    const initialLiked = initialPost?.liked ?? false;
-    const initialBookmarked = initialPost?.bookmarked ?? false;
+    const initialPost = result.current.posts[0];
 
     act(() => {
-      result.current.toggleLike(initialPost!.id);
-      result.current.toggleBookmark(initialPost!.id);
+      result.current.toggleLike(initialPost.id);
+      result.current.toggleBookmark(initialPost.id);
     });
 
-    const updatedPost = result.current.posts.find(
-      (post) => post.id === initialPost!.id,
-    );
-    expect(updatedPost?.liked).toBe(!initialLiked);
-    expect(updatedPost?.likes).toBe(
-      initialLiked ? Math.max(0, initialLikes - 1) : initialLikes + 1,
-    );
-    expect(updatedPost?.bookmarked).toBe(!initialBookmarked);
-  });
-
-  it("adds a comment to an active post", async () => {
-    const { result } = renderHook(() => useCampusData(), { wrapper });
-    await waitFor(() => expect(result.current.isHydrated).toBe(true));
-
-    const post = result.current.posts.find((item) => !item.isDeleted);
-    expect(post).toBeDefined();
-    const initialCommentCount = post?.comments.length ?? 0;
-
-    act(() => {
-      result.current.addComment(post!.id, {
-        body: " Yeni yorum ",
-        isAnonymous: false,
-      });
+    expect(result.current.posts[0]).toMatchObject({
+      liked: true,
+      likes: initialPost.likes + 1,
+      bookmarked: true,
     });
-
-    const updatedPost = result.current.posts.find(
-      (item) => item.id === post!.id,
-    );
-    expect(updatedPost?.comments).toHaveLength(initialCommentCount + 1);
-    expect(updatedPost?.comments.at(-1)?.body).toBe("Yeni yorum");
   });
 
-  it("keeps guest data read-only and limited to the guest feed", async () => {
+  it("uses the static 20-post guest feed without requesting member content", async () => {
     Object.assign(dataState.account, {
+      accountId: null,
       isGuest: true,
       sessionMode: "guest",
     });
+
     const { result } = renderHook(() => useCampusData(), { wrapper });
     await waitFor(() => expect(result.current.isHydrated).toBe(true));
 
-    expect(result.current.posts).toHaveLength(guestCampusPosts.length);
-    expect(() =>
+    expect(guestCampusPosts).toHaveLength(20);
+    expect(result.current.posts).toHaveLength(20);
+    expect(result.current.hasMore).toBe(false);
+    expect(contentClientMocks.listContentPosts).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.loadMore();
+    });
+    expect(contentClientMocks.listContentPosts).not.toHaveBeenCalled();
+
+    await expect(
       result.current.createPost({
-        body: "Yazılamaz",
+        body: "Cannot write",
         category: "Sohbet",
         isAnonymous: false,
       }),
-    ).toThrow("This session is read-only.");
+    ).rejects.toThrow("This session is read-only.");
 
     const firstPost = result.current.posts[0];
     act(() => result.current.toggleLike(firstPost.id));
     expect(result.current.posts[0].liked).toBe(firstPost.liked);
+
+    await expect(result.current.loadPostDetail(firstPost.id)).resolves.toBe(
+      false,
+    );
+    expect(contentClientMocks.getContentPost).not.toHaveBeenCalled();
   });
 });

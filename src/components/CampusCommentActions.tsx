@@ -202,17 +202,32 @@ export default function CampusCommentActions({
     setDialog("edit");
   };
 
-  const submitEdit = (event: FormEvent<HTMLFormElement>) => {
+  const submitEdit = async (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
     event.preventDefault();
-    const wasUpdated = updateComment(postId, comment.id, editBody);
+    setFormMessage("Yorum güncelleniyor…");
 
-    if (!wasUpdated) {
-      setFormMessage("Yorum boş bırakılamaz.");
-      return;
+    try {
+      const wasUpdated = await updateComment(
+        postId,
+        comment.id,
+        editBody,
+      );
+
+      if (!wasUpdated) {
+        setFormMessage("Yorum boş bırakılamaz.");
+        return;
+      }
+
+      setDialog(null);
+      showToast({
+        message: "Yorum güncellendi.",
+        tone: "success",
+      });
+    } catch {
+      setFormMessage("Yorum güncellenemedi. Tekrar dene.");
     }
-
-    setDialog(null);
-    showToast({ message: "Yorum güncellendi.", tone: "success" });
   };
 
   const handleDelete = async () => {
@@ -229,7 +244,13 @@ export default function CampusCommentActions({
       return;
     }
 
-    const wasDeleted = deleteComment(postId, comment.id);
+    let wasDeleted = false;
+
+    try {
+      wasDeleted = await deleteComment(postId, comment.id);
+    } catch {
+      wasDeleted = false;
+    }
     showToast({
       message: wasDeleted ? "Yorum silindi." : "Yorum silinemedi.",
       tone: wasDeleted ? "success" : "error",

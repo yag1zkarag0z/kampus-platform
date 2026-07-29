@@ -16,6 +16,7 @@ import CampusPoll from "@/components/CampusPoll";
 import CampusPostCardSurface from "@/components/CampusPostCardSurface";
 import CampusPostImage from "@/components/CampusPostImage";
 import {
+  getCampusPostCommentCount,
   isAnonymousCampusAuthor,
   LOCAL_ACCOUNT_OWNER_ID,
   type CampusAuthorReference,
@@ -372,7 +373,8 @@ export default function CampusProfile() {
                       )}
 
                       <p className="mt-3 text-xs font-bold text-[#58635c] dark:text-[#aeb4af]">
-                        {post.likes} beğeni · {post.comments.length} yorum
+                        {post.likes} beğeni ·{" "}
+                        {getCampusPostCommentCount(post)} yorum
                       </p>
                     </CampusPostCardSurface>
                   </li>

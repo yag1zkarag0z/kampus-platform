@@ -55,11 +55,16 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
     toggleLike,
     toggleBookmark,
     addComment,
+    loadPostDetail,
   } = useCampusData();
   const [commentDraft, setCommentDraft] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [formMessage, setFormMessage] = useState("");
+  const [isCommentSubmitting, setIsCommentSubmitting] =
+    useState(false);
+  const [hasDetailRequestCompleted, setHasDetailRequestCompleted] =
+    useState(false);
   const [replyTargetId, setReplyTargetId] = useState<string | null>(null);
   const [isNotificationTarget, setIsNotificationTarget] = useState(false);
   const [targetCommentId, setTargetCommentId] = useState<string | null>(
@@ -71,6 +76,43 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
   const replyTarget = post?.comments.find(
     (comment) => comment.id === replyTargetId && !comment.isDeleted,
   );
+
+  useEffect(() => {
+    if (!isHydrated || isGuest) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    queueMicrotask(() => {
+      if (!isCancelled) {
+        setHasDetailRequestCompleted(false);
+      }
+    });
+
+    void loadPostDetail(postId)
+      .catch(() => {
+        showToast({
+          message: "Gönderi ayrıntıları yüklenemedi.",
+          tone: "error",
+        });
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setHasDetailRequestCompleted(true);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    isGuest,
+    isHydrated,
+    loadPostDetail,
+    postId,
+    showToast,
+  ]);
 
   useEffect(() => {
     if (!isHydrated) {
@@ -124,7 +166,9 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
     setIsEmojiPickerOpen(false);
   };
 
-  const submitComment = (event: FormEvent<HTMLFormElement>) => {
+  const submitComment = async (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
     event.preventDefault();
 
     if (isGuest) {
@@ -138,26 +182,48 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
       return;
     }
 
-    addComment(postId, {
-      body,
-      isAnonymous,
-      parentId: replyTarget?.id,
-    });
-    setCommentDraft("");
-    setReplyTargetId(null);
-    setIsEmojiPickerOpen(false);
-    setFormMessage("");
-    showToast({
-      message: "Yorumun gönderiye eklendi.",
-      tone: "success",
-    });
+    if (isCommentSubmitting) {
+      return;
+    }
+
+    setIsCommentSubmitting(true);
+    setFormMessage("Yorumun gönderiliyor…");
+
+    try {
+      await addComment(postId, {
+        body,
+        isAnonymous,
+        parentId: replyTarget?.id,
+      });
+      setCommentDraft("");
+      setReplyTargetId(null);
+      setIsEmojiPickerOpen(false);
+      setFormMessage("");
+      showToast({
+        message: "Yorumun gönderiye eklendi.",
+        tone: "success",
+      });
+    } catch {
+      setFormMessage("Yorum gönderilemedi. Tekrar dene.");
+      showToast({
+        message: "Yorum gönderilemedi.",
+        tone: "error",
+      });
+    } finally {
+      setIsCommentSubmitting(false);
+    }
   };
 
   const commentsTitleId = `post-comments-${postId}`;
   const commentIdentityId = `post-comment-identity-${postId}`;
 
   if (!post) {
-    return isHydrated ? <MissingPost /> : <PostDetailLoading />;
+    return isHydrated &&
+      (isGuest || hasDetailRequestCompleted) ? (
+      <MissingPost />
+    ) : (
+      <PostDetailLoading />
+    );
   }
 
   return (
@@ -481,7 +547,9 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
 
             <button
               type="submit"
-              disabled={!commentDraft.trim()}
+              disabled={
+                !commentDraft.trim() || isCommentSubmitting
+              }
               className={`inline-flex min-h-11 items-center justify-center bg-[#5a1f32] px-5 text-xs font-bold text-white transition-colors hover:bg-[#6b2940] disabled:cursor-not-allowed disabled:opacity-45 dark:bg-[#9a5944] dark:text-[#121417] dark:hover:bg-[#ad6b53] ${focusRing}`}
             >
               Yorum yap

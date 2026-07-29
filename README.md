@@ -84,11 +84,38 @@ npm run test:db
 npm run test:e2e
 ```
 
-## Backend planı
+## Backend durumu
 
 Veri modeli, API sınırları ve yetki kuralları
 [BACKEND_CONTRACT.md](./BACKEND_CONTRACT.md) içinde tanımlanmıştır. Üyelik
 akışı okul e-postasına gönderilen tek kullanımlık kodla çalışır; doğrulanmış
 oturum sunucuda tutulur ve tarayıcıya yalnızca `HttpOnly` oturum çerezi verilir.
-Gönderiler, takipler, bildirimler ve moderasyon verileri henüz sonraki backend
-aşamalarındaki endpoint'lere taşınacaktır.
+
+Aktif öğrenci üyelerinin gönderi ve yorumları artık PostgreSQL'de kalıcıdır.
+Üye akışı en yeni gönderiler için cursor pagination, kategori ve görünür yazar
+filtrelerini destekler. Üyeler gönderi ve yorum oluşturabilir, kendi içeriklerini
+düzenleyebilir veya soft-delete ile silebilir. Anonim içeriklerde gerçek yazar
+kimliği standart API yanıtında gösterilmez.
+
+Yorum yazma kötüye kullanımına karşı üye başına dakikada 20 yorum sınırı vardır.
+Bir gönderi, soft-delete kayıtları dahil toplam 500 yorumdan sonra yeni yorum
+kabul etmez. Yanıtların aynı gönderideki bir yoruma bağlanması PostgreSQL
+tarafından da doğrulanır.
+
+Kalıcı olarak paylaşılabilen temel kategoriler:
+
+- Sohbet (`chat`)
+- İtiraf (`confession`)
+- Soru (`question`)
+- Etkinlik (`event`)
+- Kayıp Eşya (`lost_found`)
+
+Misafir oturumu `/v1/posts` üye akışına erişmez. Misafirler yalnızca uygulamayla
+birlikte gelen, salt okunur 20 seçilmiş KAMPÜS gönderisini görür; gerçek üye
+gönderileri bu görünümle paylaşılmaz.
+
+Beğeni, kaydetme, takip/engelleme, bildirim, şikâyet ve moderasyon akışları henüz
+PostgreSQL'e bağlı değildir. Anket, ilan ve üye gönderilerine görsel ekleme de
+ilgili tablolar ile object storage tamamlanana kadar devre dışıdır; bu işlemler
+kalıcıymış gibi kabul edilmez. Bu nedenle “en beğenilenler” sıralaması da beğeni
+backend'i tamamlanana kadar kullanılamaz.

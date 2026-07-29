@@ -279,23 +279,31 @@ export default function CampusPostActions({
     setIsEditDialogOpen(true);
   };
 
-  const submitEdit = (event: FormEvent<HTMLFormElement>) => {
+  const submitEdit = async (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
     event.preventDefault();
-    const wasUpdated = updatePost(post.id, {
-      title: editTitle,
-      body: editBody,
-    });
+    setEditMessage("Gönderi güncelleniyor…");
 
-    if (!wasUpdated) {
-      setEditMessage("Başlık veya açıklamayı kontrol et.");
-      return;
+    try {
+      const wasUpdated = await updatePost(post.id, {
+        title: editTitle,
+        body: editBody,
+      });
+
+      if (!wasUpdated) {
+        setEditMessage("Başlık veya açıklamayı kontrol et.");
+        return;
+      }
+
+      setIsEditDialogOpen(false);
+      showToast({
+        message: "Gönderi güncellendi.",
+        tone: "success",
+      });
+    } catch {
+      setEditMessage("Gönderi güncellenemedi. Tekrar dene.");
     }
-
-    setIsEditDialogOpen(false);
-    showToast({
-      message: "Gönderi güncellendi.",
-      tone: "success",
-    });
   };
 
   const handleDelete = async () => {
@@ -312,7 +320,13 @@ export default function CampusPostActions({
       return;
     }
 
-    const wasDeleted = deletePost(post.id);
+    let wasDeleted = false;
+
+    try {
+      wasDeleted = await deletePost(post.id);
+    } catch {
+      wasDeleted = false;
+    }
     showToast({
       message: wasDeleted
         ? "Gönderi silindi."

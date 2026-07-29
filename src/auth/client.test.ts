@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   AuthClientError,
+  requestApiPayload,
   requestOtpCode,
   updateCurrentProfile,
   updateCurrentSettings,
@@ -51,6 +52,26 @@ describe("auth client response validation", () => {
       code: "UNEXPECTED_RESPONSE",
       status: 502,
     } satisfies Partial<AuthClientError>);
+  });
+
+  it("can preserve a valid response envelope with pagination metadata", async () => {
+    const payload = {
+      data: [{ id: "post-1" }],
+      page: {
+        nextCursor: "cursor-page-2",
+        hasMore: true,
+      },
+    };
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await expect(
+      requestApiPayload<typeof payload>("/v1/posts"),
+    ).resolves.toEqual(payload);
   });
 
   it("preserves valid structured API error details", async () => {

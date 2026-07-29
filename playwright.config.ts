@@ -14,12 +14,12 @@ const e2eDatabaseUrl = getE2eDatabaseUrl();
 
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: true,
+  fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   globalSetup: "./e2e/global-setup.ts",
   globalTeardown: "./e2e/global-teardown.ts",
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : 2,
+  workers: 1,
   reporter: process.env.CI ? "github" : "list",
   expect: {
     timeout: 10_000,
@@ -31,7 +31,7 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   webServer: {
-    command: `npm run dev -- --hostname ${hostname} --port ${port}`,
+    command: `npm run dev -- --webpack --hostname ${hostname} --port ${port}`,
     url: baseURL,
     env: {
       APP_ORIGIN: baseURL,

@@ -17,9 +17,18 @@ export type UpdateCampusProfileInput = {
   bio: string;
 };
 
-type ApiEnvelope<T> = {
+export type ApiEnvelope<T> = {
   data: T;
 };
+
+type ParsedApiResponse =
+  | {
+      kind: "empty";
+    }
+  | {
+      kind: "payload";
+      payload: Record<string, unknown> & ApiEnvelope<unknown>;
+    };
 
 const fallbackApiError: AuthApiError["error"] = {
   code: "UNEXPECTED_RESPONSE",
@@ -96,10 +105,10 @@ export class AuthClientError extends Error {
   }
 }
 
-async function requestApi<T>(
+async function requestApiResponse(
   path: string,
   init?: RequestInit,
-): Promise<T> {
+): Promise<ParsedApiResponse> {
   const response = await fetch(path, {
     ...init,
     credentials: "same-origin",
@@ -125,7 +134,7 @@ async function requestApi<T>(
   }
 
   if (response.status === 204) {
-    return undefined as T;
+    return { kind: "empty" };
   }
 
   let payload: unknown;
@@ -140,7 +149,38 @@ async function requestApi<T>(
     throw new AuthClientError(502, fallbackApiError);
   }
 
-  return (payload as ApiEnvelope<T>).data;
+  return {
+    kind: "payload",
+    payload: payload as Record<string, unknown> & ApiEnvelope<unknown>,
+  };
+}
+
+export async function requestApiPayload<
+  TPayload extends ApiEnvelope<unknown>,
+>(
+  path: string,
+  init?: RequestInit,
+): Promise<TPayload> {
+  const response = await requestApiResponse(path, init);
+
+  if (response.kind === "empty") {
+    throw new AuthClientError(502, fallbackApiError);
+  }
+
+  return response.payload as TPayload;
+}
+
+export async function requestApi<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  const response = await requestApiResponse(path, init);
+
+  if (response.kind === "empty") {
+    return undefined as T;
+  }
+
+  return response.payload.data as T;
 }
 
 export function requestOtpCode(email: string, purpose: OtpPurpose) {

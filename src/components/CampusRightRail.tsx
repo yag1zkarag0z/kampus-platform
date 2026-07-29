@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useMemo } from "react";
 
 import { useCampusData } from "@/components/CampusDataProvider";
-import type { CampusPostCategory } from "@/data/campusPosts";
+import {
+  getCampusPostCommentCount,
+  type CampusPostCategory,
+} from "@/data/campusPosts";
 
 const topicDefinitions: {
   name: string;
@@ -56,7 +59,7 @@ export default function CampusRightRail() {
           0
         );
         const comments = topicPosts.reduce(
-          (total, post) => total + post.comments.length,
+          (total, post) => total + getCampusPostCommentCount(post),
           0
         );
 

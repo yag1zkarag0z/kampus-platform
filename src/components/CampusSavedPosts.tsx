@@ -13,7 +13,10 @@ import CampusPoll from "@/components/CampusPoll";
 import CampusPostCardSurface from "@/components/CampusPostCardSurface";
 import CampusPostImage from "@/components/CampusPostImage";
 import { useFeedback } from "@/components/FeedbackProvider";
-import { isAnonymousCampusAuthor } from "@/data/campusPosts";
+import {
+  getCampusPostCommentCount,
+  isAnonymousCampusAuthor,
+} from "@/data/campusPosts";
 
 const focusRing =
   "outline-none focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fbf8f1] dark:focus-visible:ring-[#c7896d]/30 dark:focus-visible:ring-offset-[#17191c]";
@@ -203,7 +206,7 @@ export default function CampusSavedPosts() {
                   </span>
                   <span className="inline-flex min-h-11 items-center gap-1.5">
                     <CommentIcon />
-                    {post.comments.length} yorum
+                    {getCampusPostCommentCount(post)} yorum
                   </span>
                   <button
                     type="button"

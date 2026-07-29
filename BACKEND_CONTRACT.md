@@ -5,6 +5,50 @@ taşırken kullanılacak veri modelini, API sınırlarını ve yetki kuralların
 sabitler. Frontend’deki `localStorage` anahtarları production veri kaynağı
 değildir.
 
+## 0. Güncel uygulama durumu
+
+Bu sözleşme tamamlanmış özelliklerin yanında hedeflenen veri modelini de içerir;
+aşağıda bir tablo veya endpoint'in yer alması tek başına onun uygulanmış olduğu
+anlamına gelmez.
+
+Şu anda PostgreSQL'e bağlı olan içerik kapsamı:
+
+- `posts` ve `comments` tabloları, indeksleri ve migration'ları
+- Üye akışını listeleme, gönderi detayını yorumlarıyla okuma
+- Gönderi ve yorum oluşturma, sahibinin düzenlemesi ve soft-delete ile silmesi
+- En yeni gönderiler için kategori/yazar filtreli, sorguya bağlı opaque cursor
+  pagination
+- Aynı gönderideki kök yoruma yanıt verme ve silinen yorumları tombstone olarak
+  koruma
+- Aktif üye, sahiplik, same-origin, katı istek doğrulama ve içerikte URL
+  engelleme kontrolleri
+- Yorum oluşturmada üye başına dakikada 20 istek sınırı ve bir gönderide
+  soft-delete kayıtları dahil en fazla 500 yorum sınırı
+- Yanıtın üst yorumuyla aynı gönderiye ait olmasını ve yorumun kendisine yanıt
+  verememesini PostgreSQL seviyesinde doğrulayan bütünlük kuralları
+- Anonim gönderi ve yorumlarda `author_id` değerini standart API yanıtından
+  gizleme; anonim gönderileri yazar filtresine dahil etmeme
+
+Kalıcı gönderi oluşturma şu temel kategorilerle sınırlıdır:
+`chat | confession | question | event | lost_found`.
+`poll` ve `listing` enum'da ayrılmış olsa da alt tabloları tamamlanana kadar
+oluşturma istekleri reddedilir.
+
+Misafir görünümü üye içerik API'sini çağırmaz. Yalnızca frontend paketindeki
+salt okunur, seçilmiş 20 KAMPÜS gönderisini gösterir; PostgreSQL'deki gerçek üye
+akışı misafire açılmaz.
+
+Henüz kalıcı backend'e taşınmayan kapsam:
+
+- Beğeni, kaydetme ve bunlara bağlı “en beğenilenler” sıralaması
+- Anket, anket oyu ve ilan ayrıntıları
+- Gönderi görseli, avatar yükleme ve object storage
+- Takip, engelleme, bildirim ve şikâyet akışları
+- Admin/moderator işlemleri ve moderasyon audit kayıtları
+
+Bu özelliklere ait mevcut frontend etkileşimleri demo veya yerel durum olabilir;
+sunucu kalıcılığı sağlanmış kabul edilmemelidir.
+
 ## 1. Temel kararlar
 
 - Kimlikler UUID olmalı.
@@ -247,6 +291,12 @@ Bu tablo append-only olmalıdır.
 
 ## 4. API endpoint’leri
 
+Bu bölüm hedef endpoint setini gösterir. Gönderi/yorum grubunda şu anda
+`GET/POST /v1/posts`, `GET/PATCH/DELETE /v1/posts/:id`,
+`POST /v1/posts/:id/comments` ve `PATCH/DELETE /v1/comments/:id`
+uygulanmıştır. Aynı gruptaki like, bookmark, poll ve bookmark-listesi
+endpoint'leri ile sonraki grupların sosyal/moderasyon endpoint'leri planlıdır.
+
 ### Authentication
 
 - `POST /v1/auth/code/request`
@@ -344,7 +394,9 @@ Post DTO’su sayaçları ve kullanıcıya özel durumu ayrı taşımalıdır:
 
 ## 6. Yetki matrisi
 
-- Guest: yalnızca filtrelenmiş public okuma.
+- Guest: mevcut sürümde yalnızca paketlenmiş 20 seçilmiş gönderiyi salt okunur
+  görür; üye gönderi API'sine erişemez. İleride gerçek public okuma açılacaksa
+  ayrı görünürlük ve moderasyon politikası gerektirir.
 - Active member: kendi profil ve içeriğini düzenleme, etkileşim, takip,
   engelleme ve şikâyet.
 - Moderator: üye yetkileri, şikâyet çözme, içerik kaldırma ve member hesaplarını
@@ -367,21 +419,24 @@ hesabını yönetemez.
 - CSRF koruması bütün state-changing cookie endpoint’lerinde uygulanmalı.
 - Sahiplik ve rol kontrolleri servis katmanı ile PostgreSQL policy/RLS
   katmanında birlikte yapılmalı.
+- Mevcut temel gönderi/yorum kapsamındaki sahiplik kontrolleri servis
+  katmanındadır. Least-privileged uygulama rolü ve PostgreSQL RLS politikaları
+  production güvenlik sertleştirmesi olarak henüz uygulanmamıştır.
 - Upload MIME değeri sunucuda doğrulanmalı ve görsel yeniden kodlanmalı.
 - Post görseli kaynak limiti 5 MB, avatar kaynak limiti 2 MB olmalı.
 - Like, bookmark, follow, block ve vote endpoint’leri idempotent olmalı.
 - Moderasyon hareketleri değiştirilemez audit kaydı üretmeli.
 
-## 8. Uygulama sırası
+## 8. Uygulama sırası ve ilerleme
 
-1. PostgreSQL migration ve seed verisi
-2. Auth/OTP/session
-3. Profil ve ayarlar
-4. Gönderi/yorum CRUD
-5. Like, bookmark, poll ve ilan
-6. Follow, block ve report
-7. Notifications
-8. Admin/moderation
-9. Upload/object storage
-10. Frontend provider’larını API client ile değiştirme
-11. Entegrasyon ve E2E testlerinin gerçek backend’e geçirilmesi
+1. Tamamlandı: PostgreSQL temeli ve migration altyapısı
+2. Tamamlandı: Auth, OTP ve session
+3. Tamamlandı: Profil ve ayarlar (dosya yükleme hariç)
+4. Tamamlandı: Temel gönderi/yorum CRUD ve üye frontend entegrasyonu
+5. Sırada: Like, bookmark, poll ve ilan
+6. Planlandı: Follow, block ve report
+7. Planlandı: Notifications
+8. Planlandı: Admin/moderation
+9. Planlandı: Upload/object storage
+10. Devam ediyor: Kalan frontend provider'larını API client ile değiştirme
+11. Devam ediyor: Entegrasyon ve E2E testlerini gerçek backend'e geçirme

@@ -305,7 +305,9 @@ export default function CreateCampusPost() {
     setPollError("");
   };
 
-  const submitPost = (event: FormEvent<HTMLFormElement>) => {
+  const submitPost = async (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
     event.preventDefault();
 
     const normalizedTitle = title.trim();
@@ -388,6 +390,14 @@ export default function CreateCampusPost() {
       return;
     }
 
+    if (isPollEnabled || isListing || imagePreview) {
+      setStatusMessage(
+        "Anket, ilan ve görsel yükleme altyapısı sıradaki backend aşamasında açılacak.",
+      );
+      setStatusTone("error");
+      return;
+    }
+
     setPollError("");
     setListingError("");
     setTitleError("");
@@ -399,29 +409,11 @@ export default function CreateCampusPost() {
     setIsSubmitting(true);
 
     try {
-      const postId = createPost({
+      const postId = await createPost({
         title: normalizedTitle,
         body: normalizedBody,
         category,
-        isAnonymous: isListing ? false : isAnonymous,
-        image: imagePreview
-          ? {
-              ...imagePreview,
-              alt: isListing
-                ? `${normalizedTitle} ilanının fotoğrafı`
-                : `${normalizedTitle} gönderisine eklenen fotoğraf`,
-            }
-          : undefined,
-        pollOptions: isPollEnabled
-          ? normalizedPollOptions
-          : undefined,
-        listing: isListing
-          ? {
-              type: listingType,
-              condition: listingCondition,
-              price: normalizedListingPrice,
-            }
-          : undefined,
+        isAnonymous,
       });
 
       setStatusMessage(

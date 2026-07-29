@@ -22,6 +22,23 @@ import {
   type CampusPostListing,
   type CampusPostPoll,
 } from "@/data/campusPosts";
+import { AuthClientError } from "@/auth/client";
+import {
+  createContentComment as createContentCommentRequest,
+  createContentPost as createContentPostRequest,
+  deleteContentComment as deleteContentCommentRequest,
+  deleteContentPost as deleteContentPostRequest,
+  getContentPost as getContentPostRequest,
+  listContentPosts as listContentPostsRequest,
+  updateContentComment as updateContentCommentRequest,
+  updateContentPost as updateContentPostRequest,
+  type CoreContentPostCategory,
+} from "@/content/client";
+import {
+  toCampusComment,
+  toCampusPost,
+  toContentCategory,
+} from "@/content/adapter";
 import {
   CAMPUS_POST_BODY_MAX_LENGTH,
   CAMPUS_POST_TITLE_MAX_LENGTH,
@@ -75,19 +92,32 @@ export type UpdateCampusPostInput = {
 type CampusDataContextValue = {
   posts: CampusPost[];
   isHydrated: boolean;
-  createPost: (input: CreateCampusPostInput) => string;
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  loadMore: () => Promise<void>;
+  createPost: (input: CreateCampusPostInput) => Promise<string>;
   toggleLike: (postId: string) => void;
   toggleBookmark: (postId: string) => void;
   voteInPoll: (postId: string, optionId: string) => void;
-  addComment: (postId: string, input: AddCampusCommentInput) => void;
-  updatePost: (postId: string, input: UpdateCampusPostInput) => boolean;
-  deletePost: (postId: string) => boolean;
+  addComment: (
+    postId: string,
+    input: AddCampusCommentInput,
+  ) => Promise<void>;
+  updatePost: (
+    postId: string,
+    input: UpdateCampusPostInput,
+  ) => Promise<boolean>;
+  deletePost: (postId: string) => Promise<boolean>;
   updateComment: (
     postId: string,
     commentId: string,
     body: string,
-  ) => boolean;
-  deleteComment: (postId: string, commentId: string) => boolean;
+  ) => Promise<boolean>;
+  deleteComment: (
+    postId: string,
+    commentId: string,
+  ) => Promise<boolean>;
+  loadPostDetail: (postId: string) => Promise<boolean>;
   moderateDeletePost: (postId: string) => boolean;
   moderateDeleteComment: (
     postId: string,
@@ -278,6 +308,36 @@ function getLatestCreatedAt(posts: CampusPost[]) {
   );
 }
 
+function getUsableNextCursor(page: {
+  nextCursor: string | null;
+  hasMore: boolean;
+}) {
+  return page.hasMore &&
+    typeof page.nextCursor === "string" &&
+    page.nextCursor.length > 0
+    ? page.nextCursor
+    : null;
+}
+
+function appendUniquePosts(
+  currentPosts: CampusPost[],
+  incomingPosts: CampusPost[],
+) {
+  const knownPostIds = new Set(currentPosts.map((post) => post.id));
+  const uniquePosts = incomingPosts.filter((post) => {
+    if (knownPostIds.has(post.id)) {
+      return false;
+    }
+
+    knownPostIds.add(post.id);
+    return true;
+  });
+
+  return uniquePosts.length > 0
+    ? [...currentPosts, ...uniquePosts]
+    : currentPosts;
+}
+
 function migrateLegacyOwnership(posts: CampusPost[]) {
   return posts.map((post) => {
     const isAnonymous = isAnonymousCampusAuthor(post);
@@ -316,11 +376,13 @@ function migrateLegacyOwnership(posts: CampusPost[]) {
 
 export function CampusDataProvider({ children }: { children: ReactNode }) {
   const {
+    accountId,
     profile,
     settings,
     isGuest,
     sessionMode,
     role,
+    retrySession,
   } = useCampusAccount();
   const { blockedAuthorIds, managedUsers } = useCampusModeration();
   const [posts, setPostsState] = useState<CampusPost[]>(() =>
@@ -328,6 +390,11 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
   );
   const postsRef = useRef(posts);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const isLoadingMoreRef = useRef(false);
+  const feedRequestVersionRef = useRef(0);
   const latestCreatedAtRef = useRef(getLatestCreatedAt(campusPosts));
   const replacePosts = useCallback((nextPosts: CampusPost[]) => {
     postsRef.current = nextPosts;
@@ -342,11 +409,76 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let isCancelled = false;
+    const requestVersion = ++feedRequestVersionRef.current;
+    isLoadingMoreRef.current = false;
+
+    if (sessionMode === "member" && accountId) {
+      queueMicrotask(() => {
+        if (!isCancelled) {
+          setIsHydrated(false);
+          setNextCursor(null);
+          setHasMore(false);
+          setIsLoadingMore(false);
+        }
+      });
+
+      void listContentPostsRequest()
+        .then((response) => {
+          if (
+            isCancelled ||
+            requestVersion !== feedRequestVersionRef.current
+          ) {
+            return;
+          }
+
+          const nextPosts = response.data.map(toCampusPost);
+          const usableNextCursor = getUsableNextCursor(response.page);
+          latestCreatedAtRef.current = getLatestCreatedAt(nextPosts);
+          replacePosts(nextPosts);
+          setNextCursor(usableNextCursor);
+          setHasMore(usableNextCursor !== null);
+        })
+        .catch((error: unknown) => {
+          if (
+            isCancelled ||
+            requestVersion !== feedRequestVersionRef.current
+          ) {
+            return;
+          }
+
+          replacePosts([]);
+          setNextCursor(null);
+          setHasMore(false);
+
+          if (
+            error instanceof AuthClientError &&
+            error.status === 401
+          ) {
+            void retrySession();
+          }
+        })
+        .finally(() => {
+          if (
+            !isCancelled &&
+            requestVersion === feedRequestVersionRef.current
+          ) {
+            setIsHydrated(true);
+          }
+        });
+
+      return () => {
+        isCancelled = true;
+      };
+    }
 
     queueMicrotask(() => {
       if (isCancelled) {
         return;
       }
+
+      setNextCursor(null);
+      setHasMore(false);
+      setIsLoadingMore(false);
 
       try {
         const storedValue = window.localStorage.getItem(STORAGE_KEY);
@@ -374,10 +506,15 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
     return () => {
       isCancelled = true;
     };
-  }, [replacePosts]);
+  }, [
+    accountId,
+    replacePosts,
+    retrySession,
+    sessionMode,
+  ]);
 
   useEffect(() => {
-    if (!isHydrated) {
+    if (!isHydrated || sessionMode === "member") {
       return;
     }
 
@@ -386,19 +523,73 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
     } catch {
       // The in-memory experience should continue when storage is unavailable.
     }
-  }, [isHydrated, posts]);
+  }, [isHydrated, posts, sessionMode]);
+
+  const loadMore = useCallback(async () => {
+    if (
+      sessionMode !== "member" ||
+      !accountId ||
+      !hasMore ||
+      !nextCursor ||
+      isLoadingMoreRef.current
+    ) {
+      return;
+    }
+
+    const requestVersion = feedRequestVersionRef.current;
+    isLoadingMoreRef.current = true;
+    setIsLoadingMore(true);
+
+    try {
+      const response = await listContentPostsRequest({
+        cursor: nextCursor,
+      });
+
+      if (requestVersion !== feedRequestVersionRef.current) {
+        return;
+      }
+
+      const incomingPosts = response.data.map(toCampusPost);
+      const usableNextCursor = getUsableNextCursor(response.page);
+
+      updatePosts((currentPosts) =>
+        appendUniquePosts(currentPosts, incomingPosts),
+      );
+      setNextCursor(usableNextCursor);
+      setHasMore(usableNextCursor !== null);
+    } catch (error) {
+      if (requestVersion !== feedRequestVersionRef.current) {
+        return;
+      }
+
+      if (error instanceof AuthClientError && error.status === 401) {
+        void retrySession();
+      }
+
+      throw error;
+    } finally {
+      if (requestVersion === feedRequestVersionRef.current) {
+        isLoadingMoreRef.current = false;
+        setIsLoadingMore(false);
+      }
+    }
+  }, [
+    accountId,
+    hasMore,
+    nextCursor,
+    retrySession,
+    sessionMode,
+    updatePosts,
+  ]);
 
   const createPost = useCallback(
-    (input: CreateCampusPostInput) => {
+    async (input: CreateCampusPostInput) => {
       if (sessionMode !== "member") {
         throw new Error("This session is read-only.");
       }
 
       const title = input.title?.trim() ?? "";
       const body = input.body.trim();
-      const pollOptions = input.pollOptions
-        ?.map((option) => option.trim())
-        .filter(Boolean);
 
       if (
         (!title && !body) ||
@@ -409,85 +600,41 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
       }
 
       if (
-        pollOptions &&
-        (pollOptions.length < 2 ||
-          pollOptions.length > 4 ||
-          pollOptions.some((option) => option.length > 60) ||
-          new Set(
-            pollOptions.map((option) =>
-              option.toLocaleLowerCase("tr-TR"),
-            ),
-          ).size !== pollOptions.length)
+        input.image ||
+        input.pollOptions ||
+        input.listing ||
+        input.category === "Anket" ||
+        input.category === "İlan"
       ) {
-        throw new Error("Poll options are invalid.");
+        throw new Error(
+          "Poll, listing and image persistence is not available yet.",
+        );
       }
 
-      if (input.category === "Anket" && !pollOptions) {
-        throw new Error("Poll category requires poll options.");
+      const category = toContentCategory(input.category);
+
+      if (category === "poll" || category === "listing") {
+        throw new Error("This post category is not available yet.");
       }
 
-      if (
-        (input.category === "İlan") !== Boolean(input.listing) ||
-        (input.listing && !isStoredPostListing(input.listing)) ||
-        (input.listing && pollOptions) ||
-        (input.listing && input.isAnonymous) ||
-        (input.listing && !body)
-      ) {
-        throw new Error("Listing details are invalid.");
-      }
-
-      const now = Date.now();
-      const createdAt = latestCreatedAtRef.current + 1;
-      const id = `post-${now}-${createdAt}`;
-      latestCreatedAtRef.current = createdAt;
-
-      const post: CampusPost = {
-        id,
-        author: input.isAnonymous ? "Anonim" : `@${profile.username}`,
-        authorId: LOCAL_ACCOUNT_OWNER_ID,
-        isAnonymous: input.isAnonymous,
-        detail: input.isAnonymous
-          ? undefined
-          : settings.showDepartment
-            ? `${profile.department} · ${profile.year}`
-            : "Öğrenci",
-        category: pollOptions
-          ? "Anket"
-          : input.listing
-            ? "İlan"
-            : input.category,
+      const coreCategory: CoreContentPostCategory = category;
+      const created = await createContentPostRequest({
+        category: coreCategory,
         title,
         body,
-        image: input.image ? { ...input.image } : undefined,
-        poll: pollOptions
-          ? {
-              options: pollOptions.map((text, index) => ({
-                id: `poll-${createdAt}-${index + 1}`,
-                text,
-                votes: 0,
-              })),
-            }
-          : undefined,
-        listing: input.listing ? { ...input.listing } : undefined,
-        time: "Şimdi",
-        createdAt,
-        likes: 0,
-        liked: false,
-        comments: [],
-        bookmarked: false,
-      };
+        isAnonymous: input.isAnonymous,
+      });
+      const post = toCampusPost(created);
 
       updatePosts((currentPosts) => [post, ...currentPosts]);
-      return id;
+      latestCreatedAtRef.current = Math.max(
+        latestCreatedAtRef.current,
+        post.createdAt,
+      );
+
+      return post.id;
     },
-    [
-      profile.department,
-      profile.username,
-      profile.year,
-      sessionMode,
-      settings.showDepartment,
-      updatePosts,
-    ],
+    [sessionMode, updatePosts],
   );
 
   const toggleLike = useCallback((postId: string) => {
@@ -568,16 +715,23 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
   );
 
   const addComment = useCallback(
-    (postId: string, input: AddCampusCommentInput) => {
+    async (postId: string, input: AddCampusCommentInput) => {
       if (sessionMode !== "member") {
-        return;
+        throw new Error("This session is read-only.");
       }
 
       const body = input.body.trim();
 
       if (!body) {
-        return;
+        throw new Error("Comment content is invalid.");
       }
+
+      const created = await createContentCommentRequest(postId, {
+        body,
+        isAnonymous: input.isAnonymous,
+        parentId: input.parentId,
+      });
+      const comment = toCampusComment(created);
 
       updatePosts((currentPosts) =>
         currentPosts.map((post) => {
@@ -585,34 +739,20 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
             return post;
           }
 
-          const requestedParent = input.parentId
-            ? post.comments.find(
-                (comment) =>
-                  comment.id === input.parentId && !comment.isDeleted,
-              )
-            : undefined;
-          const parentId = requestedParent
-            ? requestedParent.parentId ?? requestedParent.id
-            : undefined;
-          const comment = {
-            id: `comment-${postId}-${Date.now()}`,
-            author: input.isAnonymous ? "Anonim" : `@${profile.username}`,
-            authorId: LOCAL_ACCOUNT_OWNER_ID,
-            isAnonymous: input.isAnonymous,
-            parentId,
-            body,
-            time: "Şimdi",
+          return {
+            ...post,
+            comments: [...post.comments, comment],
+            commentCount:
+              (post.commentCount ?? post.comments.length) + 1,
           };
-
-          return { ...post, comments: [...post.comments, comment] };
         }),
       );
     },
-    [profile.username, sessionMode, updatePosts],
+    [sessionMode, updatePosts],
   );
 
   const updatePost = useCallback(
-    (postId: string, input: UpdateCampusPostInput) => {
+    async (postId: string, input: UpdateCampusPostInput) => {
       if (sessionMode !== "member") {
         return false;
       }
@@ -639,27 +779,44 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      updatePosts((currentPosts) =>
-        currentPosts.map((post) => {
-          if (
-            post.id !== postId ||
-            post.authorId !== LOCAL_ACCOUNT_OWNER_ID ||
-            post.isDeleted
-          ) {
-            return post;
-          }
+      try {
+        const updated = toCampusPost(
+          await updateContentPostRequest(postId, {
+            title,
+            body,
+          }),
+        );
 
-          return { ...post, title, body, edited: true };
-        }),
-      );
+        updatePosts((currentPosts) =>
+          currentPosts.map((post) =>
+            post.id === postId
+              ? {
+                  ...updated,
+                  liked: post.liked,
+                  likes: post.likes,
+                  bookmarked: post.bookmarked,
+                }
+              : post,
+          ),
+        );
 
-      return true;
+        return true;
+      } catch (error) {
+        if (
+          error instanceof AuthClientError &&
+          (error.status === 403 || error.status === 404)
+        ) {
+          return false;
+        }
+
+        throw error;
+      }
     },
     [sessionMode, updatePosts],
   );
 
   const deletePost = useCallback(
-    (postId: string) => {
+    async (postId: string) => {
       if (sessionMode !== "member") {
         return false;
       }
@@ -675,37 +832,54 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      updatePosts((currentPosts) =>
-        currentPosts.map((post) => {
-          if (
-            post.id !== postId ||
-            post.authorId !== LOCAL_ACCOUNT_OWNER_ID ||
-            post.isDeleted
-          ) {
-            return post;
-          }
+      try {
+        await deleteContentPostRequest(postId);
 
-          return {
-            ...post,
-            title: "",
-            body: "",
-            image: undefined,
-            poll: undefined,
-            listing: undefined,
-            liked: false,
-            bookmarked: false,
-            isDeleted: true,
-          };
-        }),
-      );
+        updatePosts((currentPosts) =>
+          currentPosts.map((post) => {
+            if (
+              post.id !== postId ||
+              post.authorId !== LOCAL_ACCOUNT_OWNER_ID ||
+              post.isDeleted
+            ) {
+              return post;
+            }
 
-      return true;
+            return {
+              ...post,
+              title: "",
+              body: "",
+              image: undefined,
+              poll: undefined,
+              listing: undefined,
+              liked: false,
+              bookmarked: false,
+              isDeleted: true,
+            };
+          }),
+        );
+
+        return true;
+      } catch (error) {
+        if (
+          error instanceof AuthClientError &&
+          (error.status === 403 || error.status === 404)
+        ) {
+          return false;
+        }
+
+        throw error;
+      }
     },
     [sessionMode, updatePosts],
   );
 
   const updateComment = useCallback(
-    (postId: string, commentId: string, nextBody: string) => {
+    async (
+      postId: string,
+      commentId: string,
+      nextBody: string,
+    ) => {
       if (sessionMode !== "member") {
         return false;
       }
@@ -731,36 +905,41 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      updatePosts((currentPosts) =>
-        currentPosts.map((post) => {
-          if (post.id !== postId) {
-            return post;
-          }
+      try {
+        const updated = toCampusComment(
+          await updateContentCommentRequest(commentId, body),
+        );
 
-          return {
-            ...post,
-            comments: post.comments.map((comment) => {
-              if (
-                comment.id !== commentId ||
-                comment.authorId !== LOCAL_ACCOUNT_OWNER_ID ||
-                comment.isDeleted
-              ) {
-                return comment;
-              }
+        updatePosts((currentPosts) =>
+          currentPosts.map((post) =>
+            post.id === postId
+              ? {
+                  ...post,
+                  comments: post.comments.map((comment) =>
+                    comment.id === commentId ? updated : comment,
+                  ),
+                }
+              : post,
+          ),
+        );
 
-              return { ...comment, body, edited: true };
-            }),
-          };
-        }),
-      );
+        return true;
+      } catch (error) {
+        if (
+          error instanceof AuthClientError &&
+          (error.status === 403 || error.status === 404)
+        ) {
+          return false;
+        }
 
-      return true;
+        throw error;
+      }
     },
     [sessionMode, updatePosts],
   );
 
   const deleteComment = useCallback(
-    (postId: string, commentId: string) => {
+    async (postId: string, commentId: string) => {
       if (sessionMode !== "member") {
         return false;
       }
@@ -780,32 +959,106 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      updatePosts((currentPosts) =>
-        currentPosts.map((post) => {
-          if (post.id !== postId) {
-            return post;
-          }
+      try {
+        await deleteContentCommentRequest(commentId);
 
-          return {
-            ...post,
-            comments: post.comments.map((comment) => {
-              if (
-                comment.id !== commentId ||
-                comment.authorId !== LOCAL_ACCOUNT_OWNER_ID ||
-                comment.isDeleted
-              ) {
-                return comment;
-              }
+        updatePosts((currentPosts) =>
+          currentPosts.map((post) => {
+            if (post.id !== postId) {
+              return post;
+            }
 
-              return { ...comment, body: "", isDeleted: true };
-            }),
-          };
-        }),
-      );
+            return {
+              ...post,
+              commentCount: Math.max(
+                0,
+                (post.commentCount ?? post.comments.length) - 1,
+              ),
+              comments: post.comments.map((comment) => {
+                if (
+                  comment.id !== commentId ||
+                  comment.authorId !== LOCAL_ACCOUNT_OWNER_ID ||
+                  comment.isDeleted
+                ) {
+                  return comment;
+                }
 
-      return true;
+                return {
+                  ...comment,
+                  body: "",
+                  isDeleted: true,
+                };
+              }),
+            };
+          }),
+        );
+
+        return true;
+      } catch (error) {
+        if (
+          error instanceof AuthClientError &&
+          (error.status === 403 || error.status === 404)
+        ) {
+          return false;
+        }
+
+        throw error;
+      }
     },
     [sessionMode, updatePosts],
+  );
+
+  const loadPostDetail = useCallback(
+    async (postId: string) => {
+      if (sessionMode !== "member") {
+        return false;
+      }
+
+      try {
+        const detailedPost = toCampusPost(
+          await getContentPostRequest(postId),
+        );
+
+        updatePosts((currentPosts) => {
+          const existing = currentPosts.find(
+            (post) => post.id === postId,
+          );
+          const nextPost = existing
+            ? {
+                ...detailedPost,
+                liked: existing.liked,
+                likes: existing.likes,
+                bookmarked: existing.bookmarked,
+              }
+            : detailedPost;
+
+          return existing
+            ? currentPosts.map((post) =>
+                post.id === postId ? nextPost : post,
+              )
+            : [nextPost, ...currentPosts];
+        });
+
+        return true;
+      } catch (error) {
+        if (
+          error instanceof AuthClientError &&
+          error.status === 401
+        ) {
+          void retrySession();
+        }
+
+        if (
+          error instanceof AuthClientError &&
+          (error.status === 401 || error.status === 404)
+        ) {
+          return false;
+        }
+
+        throw error;
+      }
+    },
+    [retrySession, sessionMode, updatePosts],
   );
 
   const moderateDeletePost = useCallback(
@@ -928,16 +1181,38 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const initialPosts = clonePosts(campusPosts);
-    latestCreatedAtRef.current = getLatestCreatedAt(initialPosts);
-    replacePosts(initialPosts);
+    const requestVersion = ++feedRequestVersionRef.current;
+    isLoadingMoreRef.current = false;
+    setNextCursor(null);
+    setHasMore(false);
+    setIsLoadingMore(false);
 
-    try {
-      window.localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      // Reset should still complete in memory when storage is unavailable.
-    }
-  }, [replacePosts, sessionMode]);
+    void listContentPostsRequest()
+      .then((response) => {
+        if (requestVersion !== feedRequestVersionRef.current) {
+          return;
+        }
+
+        const nextPosts = response.data.map(toCampusPost);
+        const usableNextCursor = getUsableNextCursor(response.page);
+        latestCreatedAtRef.current = getLatestCreatedAt(nextPosts);
+        replacePosts(nextPosts);
+        setNextCursor(usableNextCursor);
+        setHasMore(usableNextCursor !== null);
+      })
+      .catch((error: unknown) => {
+        if (requestVersion !== feedRequestVersionRef.current) {
+          return;
+        }
+
+        if (
+          error instanceof AuthClientError &&
+          error.status === 401
+        ) {
+          void retrySession();
+        }
+      });
+  }, [replacePosts, retrySession, sessionMode]);
 
   const visiblePosts = useMemo(() => {
     const accountDetail = settings.showDepartment
@@ -1026,6 +1301,9 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
     () => ({
       posts: visiblePosts,
       isHydrated,
+      hasMore: !isGuest && hasMore,
+      isLoadingMore: !isGuest && isLoadingMore,
+      loadMore,
       createPost,
       toggleLike,
       toggleBookmark,
@@ -1035,6 +1313,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
       deletePost,
       updateComment,
       deleteComment,
+      loadPostDetail,
       moderateDeletePost,
       moderateDeleteComment,
       renameAuthoredContent,
@@ -1043,6 +1322,10 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
     [
       visiblePosts,
       isHydrated,
+      isGuest,
+      hasMore,
+      isLoadingMore,
+      loadMore,
       createPost,
       toggleLike,
       toggleBookmark,
@@ -1052,6 +1335,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
       deletePost,
       updateComment,
       deleteComment,
+      loadPostDetail,
       moderateDeletePost,
       moderateDeleteComment,
       renameAuthoredContent,

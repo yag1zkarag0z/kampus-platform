@@ -71,6 +71,26 @@ export async function cleanupE2eAuthData() {
         [emailPattern],
       );
       await client.query(
+        `delete from comments
+         where author_id in (
+           select id from users where lower(email::text) like $1
+         )
+         or post_id in (
+           select content_post.id
+           from posts as content_post
+           join users as author on author.id = content_post.author_id
+           where lower(author.email::text) like $1
+         )`,
+        [emailPattern],
+      );
+      await client.query(
+        `delete from posts
+         where author_id in (
+           select id from users where lower(email::text) like $1
+         )`,
+        [emailPattern],
+      );
+      await client.query(
         "delete from users where lower(email::text) like $1",
         [emailPattern],
       );

@@ -263,8 +263,28 @@ test("member can publish a quick post and open it from the card body", async ({
   await expect(card).toBeVisible();
   await card.getByText(body).click();
 
-  await expect(page).toHaveURL(/\/gonderi\/post-/);
+  await expect(page).toHaveURL(
+    /\/gonderi\/[0-9a-f]{8}-[0-9a-f-]{27}$/i,
+  );
   await expect(page.getByText(body).first()).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByText(body).first()).toBeVisible();
+
+  const commentBody = `E2E kalıcı yorum ${Date.now()}`;
+  await page.getByLabel("Yorumunu ekle").fill(commentBody);
+  await page.getByRole("button", { name: "Yorum yap" }).click();
+  await expect(
+    page.getByText("Yorumun gönderiye eklendi."),
+  ).toBeVisible();
+  await expect(
+    page.locator("#yorumlar li").filter({ hasText: commentBody }),
+  ).toBeVisible();
+
+  await page.reload();
+  await expect(
+    page.locator("#yorumlar li").filter({ hasText: commentBody }),
+  ).toBeVisible();
 });
 
 test("responsive application navigation reaches explore", async ({

@@ -70,6 +70,7 @@ export type CampusPost = {
   likes: number;
   liked: boolean;
   comments: CampusComment[];
+  commentCount?: number;
   bookmarked: boolean;
   edited?: boolean;
   isDeleted?: boolean;
@@ -80,6 +81,12 @@ export type CampusAuthorReference = {
   authorId?: string;
   isAnonymous?: boolean;
 };
+
+export function getCampusPostCommentCount(
+  post: Pick<CampusPost, "commentCount" | "comments">,
+) {
+  return post.commentCount ?? post.comments.length;
+}
 
 export function isAnonymousCampusAuthor(author: CampusAuthorReference) {
   return (

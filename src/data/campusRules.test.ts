@@ -9,6 +9,10 @@ import {
   CAMPUS_POST_TITLE_MAX_LENGTH,
 } from "@/data/campusContentRules";
 import {
+  campusPosts,
+  getCampusPostCommentCount,
+} from "@/data/campusPosts";
+import {
   getCampusYearOptions,
   isListedYasarDepartment,
 } from "@/data/yasarDepartments";
@@ -42,6 +46,20 @@ describe("campus account and content rules", () => {
   it("exposes the post limits used by the forms and provider", () => {
     expect(CAMPUS_POST_TITLE_MAX_LENGTH).toBe(100);
     expect(CAMPUS_POST_BODY_MAX_LENGTH).toBe(500);
+  });
+
+  it("prefers an API comment count and falls back to loaded comments", () => {
+    const seededPost = campusPosts[0];
+
+    expect(getCampusPostCommentCount(seededPost)).toBe(
+      seededPost.comments.length,
+    );
+    expect(
+      getCampusPostCommentCount({
+        comments: [],
+        commentCount: 12,
+      }),
+    ).toBe(12);
   });
 });
 
