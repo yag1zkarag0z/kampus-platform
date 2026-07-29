@@ -60,11 +60,11 @@ Kullanıcı adı:
 `user_settings`
 
 - `user_id uuid primary key references users(id)`
-- `show_department boolean`
-- `notify_replies boolean`
-- `notify_likes boolean`
-- `notify_announcements boolean`
-- `email_notifications boolean`
+- `show_department boolean not null default false`
+- `notify_replies boolean not null default true`
+- `notify_likes boolean not null default true`
+- `notify_announcements boolean not null default true`
+- `email_notifications boolean not null default true`
 
 `terms_acceptances`
 
@@ -80,25 +80,46 @@ Kullanıcı adı:
 - `email citext`
 - `purpose text`
 - `code_hash text`
+- `request_ip_hash text`
+- `delivery_status otp_delivery_status`
+- `delivered_at timestamptz`
+- `delivery_failed_at timestamptz`
 - `expires_at timestamptz`
 - `attempt_count smallint`
 - `resend_available_at timestamptz`
+- `verified_at timestamptz`
+- `invalidated_at timestamptz`
 - `consumed_at timestamptz`
+- `created_at timestamptz`
 
 Kod altı haneli, beş dakika geçerli, yeniden gönderme beklemesi 30 saniye ve
 maksimum deneme sayısı üç olmalıdır.
+`purpose` yalnızca `registration | login` olabilir. IP tabanlı hız sınırı için
+ham IP yerine `request_ip_hash` saklanır.
+Bir e-posta adresi saatte en fazla beş, bir IP özeti saatte en fazla yirmi kod
+isteyebilir. Yeni kod başarıyla gönderildiğinde aynı e-posta ve amaç için önceki
+aktif kod geçersiz kılınır. Kayıt kodu doğrulandığında `verified_at` yazılır ve
+15 dakika geçerli, imzalı, tek kullanımlık bir kayıt bileti verilir;
+`consumed_at` ancak kayıt transaction'ı tamamlandığında yazılır.
+Kod isteği önce kısa bir transaction ile `pending` olarak ayrılır. SMTP gönderimi
+veritabanı transaction'ı dışında yapılır; ardından kod atomik olarak `delivered`
+veya `failed` durumuna geçirilir. Başarısız gönderimler de hız sınırında sayılır
+ve doğrulamada kullanılamaz.
 
 `sessions`
 
 - `id uuid primary key`
 - `user_id uuid references users(id)`
 - `token_hash text unique`
+- `issued_role user_role`
 - `expires_at timestamptz`
 - `revoked_at timestamptz`
 - `created_at timestamptz`
 
-Üye oturumu sekiz saat geçerlidir. Misafir erişimi için kullanıcı kaydı
-oluşturulmaz; iki saatlik imzalı guest token yeterlidir.
+Member oturumu 30 gün, moderator ve admin oturumu sekiz saat geçerlidir.
+Session oluşturulurken rol `issued_role` alanına sabitlenir; kullanıcının güncel
+rolü bu değerle uyuşmuyorsa session geçersizdir. Misafir erişimi için kullanıcı
+kaydı oluşturulmaz; iki saatlik imzalı guest token yeterlidir.
 
 ### İçerik
 
@@ -231,6 +252,7 @@ Bu tablo append-only olmalıdır.
 - `POST /v1/auth/code/request`
 - `POST /v1/auth/code/verify`
 - `POST /v1/auth/register`
+- `POST /v1/auth/guest`
 - `GET /v1/session`
 - `POST /v1/auth/logout`
 
@@ -338,6 +360,8 @@ hesabını yönetemez.
 
 - OTP yalnızca `@stu.yasar.edu.tr` adresine gönderilmeli.
 - OTP kodu hash’lenmeli; e-posta ve IP bazlı rate limit uygulanmalı.
+- İstemci IP’si yalnızca deployment tarafından üzerine yazılan, açıkça
+  yapılandırılmış tek bir trusted proxy başlığından okunmalı.
 - Session token yalnızca `httpOnly`, `secure`, `sameSite=lax` cookie ile
   taşınmalı.
 - CSRF koruması bütün state-changing cookie endpoint’lerinde uygulanmalı.

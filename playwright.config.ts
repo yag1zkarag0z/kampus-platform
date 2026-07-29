@@ -1,15 +1,29 @@
 import { defineConfig, devices } from "@playwright/test";
+import { config } from "dotenv";
 
-const port = 3000;
-const baseURL = `http://localhost:${port}`;
+import { getE2eDatabaseUrl } from "./e2e/helpers/database";
+import { E2E_APP_ORIGIN } from "./e2e/helpers/environment";
+
+config({ path: ".env.test", quiet: true });
+
+const appUrl = new URL(E2E_APP_ORIGIN);
+const port = appUrl.port || "3100";
+const hostname = appUrl.hostname;
+const baseURL = E2E_APP_ORIGIN;
+const e2eDatabaseUrl = getE2eDatabaseUrl();
 
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
+  globalSetup: "./e2e/global-setup.ts",
+  globalTeardown: "./e2e/global-teardown.ts",
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : 4,
+  workers: process.env.CI ? 1 : 2,
   reporter: process.env.CI ? "github" : "list",
+  expect: {
+    timeout: 10_000,
+  },
   use: {
     baseURL,
     trace: "on-first-retry",
@@ -17,9 +31,14 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   webServer: {
-    command: `npm run dev -- --hostname 127.0.0.1 --port ${port}`,
+    command: `npm run dev -- --hostname ${hostname} --port ${port}`,
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    env: {
+      APP_ORIGIN: baseURL,
+      DATABASE_URL: e2eDatabaseUrl,
+      NEXT_E2E: "true",
+    },
+    reuseExistingServer: false,
     timeout: 120_000,
   },
   projects: [

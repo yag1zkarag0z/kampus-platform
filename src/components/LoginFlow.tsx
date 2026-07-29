@@ -5,11 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import {
-  activateCampusGuestSession,
-  activateCampusSession,
-} from "@/components/CampusAccountProvider";
+  AuthClientError,
+  startGuestSession,
+} from "@/auth/client";
 import {
-  useDemoVerificationCode,
+  useVerificationCode,
   VerificationCodePanel,
 } from "@/components/AuthVerificationCode";
 
@@ -28,7 +28,8 @@ export default function LoginFlow() {
   const [message, setMessage] = useState<string | null>(null);
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const [complete, setComplete] = useState(false);
-  const verification = useDemoVerificationCode();
+  const [isOpeningGuestView, setIsOpeningGuestView] = useState(false);
+  const verification = useVerificationCode("login");
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -48,7 +49,7 @@ export default function LoginFlow() {
     return () => window.clearTimeout(noticeTimer);
   }, []);
 
-  const submitEmail = (event: FormEvent<HTMLFormElement>) => {
+  const submitEmail = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const normalizedEmail = email.trim().toLowerCase();
 
@@ -61,11 +62,20 @@ export default function LoginFlow() {
 
     setEmail(normalizedEmail);
     setMessage(null);
-    verification.issueCode();
-    setStep(2);
+
+    try {
+      await verification.issueCode(normalizedEmail);
+      setStep(2);
+    } catch (error) {
+      setMessage(
+        error instanceof AuthClientError
+          ? error.message
+          : "Giriş kodu gönderilemedi. Lütfen yeniden dene.",
+      );
+    }
   };
 
-  const submitCode = (event: FormEvent<HTMLFormElement>) => {
+  const submitCode = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!/^\d{6}$/.test(code)) {
@@ -73,59 +83,60 @@ export default function LoginFlow() {
       return;
     }
 
-    const verificationResult = verification.verifyCode(code);
-
-    if (verificationResult.status === "expired") {
+    try {
+      await verification.verifyCode(code);
+      setMessage(null);
+      setComplete(true);
+    } catch (error) {
       setMessage(
-        "Bu giriş kodunun süresi doldu. Aşağıdan yeni bir kod isteyebilirsin.",
+        error instanceof AuthClientError
+          ? error.message
+          : "Giriş tamamlanamadı. Lütfen yeniden dene.",
       );
-      return;
     }
-
-    if (verificationResult.status === "locked") {
-      setMessage(
-        "Çok fazla hatalı deneme yaptın. Devam etmek için yeni bir kod iste.",
-      );
-      return;
-    }
-
-    if (verificationResult.status === "incorrect") {
-      setMessage(
-        `Kod eşleşmedi. ${verificationResult.attemptsLeft} deneme hakkın kaldı.`,
-      );
-      return;
-    }
-
-    if (!activateCampusSession()) {
-      setMessage("Oturum bu tarayıcıda başlatılamadı. Yeniden deneyebilirsin.");
-      return;
-    }
-
-    setMessage(null);
-    setComplete(true);
   };
 
   const resendCode = async () => {
-    const didResend = await verification.resendCode();
+    try {
+      const didResend = await verification.resendCode();
 
-    if (!didResend) {
-      return;
+      if (!didResend) {
+        return;
+      }
+
+      setCode("");
+      setMessage(null);
+      window.requestAnimationFrame(() => {
+        document.getElementById("login-code")?.focus();
+      });
+    } catch (error) {
+      setMessage(
+        error instanceof AuthClientError
+          ? error.message
+          : "Yeni kod gönderilemedi. Lütfen yeniden dene.",
+      );
     }
-
-    setCode("");
-    setMessage(null);
-    window.requestAnimationFrame(() => {
-      document.getElementById("login-code")?.focus();
-    });
   };
 
-  const continueAsGuest = () => {
-    if (!activateCampusGuestSession()) {
-      setMessage("Misafir oturumu bu tarayıcıda başlatılamadı.");
+  const continueAsGuest = async () => {
+    if (isOpeningGuestView) {
       return;
     }
 
-    router.push("/akis");
+    setMessage(null);
+    setIsOpeningGuestView(true);
+
+    try {
+      await startGuestSession();
+      router.push("/akis");
+    } catch (error) {
+      setMessage(
+        error instanceof AuthClientError
+          ? error.message
+          : "Misafir görünümü şu anda açılamıyor.",
+      );
+      setIsOpeningGuestView(false);
+    }
   };
 
   return (
@@ -187,8 +198,8 @@ export default function LoginFlow() {
               Tekrar hoş geldin.
             </h2>
             <p className="mt-3 text-sm leading-6 text-[#1c2821]/64 dark:text-white/62">
-              Öğrenci e-postanı kontrol edip bu demo için tek kullanımlık kod
-              hazırlayacağız.
+              Öğrenci e-postana beş dakika geçerli tek kullanımlık bir kod
+              göndereceğiz.
             </p>
 
             <label
@@ -220,9 +231,12 @@ export default function LoginFlow() {
 
             <button
               type="submit"
+              disabled={verification.isRequesting}
               className="mt-6 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-[#5a1f32] px-4 text-sm font-bold text-[#fffaf4] outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:bg-[#9a5944] dark:hover:bg-[#ad6b53]"
             >
-              Demo giriş kodunu hazırla
+              {verification.isRequesting
+                ? "Kod gönderiliyor…"
+                : "Giriş kodu gönder"}
               <span aria-hidden="true">→</span>
             </button>
           </form>
@@ -274,9 +288,9 @@ export default function LoginFlow() {
               placeholder="000000"
               maxLength={6}
               disabled={
-                verification.isExpired ||
                 verification.isLocked ||
-                verification.isResending
+                verification.isResending ||
+                verification.isVerifying
               }
               className={`${inputClassName} mt-2 text-center font-mono text-xl font-bold tracking-[0.35em] disabled:cursor-not-allowed disabled:opacity-55`}
               aria-invalid={message !== null}
@@ -312,13 +326,13 @@ export default function LoginFlow() {
             <button
               type="submit"
               disabled={
-                verification.isExpired ||
                 verification.isLocked ||
-                verification.isResending
+                verification.isResending ||
+                verification.isVerifying
               }
               className="mt-5 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-[#5a1f32] px-4 text-sm font-bold text-[#fffaf4] outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 disabled:cursor-not-allowed disabled:opacity-55 dark:bg-[#9a5944] dark:hover:bg-[#ad6b53]"
             >
-              Giriş yap
+              {verification.isVerifying ? "Doğrulanıyor…" : "Giriş yap"}
               <span aria-hidden="true">→</span>
             </button>
 
@@ -351,10 +365,16 @@ export default function LoginFlow() {
           </p>
           <button
             type="button"
-            onClick={continueAsGuest}
+            onClick={() => {
+              void continueAsGuest();
+            }}
+            disabled={isOpeningGuestView}
+            aria-busy={isOpeningGuestView}
             className="mt-3 min-h-11 w-full border border-[#1c2821]/13 px-4 text-xs font-black text-[#1c2821] transition-colors hover:border-[#7d3c2d]/30 hover:bg-[#7d3c2d]/6 dark:border-white/12 dark:text-[#ece8e1] dark:hover:border-[#c7896d]/35 dark:hover:bg-[#c7896d]/8"
           >
-            Misafir olarak göz at
+            {isOpeningGuestView
+              ? "Misafir görünümü açılıyor…"
+              : "Misafir olarak göz at"}
           </button>
         </div>
       )}

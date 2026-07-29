@@ -36,6 +36,19 @@ services:
       retries: 10
       start_period: 5s
 
+  mailpit:
+    image: axllent/mailpit:v1.30.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+    environment:
+      MP_MAX_MESSAGES: "500"
+      MP_DATABASE: /data/mailpit.db
+    volumes:
+      - kampus_mailpit_data:/data
+
 volumes:
   kampus_postgres_data:
   kampus_postgres_test_data:
+  kampus_mailpit_data:

@@ -1,1 +1,41 @@
-{"version":"7","dialect":"postgresql","entries":[]}
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1785242253253,
+      "tag": "0000_auth_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785242686846,
+      "tag": "0001_auth_time_limits",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785261291260,
+      "tag": "0002_narrow_xorn",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785261734523,
+      "tag": "0003_absurd_thunderbolt",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785264460535,
+      "tag": "0004_otp_delivery_hardening",
+      "breakpoints": true
+    }
+  ]
+}

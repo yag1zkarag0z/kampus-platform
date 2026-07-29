@@ -1,0 +1,689 @@
+{
+  "id": "d9798ff5-810c-4d9c-8e87-bfebd234c11c",
+  "prevId": "72c29ad9-818d-4089-8498-13abd635ff56",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.otp_challenges": {
+      "name": "otp_challenges",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "email": {
+          "name": "email",
+          "type": "citext",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "purpose": {
+          "name": "purpose",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code_hash": {
+          "name": "code_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "request_ip_hash": {
+          "name": "request_ip_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attempt_count": {
+          "name": "attempt_count",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "resend_available_at": {
+          "name": "resend_available_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "verified_at": {
+          "name": "verified_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "consumed_at": {
+          "name": "consumed_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "otp_challenges_email_purpose_created_at_idx": {
+          "name": "otp_challenges_email_purpose_created_at_idx",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "purpose",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "otp_challenges_ip_created_at_idx": {
+          "name": "otp_challenges_ip_created_at_idx",
+          "columns": [
+            {
+              "expression": "request_ip_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "otp_challenges_expires_at_idx": {
+          "name": "otp_challenges_expires_at_idx",
+          "columns": [
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "otp_challenges_email_student_domain_check": {
+          "name": "otp_challenges_email_student_domain_check",
+          "value": "\"otp_challenges\".\"email\"::text = btrim(\"otp_challenges\".\"email\"::text)\n        and lower(\"otp_challenges\".\"email\"::text) ~ '^[^@[:space:]]+@stu[.]yasar[.]edu[.]tr$'"
+        },
+        "otp_challenges_purpose_check": {
+          "name": "otp_challenges_purpose_check",
+          "value": "\"otp_challenges\".\"purpose\" in ('registration', 'login')"
+        },
+        "otp_challenges_code_hash_check": {
+          "name": "otp_challenges_code_hash_check",
+          "value": "char_length(\"otp_challenges\".\"code_hash\") between 32 and 512"
+        },
+        "otp_challenges_ip_hash_check": {
+          "name": "otp_challenges_ip_hash_check",
+          "value": "char_length(\"otp_challenges\".\"request_ip_hash\") between 32 and 256"
+        },
+        "otp_challenges_attempt_count_check": {
+          "name": "otp_challenges_attempt_count_check",
+          "value": "\"otp_challenges\".\"attempt_count\" between 0 and 3"
+        },
+        "otp_challenges_expiration_order_check": {
+          "name": "otp_challenges_expiration_order_check",
+          "value": "\"otp_challenges\".\"expires_at\" > \"otp_challenges\".\"created_at\"\n        and \"otp_challenges\".\"expires_at\" <= \"otp_challenges\".\"created_at\" + interval '5 minutes'"
+        },
+        "otp_challenges_resend_order_check": {
+          "name": "otp_challenges_resend_order_check",
+          "value": "\"otp_challenges\".\"resend_available_at\" >= \"otp_challenges\".\"created_at\" + interval '30 seconds'\n        and \"otp_challenges\".\"resend_available_at\" < \"otp_challenges\".\"expires_at\""
+        },
+        "otp_challenges_verified_at_order_check": {
+          "name": "otp_challenges_verified_at_order_check",
+          "value": "\"otp_challenges\".\"verified_at\" is null\n        or (\"otp_challenges\".\"verified_at\" >= \"otp_challenges\".\"created_at\"\n          and \"otp_challenges\".\"verified_at\" <= \"otp_challenges\".\"expires_at\")"
+        },
+        "otp_challenges_consumed_at_order_check": {
+          "name": "otp_challenges_consumed_at_order_check",
+          "value": "\"otp_challenges\".\"consumed_at\" is null\n        or (\n          \"otp_challenges\".\"consumed_at\" >= \"otp_challenges\".\"created_at\"\n          and (\n            (\"otp_challenges\".\"purpose\" = 'login'\n              and \"otp_challenges\".\"consumed_at\" <= \"otp_challenges\".\"expires_at\")\n            or (\n              \"otp_challenges\".\"purpose\" = 'registration'\n              and \"otp_challenges\".\"verified_at\" is not null\n              and \"otp_challenges\".\"consumed_at\"\n                <= \"otp_challenges\".\"verified_at\" + interval '15 minutes'\n            )\n          )\n        )"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.sessions": {
+      "name": "sessions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issued_role": {
+          "name": "issued_role",
+          "type": "user_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "sessions_user_id_idx": {
+          "name": "sessions_user_id_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "sessions_active_user_idx": {
+          "name": "sessions_active_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"sessions\".\"revoked_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "sessions_expires_at_idx": {
+          "name": "sessions_expires_at_idx",
+          "columns": [
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "sessions_user_id_users_id_fk": {
+          "name": "sessions_user_id_users_id_fk",
+          "tableFrom": "sessions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sessions_token_hash_unique": {
+          "name": "sessions_token_hash_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token_hash"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "sessions_token_hash_check": {
+          "name": "sessions_token_hash_check",
+          "value": "char_length(\"sessions\".\"token_hash\") between 32 and 512"
+        },
+        "sessions_expiration_order_check": {
+          "name": "sessions_expiration_order_check",
+          "value": "\"sessions\".\"expires_at\" > \"sessions\".\"created_at\"\n        and (\n          (\"sessions\".\"issued_role\" = 'member'\n            and \"sessions\".\"expires_at\"\n              <= \"sessions\".\"created_at\" + interval '30 days')\n          or (\n            \"sessions\".\"issued_role\" in ('moderator', 'admin')\n            and \"sessions\".\"expires_at\"\n              <= \"sessions\".\"created_at\" + interval '8 hours'\n          )\n        )"
+        },
+        "sessions_revoked_at_order_check": {
+          "name": "sessions_revoked_at_order_check",
+          "value": "\"sessions\".\"revoked_at\" is null\n        or \"sessions\".\"revoked_at\" >= \"sessions\".\"created_at\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.terms_acceptances": {
+      "name": "terms_acceptances",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "terms_version": {
+          "name": "terms_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "accepted_at": {
+          "name": "accepted_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "ip_hash": {
+          "name": "ip_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "terms_acceptances_user_id_users_id_fk": {
+          "name": "terms_acceptances_user_id_users_id_fk",
+          "tableFrom": "terms_acceptances",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "terms_acceptances_pk": {
+          "name": "terms_acceptances_pk",
+          "columns": [
+            "user_id",
+            "terms_version"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "terms_acceptances_version_check": {
+          "name": "terms_acceptances_version_check",
+          "value": "char_length(btrim(\"terms_acceptances\".\"terms_version\")) between 1 and 64"
+        },
+        "terms_acceptances_ip_hash_check": {
+          "name": "terms_acceptances_ip_hash_check",
+          "value": "char_length(\"terms_acceptances\".\"ip_hash\") between 32 and 256"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.user_settings": {
+      "name": "user_settings",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "show_department": {
+          "name": "show_department",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "notify_replies": {
+          "name": "notify_replies",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "notify_likes": {
+          "name": "notify_likes",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "notify_announcements": {
+          "name": "notify_announcements",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "email_notifications": {
+          "name": "email_notifications",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_settings_user_id_users_id_fk": {
+          "name": "user_settings_user_id_users_id_fk",
+          "tableFrom": "user_settings",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "email": {
+          "name": "email",
+          "type": "citext",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "username": {
+          "name": "username",
+          "type": "citext",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "varchar(40)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "department": {
+          "name": "department",
+          "type": "varchar(60)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "year_label": {
+          "name": "year_label",
+          "type": "varchar(30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bio": {
+          "name": "bio",
+          "type": "varchar(160)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "avatar_object_key": {
+          "name": "avatar_object_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "role": {
+          "name": "role",
+          "type": "user_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'member'"
+        },
+        "status": {
+          "name": "status",
+          "type": "account_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "suspended_at": {
+          "name": "suspended_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "users_status_idx": {
+          "name": "users_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "users_deleted_at_idx": {
+          "name": "users_deleted_at_idx",
+          "columns": [
+            {
+              "expression": "deleted_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"users\".\"deleted_at\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        },
+        "users_username_unique": {
+          "name": "users_username_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "username"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "users_email_student_domain_check": {
+          "name": "users_email_student_domain_check",
+          "value": "\"users\".\"email\"::text = btrim(\"users\".\"email\"::text)\n        and lower(\"users\".\"email\"::text) ~ '^[^@[:space:]]+@stu[.]yasar[.]edu[.]tr$'"
+        },
+        "users_username_format_check": {
+          "name": "users_username_format_check",
+          "value": "char_length(\"users\".\"username\"::text) between 3 and 24\n        and \"users\".\"username\"::text ~ '^[a-z0-9]+([._][a-z0-9]+)*$'"
+        },
+        "users_username_reserved_check": {
+          "name": "users_username_reserved_check",
+          "value": "lower(\"users\".\"username\"::text) not in\n        ('anonim', 'sen', 'admin', 'moderator', 'kampus', 'destek')"
+        },
+        "users_display_name_not_blank_check": {
+          "name": "users_display_name_not_blank_check",
+          "value": "char_length(btrim(\"users\".\"display_name\")) > 0"
+        },
+        "users_department_not_blank_check": {
+          "name": "users_department_not_blank_check",
+          "value": "char_length(btrim(\"users\".\"department\")) > 0"
+        },
+        "users_year_label_not_blank_check": {
+          "name": "users_year_label_not_blank_check",
+          "value": "char_length(btrim(\"users\".\"year_label\")) > 0"
+        },
+        "users_avatar_object_key_not_blank_check": {
+          "name": "users_avatar_object_key_not_blank_check",
+          "value": "\"users\".\"avatar_object_key\" is null\n        or char_length(btrim(\"users\".\"avatar_object_key\")) > 0"
+        },
+        "users_suspension_state_check": {
+          "name": "users_suspension_state_check",
+          "value": "(\"users\".\"status\" = 'active' and \"users\".\"suspended_at\" is null)\n        or (\"users\".\"status\" = 'suspended' and \"users\".\"suspended_at\" is not null)"
+        },
+        "users_suspended_at_order_check": {
+          "name": "users_suspended_at_order_check",
+          "value": "\"users\".\"suspended_at\" is null\n        or \"users\".\"suspended_at\" >= \"users\".\"created_at\""
+        },
+        "users_deleted_at_order_check": {
+          "name": "users_deleted_at_order_check",
+          "value": "\"users\".\"deleted_at\" is null\n        or \"users\".\"deleted_at\" >= \"users\".\"created_at\""
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.account_status": {
+      "name": "account_status",
+      "schema": "public",
+      "values": [
+        "active",
+        "suspended"
+      ]
+    },
+    "public.user_role": {
+      "name": "user_role",
+      "schema": "public",
+      "values": [
+        "member",
+        "moderator",
+        "admin"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
