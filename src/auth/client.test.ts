@@ -1,0 +1,81 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import {
+  AuthClientError,
+  requestOtpCode,
+} from "@/auth/client";
+
+const fetchMock = vi.fn<typeof fetch>();
+
+describe("auth client response validation", () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("uses a safe error when an error response has an unexpected shape", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ message: "proxy error" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await expect(
+      requestOtpCode("student@stu.yasar.edu.tr", "login"),
+    ).rejects.toMatchObject({
+      code: "UNEXPECTED_RESPONSE",
+      status: 500,
+      message:
+        "Sunucudan geçerli bir yanıt alınamadı. Lütfen yeniden dene.",
+    } satisfies Partial<AuthClientError>);
+  });
+
+  it("rejects a successful response without the expected data envelope", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await expect(
+      requestOtpCode("student@stu.yasar.edu.tr", "login"),
+    ).rejects.toMatchObject({
+      code: "UNEXPECTED_RESPONSE",
+      status: 502,
+    } satisfies Partial<AuthClientError>);
+  });
+
+  it("preserves valid structured API error details", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: {
+            code: "OTP_INCORRECT",
+            message: "Kod eşleşmedi.",
+            fieldErrors: { code: ["Kod geçersiz."] },
+            attemptsLeft: 2,
+          },
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    await expect(
+      requestOtpCode("student@stu.yasar.edu.tr", "login"),
+    ).rejects.toMatchObject({
+      attemptsLeft: 2,
+      code: "OTP_INCORRECT",
+      fieldErrors: { code: ["Kod geçersiz."] },
+      status: 400,
+    } satisfies Partial<AuthClientError>);
+  });
+});

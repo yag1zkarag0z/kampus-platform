@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusLoadingScreen from "@/components/CampusLoadingScreen";
+import PlatformRouteState from "@/components/PlatformRouteState";
 
 export default function CampusSessionGate({
   children,
@@ -17,8 +18,11 @@ export default function CampusSessionGate({
     isHydrated,
     isSignedIn,
     isGuest,
+    isSessionLoading,
+    sessionError,
     sessionExpired,
     role,
+    retrySession,
   } = useCampusAccount();
   const [isIntroComplete, setIsIntroComplete] = useState(false);
   const isGuestProfileRoute =
@@ -48,13 +52,23 @@ export default function CampusSessionGate({
   }, []);
 
   useEffect(() => {
-    if (isHydrated && !isSignedIn) {
+    if (isHydrated && !sessionError && !isSignedIn) {
       router.replace(
         sessionExpired ? "/giris?reason=session-expired" : "/giris",
       );
-    } else if (isHydrated && isGuest && !isGuestRouteAllowed) {
+    } else if (
+      isHydrated &&
+      !sessionError &&
+      isGuest &&
+      !isGuestRouteAllowed
+    ) {
       router.replace("/akis");
-    } else if (isHydrated && isSignedIn && !canAccessAdmin) {
+    } else if (
+      isHydrated &&
+      !sessionError &&
+      isSignedIn &&
+      !canAccessAdmin
+    ) {
       router.replace("/akis");
     }
   }, [
@@ -64,10 +78,38 @@ export default function CampusSessionGate({
     isHydrated,
     isSignedIn,
     router,
+    sessionError,
     sessionExpired,
   ]);
 
-  if (!isHydrated || (isSignedIn && !isIntroComplete)) {
+  if (!isHydrated) {
+    return <CampusLoadingScreen />;
+  }
+
+  if (sessionError) {
+    return (
+      <PlatformRouteState
+        eyebrow="Bağlantı sorunu"
+        title="Oturum kontrol edilemedi"
+        description={sessionError}
+        actions={
+          <button
+            type="button"
+            disabled={isSessionLoading}
+            aria-busy={isSessionLoading}
+            onClick={() => {
+              void retrySession();
+            }}
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#5a1f32] px-5 text-xs font-black text-white outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 disabled:cursor-wait disabled:opacity-60 dark:bg-[#c7896d] dark:text-[#121417] dark:hover:bg-[#d39879] dark:focus-visible:ring-[#c7896d]/35"
+          >
+            {isSessionLoading ? "Kontrol ediliyor…" : "Tekrar dene"}
+          </button>
+        }
+      />
+    );
+  }
+
+  if (isSignedIn && !isIntroComplete) {
     return <CampusLoadingScreen />;
   }
 

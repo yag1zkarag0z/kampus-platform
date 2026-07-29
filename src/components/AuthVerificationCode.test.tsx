@@ -1,11 +1,38 @@
-import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  act,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  demoVerificationCode,
+  AuthClientError,
+  requestOtpCode,
+  verifyOtpCode,
+} from "@/auth/client";
+import {
   formatVerificationTime,
-  useDemoVerificationCode,
+  useVerificationCode,
+  VerificationCodePanel,
 } from "@/components/AuthVerificationCode";
+
+vi.mock("@/auth/client", async () => {
+  const actual =
+    await vi.importActual<typeof import("@/auth/client")>(
+      "@/auth/client",
+    );
+
+  return {
+    ...actual,
+    requestOtpCode: vi.fn(),
+    verifyOtpCode: vi.fn(),
+  };
+});
+
+const mockedRequestOtpCode = vi.mocked(requestOtpCode);
+const mockedVerifyOtpCode = vi.mocked(verifyOtpCode);
 
 describe("verification time formatting", () => {
   it.each([
@@ -15,86 +42,109 @@ describe("verification time formatting", () => {
   ])("formats %i seconds as %s", (seconds, expected) => {
     expect(formatVerificationTime(seconds)).toBe(expected);
   });
+
+  it("keeps the changing countdown outside live announcements", () => {
+    render(
+      <VerificationCodePanel
+        attemptsLeft={3}
+        canResend={false}
+        expiresInSeconds={299}
+        inputId="verification-code"
+        isExpired={false}
+        isLocked={false}
+        isResending={false}
+        issueCount={1}
+        resendInSeconds={29}
+        onResend={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/Kod etkin ·/)).toHaveAttribute(
+      "aria-live",
+      "off",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Doğrulama kodu e-postana gönderildi.",
+    );
+  });
 });
 
-describe("demo verification code", () => {
+describe("server-backed verification code", () => {
   beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
+    mockedRequestOtpCode.mockReset().mockResolvedValue({
+      challengeId: "36ac7e65-60a6-4d47-b4ba-75d99060e2a4",
+      expiresAt: new Date(Date.now() + 300_000).toISOString(),
+      resendAvailableAt: new Date(Date.now() + 30_000).toISOString(),
+      attemptsLeft: 3,
+    });
+    mockedVerifyOtpCode.mockReset().mockResolvedValue({
+      mode: "signed-out",
+      expiresAt: null,
+      user: null,
+    });
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
+  it("uses timing metadata returned by the server", async () => {
+    const { result } = renderHook(() => useVerificationCode("login"));
 
-  it("issues a code with a five-minute lifetime and cooldown", () => {
-    const { result } = renderHook(() => useDemoVerificationCode());
+    await act(async () => {
+      await result.current.issueCode("student@stu.yasar.edu.tr");
+    });
 
-    act(() => result.current.issueCode());
-
-    expect(result.current.expiresInSeconds).toBe(300);
-    expect(result.current.resendInSeconds).toBe(30);
+    expect(mockedRequestOtpCode).toHaveBeenCalledWith(
+      "student@stu.yasar.edu.tr",
+      "login",
+    );
+    expect(result.current.expiresInSeconds).toBeGreaterThanOrEqual(299);
+    expect(result.current.resendInSeconds).toBeGreaterThanOrEqual(29);
     expect(result.current.attemptsLeft).toBe(3);
     expect(result.current.issueCount).toBe(1);
   });
 
-  it("accepts the demo code while it is valid", () => {
-    const { result } = renderHook(() => useDemoVerificationCode());
+  it("sends the server challenge id while verifying", async () => {
+    const { result } = renderHook(() => useVerificationCode("login"));
 
-    act(() => result.current.issueCode());
+    await act(async () => {
+      await result.current.issueCode("student@stu.yasar.edu.tr");
+    });
+    await act(async () => {
+      await result.current.verifyCode("482951");
+    });
 
-    expect(result.current.verifyCode(demoVerificationCode)).toEqual({
-      status: "valid",
+    expect(mockedVerifyOtpCode).toHaveBeenCalledWith({
+      challengeId: "36ac7e65-60a6-4d47-b4ba-75d99060e2a4",
+      code: "482951",
+      purpose: "login",
     });
   });
 
-  it("locks after three incorrect attempts", () => {
-    const { result } = renderHook(() => useDemoVerificationCode());
-    let verificationResult:
-      | ReturnType<typeof result.current.verifyCode>
-      | undefined;
+  it("uses the server's remaining-attempt count", async () => {
+    mockedVerifyOtpCode.mockRejectedValueOnce(
+      new AuthClientError(400, {
+        code: "OTP_INCORRECT",
+        message: "Kod eşleşmedi.",
+        fieldErrors: {},
+        attemptsLeft: 2,
+      }),
+    );
+    const { result } = renderHook(() => useVerificationCode("login"));
 
-    act(() => result.current.issueCode());
+    await act(async () => {
+      await result.current.issueCode("student@stu.yasar.edu.tr");
+    });
+    let caughtError: unknown;
 
-    act(() => {
-      verificationResult = result.current.verifyCode("000000");
+    await act(async () => {
+      try {
+        await result.current.verifyCode("000000");
+      } catch (error) {
+        caughtError = error;
+      }
     });
-    expect(verificationResult).toEqual({
-      status: "incorrect",
-      attemptsLeft: 2,
-    });
-    act(() => {
-      verificationResult = result.current.verifyCode("000000");
-    });
-    expect(verificationResult).toEqual({
-      status: "incorrect",
-      attemptsLeft: 1,
-    });
-    act(() => {
-      verificationResult = result.current.verifyCode("000000");
-    });
-    expect(verificationResult).toEqual({
-      status: "locked",
-    });
-    expect(result.current.isLocked).toBe(true);
-  });
 
-  it("expires after five minutes", () => {
-    const { result } = renderHook(() => useDemoVerificationCode());
-
-    act(() => result.current.issueCode());
-    act(() => vi.advanceTimersByTime(301_000));
-
-    let verificationResult:
-      | ReturnType<typeof result.current.verifyCode>
-      | undefined;
-    act(() => {
-      verificationResult =
-        result.current.verifyCode(demoVerificationCode);
+    expect(caughtError).toBeInstanceOf(AuthClientError);
+    await waitFor(() => {
+      expect(result.current.attemptsLeft).toBe(2);
     });
-    expect(verificationResult).toEqual({
-      status: "expired",
-    });
-    expect(result.current.isExpired).toBe(true);
   });
 });

@@ -1,13 +1,21 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import Link from "next/link";
 
 import {
-  useDemoVerificationCode,
+  AuthClientError,
+  registerCampusAccount,
+} from "@/auth/client";
+import {
+  useVerificationCode,
   VerificationCodePanel,
 } from "@/components/AuthVerificationCode";
-import { persistRegisteredCampusAccount } from "@/components/CampusAccountProvider";
 import {
   campusUsernamePattern,
   reservedCampusUsernames,
@@ -43,18 +51,33 @@ export default function RegisterFlow() {
   const [bio, setBio] = useState("");
   const [showDepartment, setShowDepartment] = useState(false);
   const [acceptedRules, setAcceptedRules] = useState(false);
+  const [registrationToken, setRegistrationToken] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [invalidField, setInvalidField] =
     useState<RegisterField | null>(null);
   const [complete, setComplete] = useState(false);
-  const verification = useDemoVerificationCode();
+  const [isRegistering, setIsRegistering] = useState(false);
+  const profileStepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const verification = useVerificationCode("registration");
   const availableYearOptions = getCampusYearOptions(department);
   const clearMessage = () => {
     setMessage(null);
     setInvalidField(null);
   };
 
-  const submitEmail = (event: FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    if (step !== 3) {
+      return;
+    }
+
+    const focusFrame = window.requestAnimationFrame(() => {
+      profileStepHeadingRef.current?.focus();
+    });
+
+    return () => window.cancelAnimationFrame(focusFrame);
+  }, [step]);
+
+  const submitEmail = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const normalizedEmail = email.trim().toLowerCase();
 
@@ -69,11 +92,21 @@ export default function RegisterFlow() {
 
     setEmail(normalizedEmail);
     clearMessage();
-    verification.issueCode();
-    setStep(2);
+
+    try {
+      await verification.issueCode(normalizedEmail);
+      setStep(2);
+    } catch (error) {
+      setMessage(
+        error instanceof AuthClientError
+          ? error.message
+          : "Doğrulama kodu gönderilemedi. Lütfen yeniden dene.",
+      );
+      setInvalidField("email");
+    }
   };
 
-  const submitCode = (event: FormEvent<HTMLFormElement>) => {
+  const submitCode = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!/^\d{6}$/.test(code)) {
@@ -83,52 +116,52 @@ export default function RegisterFlow() {
       return;
     }
 
-    const verificationResult = verification.verifyCode(code);
+    try {
+      const result = await verification.verifyCode(code);
 
-    if (verificationResult.status === "expired") {
-      setMessage(
-        "Bu doğrulama kodunun süresi doldu. Aşağıdan yeni bir kod isteyebilirsin.",
-      );
-      setInvalidField("code");
-      return;
-    }
+      if (!("registrationToken" in result)) {
+        throw new Error("Registration verification returned no grant.");
+      }
 
-    if (verificationResult.status === "locked") {
+      setRegistrationToken(result.registrationToken);
+      clearMessage();
+      setStep(3);
+    } catch (error) {
       setMessage(
-        "Çok fazla hatalı deneme yaptın. Devam etmek için yeni bir kod iste.",
-      );
-      setInvalidField("code");
-      return;
-    }
-
-    if (verificationResult.status === "incorrect") {
-      setMessage(
-        `Kod eşleşmedi. ${verificationResult.attemptsLeft} deneme hakkın kaldı.`,
+        error instanceof AuthClientError
+          ? error.message
+          : "Kod doğrulanamadı. Lütfen yeniden dene.",
       );
       setInvalidField("code");
       document.getElementById("register-code")?.focus();
-      return;
     }
-
-    clearMessage();
-    setStep(3);
   };
 
   const resendCode = async () => {
-    const didResend = await verification.resendCode();
+    try {
+      const didResend = await verification.resendCode();
 
-    if (!didResend) {
-      return;
+      if (!didResend) {
+        return;
+      }
+
+      setRegistrationToken("");
+      setCode("");
+      clearMessage();
+      window.requestAnimationFrame(() => {
+        document.getElementById("register-code")?.focus();
+      });
+    } catch (error) {
+      setMessage(
+        error instanceof AuthClientError
+          ? error.message
+          : "Yeni kod gönderilemedi. Lütfen yeniden dene.",
+      );
+      setInvalidField("code");
     }
-
-    setCode("");
-    clearMessage();
-    window.requestAnimationFrame(() => {
-      document.getElementById("register-code")?.focus();
-    });
   };
 
-  const submitProfile = (event: FormEvent<HTMLFormElement>) => {
+  const submitProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const normalizedUsername = username.trim().toLowerCase();
 
@@ -169,26 +202,46 @@ export default function RegisterFlow() {
       return;
     }
 
-    if (
-      !persistRegisteredCampusAccount({
-        username: normalizedUsername,
-        displayName,
-        department,
-        year,
-        bio,
-        showDepartment,
-      })
-    ) {
+    if (!registrationToken) {
       setMessage(
-        "Profil bu tarayıcıya kaydedilemedi. Depolama iznini kontrol edip yeniden dene.",
+        "Kayıt doğrulaması bulunamadı. E-postanı yeniden doğrulamalısın.",
       );
-      setInvalidField(null);
+      setStep(1);
       return;
     }
 
-    setUsername(normalizedUsername);
-    clearMessage();
-    setComplete(true);
+    setIsRegistering(true);
+
+    try {
+      await registerCampusAccount({
+        registrationToken,
+        username: normalizedUsername,
+        displayName,
+        department,
+        yearLabel: year,
+        bio,
+        showDepartment,
+        termsAccepted: true,
+      });
+
+      setUsername(normalizedUsername);
+      clearMessage();
+      setComplete(true);
+    } catch (error) {
+      setMessage(
+        error instanceof AuthClientError
+          ? error.message
+          : "Hesap oluşturulamadı. Lütfen yeniden dene.",
+      );
+      setInvalidField(
+        error instanceof AuthClientError &&
+          error.fieldErrors.username
+          ? "username"
+          : null,
+      );
+    } finally {
+      setIsRegistering(false);
+    }
   };
 
   const stepLabels = ["E-posta", "Doğrulama", "Profil"];
@@ -217,6 +270,16 @@ export default function RegisterFlow() {
             );
           })}
         </ol>
+        <p
+          className="sr-only"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {step === 3
+            ? "Kayıt adımı 3: Kampüs profilini oluştur."
+            : ""}
+        </p>
       </div>
 
       <div className="px-5 py-6 sm:px-7 sm:py-7">
@@ -281,9 +344,12 @@ export default function RegisterFlow() {
 
             <button
               type="submit"
+              disabled={verification.isRequesting}
               className="mt-6 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-[#5a1f32] px-4 text-sm font-bold text-[#fffaf4] outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:bg-[#9a5944] dark:hover:bg-[#ad6b53] dark:focus-visible:ring-[#c7896d]/30"
             >
-              Demo doğrulama kodunu hazırla
+              {verification.isRequesting
+                ? "Kod gönderiliyor…"
+                : "Doğrulama kodu gönder"}
               <span aria-hidden="true">→</span>
             </button>
           </form>
@@ -293,7 +359,7 @@ export default function RegisterFlow() {
               Kod e-postanda.
             </h2>
             <p className="mt-3 text-sm leading-6 text-[#1c2821]/64 dark:text-white/62">
-              6 haneli demo doğrulama kodunu{" "}
+              6 haneli doğrulama kodunu{" "}
               <strong className="font-bold text-[#1c2821] dark:text-[#ece8e1]">
                 {email}
               </strong>{" "}
@@ -335,9 +401,9 @@ export default function RegisterFlow() {
               placeholder="000000"
               maxLength={6}
               disabled={
-                verification.isExpired ||
                 verification.isLocked ||
-                verification.isResending
+                verification.isResending ||
+                verification.isVerifying
               }
               className={`${inputClassName} mt-2 text-center font-mono text-xl font-bold tracking-[0.35em] disabled:cursor-not-allowed disabled:opacity-55`}
               aria-invalid={invalidField === "code"}
@@ -372,13 +438,13 @@ export default function RegisterFlow() {
             <button
               type="submit"
               disabled={
-                verification.isExpired ||
                 verification.isLocked ||
-                verification.isResending
+                verification.isResending ||
+                verification.isVerifying
               }
               className="mt-5 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-[#5a1f32] px-4 text-sm font-bold text-[#fffaf4] outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 disabled:cursor-not-allowed disabled:opacity-55 dark:bg-[#9a5944] dark:hover:bg-[#ad6b53]"
             >
-              Kodu doğrula
+              {verification.isVerifying ? "Doğrulanıyor…" : "Kodu doğrula"}
               <span aria-hidden="true">→</span>
             </button>
 
@@ -387,6 +453,7 @@ export default function RegisterFlow() {
               onClick={() => {
                 setStep(1);
                 setCode("");
+                setRegistrationToken("");
                 clearMessage();
                 verification.resetVerification();
               }}
@@ -396,8 +463,17 @@ export default function RegisterFlow() {
             </button>
           </form>
         ) : (
-          <form onSubmit={submitProfile} noValidate>
-            <h2 className="text-2xl font-black tracking-[-0.04em] sm:text-3xl">
+          <form
+            onSubmit={submitProfile}
+            aria-labelledby="register-profile-step-title"
+            noValidate
+          >
+            <h2
+              ref={profileStepHeadingRef}
+              id="register-profile-step-title"
+              tabIndex={-1}
+              className="text-2xl font-black tracking-[-0.04em] outline-none sm:text-3xl"
+            >
               Kampüs profilini oluştur.
             </h2>
             <p className="mt-3 text-sm leading-6 text-[#1c2821]/64 dark:text-white/62">
@@ -632,21 +708,25 @@ export default function RegisterFlow() {
 
             <button
               type="submit"
+              disabled={isRegistering}
               className="mt-6 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-[#5a1f32] px-4 text-sm font-bold text-[#fffaf4] outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:bg-[#9a5944] dark:hover:bg-[#ad6b53]"
             >
-              Kaydı tamamla
+              {isRegistering ? "Hesap oluşturuluyor…" : "Kaydı tamamla"}
               <span aria-hidden="true">→</span>
             </button>
 
             <button
               type="button"
               onClick={() => {
-                setStep(2);
+                setRegistrationToken("");
+                setCode("");
                 clearMessage();
+                verification.resetVerification();
+                setStep(1);
               }}
               className="mt-3 min-h-11 w-full text-xs font-bold text-[#58635c] underline decoration-[#1c2821]/22 underline-offset-4 dark:text-[#aeb4af] dark:decoration-white/20"
             >
-              Önceki adıma dön
+              E-posta doğrulamasını yeniden başlat
             </button>
           </form>
         )}

@@ -3,25 +3,36 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import {
+  AuthClientError,
+  startGuestSession,
+} from "@/auth/client";
 import CampusLogo from "@/components/CampusLogo";
-import { activateCampusGuestSession } from "@/components/CampusAccountProvider";
 
 export default function CampusFeedPanel() {
   const router = useRouter();
   const [isOpeningGuestView, setIsOpeningGuestView] = useState(false);
   const [guestError, setGuestError] = useState<string | null>(null);
 
-  const continueAsGuest = () => {
-    setGuestError(null);
-    setIsOpeningGuestView(true);
-
-    if (!activateCampusGuestSession()) {
-      setGuestError("Misafir oturumu bu tarayıcıda başlatılamadı.");
-      setIsOpeningGuestView(false);
+  const continueAsGuest = async () => {
+    if (isOpeningGuestView) {
       return;
     }
 
-    router.push("/akis");
+    setGuestError(null);
+    setIsOpeningGuestView(true);
+
+    try {
+      await startGuestSession();
+      router.push("/akis");
+    } catch (error) {
+      setGuestError(
+        error instanceof AuthClientError
+          ? error.message
+          : "Misafir görünümü şu anda açılamıyor.",
+      );
+      setIsOpeningGuestView(false);
+    }
   };
 
   return (
@@ -178,8 +189,11 @@ export default function CampusFeedPanel() {
             </Link>
             <button
               type="button"
-              onClick={continueAsGuest}
+              onClick={() => {
+                void continueAsGuest();
+              }}
               disabled={isOpeningGuestView}
+              aria-busy={isOpeningGuestView}
               className="col-span-2 inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-white/16 bg-white/8 px-4 text-center text-[11px] font-bold text-[#fbf8f1] outline-none transition-colors hover:border-white/28 hover:bg-white/12 focus-visible:ring-2 focus-visible:ring-white/45 disabled:cursor-wait disabled:opacity-65"
             >
               {isOpeningGuestView

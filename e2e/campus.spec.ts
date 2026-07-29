@@ -1,6 +1,12 @@
 import { expect, test } from "@playwright/test";
 
-import { seedMemberSession } from "./helpers/session";
+import { waitForOtpEmail } from "./helpers/mailpit";
+import {
+  createUniqueStudentIdentity,
+  getSessionState,
+  logoutSession,
+  seedMemberSession,
+} from "./helpers/session";
 
 test.beforeEach(async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -34,16 +40,25 @@ test("signed-out platform access redirects to login", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("member can complete the demo login flow", async ({ page }) => {
+test("member can complete the real OTP login flow", async ({ page }) => {
+  const identity = createUniqueStudentIdentity("login");
+
+  await seedMemberSession(page, identity);
+  await logoutSession(page, identity.requestIp);
+  await page.setExtraHTTPHeaders({
+    "X-Forwarded-For": identity.requestIp,
+  });
   await page.goto("/giris");
 
   await page
     .getByLabel("Yaşar öğrenci e-postan")
-    .fill("e2e.student@stu.yasar.edu.tr");
+    .fill(identity.email);
   await page
-    .getByRole("button", { name: "Demo giriş kodunu hazırla" })
+    .getByRole("button", { name: "Giriş kodu gönder" })
     .click();
-  await page.getByLabel("Giriş kodu").fill("135790");
+  const code = await waitForOtpEmail(identity.email, "login");
+
+  await page.getByLabel("Giriş kodu").fill(code);
   await page.getByRole("button", { name: "Giriş yap" }).click();
 
   await expect(
@@ -54,34 +69,45 @@ test("member can complete the demo login flow", async ({ page }) => {
   await expect(page).toHaveURL(/\/akis$/);
   await expect(page.getByLabel("Gönderi metni")).toBeVisible();
 
-  const session = await page.evaluate(() => ({
-    mode: localStorage.getItem("kampus-session-v1"),
-    expiresAt: Number(
-      localStorage.getItem("kampus-session-expires-v1"),
-    ),
-  }));
+  const session = await getSessionState(page);
+
   expect(session.mode).toBe("member");
-  expect(session.expiresAt).toBeGreaterThan(Date.now());
+  expect(session.user?.profile.username).toBe(identity.username);
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.cookie.includes("kampus_session")),
+    )
+    .toBe(false);
+
+  await page.reload();
+  await expect(page.getByLabel("Gönderi metni")).toBeVisible();
 });
 
 test("registration persists a member account", async ({ page }) => {
+  const identity = createUniqueStudentIdentity("registration");
+
+  await page.setExtraHTTPHeaders({
+    "X-Forwarded-For": identity.requestIp,
+  });
   await page.goto("/kayit");
 
   await page
     .getByLabel("Yaşar öğrenci e-postan")
-    .fill("new.student@stu.yasar.edu.tr");
+    .fill(identity.email);
   await page
     .getByRole("button", {
-      name: "Demo doğrulama kodunu hazırla",
+      name: "Doğrulama kodu gönder",
     })
     .click();
+  const code = await waitForOtpEmail(identity.email, "registration");
+
   await page
     .getByRole("textbox", { name: "Doğrulama kodu", exact: true })
-    .fill("135790");
+    .fill(code);
   await page.getByRole("button", { name: "Kodu doğrula" }).click();
 
-  await page.getByLabel("Kullanıcı adı").fill("e2e_student");
-  await page.getByLabel(/Görünen adın/).fill("E2E Öğrencisi");
+  await page.getByLabel("Kullanıcı adı").fill(identity.username);
+  await page.getByLabel(/Görünen adın/).fill(identity.displayName);
   await page
     .getByRole("combobox", { name: "Bölüm", exact: true })
     .selectOption("Yazılım Mühendisliği");
@@ -99,16 +125,18 @@ test("registration persists a member account", async ({ page }) => {
     page.getByRole("heading", { name: "Aramıza hoş geldin." }),
   ).toBeVisible();
 
-  const account = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("kampus-account-v1") ?? "{}"),
-  );
-  expect(account).toMatchObject({
-    role: "member",
-    profile: {
-      username: "e2e_student",
-      displayName: "E2E Öğrencisi",
-      department: "Yazılım Mühendisliği",
-      year: "2. sınıf",
+  const session = await getSessionState(page);
+
+  expect(session).toMatchObject({
+    mode: "member",
+    user: {
+      role: "member",
+      profile: {
+        username: identity.username,
+        displayName: identity.displayName,
+        department: "Yazılım Mühendisliği",
+        year: "2. sınıf",
+      },
     },
   });
 });

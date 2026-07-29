@@ -206,8 +206,15 @@ export default function AppNavigation() {
     }
 
     setIsDesktopNavigationOpen(false);
-    signOut();
-    router.replace("/giris");
+    try {
+      await signOut();
+      router.replace("/giris");
+    } catch {
+      showToast({
+        message: "Çıkış yapılamadı. İnternet bağlantını kontrol edip yeniden dene.",
+        tone: "error",
+      });
+    }
   };
 
   const showGuestAuthToast = () => {

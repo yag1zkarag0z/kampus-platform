@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
 import { getServerEnvironment } from "@/server/env";
+import * as schema from "@/server/db/schema";
 
 function createDatabaseConnection() {
   const { DATABASE_URL } = getServerEnvironment();
@@ -21,7 +22,7 @@ function createDatabaseConnection() {
   });
 
   return {
-    database: drizzle({ client: pool }),
+    database: drizzle({ client: pool, schema }),
     pool,
   };
 }

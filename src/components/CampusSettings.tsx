@@ -150,7 +150,9 @@ export default function CampusSettings() {
     };
   }, [closeDeleteDialog, isDeleteDialogOpen]);
 
-  const handleDeleteAccount = (event: FormEvent<HTMLFormElement>) => {
+  const handleDeleteAccount = async (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
     event.preventDefault();
 
     if (deleteConfirmation !== DELETE_CONFIRMATION) {
@@ -161,9 +163,17 @@ export default function CampusSettings() {
     resetCampusData();
     resetModeration();
     resetAccount();
-    signOut();
-    setIsDeleteDialogOpen(false);
-    router.replace("/kayit");
+
+    try {
+      await signOut();
+      setIsDeleteDialogOpen(false);
+      router.replace("/kayit");
+    } catch {
+      showToast({
+        message: "Oturum kapatılamadı. Lütfen yeniden dene.",
+        tone: "error",
+      });
+    }
   };
 
   const handleSignOut = async () => {
@@ -179,8 +189,15 @@ export default function CampusSettings() {
       return;
     }
 
-    signOut();
-    router.replace("/giris");
+    try {
+      await signOut();
+      router.replace("/giris");
+    } catch {
+      showToast({
+        message: "Çıkış yapılamadı. Lütfen yeniden dene.",
+        tone: "error",
+      });
+    }
   };
 
   const hasMismatchedDeleteConfirmation =

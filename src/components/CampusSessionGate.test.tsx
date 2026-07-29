@@ -1,4 +1,9 @@
-import { act, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import CampusSessionGate from "@/components/CampusSessionGate";
@@ -10,8 +15,11 @@ const gateState = vi.hoisted(() => ({
     isHydrated: true,
     isSignedIn: true,
     isGuest: false,
+    isSessionLoading: false,
+    sessionError: null as string | null,
     sessionExpired: false,
     role: "member" as "member" | "moderator" | "admin",
+    retrySession: vi.fn(() => Promise.resolve()),
   },
 }));
 
@@ -29,10 +37,13 @@ describe("CampusSessionGate", () => {
     vi.useFakeTimers();
     gateState.pathname = "/akis";
     gateState.replace.mockReset();
+    gateState.account.retrySession.mockReset().mockResolvedValue();
     Object.assign(gateState.account, {
       isHydrated: true,
       isSignedIn: true,
       isGuest: false,
+      isSessionLoading: false,
+      sessionError: null,
       sessionExpired: false,
       role: "member",
     });
@@ -68,6 +79,32 @@ describe("CampusSessionGate", () => {
     expect(gateState.replace).toHaveBeenCalledWith(
       "/giris?reason=session-expired",
     );
+  });
+
+  it("shows a retry state without redirecting when session hydration fails", () => {
+    Object.assign(gateState.account, {
+      isSignedIn: false,
+      sessionError: "Oturum servisine ulaşılamadı.",
+    });
+
+    render(
+      <CampusSessionGate>
+        <p>Özel içerik</p>
+      </CampusSessionGate>,
+    );
+
+    expect(gateState.replace).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("heading", {
+        name: "Oturum kontrol edilemedi",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Oturum servisine ulaşılamadı.")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Tekrar dene" }),
+    );
+    expect(gateState.account.retrySession).toHaveBeenCalledOnce();
   });
 
   it.each(["/konu-olustur", "/ayarlar", "/admin", "/profil/duzenle"])(
