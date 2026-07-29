@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AuthClientError,
   requestOtpCode,
+  updateCurrentProfile,
+  updateCurrentSettings,
 } from "@/auth/client";
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -77,5 +79,70 @@ describe("auth client response validation", () => {
       fieldErrors: { code: ["Kod geçersiz."] },
       status: 400,
     } satisfies Partial<AuthClientError>);
+  });
+
+  it("sends only editable profile fields to the profile endpoint", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            mode: "signed-out",
+            expiresAt: null,
+            user: null,
+          },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+    const input = {
+      username: "kampuslu35",
+      displayName: "Kampüslü",
+      department: "Yazılım Mühendisliği",
+      year: "2. sınıf",
+      bio: "Merhaba",
+    };
+
+    await updateCurrentProfile(input);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/v1/me/profile",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify(input),
+        credentials: "same-origin",
+      }),
+    );
+  });
+
+  it("patches only the changed account settings", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            mode: "signed-out",
+            expiresAt: null,
+            user: null,
+          },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    await updateCurrentSettings({ notifyLikes: false });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/v1/me/settings",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ notifyLikes: false }),
+        credentials: "same-origin",
+      }),
+    );
   });
 });

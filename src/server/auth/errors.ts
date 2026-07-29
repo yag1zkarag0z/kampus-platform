@@ -1,6 +1,7 @@
 export type AuthErrorCode =
   | "ACCOUNT_INACTIVE"
   | "ACCOUNT_NOT_FOUND"
+  | "AUTHENTICATION_REQUIRED"
   | "AUTH_CONFIGURATION_ERROR"
   | "EMAIL_ALREADY_REGISTERED"
   | "EMAIL_DELIVERY_FAILED"
@@ -16,6 +17,7 @@ export type AuthErrorCode =
   | "OTP_RATE_LIMITED"
   | "OTP_USED"
   | "SESSION_REVOCATION_FAILED"
+  | "USER_NOT_FOUND"
   | "USERNAME_TAKEN";
 
 type AuthErrorOptions = {

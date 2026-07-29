@@ -6,7 +6,7 @@ const steps = [
     label: "Öğrenci e-postası",
     title: "Yaşar e-postanı doğrula.",
     description:
-      "@stu.yasar.edu.tr adresine gönderilen bağlantıya tıkla ve hesabını aç.",
+      "@stu.yasar.edu.tr adresine gönderilen 6 haneli kodu gir ve hesabını aç.",
     detail: "Yalnızca Yaşar öğrencileri",
   },
   {

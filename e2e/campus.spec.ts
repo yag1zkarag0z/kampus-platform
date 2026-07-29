@@ -141,6 +141,89 @@ test("registration persists a member account", async ({ page }) => {
   });
 });
 
+test("member profile and settings persist across reloads", async ({
+  page,
+}) => {
+  const identity = createUniqueStudentIdentity("profile");
+  const updatedUsername = `${identity.username}_edit`;
+  const updatedDisplayName = `Kalıcı profil ${identity.username.slice(-6)}`;
+  const updatedBio =
+    "Profil ve bildirim tercihleri PostgreSQL üzerinde kalıcı.";
+
+  await seedMemberSession(page, identity);
+  await page.goto("/profil/duzenle");
+
+  await page.getByLabel("Görünen ad").fill(updatedDisplayName);
+  await page.getByLabel("Kullanıcı adı").fill(updatedUsername);
+  await page.getByLabel("Biyografi").fill(updatedBio);
+  await page
+    .getByRole("combobox", { name: "Bölüm", exact: true })
+    .selectOption("Bilgisayar Mühendisliği");
+  await page
+    .getByRole("combobox", { name: "Sınıf", exact: true })
+    .selectOption("3. sınıf");
+  await page
+    .getByRole("button", { name: "Değişiklikleri kaydet" })
+    .click();
+
+  await expect(page).toHaveURL(/\/profil$/);
+  await expect(
+    page.getByRole("heading", {
+      level: 2,
+      name: updatedDisplayName,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText(`@${updatedUsername}`, { exact: true }))
+    .toBeVisible();
+  await expect(page.getByText(updatedBio, { exact: true })).toBeVisible();
+
+  const profileSession = await getSessionState(page);
+
+  expect(profileSession.mode).toBe("member");
+  if (profileSession.mode !== "member") {
+    throw new Error("Profile update did not preserve the member session.");
+  }
+
+  expect(profileSession.user.profile).toMatchObject({
+    username: updatedUsername,
+    displayName: updatedDisplayName,
+    department: "Bilgisayar Mühendisliği",
+    year: "3. sınıf",
+    bio: updatedBio,
+  });
+
+  await page.reload();
+  await expect(
+    page.getByRole("heading", {
+      level: 2,
+      name: updatedDisplayName,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText(`@${updatedUsername}`, { exact: true }))
+    .toBeVisible();
+  await expect(page.getByText(updatedBio, { exact: true })).toBeVisible();
+
+  await page.goto("/ayarlar");
+  const likesSwitch = page.getByRole("switch", { name: "Beğeniler" });
+
+  await expect(likesSwitch).toHaveAttribute("aria-checked", "true");
+  await likesSwitch.click();
+  await expect(likesSwitch).toHaveAttribute("aria-checked", "false");
+  await expect
+    .poll(async () => {
+      const session = await getSessionState(page);
+      return session.mode === "member"
+        ? session.user.settings.notifyLikes
+        : null;
+    })
+    .toBe(false);
+
+  await page.reload();
+  await expect(
+    page.getByRole("switch", { name: "Beğeniler" }),
+  ).toHaveAttribute("aria-checked", "false");
+});
+
 test("guest stays read-only and cannot open protected screens", async ({
   page,
 }) => {

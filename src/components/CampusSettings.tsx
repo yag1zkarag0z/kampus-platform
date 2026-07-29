@@ -11,7 +11,11 @@ import {
   type ReactNode,
 } from "react";
 
-import { useCampusAccount } from "@/components/CampusAccountProvider";
+import { AuthClientError } from "@/auth/client";
+import {
+  useCampusAccount,
+  type CampusAccountSettings,
+} from "@/components/CampusAccountProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import { useCampusData } from "@/components/CampusDataProvider";
 import { useCampusModeration } from "@/components/CampusModerationProvider";
@@ -58,6 +62,7 @@ export default function CampusSettings() {
   const router = useRouter();
   const { confirm: confirmAction, showToast } = useFeedback();
   const {
+    accountId,
     profile,
     settings,
     isHydrated,
@@ -74,11 +79,23 @@ export default function CampusSettings() {
   } = useCampusModeration();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [pendingSetting, setPendingSetting] = useState<
+    keyof CampusAccountSettings | null
+  >(null);
+  const [settingsSaveStatus, setSettingsSaveStatus] = useState<
+    "idle" | "saving" | "saved" | "error"
+  >("idle");
+  const [isResettingLocalData, setIsResettingLocalData] = useState(false);
+  const isResettingLocalDataRef = useRef(false);
   const deleteTriggerRef = useRef<HTMLButtonElement>(null);
   const deleteDialogRef = useRef<HTMLDivElement>(null);
   const deleteConfirmationRef = useRef<HTMLInputElement>(null);
 
   const closeDeleteDialog = useCallback(() => {
+    if (isResettingLocalDataRef.current) {
+      return;
+    }
+
     setIsDeleteDialogOpen(false);
     setDeleteConfirmation("");
     requestAnimationFrame(() => deleteTriggerRef.current?.focus());
@@ -160,19 +177,41 @@ export default function CampusSettings() {
       return;
     }
 
-    resetCampusData();
-    resetModeration();
-    resetAccount();
+    if (isResettingLocalDataRef.current) {
+      return;
+    }
+
+    const accountIdToReset = accountId;
+    isResettingLocalDataRef.current = true;
+    setIsResettingLocalData(true);
 
     try {
       await signOut();
+      resetCampusData();
+      resetModeration();
+      const accountDraftWasRemoved = accountIdToReset
+        ? resetAccount(accountIdToReset)
+        : true;
+
       setIsDeleteDialogOpen(false);
+
+      if (!accountDraftWasRemoved) {
+        showToast({
+          message:
+            "Oturum kapatıldı; ancak geçici profil fotoğrafı tarayıcıdan temizlenemedi.",
+          tone: "error",
+        });
+      }
+
       router.replace("/kayit");
     } catch {
       showToast({
         message: "Oturum kapatılamadı. Lütfen yeniden dene.",
         tone: "error",
       });
+    } finally {
+      isResettingLocalDataRef.current = false;
+      setIsResettingLocalData(false);
     }
   };
 
@@ -180,7 +219,7 @@ export default function CampusSettings() {
     const confirmed = await confirmAction({
       title: "Çıkış yapmak istiyor musun?",
       description:
-        "Profilin ve gönderilerin bu cihazda kalır. Yalnızca oturumun kapanır.",
+        "Profilin ve hesap tercihlerin hesabında kalır. Yalnızca bu cihazdaki oturum kapanır.",
       confirmLabel: "Çıkış yap",
       tone: "danger",
     });
@@ -200,9 +239,49 @@ export default function CampusSettings() {
     }
   };
 
+  const handleSettingChange = async (
+    setting: keyof CampusAccountSettings,
+    checked: boolean,
+  ) => {
+    if (pendingSetting) {
+      return;
+    }
+
+    setPendingSetting(setting);
+    setSettingsSaveStatus("saving");
+
+    try {
+      await updateSettings({
+        [setting]: checked,
+      } as Partial<CampusAccountSettings>);
+      setSettingsSaveStatus("saved");
+    } catch (error) {
+      setSettingsSaveStatus("error");
+      showToast({
+        message:
+          error instanceof AuthClientError
+            ? error.message
+            : "Tercih kaydedilemedi. Bağlantını kontrol edip yeniden dene.",
+        tone: "error",
+      });
+    } finally {
+      setPendingSetting(null);
+    }
+  };
+
   const hasMismatchedDeleteConfirmation =
     deleteConfirmation.length > 0 &&
     deleteConfirmation !== DELETE_CONFIRMATION;
+  const settingsStatusLabel =
+    settingsSaveStatus === "saving"
+      ? "Kaydediliyor…"
+      : settingsSaveStatus === "saved"
+        ? "Kaydedildi"
+        : settingsSaveStatus === "error"
+          ? "Kaydedilemedi"
+          : isHydrated
+            ? "Hesabında saklanır"
+            : "Yükleniyor…";
 
   return (
     <section
@@ -239,7 +318,15 @@ export default function CampusSettings() {
               aria-live="polite"
               className="hidden justify-self-end text-right text-xs font-semibold text-[#58635c] dark:text-[#aeb4af] min-[400px]:block"
             >
-              {isHydrated ? "Otomatik kaydedilir" : "Yükleniyor…"}
+              {settingsStatusLabel}
+            </p>
+            <p
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              className="sr-only min-[400px]:hidden"
+            >
+              {settingsStatusLabel}
             </p>
           </div>
         </header>
@@ -309,10 +396,13 @@ export default function CampusSettings() {
                 label="Bölüm ve sınıfı göster"
                 description="Profilinde ve kendi adınla yaptığın paylaşımlarda bölüm bilgini gösterir."
                 checked={settings.showDepartment}
-                disabled={!isHydrated}
-                onChange={(showDepartment) =>
-                  updateSettings({ showDepartment })
-                }
+                disabled={!isHydrated || pendingSetting !== null}
+                onChange={(showDepartment) => {
+                  void handleSettingChange(
+                    "showDepartment",
+                    showDepartment,
+                  );
+                }}
               />
 
               <div className="mt-4 border-l-2 border-[#9a5944]/38 bg-[#9a5944]/6 px-3 py-3 dark:border-[#c7896d]/42 dark:bg-[#c7896d]/6 sm:px-4">
@@ -356,45 +446,55 @@ export default function CampusSettings() {
                   label="Yanıtlar"
                   description="Konu veya yorumlarına yeni bir yanıt geldiğinde."
                   checked={settings.notifyReplies}
-                  disabled={!isHydrated}
-                  onChange={(notifyReplies) =>
-                    updateSettings({ notifyReplies })
-                  }
+                  disabled={!isHydrated || pendingSetting !== null}
+                  onChange={(notifyReplies) => {
+                    void handleSettingChange(
+                      "notifyReplies",
+                      notifyReplies,
+                    );
+                  }}
                 />
                 <SettingSwitch
                   id="notify-likes"
                   label="Beğeniler"
                   description="Konu veya yorumların beğenildiğinde."
                   checked={settings.notifyLikes}
-                  disabled={!isHydrated}
-                  onChange={(notifyLikes) =>
-                    updateSettings({ notifyLikes })
-                  }
+                  disabled={!isHydrated || pendingSetting !== null}
+                  onChange={(notifyLikes) => {
+                    void handleSettingChange("notifyLikes", notifyLikes);
+                  }}
                 />
                 <SettingSwitch
                   id="notify-announcements"
                   label="Kampüs duyuruları"
                   description="Topluluğu ilgilendiren önemli duyurular yayınlandığında."
                   checked={settings.notifyAnnouncements}
-                  disabled={!isHydrated}
-                  onChange={(notifyAnnouncements) =>
-                    updateSettings({ notifyAnnouncements })
-                  }
+                  disabled={!isHydrated || pendingSetting !== null}
+                  onChange={(notifyAnnouncements) => {
+                    void handleSettingChange(
+                      "notifyAnnouncements",
+                      notifyAnnouncements,
+                    );
+                  }}
                 />
                 <SettingSwitch
                   id="email-notifications"
                   label="E-posta bildirimleri"
                   description="Seçtiğin bildirimlerin önemli özetlerini e-postayla al."
                   checked={settings.emailNotifications}
-                  disabled={!isHydrated}
-                  onChange={(emailNotifications) =>
-                    updateSettings({ emailNotifications })
-                  }
+                  disabled={!isHydrated || pendingSetting !== null}
+                  onChange={(emailNotifications) => {
+                    void handleSettingChange(
+                      "emailNotifications",
+                      emailNotifications,
+                    );
+                  }}
                 />
               </div>
               <p className="mt-4 border-l-2 border-[#9a5944]/38 pl-3 text-xs leading-5 text-[#1c2821]/64 dark:border-[#c7896d]/42 dark:text-white/60">
-                Tercihlerin şimdilik bu cihazda saklanır. Bildirim gönderimi
-                backend tamamlandığında etkinleşecek.
+                Tercihlerin hesabında saklanır ve giriş yaptığın cihazlarda
+                uygulanır. Bildirim gönderimi etkinleştiğinde bu seçimler
+                kullanılacak.
               </p>
             </SettingsSection>
 
@@ -469,7 +569,7 @@ export default function CampusSettings() {
             <SettingsSection
               eyebrow="Oturum"
               title="Çıkış yap"
-              description="Profilin ve gönderilerin bu cihazda kalır; yalnızca oturumun kapanır."
+              description="Profilin ve hesap tercihlerin hesabında saklanır; yalnızca bu cihazdaki oturum kapanır."
             >
               <button
                 type="button"
@@ -487,9 +587,10 @@ export default function CampusSettings() {
               danger
             >
               <p className="text-xs leading-5 text-[#1c2821]/64 dark:text-white/60">
-                Profil değişikliklerin, oluşturduğun konu ve yorumlar,
-                kaydettiklerin ve hesap tercihlerin bu tarayıcıdan temizlenir.
-                Varsayılan önizleme hesabına dönersin.
+                Geçici profil fotoğrafın, bu cihazda oluşturduğun yerel konu
+                ve yorumlar, kaydettiklerin ve moderasyon tercihlerin
+                temizlenir. Sunucuda kayıtlı profil bilgilerin ve hesap
+                tercihlerin silinmez.
               </p>
               <button
                 ref={deleteTriggerRef}
@@ -538,6 +639,7 @@ export default function CampusSettings() {
               <button
                 type="button"
                 onClick={closeDeleteDialog}
+                disabled={isResettingLocalData}
                 aria-label="Veri sıfırlama penceresini kapat"
                 className={`grid size-11 shrink-0 place-items-center rounded-full text-[#58635c] transition-colors hover:bg-[#1c2821]/7 hover:text-[#1c2821] dark:text-[#aeb4af] dark:hover:bg-white/8 dark:hover:text-white ${focusRing}`}
               >
@@ -552,7 +654,7 @@ export default function CampusSettings() {
               <p>Onayladığında bu tarayıcıdaki:</p>
               <ul className="mt-2 grid gap-1.5 pl-5">
                 <li className="list-disc">
-                  Profil değişikliklerin ve hesap tercihlerin,
+                  Geçici profil fotoğrafın,
                 </li>
                 <li className="list-disc">
                   Oluşturduğun konu ve yorumlar,
@@ -562,7 +664,7 @@ export default function CampusSettings() {
                 </li>
               </ul>
               <p className="mt-3 font-bold text-[#8b2f2a] dark:text-[#e18a7d]">
-                Bu cihazdaki değişiklikler geri alınamaz.
+                Sunucudaki profil bilgilerin ve hesap tercihlerin korunur.
               </p>
             </div>
 
@@ -585,6 +687,7 @@ export default function CampusSettings() {
                 onChange={(event) =>
                   setDeleteConfirmation(event.target.value)
                 }
+                disabled={isResettingLocalData}
                 autoComplete="off"
                 spellCheck={false}
                 aria-invalid={hasMismatchedDeleteConfirmation}
@@ -613,16 +716,23 @@ export default function CampusSettings() {
                 <button
                   type="button"
                   onClick={closeDeleteDialog}
+                  disabled={isResettingLocalData}
                   className={`inline-flex min-h-11 items-center justify-center border border-[#1c2821]/15 px-4 text-xs font-black transition-colors hover:bg-[#1c2821]/6 dark:border-white/13 dark:hover:bg-white/7 ${focusRing}`}
                 >
                   Vazgeç
                 </button>
                 <button
                   type="submit"
-                  disabled={deleteConfirmation !== DELETE_CONFIRMATION}
+                  disabled={
+                    deleteConfirmation !== DELETE_CONFIRMATION ||
+                    isResettingLocalData
+                  }
+                  aria-busy={isResettingLocalData}
                   className={`inline-flex min-h-11 items-center justify-center bg-[#8b2f2a] px-4 text-xs font-black text-white transition-colors hover:bg-[#762620] disabled:cursor-not-allowed disabled:bg-[#8b2f2a]/35 disabled:text-white/75 dark:bg-[#d27368] dark:text-[#17191c] dark:hover:bg-[#df887d] dark:disabled:bg-[#d27368]/30 dark:disabled:text-white/45 ${focusRing}`}
                 >
-                  Verileri sıfırla
+                  {isResettingLocalData
+                    ? "Oturum kapatılıyor…"
+                    : "Verileri sıfırla"}
                 </button>
               </div>
             </form>

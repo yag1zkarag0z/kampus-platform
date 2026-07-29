@@ -15,31 +15,26 @@ import {
   AuthClientError,
   getCurrentSession,
   logoutCurrentSession,
+  updateCurrentProfile,
+  updateCurrentSettings,
+  type UpdateCampusProfileInput,
 } from "@/auth/client";
 import type {
   AuthProfile,
   AuthSettings,
   SessionState,
 } from "@/auth/types";
-import {
-  campusUsernamePattern,
-  reservedCampusUsernames,
-} from "@/data/campusAccountRules";
 import type { CampusAdminRole } from "@/data/campusAdmin";
 
-const ACCOUNT_DRAFT_KEY = "kampus-account-draft-v2";
+const LEGACY_ACCOUNT_DRAFT_KEY = "kampus-account-draft-v2";
+const AVATAR_DRAFT_KEY_PREFIX = "kampus-avatar-draft-v1:";
 
 export type CampusProfile = AuthProfile;
 export type CampusAccountSettings = AuthSettings;
 export type CampusSessionMode = "member" | "guest" | "signed-out";
 
-type StoredAccountDraft = {
-  userId: string;
-  profile: CampusProfile;
-  settings: CampusAccountSettings;
-};
-
 type CampusAccountContextValue = {
+  accountId: string | null;
   profile: CampusProfile;
   settings: CampusAccountSettings;
   role: CampusAdminRole;
@@ -51,10 +46,13 @@ type CampusAccountContextValue = {
   sessionExpired: boolean;
   sessionMode: CampusSessionMode;
   retrySession: () => Promise<void>;
-  updateProfile: (updates: Partial<CampusProfile>) => void;
-  updateSettings: (updates: Partial<CampusAccountSettings>) => void;
-  removeAvatar: () => void;
-  resetAccount: () => void;
+  updateProfile: (updates: UpdateCampusProfileInput) => Promise<void>;
+  updateSettings: (
+    updates: Partial<CampusAccountSettings>,
+  ) => Promise<void>;
+  updateAvatar: (avatarDataUrl: string) => boolean;
+  removeAvatar: () => boolean;
+  resetAccount: (targetAccountId?: string) => boolean;
   signOut: () => Promise<void>;
 };
 
@@ -84,24 +82,18 @@ const defaultSettings: CampusAccountSettings = {
   emailNotifications: true,
 };
 
+const signedOutSession = {
+  mode: "signed-out",
+  expiresAt: null,
+  user: null,
+} satisfies SessionState;
+
 const CampusAccountContext = createContext<
   CampusAccountContextValue | undefined
 >(undefined);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
-}
-
-function isStringWithin(
-  value: unknown,
-  maximumLength: number,
-  allowEmpty = false,
-): value is string {
-  return (
-    typeof value === "string" &&
-    value.length <= maximumLength &&
-    (allowEmpty || value.trim().length > 0)
-  );
 }
 
 function isValidAvatarDataUrl(value: unknown): value is string {
@@ -114,39 +106,8 @@ function isValidAvatarDataUrl(value: unknown): value is string {
   );
 }
 
-function isStoredProfile(value: unknown): value is CampusProfile {
-  if (!isRecord(value)) {
-    return false;
-  }
-
-  return (
-    typeof value.username === "string" &&
-    campusUsernamePattern.test(value.username) &&
-    !reservedCampusUsernames.has(value.username) &&
-    isStringWithin(value.displayName, 40) &&
-    isStringWithin(value.department, 60, true) &&
-    isStringWithin(value.year, 30, true) &&
-    isStringWithin(value.bio, 160, true) &&
-    isStringWithin(value.joinedLabel, 40, true) &&
-    (value.avatarDataUrl === undefined ||
-      isValidAvatarDataUrl(value.avatarDataUrl))
-  );
-}
-
-function isStoredSettings(
-  value: unknown,
-): value is CampusAccountSettings {
-  if (!isRecord(value)) {
-    return false;
-  }
-
-  return (
-    typeof value.showDepartment === "boolean" &&
-    typeof value.notifyReplies === "boolean" &&
-    typeof value.notifyLikes === "boolean" &&
-    typeof value.notifyAnnouncements === "boolean" &&
-    typeof value.emailNotifications === "boolean"
-  );
+function getAvatarDraftKey(userId: string) {
+  return `${AVATAR_DRAFT_KEY_PREFIX}${userId}`;
 }
 
 function getSessionErrorMessage(error: unknown) {
@@ -155,41 +116,96 @@ function getSessionErrorMessage(error: unknown) {
     : "Oturumun kontrol edilemedi. Bağlantını kontrol edip yeniden dene.";
 }
 
-function readAccountDraft(userId: string) {
+function readAvatarDraft(userId: string) {
   try {
-    const rawValue = window.localStorage.getItem(ACCOUNT_DRAFT_KEY);
+    const storedAvatar = window.localStorage.getItem(
+      getAvatarDraftKey(userId),
+    );
+    const legacyRawValue = window.localStorage.getItem(
+      LEGACY_ACCOUNT_DRAFT_KEY,
+    );
+    window.localStorage.removeItem(LEGACY_ACCOUNT_DRAFT_KEY);
 
-    if (!rawValue) {
-      return null;
+    if (storedAvatar && isValidAvatarDataUrl(storedAvatar)) {
+      return storedAvatar;
     }
 
-    const value: unknown = JSON.parse(rawValue);
+    if (storedAvatar) {
+      window.localStorage.removeItem(getAvatarDraftKey(userId));
+    }
+
+    if (!legacyRawValue) {
+      return undefined;
+    }
+
+    const legacyValue: unknown = JSON.parse(legacyRawValue);
 
     if (
-      !isRecord(value) ||
-      value.userId !== userId ||
-      !isStoredProfile(value.profile) ||
-      !isStoredSettings(value.settings)
+      !isRecord(legacyValue) ||
+      legacyValue.userId !== userId ||
+      !isRecord(legacyValue.profile) ||
+      !isValidAvatarDataUrl(legacyValue.profile.avatarDataUrl)
     ) {
-      return null;
+      return undefined;
     }
 
-    return {
-      userId,
-      profile: value.profile,
-      settings: value.settings,
-    } satisfies StoredAccountDraft;
+    window.localStorage.setItem(
+      getAvatarDraftKey(userId),
+      legacyValue.profile.avatarDataUrl,
+    );
+    return legacyValue.profile.avatarDataUrl;
   } catch {
-    return null;
+    return undefined;
+  }
+}
+
+function writeAvatarDraft(
+  userId: string,
+  avatarDataUrl: string | undefined,
+) {
+  try {
+    if (avatarDataUrl) {
+      window.localStorage.setItem(
+        getAvatarDraftKey(userId),
+        avatarDataUrl,
+      );
+      return true;
+    }
+
+    window.localStorage.removeItem(getAvatarDraftKey(userId));
+    return true;
+  } catch {
+    // The avatar can continue in memory if browser storage is unavailable.
+    return false;
+  }
+}
+
+function createMemberSessionRequiredError() {
+  return new AuthClientError(401, {
+    code: "MEMBER_SESSION_REQUIRED",
+    message: "Bu değişikliği kaydetmek için yeniden giriş yapmalısın.",
+    fieldErrors: {},
+  });
+}
+
+function assertMemberMutationSession(
+  session: SessionState,
+  expectedUserId: string,
+) {
+  if (
+    session.mode !== "member" ||
+    session.user.id !== expectedUserId
+  ) {
+    throw createMemberSessionRequiredError();
   }
 }
 
 export function CampusAccountProvider({ children }: { children: ReactNode }) {
+  const [accountId, setAccountId] = useState<string | null>(null);
   const [profile, setProfile] = useState<CampusProfile>(defaultProfile);
   const [settings, setSettings] =
     useState<CampusAccountSettings>(defaultSettings);
   const [role, setRole] = useState<CampusAdminRole>("member");
-  const [userId, setUserId] = useState<string | null>(null);
   const [sessionMode, setSessionMode] =
     useState<CampusSessionMode>("signed-out");
   const [sessionExpiresAt, setSessionExpiresAt] =
@@ -199,11 +215,18 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
   const [isSessionLoading, setIsSessionLoading] = useState(true);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const isMountedRef = useRef(false);
+  const avatarDraftRef = useRef<string | undefined>(undefined);
   const sessionRequestRef = useRef<Promise<void> | null>(null);
+  const settingsQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const settingsRef = useRef<CampusAccountSettings>(defaultSettings);
+  const sessionModeRef =
+    useRef<CampusSessionMode>("signed-out");
+  const userIdRef = useRef<string | null>(null);
   const isSignedIn = sessionMode !== "signed-out";
   const isGuest = sessionMode === "guest";
 
   const applySession = useCallback((session: SessionState) => {
+    sessionModeRef.current = session.mode;
     setSessionMode(session.mode);
     setSessionExpired(false);
     setSessionExpiresAt(
@@ -211,26 +234,60 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
     );
 
     if (session.mode === "member") {
-      const localDraft = readAccountDraft(session.user.id);
+      const avatarDataUrl =
+        userIdRef.current === session.user.id
+          ? avatarDraftRef.current
+          : readAvatarDraft(session.user.id);
+      const nextProfile = {
+        ...session.user.profile,
+        ...(avatarDataUrl ? { avatarDataUrl } : {}),
+      };
 
-      setUserId(session.user.id);
-      setProfile(localDraft?.profile ?? session.user.profile);
-      setSettings(localDraft?.settings ?? session.user.settings);
+      avatarDraftRef.current = avatarDataUrl;
+      userIdRef.current = session.user.id;
+      setAccountId(session.user.id);
+      setProfile(nextProfile);
+      settingsRef.current = session.user.settings;
+      setSettings(session.user.settings);
       setRole(session.user.role);
       return;
     }
 
-    setUserId(null);
+    avatarDraftRef.current = undefined;
+    userIdRef.current = null;
+    setAccountId(null);
     setRole("member");
     setProfile(
       session.mode === "guest" ? guestProfile : defaultProfile,
     );
-    setSettings(
+    const nextSettings =
       session.mode === "guest"
         ? { ...defaultSettings, showDepartment: false }
-        : defaultSettings,
-    );
+        : defaultSettings;
+    settingsRef.current = nextSettings;
+    setSettings(nextSettings);
   }, []);
+
+  const expireSession = useCallback(() => {
+    applySession(signedOutSession);
+    setSessionExpired(true);
+    setSessionError(null);
+  }, [applySession]);
+
+  const handleMutationError = useCallback(
+    (error: unknown, expectedUserId: string) => {
+      if (
+        error instanceof AuthClientError &&
+        error.status === 401 &&
+        isMountedRef.current &&
+        sessionModeRef.current === "member" &&
+        userIdRef.current === expectedUserId
+      ) {
+        expireSession();
+      }
+    },
+    [expireSession],
+  );
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -277,21 +334,6 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
   }, [retrySession]);
 
   useEffect(() => {
-    if (!isHydrated || sessionMode !== "member" || !userId) {
-      return;
-    }
-
-    try {
-      window.localStorage.setItem(
-        ACCOUNT_DRAFT_KEY,
-        JSON.stringify({ userId, profile, settings }),
-      );
-    } catch {
-      // Profile drafts can continue in memory if browser storage is unavailable.
-    }
-  }, [isHydrated, profile, sessionMode, settings, userId]);
-
-  useEffect(() => {
     if (!isHydrated || !sessionExpiresAt) {
       return;
     }
@@ -301,16 +343,14 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      setSessionExpired(true);
-      setSessionMode("signed-out");
-      setUserId(null);
+      expireSession();
     };
 
     checkExpiration();
     const timer = window.setInterval(checkExpiration, 60_000);
 
     return () => window.clearInterval(timer);
-  }, [isHydrated, sessionExpiresAt]);
+  }, [expireSession, isHydrated, sessionExpiresAt]);
 
   useEffect(() => {
     const channel =
@@ -338,60 +378,176 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
   }, [applySession]);
 
   const updateProfile = useCallback(
-    (updates: Partial<CampusProfile>) => {
-      if (sessionMode !== "member") {
-        return;
+    async (updates: UpdateCampusProfileInput) => {
+      const expectedUserId = userIdRef.current;
+
+      if (
+        sessionModeRef.current !== "member" ||
+        !expectedUserId
+      ) {
+        throw createMemberSessionRequiredError();
       }
 
-      setProfile((current) => ({ ...current, ...updates }));
+      try {
+        const session = await updateCurrentProfile(updates);
+        assertMemberMutationSession(session, expectedUserId);
+
+        if (
+          sessionModeRef.current !== "member" ||
+          userIdRef.current !== expectedUserId
+        ) {
+          throw createMemberSessionRequiredError();
+        }
+
+        applySession(session);
+      } catch (error) {
+        handleMutationError(error, expectedUserId);
+        throw error;
+      }
     },
-    [sessionMode],
+    [applySession, handleMutationError],
   );
 
   const updateSettings = useCallback(
     (updates: Partial<CampusAccountSettings>) => {
-      if (sessionMode !== "member") {
-        return;
-      }
+      const executeUpdate = async () => {
+        const expectedUserId = userIdRef.current;
 
-      setSettings((current) => ({ ...current, ...updates }));
+        if (
+          sessionModeRef.current !== "member" ||
+          !expectedUserId
+        ) {
+          throw createMemberSessionRequiredError();
+        }
+
+        const previousSettings = settingsRef.current;
+        const optimisticSettings = {
+          ...previousSettings,
+          ...updates,
+        };
+        settingsRef.current = optimisticSettings;
+        setSettings(optimisticSettings);
+
+        try {
+          const session = await updateCurrentSettings(updates);
+          assertMemberMutationSession(session, expectedUserId);
+
+          if (
+            sessionModeRef.current !== "member" ||
+            userIdRef.current !== expectedUserId
+          ) {
+            throw createMemberSessionRequiredError();
+          }
+
+          applySession(session);
+        } catch (error) {
+          handleMutationError(error, expectedUserId);
+
+          if (
+            sessionModeRef.current === "member" &&
+            userIdRef.current === expectedUserId
+          ) {
+            settingsRef.current = previousSettings;
+            setSettings(previousSettings);
+          }
+
+          throw error;
+        }
+      };
+
+      const request = settingsQueueRef.current
+        .catch(() => undefined)
+        .then(executeUpdate);
+      settingsQueueRef.current = request.then(
+        () => undefined,
+        () => undefined,
+      );
+      return request;
     },
-    [sessionMode],
+    [applySession, handleMutationError],
   );
 
-  const removeAvatar = useCallback(() => {
-    if (sessionMode !== "member") {
-      return;
+  const updateAvatar = useCallback((avatarDataUrl: string) => {
+    const currentUserId = userIdRef.current;
+
+    if (
+      sessionModeRef.current !== "member" ||
+      !currentUserId ||
+      !isValidAvatarDataUrl(avatarDataUrl)
+    ) {
+      return false;
     }
 
+    const wasStored = writeAvatarDraft(currentUserId, avatarDataUrl);
+
+    if (!wasStored) {
+      return false;
+    }
+
+    avatarDraftRef.current = avatarDataUrl;
+    setProfile((current) => ({
+      ...current,
+      avatarDataUrl,
+    }));
+    return wasStored;
+  }, []);
+
+  const removeAvatar = useCallback(() => {
+    const currentUserId = userIdRef.current;
+
+    if (
+      sessionModeRef.current !== "member" ||
+      !currentUserId
+    ) {
+      return false;
+    }
+
+    const wasRemoved = writeAvatarDraft(currentUserId, undefined);
+
+    if (!wasRemoved) {
+      return false;
+    }
+
+    avatarDraftRef.current = undefined;
     setProfile((current) => ({
       ...current,
       avatarDataUrl: undefined,
     }));
-  }, [sessionMode]);
+    return wasRemoved;
+  }, []);
 
-  const resetAccount = useCallback(() => {
-    if (sessionMode !== "member") {
-      return;
+  const resetAccount = useCallback((targetAccountId?: string) => {
+    const currentUserId = targetAccountId ?? userIdRef.current;
+
+    if (!currentUserId) {
+      return false;
     }
+
+    let legacyDraftWasRemoved = true;
 
     try {
-      window.localStorage.removeItem(ACCOUNT_DRAFT_KEY);
+      window.localStorage.removeItem(LEGACY_ACCOUNT_DRAFT_KEY);
     } catch {
       // The in-memory reset still completes.
+      legacyDraftWasRemoved = false;
     }
 
-    setProfile(defaultProfile);
-    setSettings(defaultSettings);
-  }, [sessionMode]);
+    const avatarWasRemoved = writeAvatarDraft(currentUserId, undefined);
+
+    if (userIdRef.current === currentUserId) {
+      avatarDraftRef.current = undefined;
+      setProfile((current) => ({
+        ...current,
+        avatarDataUrl: undefined,
+      }));
+    }
+
+    return legacyDraftWasRemoved && avatarWasRemoved;
+  }, []);
 
   const signOut = useCallback(async () => {
     await logoutCurrentSession();
-    applySession({
-      mode: "signed-out",
-      expiresAt: null,
-      user: null,
-    });
+    applySession(signedOutSession);
 
     if (typeof BroadcastChannel !== "undefined") {
       const channel = new BroadcastChannel("kampus-auth");
@@ -402,6 +558,7 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<CampusAccountContextValue>(
     () => ({
+      accountId,
       profile,
       settings,
       role,
@@ -415,12 +572,14 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
       retrySession,
       updateProfile,
       updateSettings,
+      updateAvatar,
       removeAvatar,
       resetAccount,
       signOut,
     }),
     [
       profile,
+      accountId,
       settings,
       role,
       isHydrated,
@@ -433,6 +592,7 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
       retrySession,
       updateProfile,
       updateSettings,
+      updateAvatar,
       removeAvatar,
       resetAccount,
       signOut,
