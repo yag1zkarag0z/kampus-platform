@@ -4,24 +4,23 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  useMemo,
+  useEffect,
   useRef,
   useState,
   type ChangeEvent,
   type FormEvent,
 } from "react";
 
+import {
+  AuthClientError,
+  type UpdateCampusProfileInput,
+} from "@/auth/client";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import { useCampusData } from "@/components/CampusDataProvider";
 import {
   campusUsernamePattern,
   reservedCampusUsernames,
 } from "@/data/campusAccountRules";
-import {
-  isAnonymousCampusAuthor,
-  LOCAL_ACCOUNT_OWNER_ID,
-  type CampusAuthorReference,
-} from "@/data/campusPosts";
 import {
   getCampusYearOptions,
   isListedYasarDepartment,
@@ -47,7 +46,12 @@ type EditableProfile = {
   avatarDataUrl?: string;
 };
 
-type ProfileField = "displayName" | "username" | "department" | "bio";
+type ProfileField =
+  | "displayName"
+  | "username"
+  | "department"
+  | "year"
+  | "bio";
 type FieldErrors = Partial<Record<ProfileField, string>>;
 
 function getInitials(displayName: string) {
@@ -68,6 +72,52 @@ function normalizeUsername(value: string) {
     .replace(/^@+/, "")
     .replace(/[^a-z0-9._]/g, "")
     .slice(0, 24);
+}
+
+function getApiFieldErrors(error: AuthClientError): FieldErrors {
+  const nextErrors: FieldErrors = {};
+  const fieldAliases: Record<ProfileField, readonly string[]> = {
+    displayName: ["displayName"],
+    username: ["username"],
+    department: ["department"],
+    year: ["year", "yearLabel"],
+    bio: ["bio"],
+  };
+
+  (
+    Object.entries(fieldAliases) as [
+      ProfileField,
+      readonly string[],
+    ][]
+  ).forEach(([field, aliases]) => {
+    const message = aliases
+      .flatMap((alias) => error.fieldErrors[alias] ?? [])
+      .find(Boolean);
+
+    if (message) {
+      nextErrors[field] = message;
+    }
+  });
+
+  if (
+    !nextErrors.username &&
+    (error.status === 409 ||
+      error.code.toLocaleUpperCase("en-US").includes("USERNAME"))
+  ) {
+    nextErrors.username =
+      "Bu kullanıcı adı başka bir öğrenci tarafından kullanılıyor.";
+  }
+
+  return nextErrors;
+}
+
+function focusFirstInvalidField() {
+  requestAnimationFrame(() => {
+    const firstInvalidField = document.querySelector<HTMLElement>(
+      '[aria-invalid="true"]',
+    );
+    firstInvalidField?.focus();
+  });
 }
 
 async function createAvatarDataUrl(file: File) {
@@ -108,64 +158,33 @@ async function createAvatarDataUrl(file: File) {
 
 export default function EditCampusProfile() {
   const {
+    accountId,
     profile,
     settings,
     isHydrated,
     updateProfile,
     updateSettings,
+    updateAvatar,
     removeAvatar,
   } = useCampusAccount();
-  const { posts, renameAuthoredContent } = useCampusData();
-  const unavailableUsernames = useMemo(() => {
-    const usernames = new Set<string>();
-    const currentUsername = profile.username.toLocaleLowerCase("en-US");
+  const { renameAuthoredContent } = useCampusData();
 
-    const registerAuthor = (author: CampusAuthorReference) => {
-      if (
-        author.authorId === LOCAL_ACCOUNT_OWNER_ID ||
-        isAnonymousCampusAuthor(author)
-      ) {
-        return;
-      }
-
-      const username = author.author
-        .trim()
-        .replace(/^@/, "")
-        .toLocaleLowerCase("en-US");
-
-      if (
-        username !== "anonim" &&
-        username !== "sen" &&
-        username !== currentUsername
-      ) {
-        usernames.add(username);
-      }
-    };
-
-    posts.forEach((post) => {
-      registerAuthor(post);
-      post.comments.forEach(registerAuthor);
-    });
-
-    return usernames;
-  }, [posts, profile.username]);
-
-  if (!isHydrated) {
+  if (!isHydrated || !accountId) {
     return <EditProfileLoading />;
   }
 
   return (
     <EditProfileForm
-      key={`${profile.username}-${profile.avatarDataUrl ?? "no-avatar"}`}
+      key={accountId}
       initialProfile={profile}
       initialShowDepartment={settings.showDepartment}
       updateProfile={updateProfile}
       updateShowDepartment={(showDepartment) =>
         updateSettings({ showDepartment })
       }
+      updateAvatar={updateAvatar}
       removeAvatar={removeAvatar}
       renameAuthoredContent={renameAuthoredContent}
-      unavailableUsernames={unavailableUsernames}
     />
   );
 }
@@ -175,20 +194,20 @@ function EditProfileForm({
   initialShowDepartment,
   updateProfile,
   updateShowDepartment,
+  updateAvatar,
   removeAvatar,
   renameAuthoredContent,
-  unavailableUsernames,
 }: {
   initialProfile: EditableProfile;
   initialShowDepartment: boolean;
-  updateProfile: (updates: Partial<EditableProfile>) => void;
-  updateShowDepartment: (showDepartment: boolean) => void;
-  removeAvatar: () => void;
+  updateProfile: (updates: UpdateCampusProfileInput) => Promise<void>;
+  updateShowDepartment: (showDepartment: boolean) => Promise<void>;
+  updateAvatar: (avatarDataUrl: string) => boolean;
+  removeAvatar: () => boolean;
   renameAuthoredContent: (
     previousUsername: string,
     newUsername: string,
   ) => void;
-  unavailableUsernames: ReadonlySet<string>;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -211,6 +230,20 @@ function EditProfileForm({
   const [isProcessingAvatar, setIsProcessingAvatar] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const isMountedRef = useRef(false);
+  const saveGenerationRef = useRef(0);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+      saveGenerationRef.current += 1;
+    };
+  }, []);
+
+  const isCurrentSave = (generation: number) =>
+    isMountedRef.current && saveGenerationRef.current === generation;
 
   const clearFieldError = (field: ProfileField) => {
     setFieldErrors((currentErrors) => {
@@ -291,11 +324,6 @@ function EditProfileForm({
         "3–24 karakter kullan; harf veya rakamla başla ve bitir.";
     } else if (reservedCampusUsernames.has(normalizedUsername)) {
       nextErrors.username = "Bu kullanıcı adı KAMPÜS tarafından ayrılmış.";
-    } else if (
-      normalizedUsername !== initialProfile.username &&
-      unavailableUsernames.has(normalizedUsername)
-    ) {
-      nextErrors.username = "Bu kullanıcı adı başka bir öğrenci tarafından kullanılıyor.";
     }
 
     if (!normalizedDepartment) {
@@ -312,49 +340,111 @@ function EditProfileForm({
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setStatusMessage("");
 
-    if (!validateForm()) {
+    if (isSaving || !validateForm()) {
+      if (isSaving) {
+        return;
+      }
+
       setStatusMessage("Kaydedilemeyen alanları kontrol et.");
-      requestAnimationFrame(() => {
-        const firstInvalidField = document.querySelector<HTMLElement>(
-          '[aria-invalid="true"]',
-        );
-        firstInvalidField?.focus();
-      });
+      focusFirstInvalidField();
       return;
     }
 
     setIsSaving(true);
+    setFieldErrors({});
+    const saveGeneration = saveGenerationRef.current + 1;
+    saveGenerationRef.current = saveGeneration;
 
-    const normalizedProfile = {
+    const normalizedProfile: UpdateCampusProfileInput = {
       displayName: displayName.trim(),
       username: username.trim(),
       department: department.trim(),
       year,
       bio: bio.trim(),
     };
+    let profileWasSaved = false;
+    let avatarStorageFailed = false;
 
-    if (shouldRemoveAvatar) {
-      removeAvatar();
+    try {
+      await updateProfile(normalizedProfile);
+
+      if (!isCurrentSave(saveGeneration)) {
+        return;
+      }
+
+      profileWasSaved = true;
+
+      if (shouldRemoveAvatar) {
+        avatarStorageFailed = !removeAvatar();
+      } else if (
+        avatarPreview &&
+        avatarPreview !== initialProfile.avatarDataUrl
+      ) {
+        avatarStorageFailed = !updateAvatar(avatarPreview);
+      }
+
+      renameAuthoredContent(
+        initialProfile.username,
+        normalizedProfile.username,
+      );
+
+      if (showDepartment !== initialShowDepartment) {
+        await updateShowDepartment(showDepartment);
+
+        if (!isCurrentSave(saveGeneration)) {
+          return;
+        }
+      }
+
+      if (avatarStorageFailed) {
+        setStatusMessage(
+          "Profil bilgilerin kaydedildi; ancak geçici profil fotoğrafı bu cihazda saklanamadı. Tarayıcı depolama alanını kontrol edip yeniden dene.",
+        );
+        return;
+      }
+
+      router.push("/profil");
+    } catch (error) {
+      if (!isCurrentSave(saveGeneration)) {
+        return;
+      }
+
+      if (error instanceof AuthClientError) {
+        const apiFieldErrors = getApiFieldErrors(error);
+        setFieldErrors(apiFieldErrors);
+        setStatusMessage(
+          profileWasSaved
+            ? `Profil bilgilerin kaydedildi; ancak görünürlük tercihi kaydedilemedi. ${error.message}${
+                avatarStorageFailed
+                  ? " Geçici profil fotoğrafı da bu cihazda saklanamadı."
+                  : ""
+              }`
+            : error.message,
+        );
+
+        if (Object.keys(apiFieldErrors).length > 0) {
+          focusFirstInvalidField();
+        }
+      } else {
+        setStatusMessage(
+          profileWasSaved
+            ? `Profil bilgilerin kaydedildi; ancak görünürlük tercihi kaydedilemedi. Lütfen yeniden dene.${
+                avatarStorageFailed
+                  ? " Geçici profil fotoğrafı da bu cihazda saklanamadı."
+                  : ""
+              }`
+            : "Değişiklikler kaydedilemedi. Bağlantını kontrol edip yeniden dene.",
+        );
+      }
+    } finally {
+      if (isCurrentSave(saveGeneration)) {
+        setIsSaving(false);
+      }
     }
-
-    updateProfile({
-      ...normalizedProfile,
-      ...(!shouldRemoveAvatar && avatarPreview
-        ? { avatarDataUrl: avatarPreview }
-        : {}),
-    });
-    updateShowDepartment(showDepartment);
-    renameAuthoredContent(
-      initialProfile.username,
-      normalizedProfile.username,
-    );
-
-    setStatusMessage("Değişiklikler kaydedildi.");
-    router.push("/profil");
   };
 
   const availableYearOptions = getCampusYearOptions(department);
@@ -374,7 +464,16 @@ function EditProfileForm({
           <Link
             href="/profil"
             aria-label="Profile dön"
-            className={`grid size-11 shrink-0 place-items-center justify-self-start rounded-full text-[#1c2821]/66 transition-colors hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-white/62 dark:hover:bg-white/7 dark:hover:text-white ${focusRing}`}
+            aria-disabled={isSaving}
+            tabIndex={isSaving ? -1 : undefined}
+            onClick={(event) => {
+              if (isSaving) {
+                event.preventDefault();
+              }
+            }}
+            className={`grid size-11 shrink-0 place-items-center justify-self-start rounded-full text-[#1c2821]/66 transition-colors hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-white/62 dark:hover:bg-white/7 dark:hover:text-white ${
+              isSaving ? "pointer-events-none opacity-45" : ""
+            } ${focusRing}`}
           >
             <BackIcon />
           </Link>
@@ -455,7 +554,8 @@ function EditProfileForm({
                   id="profile-avatar-help"
                   className="mt-2 text-[11px] leading-5 text-[#58635c] dark:text-[#aeb4af]"
                 >
-                  PNG, JPEG veya WebP · En fazla 2 MB · Kare kırpılır
+                  PNG, JPEG veya WebP · En fazla 2 MB · Kare kırpılır ·
+                  Yalnızca bu cihazda geçici saklanır
                 </p>
                 <p
                   id="profile-avatar-error"
@@ -672,11 +772,17 @@ function EditProfileForm({
                   id="profile-year"
                   name="year"
                   value={year}
+                  aria-invalid={Boolean(fieldErrors.year)}
+                  aria-describedby="profile-year-error"
                   onChange={(event) => {
                     setYear(event.target.value);
-                    setStatusMessage("");
+                    clearFieldError("year");
                   }}
-                  className={fieldClassName}
+                  className={`${fieldClassName} ${
+                    fieldErrors.year
+                      ? "border-[#9b3028] dark:border-[#df8b83]"
+                      : ""
+                  }`}
                 >
                   {currentYearOptions.map((option) => (
                     <option key={option} value={option}>
@@ -684,6 +790,10 @@ function EditProfileForm({
                     </option>
                   ))}
                 </select>
+                <FieldError
+                  id="profile-year-error"
+                  message={fieldErrors.year}
+                />
               </div>
 
               <label className="mt-6 flex min-h-16 cursor-pointer items-center justify-between gap-4 border border-[#1c2821]/13 px-3.5 py-3 dark:border-white/11">
@@ -729,7 +839,16 @@ function EditProfileForm({
             <div className="flex shrink-0 gap-2">
               <Link
                 href="/profil"
-                className={`inline-flex min-h-11 flex-1 items-center justify-center border border-[#1c2821]/14 px-4 text-xs font-black text-[#1c2821]/68 transition-colors hover:bg-[#1c2821]/5 hover:text-[#1c2821] dark:border-white/12 dark:text-white/62 dark:hover:bg-white/6 dark:hover:text-white sm:flex-none ${focusRing}`}
+                aria-disabled={isSaving}
+                tabIndex={isSaving ? -1 : undefined}
+                onClick={(event) => {
+                  if (isSaving) {
+                    event.preventDefault();
+                  }
+                }}
+                className={`inline-flex min-h-11 flex-1 items-center justify-center border border-[#1c2821]/14 px-4 text-xs font-black text-[#1c2821]/68 transition-colors hover:bg-[#1c2821]/5 hover:text-[#1c2821] dark:border-white/12 dark:text-white/62 dark:hover:bg-white/6 dark:hover:text-white sm:flex-none ${
+                  isSaving ? "pointer-events-none opacity-45" : ""
+                } ${focusRing}`}
               >
                 Vazgeç
               </Link>

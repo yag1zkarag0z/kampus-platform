@@ -2,11 +2,20 @@
 
 import type {
   AuthApiError,
+  AuthSettings,
   OtpChallengeResponse,
   SessionState,
 } from "./types";
 
 export type OtpPurpose = "registration" | "login";
+
+export type UpdateCampusProfileInput = {
+  username: string;
+  displayName: string;
+  department: string;
+  year: string;
+  bio: string;
+};
 
 type ApiEnvelope<T> = {
   data: T;
@@ -192,6 +201,20 @@ export function getCurrentSession() {
   return requestApi<SessionState>("/v1/session", {
     method: "GET",
     cache: "no-store",
+  });
+}
+
+export function updateCurrentProfile(input: UpdateCampusProfileInput) {
+  return requestApi<SessionState>("/v1/me/profile", {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateCurrentSettings(input: Partial<AuthSettings>) {
+  return requestApi<SessionState>("/v1/me/settings", {
+    method: "PATCH",
+    body: JSON.stringify(input),
   });
 }
 

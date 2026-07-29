@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { getCampusAcademicIssues } from "@/server/account/academic-validation";
+
 import { OTP_PURPOSES } from "./constants";
 import { AuthError } from "./errors";
 
@@ -20,22 +22,35 @@ export const verifyCodeSchema = z.object({
   purpose: z.enum(OTP_PURPOSES),
 });
 
-export const registerSchema = z.object({
-  registrationToken: z.string().min(32).max(2_048),
-  username: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .regex(/^[a-z0-9]+(?:[._][a-z0-9]+)*$/)
-    .min(3)
-    .max(24),
-  displayName: z.string().trim().max(40).default(""),
-  department: z.string().trim().min(1).max(60),
-  yearLabel: z.string().trim().min(1).max(30),
-  bio: z.string().trim().max(160).default(""),
-  showDepartment: z.boolean(),
-  termsAccepted: z.literal(true),
-});
+export const registerSchema = z
+  .object({
+    registrationToken: z.string().min(32).max(2_048),
+    username: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .regex(/^[a-z0-9]+(?:[._][a-z0-9]+)*$/)
+      .min(3)
+      .max(24),
+    displayName: z.string().trim().max(40).default(""),
+    department: z.string().trim().min(1).max(60),
+    yearLabel: z.string().trim().min(1).max(30),
+    bio: z.string().trim().max(160).default(""),
+    showDepartment: z.boolean(),
+    termsAccepted: z.literal(true),
+  })
+  .superRefine((value, context) => {
+    for (const issue of getCampusAcademicIssues({
+      department: value.department,
+      year: value.yearLabel,
+    })) {
+      context.addIssue({
+        code: "custom",
+        message: issue.message,
+        path: [issue.field === "year" ? "yearLabel" : issue.field],
+      });
+    }
+  });
 
 export function parseAuthInput<TSchema extends z.ZodType>(
   schema: TSchema,

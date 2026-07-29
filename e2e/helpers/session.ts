@@ -34,6 +34,15 @@ type SessionState =
           displayName: string;
           department: string;
           year: string;
+          bio: string;
+          joinedLabel: string;
+        };
+        settings: {
+          showDepartment: boolean;
+          notifyReplies: boolean;
+          notifyLikes: boolean;
+          notifyAnnouncements: boolean;
+          emailNotifications: boolean;
         };
       };
     };
