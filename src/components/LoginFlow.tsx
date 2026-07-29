@@ -219,7 +219,7 @@ export default function LoginFlow() {
                 setEmail(event.target.value);
                 setMessage(null);
               }}
-              placeholder="ad.soyad@stu.yasar.edu.tr"
+              placeholder="202312345@stu.yasar.edu.tr"
               className={`${inputClassName} mt-2`}
               aria-invalid={message !== null}
               aria-errormessage={message ? "login-message" : undefined}

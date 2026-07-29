@@ -327,7 +327,7 @@ export default function RegisterFlow() {
                 setEmail(event.target.value);
                 clearMessage();
               }}
-              placeholder="ad.soyad@stu.yasar.edu.tr"
+              placeholder="202312345@stu.yasar.edu.tr"
               className={`${inputClassName} mt-2`}
               aria-invalid={invalidField === "email"}
               aria-describedby="register-email-help register-message"
