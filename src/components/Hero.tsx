@@ -46,6 +46,96 @@ const navItems = [
   { href: "#guvenlik", label: "Güvenlik" },
 ];
 
+interface TypewriterTextProps {
+  text: string;
+  delay?: number;
+  speed?: number;
+  className?: string;
+  keepCursor?: boolean;
+}
+
+function TypewriterText({
+  text,
+  delay = 0,
+  speed = 65,
+  className = "",
+  keepCursor = false,
+}: TypewriterTextProps) {
+  const [visibleText, setVisibleText] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  useEffect(() => {
+    const shouldReduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+
+    setReduceMotion(shouldReduceMotion);
+
+    if (shouldReduceMotion) {
+      setVisibleText(text);
+      setIsTyping(false);
+      return;
+    }
+
+    const characters = Array.from(text);
+    let characterIndex = 0;
+    let intervalId: ReturnType<typeof window.setInterval> | undefined;
+
+    setVisibleText("");
+    setIsTyping(false);
+
+    const timeoutId = window.setTimeout(() => {
+      setIsTyping(true);
+
+      intervalId = window.setInterval(() => {
+        characterIndex += 1;
+
+        setVisibleText(
+          characters.slice(0, characterIndex).join("")
+        );
+
+        if (characterIndex >= characters.length) {
+          if (intervalId !== undefined) {
+            window.clearInterval(intervalId);
+          }
+
+          setIsTyping(false);
+        }
+      }, speed);
+    }, delay);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+
+      if (intervalId !== undefined) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [text, delay, speed]);
+
+  const showCursor =
+    !reduceMotion &&
+    (isTyping || (keepCursor && visibleText === text));
+
+  return (
+    <span className={className}>
+      {visibleText}
+
+      <span
+        aria-hidden="true"
+        className={[
+          "ml-[0.045em] inline-block",
+          "h-[0.76em] w-[0.045em]",
+          "translate-y-[0.04em] bg-current",
+          "transition-opacity",
+          showCursor ? "animate-pulse opacity-100" : "opacity-0",
+        ].join(" ")}
+      />
+    </span>
+  );
+}
+
 export default function Hero() {
   const heroRef = useRef<HTMLElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -57,9 +147,11 @@ export default function Hero() {
     href: string
   ) => {
     event.preventDefault();
+
     const target = document.querySelector<HTMLElement>(href);
 
     setMenuOpen(false);
+
     if (!target) return;
 
     const reduceMotion = window.matchMedia(
@@ -70,6 +162,7 @@ export default function Hero() {
       behavior: reduceMotion ? "auto" : "smooth",
       block: "start",
     });
+
     window.history.pushState(null, "", href);
   };
 
@@ -78,11 +171,13 @@ export default function Hero() {
 
     const previousOverflow = document.body.style.overflow;
     const menuButton = menuButtonRef.current;
+
     const focusFrame = window.requestAnimationFrame(() => {
       mobileNavigationRef.current
         ?.querySelector<HTMLElement>("a, button")
         ?.focus();
     });
+
     const handleMenuKeyboard = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -90,7 +185,10 @@ export default function Hero() {
         return;
       }
 
-      if (event.key !== "Tab" || !mobileNavigationRef.current) {
+      if (
+        event.key !== "Tab" ||
+        !mobileNavigationRef.current
+      ) {
         return;
       }
 
@@ -98,10 +196,13 @@ export default function Hero() {
         menuButton,
         ...Array.from(
           mobileNavigationRef.current.querySelectorAll<HTMLElement>(
-            "a[href], button:not([disabled])",
-          ),
+            "a[href], button:not([disabled])"
+          )
         ),
-      ].filter((element): element is HTMLElement => Boolean(element));
+      ].filter(
+        (element): element is HTMLElement => Boolean(element)
+      );
+
       const firstElement = focusableElements[0];
       const lastElement = focusableElements.at(-1);
 
@@ -109,7 +210,10 @@ export default function Hero() {
         return;
       }
 
-      if (event.shiftKey && document.activeElement === firstElement) {
+      if (
+        event.shiftKey &&
+        document.activeElement === firstElement
+      ) {
         event.preventDefault();
         lastElement.focus();
       } else if (
@@ -127,7 +231,10 @@ export default function Hero() {
     return () => {
       window.cancelAnimationFrame(focusFrame);
       document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleMenuKeyboard);
+      window.removeEventListener(
+        "keydown",
+        handleMenuKeyboard
+      );
       menuButton?.focus();
     };
   }, [menuOpen]);
@@ -136,76 +243,106 @@ export default function Hero() {
     () => {
       const media = gsap.matchMedia();
 
-      media.add("(prefers-reduced-motion: no-preference)", () => {
-        const timeline = gsap.timeline({
-          defaults: {
-            duration: 0.7,
-            ease: "power3.out",
-          },
-        });
+      media.add(
+        "(prefers-reduced-motion: no-preference)",
+        () => {
+          const timeline = gsap.timeline({
+            defaults: {
+              duration: 0.7,
+              ease: "power3.out",
+            },
+          });
 
-        timeline
-          .from(".hero-nav", { y: -14, opacity: 0 })
-          .from(".hero-kicker", { y: 12, opacity: 0 }, "-=0.34")
-          .from(
-            ".hero-title-line",
-            { yPercent: 112, stagger: 0.1 },
-            "-=0.42"
-          )
-          .from(
-            ".hero-description",
-            { y: 16, opacity: 0 },
-            "-=0.38"
-          )
-          .from(
-            ".hero-disclaimer",
-            { y: 10, opacity: 0 },
-            "-=0.42"
-          )
-          .from(
-            ".hero-feed-shell",
-            { y: 24, rotate: 0.75, opacity: 0, duration: 0.9 },
-            "-=0.48"
-          )
-          .from(
-            ".prism-emoji",
-            {
-              y: 20,
-              scale: 0.45,
+          timeline
+            .from(".hero-nav", {
+              y: -14,
               opacity: 0,
-              stagger: 0.1,
-              duration: 0.65,
-            },
-            "-=0.72"
-          )
-          .from(
-            ".feed-item",
-            { y: 12, opacity: 0, stagger: 0.07, duration: 0.55 },
-            "-=0.62"
-          )
-          .from(
-            ".hero-feature",
-            { y: 12, opacity: 0, stagger: 0.06 },
-            "-=0.42"
-          )
-          .to(
-            ".prism-emoji",
-            {
-              y: -8,
-              rotation: 4,
-              duration: 2.8,
-              stagger: 0.35,
-              repeat: -1,
-              yoyo: true,
-              ease: "sine.inOut",
-            },
-            "+=0.12"
-          );
-      });
+            })
+            .from(
+              ".hero-kicker",
+              {
+                y: 12,
+                opacity: 0,
+              },
+              "-=0.34"
+            )
+            .from(
+              ".hero-description",
+              {
+                y: 16,
+                opacity: 0,
+              },
+              "+=1.35"
+            )
+            .from(
+              ".hero-disclaimer",
+              {
+                y: 10,
+                opacity: 0,
+              },
+              "-=0.42"
+            )
+            .from(
+              ".hero-feed-shell",
+              {
+                y: 24,
+                rotate: 0.75,
+                opacity: 0,
+                duration: 0.9,
+              },
+              "-=0.48"
+            )
+            .from(
+              ".prism-emoji",
+              {
+                y: 20,
+                scale: 0.45,
+                opacity: 0,
+                stagger: 0.1,
+                duration: 0.65,
+              },
+              "-=0.72"
+            )
+            .from(
+              ".feed-item",
+              {
+                y: 12,
+                opacity: 0,
+                stagger: 0.07,
+                duration: 0.55,
+              },
+              "-=0.62"
+            )
+            .from(
+              ".hero-feature",
+              {
+                y: 12,
+                opacity: 0,
+                stagger: 0.06,
+              },
+              "-=0.42"
+            )
+            .to(
+              ".prism-emoji",
+              {
+                y: -8,
+                rotation: 4,
+                duration: 2.8,
+                stagger: 0.35,
+                repeat: -1,
+                yoyo: true,
+                ease: "sine.inOut",
+              },
+              "+=0.12"
+            );
+        }
+      );
 
       return () => media.revert();
     },
-    { scope: heroRef }
+    {
+      scope: heroRef,
+    }
   );
 
   return (
@@ -217,14 +354,17 @@ export default function Hero() {
         aria-hidden="true"
         className="hero-gradient-motion pointer-events-none absolute inset-0 -z-30"
       />
+
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-y-0 right-[-30%] -z-20 w-[74%] -skew-x-6 bg-[linear-gradient(155deg,rgba(59,32,40,0.14)_0%,rgba(154,89,68,0.13)_42%,rgba(119,116,138,0.13)_70%,rgba(238,233,225,0)_92%)] sm:right-[-20%] sm:w-[62%] lg:right-[-8%] lg:w-[48%]"
       />
+
       <div
         aria-hidden="true"
         className="pointer-events-none absolute left-0 top-[35%] -z-20 h-px w-[40%] bg-gradient-to-r from-[#1c2821]/16 to-transparent dark:from-white/14"
       />
+
       <div
         aria-hidden="true"
         className="paper-noise pointer-events-none absolute inset-0 -z-10"
@@ -243,6 +383,7 @@ export default function Hero() {
                 wordmarkClassName="text-lg sm:text-xl"
               />
             </a>
+
             <span className="hidden border-l border-[#1c2821]/18 pl-4 font-mono text-[9px] font-bold uppercase leading-4 tracking-[0.13em] text-[#1c2821]/62 dark:border-white/16 dark:text-[#ece8e1]/62 sm:block">
               Yaşar
               <br />
@@ -258,7 +399,9 @@ export default function Hero() {
               <a
                 key={item.href}
                 href={item.href}
-                onClick={(event) => navigateTo(event, item.href)}
+                onClick={(event) =>
+                  navigateTo(event, item.href)
+                }
                 className="inline-flex min-h-11 items-center outline-none transition-colors hover:text-[#1c2821] focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-[#1c2821] dark:hover:text-[#ece8e1] dark:focus-visible:ring-[#ece8e1]"
               >
                 {item.label}
@@ -282,6 +425,7 @@ export default function Hero() {
               >
                 Giriş yap
               </Link>
+
               <Link
                 href="/kayit"
                 className="inline-flex min-h-11 items-center rounded-full bg-[#5a1f32] px-4 text-[13px] font-bold text-[#fffaf4] shadow-[0_8px_24px_rgba(90,31,50,0.16)] outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/30 focus-visible:ring-offset-3 focus-visible:ring-offset-[#eee9e1] dark:bg-[#9a5944] dark:shadow-none dark:hover:bg-[#ad6b53] dark:focus-visible:ring-[#c7896d]/35 dark:focus-visible:ring-offset-[#111315] lg:px-5 lg:text-sm"
@@ -300,8 +444,12 @@ export default function Hero() {
               aria-expanded={menuOpen}
               aria-controls="mobile-navigation"
               aria-haspopup="true"
-              aria-label={menuOpen ? "Menüyü kapat" : "Menüyü aç"}
-              onClick={() => setMenuOpen((current) => !current)}
+              aria-label={
+                menuOpen ? "Menüyü kapat" : "Menüyü aç"
+              }
+              onClick={() =>
+                setMenuOpen((current) => !current)
+              }
               className="relative z-[70] grid size-11 cursor-pointer place-items-center rounded-full border border-[#5a1f32]/22 bg-[#fffaf4]/72 text-[#42192b] shadow-[0_8px_24px_rgba(90,31,50,0.08)] outline-none transition-colors hover:border-[#5a1f32]/40 hover:bg-[#fffaf4] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:border-white/14 dark:bg-white/7 dark:text-[#ece8e1] dark:shadow-none dark:hover:border-[#c7896d]/45 dark:hover:bg-white/10 md:hidden"
             >
               <svg
@@ -341,11 +489,17 @@ export default function Hero() {
                   <a
                     key={item.href}
                     href={item.href}
-                    onClick={(event) => navigateTo(event, item.href)}
+                    onClick={(event) =>
+                      navigateTo(event, item.href)
+                    }
                     className="flex min-h-12 items-center justify-between border-b border-[#1c2821]/10 outline-none transition-colors last:border-b-0 hover:text-[#8f3427] focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-[#5a1f32] dark:border-white/10 dark:hover:text-[#c7896d] dark:focus-visible:ring-[#c7896d]"
                   >
                     {item.label}
-                    <span aria-hidden="true" className="text-[#a83d2d]">
+
+                    <span
+                      aria-hidden="true"
+                      className="text-[#a83d2d]"
+                    >
                       ↘
                     </span>
                   </a>
@@ -360,6 +514,7 @@ export default function Hero() {
                 >
                   Giriş yap
                 </Link>
+
                 <Link
                   href="/kayit"
                   onClick={() => setMenuOpen(false)}
@@ -392,36 +547,71 @@ export default function Hero() {
                 aria-hidden="true"
                 className="size-2.5 rotate-45 bg-[#b5412f] dark:bg-[#c7896d]"
               />
+
               <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-[#8f3427] dark:text-[#c7896d] sm:text-xs">
                 Yaşar öğrencilerinin bağımsız kampüs ağı
               </p>
             </div>
 
             <h1 className="text-[clamp(3.15rem,15vw,5.5rem)] font-black leading-[0.87] tracking-[-0.065em] md:text-[clamp(5rem,8.2vw,6.8rem)]">
-              <span className="block overflow-hidden pb-[0.08em]">
-                <span className="hero-title-line block">Yaşar’da</span>
+              <span className="sr-only">
+                Yaşar’da bugün ne konuşuluyor?
               </span>
-              <span className="block overflow-hidden pb-[0.08em]">
-                <span className="hero-title-line block">bugün ne</span>
+
+              <span
+                aria-hidden="true"
+                className="block min-h-[0.95em] overflow-hidden pb-[0.08em]"
+              >
+                <TypewriterText
+                  text="Yaşar’da"
+                  delay={350}
+                  speed={70}
+                  className="block"
+                />
               </span>
-              <span className="block overflow-hidden pb-[0.12em]">
-                <span className="hero-title-line block font-serif text-[0.68em] font-normal italic tracking-[-0.045em] text-[#a83d2d] dark:text-[#d09272]">
-                  konuşuluyor?
-                </span>
+
+              <span
+                aria-hidden="true"
+                className="block min-h-[0.95em] overflow-hidden pb-[0.08em]"
+              >
+                <TypewriterText
+                  text="bugün ne"
+                  delay={1100}
+                  speed={70}
+                  className="block"
+                />
+              </span>
+
+              <span
+                aria-hidden="true"
+                className="block min-h-[0.8em] overflow-hidden pb-[0.12em]"
+              >
+                <TypewriterText
+                  text="konuşuluyor?"
+                  delay={1850}
+                  speed={70}
+                  keepCursor
+                  className="block font-serif text-[0.68em] font-normal italic tracking-[-0.045em] text-[#a83d2d] dark:text-[#d09272]"
+                />
               </span>
             </h1>
 
             <p className="hero-description mt-5 max-w-xl text-base leading-7 text-[#1c2821]/68 dark:text-[#ece8e1]/70 sm:mt-7 sm:text-lg sm:leading-8">
               Kampüste olup biteni tek yerde gör.
+
               <span className="hidden sm:inline">
                 {" "}
-                İtirafını paylaş, sorunu sor, kayıp eşyanı duyur.
+                İtirafını paylaş, sorunu sor, kayıp eşyanı
+                duyur.
               </span>{" "}
+
               Yalnızca
+
               <span className="font-semibold text-[#1c2821] dark:text-[#ece8e1]">
                 {" "}
                 @stu.yasar.edu.tr
               </span>{" "}
+
               adresini doğrulayan öğrenciler katılabilir.
             </p>
 
@@ -433,19 +623,25 @@ export default function Hero() {
                 aria-hidden="true"
                 className="mt-1 h-9 w-1 shrink-0 rounded-full bg-[linear-gradient(180deg,#9a5944_0%,#77748a_100%)]"
               />
+
               <span>
                 <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.15em] text-[#8f3427] dark:text-[#c7896d] sm:text-[10px]">
                   Önemli not
                 </span>
+
                 <span className="mt-1 block text-xs font-medium leading-5 text-[#1c2821]/74 dark:text-[#ece8e1]/72 sm:text-[13px]">
                   <strong className="font-black text-[#1c2821] dark:text-[#ece8e1]">
                     KAMPÜS bağımsız bir öğrenci projesidir.
                   </strong>{" "}
+
                   <strong className="font-black text-[#8f3427] dark:text-[#d09272]">
-                    Yaşar Üniversitesi’nin resmî platformu değildir.
+                    Yaşar Üniversitesi’nin resmî platformu
+                    değildir.
                   </strong>{" "}
+
                   <span className="hidden sm:inline">
-                    Üniversite tarafından işletilmez veya desteklenmez.
+                    Üniversite tarafından işletilmez veya
+                    desteklenmez.
                   </span>
                 </span>
               </span>
@@ -526,8 +722,12 @@ export default function Hero() {
                 <span className="font-mono text-[11px] font-bold text-[#963629] dark:text-[#c7896d]">
                   0{index + 1}
                 </span>
+
                 <div>
-                  <h2 className="text-sm font-bold">{feature.title}</h2>
+                  <h2 className="text-sm font-bold">
+                    {feature.title}
+                  </h2>
+
                   <p className="mt-1 hidden text-xs leading-5 text-[#1c2821]/65 dark:text-[#ece8e1]/62 sm:block">
                     {feature.description}
                   </p>
@@ -540,9 +740,11 @@ export default function Hero() {
 
       <div className="campus-marquee shrink-0 overflow-hidden border-y border-[#1c2821]/20 bg-[#1c2821] py-3 text-[#f8f4eb] dark:border-white/10 dark:bg-[#0c0e10] sm:py-3.5">
         <p className="sr-only">
-          Yaşar öğrenci akışı: itiraflar, ders soruları, kayıp ve buluntu,
-          öğrenci etkinlikleri ve Kampüs Nabzı.
+          Yaşar öğrenci akışı: itiraflar, ders soruları,
+          kayıp ve buluntu, öğrenci etkinlikleri ve Kampüs
+          Nabzı.
         </p>
+
         <div className="campus-marquee-track flex w-max items-center">
           {[0, 1].map((group) => (
             <div
@@ -556,6 +758,7 @@ export default function Hero() {
                   className="flex shrink-0 items-center text-[10px] font-bold uppercase tracking-[0.15em] sm:text-xs sm:tracking-[0.18em]"
                 >
                   {item}
+
                   <span
                     aria-hidden="true"
                     className="ml-[clamp(1.5rem,4vw,4rem)] size-1 rotate-45 bg-[#df765d]"
