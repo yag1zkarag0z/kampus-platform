@@ -23,8 +23,8 @@ export default function GlobalError({
           placeItems: "center",
           padding: "24px",
           boxSizing: "border-box",
-          background: "#111315",
-          color: "#ece8e1",
+          background: "#0a0d16",
+          color: "#ffffff",
           fontFamily:
             "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
         }}
@@ -39,9 +39,9 @@ export default function GlobalError({
               margin: "0 auto",
               display: "grid",
               placeItems: "center",
-              border: "1px solid rgba(236,232,225,0.2)",
+              border: "1px solid rgba(255,255,255,0.2)",
               borderRadius: "999px",
-              color: "#d09272",
+              color: "#ff7a45",
               fontWeight: 900,
               fontSize: "18px",
             }}
@@ -51,7 +51,7 @@ export default function GlobalError({
           <p
             style={{
               margin: "24px 0 0",
-              color: "#d09272",
+              color: "#ff7a45",
               fontSize: "11px",
               fontWeight: 800,
               letterSpacing: "0.12em",
@@ -74,7 +74,7 @@ export default function GlobalError({
             style={{
               margin: "14px auto 0",
               maxWidth: "380px",
-              color: "#aeb4af",
+              color: "rgba(255,255,255,0.68)",
               fontSize: "14px",
               lineHeight: 1.65,
             }}
@@ -91,8 +91,8 @@ export default function GlobalError({
               border: 0,
               borderRadius: "999px",
               padding: "0 22px",
-              background: "#c7896d",
-              color: "#111315",
+              background: "#ffffff",
+              color: "#12100e",
               font: "inherit",
               fontSize: "14px",
               fontWeight: 800,

@@ -55,7 +55,7 @@ const reportReasons: {
 ];
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#5a1f32]/28 dark:focus-visible:ring-[#c7896d]/38";
+  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40";
 
 export default function CampusPostActions({
   post,
@@ -348,7 +348,7 @@ export default function CampusPostActions({
           aria-label="Gönderi seçeneklerini aç"
           aria-expanded={isMenuOpen}
           onClick={openMenu}
-          className={`grid size-11 cursor-pointer place-items-center rounded-full text-[#58635c] transition-colors hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-[#aeb4af] dark:hover:bg-white/7 dark:hover:text-white ${focusRing}`}
+          className={`grid size-11 cursor-pointer place-items-center rounded-full text-white/55 transition-colors hover:bg-white/8 hover:text-white ${focusRing}`}
         >
           <MoreIcon />
         </button>
@@ -357,21 +357,21 @@ export default function CampusPostActions({
           <div
             role="group"
             aria-label="Gönderi seçenekleri"
-            className="absolute right-0 top-[calc(100%+0.25rem)] z-40 w-60 border border-[#1c2821]/13 bg-[#fffaf4] p-1.5 shadow-[0_18px_55px_rgba(28,40,33,0.18)] dark:border-white/12 dark:bg-[#202226] dark:shadow-[0_18px_55px_rgba(0,0,0,0.42)]"
+            className="absolute right-0 top-[calc(100%+0.25rem)] z-40 w-60 border border-white/12 bg-[#141720] p-1.5 shadow-[0_18px_55px_rgba(0,0,0,0.42)]"
           >
             {isOwnPost ? (
               <>
                 <button
                   type="button"
                   onClick={openEditDialog}
-                  className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black transition-colors hover:bg-[#1c2821]/6 dark:hover:bg-white/7 ${focusRing}`}
+                  className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black transition-colors hover:bg-white/7 ${focusRing}`}
                 >
                   Gönderiyi düzenle
                 </button>
                 <button
                   type="button"
                   onClick={handleDelete}
-                  className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black text-[#8b2f2a] transition-colors hover:bg-[#8b2f2a]/7 dark:text-[#e18a7d] dark:hover:bg-[#d27368]/9 ${focusRing}`}
+                  className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black text-[#ffb199] transition-colors hover:bg-[#ffb199]/9 ${focusRing}`}
                 >
                   Gönderiyi sil
                 </button>
@@ -385,7 +385,7 @@ export default function CampusPostActions({
                     setIsMenuOpen(false);
                     setIsReportDialogOpen(true);
                   }}
-                  className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black transition-colors hover:bg-[#1c2821]/6 disabled:cursor-default disabled:text-[#1c2821]/38 dark:hover:bg-white/7 dark:disabled:text-white/35 ${focusRing}`}
+                  className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black transition-colors hover:bg-white/7 disabled:cursor-default disabled:text-white/35 ${focusRing}`}
                 >
                   {isReported
                     ? "Şikâyet gönderildi"
@@ -395,7 +395,7 @@ export default function CampusPostActions({
                   <button
                     type="button"
                     onClick={handleBlock}
-                    className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black text-[#8b2f2a] transition-colors hover:bg-[#8b2f2a]/7 dark:text-[#e18a7d] dark:hover:bg-[#d27368]/9 ${focusRing}`}
+                    className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black text-[#ffb199] transition-colors hover:bg-[#ffb199]/9 ${focusRing}`}
                   >
                     Kullanıcıyı engelle
                   </button>
@@ -421,11 +421,11 @@ export default function CampusPostActions({
             aria-modal="true"
             aria-labelledby={`report-post-title-${post.id}`}
             aria-describedby={`report-post-description-${post.id}`}
-            className="max-h-[calc(100svh-1.5rem)] w-full max-w-lg overflow-y-auto border border-[#1c2821]/14 bg-[#fbf8f1] p-4 text-[#1c2821] shadow-[0_28px_90px_rgba(15,18,16,0.34)] dark:border-white/13 dark:bg-[#202226] dark:text-[#ece8e1] sm:p-6"
+            className="max-h-[calc(100svh-1.5rem)] w-full max-w-lg overflow-y-auto border border-white/12 bg-[#141720] p-4 text-white shadow-[0_28px_90px_rgba(0,0,0,0.5)] sm:p-6"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#8f3427] dark:text-[#d09272]">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
                   Moderasyon
                 </p>
                 <h2
@@ -441,7 +441,7 @@ export default function CampusPostActions({
                 type="button"
                 aria-label="Şikâyet penceresini kapat"
                 onClick={() => setIsReportDialogOpen(false)}
-                className={`grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-xl text-[#58635c] hover:bg-[#1c2821]/7 dark:text-[#aeb4af] dark:hover:bg-white/8 ${focusRing}`}
+                className={`grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-xl text-white/55 hover:bg-white/8 ${focusRing}`}
               >
                 <span aria-hidden="true">×</span>
               </button>
@@ -449,7 +449,7 @@ export default function CampusPostActions({
 
             <p
               id={`report-post-description-${post.id}`}
-              className="mt-3 text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]"
+              className="mt-3 text-xs leading-5 text-white/55"
             >
               Bildirimin diğer kullanıcılarla paylaşılmaz. Moderasyon ekibi
               içeriği topluluk kurallarına göre değerlendirir.
@@ -464,8 +464,8 @@ export default function CampusPostActions({
                       key={reason.id}
                       className={`flex min-h-16 cursor-pointer items-start gap-3 border px-3 py-3 transition-colors ${
                         reportReason === reason.id
-                          ? "border-[#5a1f32]/45 bg-[#5a1f32]/6 dark:border-[#c7896d]/45 dark:bg-[#c7896d]/8"
-                          : "border-[#1c2821]/13 hover:border-[#5a1f32]/26 dark:border-white/11 dark:hover:border-[#c7896d]/28"
+                          ? "border-[#ff7a45]/45 bg-[#ff7a45]/8"
+                          : "border-white/12 hover:border-[#ff7a45]/28"
                       }`}
                     >
                       <input
@@ -474,13 +474,13 @@ export default function CampusPostActions({
                         value={reason.id}
                         checked={reportReason === reason.id}
                         onChange={() => setReportReason(reason.id)}
-                        className="mt-0.5 size-4 shrink-0 accent-[#5a1f32] dark:accent-[#c7896d]"
+                        className="mt-0.5 size-4 shrink-0 accent-[#ff7a45]"
                       />
                       <span>
                         <span className="block text-xs font-black">
                           {reason.label}
                         </span>
-                        <span className="mt-0.5 block text-[11px] leading-4 text-[#58635c] dark:text-[#aeb4af]">
+                        <span className="mt-0.5 block text-[11px] leading-4 text-white/55">
                           {reason.description}
                         </span>
                       </span>
@@ -494,7 +494,7 @@ export default function CampusPostActions({
                 className="mt-4 block text-xs font-black"
               >
                 Ek açıklama{" "}
-                <span className="font-medium text-[#58635c] dark:text-[#aeb4af]">
+                <span className="font-medium text-white/55">
                   (isteğe bağlı)
                 </span>
               </label>
@@ -505,9 +505,9 @@ export default function CampusPostActions({
                 maxLength={300}
                 rows={3}
                 placeholder="Moderasyon ekibinin bilmesi gereken bir ayrıntı varsa yaz."
-                className={`mt-2 min-h-24 w-full resize-y border border-[#1c2821]/14 bg-white/40 px-3 py-2.5 text-sm leading-6 placeholder:text-[#68736c] dark:border-white/12 dark:bg-white/[0.025] dark:placeholder:text-[#9ba39d] ${focusRing}`}
+                className={`mt-2 min-h-24 w-full resize-y border border-white/12 bg-white/[0.025] px-3 py-2.5 text-sm leading-6 placeholder:text-white/45 ${focusRing}`}
               />
-              <div className="mt-1 text-right font-mono text-[10px] text-[#58635c] dark:text-[#aeb4af]">
+              <div className="mt-1 text-right font-mono text-[10px] text-white/55">
                 {reportDetail.length}/300
               </div>
 
@@ -515,13 +515,13 @@ export default function CampusPostActions({
                 <button
                   type="button"
                   onClick={() => setIsReportDialogOpen(false)}
-                  className={`min-h-11 cursor-pointer border border-[#1c2821]/14 px-4 text-xs font-black hover:bg-[#1c2821]/6 dark:border-white/12 dark:hover:bg-white/7 ${focusRing}`}
+                  className={`min-h-11 cursor-pointer border border-white/12 px-4 text-xs font-black hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
                 >
                   Vazgeç
                 </button>
                 <button
                   type="submit"
-                  className={`min-h-11 cursor-pointer bg-[#1c2821] px-4 text-xs font-black text-white hover:bg-[#5a1f32] dark:bg-[#c7896d] dark:text-[#17191c] dark:hover:bg-[#d09272] ${focusRing}`}
+                  className={`min-h-11 cursor-pointer bg-white px-4 text-xs font-black text-[#12100e] hover:bg-white/90 ${focusRing}`}
                 >
                   Şikâyeti gönder
                 </button>
@@ -545,11 +545,11 @@ export default function CampusPostActions({
             role="dialog"
             aria-modal="true"
             aria-labelledby={`edit-post-title-${post.id}`}
-            className="max-h-[calc(100svh-1.5rem)] w-full max-w-xl overflow-y-auto border border-[#1c2821]/14 bg-[#fbf8f1] p-4 text-[#1c2821] shadow-[0_28px_90px_rgba(15,18,16,0.34)] dark:border-white/13 dark:bg-[#202226] dark:text-[#ece8e1] sm:p-6"
+            className="max-h-[calc(100svh-1.5rem)] w-full max-w-xl overflow-y-auto border border-white/12 bg-[#141720] p-4 text-white shadow-[0_28px_90px_rgba(0,0,0,0.5)] sm:p-6"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#8f3427] dark:text-[#d09272]">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
                   Gönderin
                 </p>
                 <h2
@@ -565,7 +565,7 @@ export default function CampusPostActions({
                 type="button"
                 aria-label="Düzenleme penceresini kapat"
                 onClick={() => setIsEditDialogOpen(false)}
-                className={`grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-xl text-[#58635c] hover:bg-[#1c2821]/7 dark:text-[#aeb4af] dark:hover:bg-white/8 ${focusRing}`}
+                className={`grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-xl text-white/55 hover:bg-white/8 ${focusRing}`}
               >
                 <span aria-hidden="true">×</span>
               </button>
@@ -587,11 +587,11 @@ export default function CampusPostActions({
                 }}
                 maxLength={100}
                 aria-describedby={`edit-post-heading-count-${post.id}`}
-                className={`mt-2 min-h-11 w-full border border-[#1c2821]/14 bg-white/40 px-3 text-sm dark:border-white/12 dark:bg-white/[0.025] ${focusRing}`}
+                className={`mt-2 min-h-11 w-full border border-white/12 bg-white/[0.025] px-3 text-sm ${focusRing}`}
               />
               <p
                 id={`edit-post-heading-count-${post.id}`}
-                className="mt-1 text-right font-mono text-[10px] text-[#58635c] dark:text-[#aeb4af]"
+                className="mt-1 text-right font-mono text-[10px] text-white/55"
               >
                 {editTitle.length}/100
               </p>
@@ -612,20 +612,20 @@ export default function CampusPostActions({
                 maxLength={500}
                 rows={6}
                 aria-describedby={`edit-post-body-count-${post.id}`}
-                className={`mt-2 min-h-36 w-full resize-y border border-[#1c2821]/14 bg-white/40 px-3 py-2.5 text-sm leading-6 dark:border-white/12 dark:bg-white/[0.025] ${focusRing}`}
+                className={`mt-2 min-h-36 w-full resize-y border border-white/12 bg-white/[0.025] px-3 py-2.5 text-sm leading-6 ${focusRing}`}
               />
 
               <div className="mt-2 flex items-center justify-between gap-3">
                 <p
                   role="status"
                   aria-live="polite"
-                  className="text-xs font-semibold text-[#8b2f2a] dark:text-[#e18a7d]"
+                  className="text-xs font-semibold text-[#ffb199]"
                 >
                   {editMessage}
                 </p>
                 <span
                   id={`edit-post-body-count-${post.id}`}
-                  className="font-mono text-[10px] text-[#58635c] dark:text-[#aeb4af]"
+                  className="font-mono text-[10px] text-white/55"
                 >
                   {editBody.length}/500
                 </span>
@@ -635,14 +635,14 @@ export default function CampusPostActions({
                 <button
                   type="button"
                   onClick={() => setIsEditDialogOpen(false)}
-                  className={`min-h-11 cursor-pointer border border-[#1c2821]/14 px-4 text-xs font-black hover:bg-[#1c2821]/6 dark:border-white/12 dark:hover:bg-white/7 ${focusRing}`}
+                  className={`min-h-11 cursor-pointer border border-white/12 px-4 text-xs font-black hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
                 >
                   Vazgeç
                 </button>
                 <button
                   type="submit"
                   disabled={!editTitle.trim() && !editBody.trim()}
-                  className={`min-h-11 cursor-pointer bg-[#1c2821] px-4 text-xs font-black text-white hover:bg-[#5a1f32] disabled:cursor-not-allowed disabled:opacity-45 dark:bg-[#c7896d] dark:text-[#17191c] dark:hover:bg-[#d09272] ${focusRing}`}
+                  className={`min-h-11 cursor-pointer bg-white px-4 text-xs font-black text-[#12100e] hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
                 >
                   Değişiklikleri kaydet
                 </button>

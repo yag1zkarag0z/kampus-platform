@@ -20,12 +20,11 @@ import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import { useCampusData } from "@/components/CampusDataProvider";
 import { useCampusModeration } from "@/components/CampusModerationProvider";
 import { useFeedback } from "@/components/FeedbackProvider";
-import ThemeToggle from "@/components/ThemeToggle";
 
 const DELETE_CONFIRMATION = "SIFIRLA";
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fbf8f1] dark:focus-visible:ring-[#c7896d]/35 dark:focus-visible:ring-offset-[#17191c]";
+  "outline-none focus-visible:ring-3 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
 
 type SettingsSectionProps = {
   eyebrow: string;
@@ -287,23 +286,23 @@ export default function CampusSettings() {
     <section
       aria-labelledby="settings-title"
       aria-busy={!isHydrated}
-      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#fbf8f1] text-[#1c2821] dark:bg-[#17191c] dark:text-[#ece8e1] md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
     >
       <div
         inert={isDeleteDialogOpen ? true : undefined}
         aria-hidden={isDeleteDialogOpen ? true : undefined}
       >
-        <header className="sticky top-16 z-30 border-b border-[#1c2821]/12 bg-[#fbf8f1]/94 backdrop-blur-xl dark:border-white/10 dark:bg-[#17191c]/94 md:top-0">
+        <header className="sticky top-16 z-30 border-b border-white/12 bg-[#0a0d16]/94 backdrop-blur-xl md:top-0">
           <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 sm:px-6">
             <Link
               href="/profil"
               aria-label="Profile dön"
-              className={`grid size-11 shrink-0 place-items-center justify-self-start rounded-full text-[#1c2821]/66 transition-colors hover:bg-[#1c2821]/7 hover:text-[#1c2821] dark:text-white/62 dark:hover:bg-white/8 dark:hover:text-[#ece8e1] ${focusRing}`}
+              className={`grid size-11 shrink-0 place-items-center justify-self-start rounded-full text-white/62 transition-colors hover:bg-white/8 hover:text-white ${focusRing}`}
             >
               <BackIcon />
             </Link>
             <div className="min-w-0 justify-self-center text-center">
-              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#7d3c2d] dark:text-[#c7896d] sm:text-[11px]">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45] sm:text-[11px]">
                 Hesap
               </p>
               <h1
@@ -316,7 +315,7 @@ export default function CampusSettings() {
             <p
               role="status"
               aria-live="polite"
-              className="hidden justify-self-end text-right text-xs font-semibold text-[#58635c] dark:text-[#aeb4af] min-[400px]:block"
+              className="hidden justify-self-end text-right text-xs font-semibold text-white/55 min-[400px]:block"
             >
               {settingsStatusLabel}
             </p>
@@ -342,7 +341,7 @@ export default function CampusSettings() {
               <div className="flex min-w-0 items-center gap-3.5 sm:gap-4">
                 <div
                   aria-hidden="true"
-                  className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-full border border-[#1c2821]/12 bg-[#eee9e1] bg-cover bg-center text-sm font-black text-[#5a1f32] dark:border-white/12 dark:bg-white/7 dark:text-[#d09272] sm:size-16"
+                  className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-full border border-white/12 bg-white/7 bg-cover bg-center text-sm font-black text-[#ff7a45] sm:size-16"
                   style={
                     profile.avatarDataUrl
                       ? { backgroundImage: `url("${profile.avatarDataUrl}")` }
@@ -357,14 +356,14 @@ export default function CampusSettings() {
                     <p className="min-w-0 truncate text-base font-black tracking-[-0.025em] sm:text-lg">
                       {profile.displayName}
                     </p>
-                    <span className="inline-flex min-h-6 shrink-0 items-center rounded-full bg-[#315c48]/9 px-2 text-[10px] font-black text-[#315c48] dark:bg-[#80aa91]/10 dark:text-[#9bc2aa]">
+                    <span className="inline-flex min-h-6 shrink-0 items-center rounded-full bg-[#ff7a45]/10 px-2 text-[10px] font-black text-[#ff7a45]">
                       Öğrenci profili
                     </span>
                   </div>
-                  <p className="mt-0.5 truncate text-xs font-semibold text-[#58635c] dark:text-[#aeb4af]">
+                  <p className="mt-0.5 truncate text-xs font-semibold text-white/55">
                     @{profile.username}
                   </p>
-                  <p className="mt-1.5 text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]">
+                  <p className="mt-1.5 text-xs leading-5 text-white/55">
                     {settings.showDepartment
                       ? `${profile.department} · ${profile.year}`
                       : "Bölüm ve sınıf bilgisi gizli"}
@@ -372,14 +371,14 @@ export default function CampusSettings() {
                 </div>
               </div>
 
-              <div className="mt-4 border-t border-[#1c2821]/9 pt-4 dark:border-white/8">
-                <p className="text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]">
+              <div className="mt-4 border-t border-white/8 pt-4">
+                <p className="text-xs leading-5 text-white/55">
                   Profil bilgilerini buradan yönetebilirsin. İletişim adresin
                   profilinde yayınlanmaz.
                 </p>
                 <Link
                   href="/profil/duzenle"
-                  className={`mt-4 inline-flex min-h-11 items-center justify-center border border-[#1c2821]/14 px-4 text-xs font-black transition-colors hover:border-[#5a1f32]/32 hover:bg-[#5a1f32]/5 hover:text-[#5a1f32] dark:border-white/12 dark:hover:border-[#c7896d]/38 dark:hover:bg-[#c7896d]/7 dark:hover:text-[#d09272] ${focusRing}`}
+                  className={`mt-4 inline-flex min-h-11 items-center justify-center border border-white/12 px-4 text-xs font-black text-white transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 hover:text-[#ff7a45] ${focusRing}`}
                 >
                   Profili düzenle
                 </Link>
@@ -405,31 +404,14 @@ export default function CampusSettings() {
                 }}
               />
 
-              <div className="mt-4 border-l-2 border-[#9a5944]/38 bg-[#9a5944]/6 px-3 py-3 dark:border-[#c7896d]/42 dark:bg-[#c7896d]/6 sm:px-4">
-                <p className="text-xs font-black text-[#5a2538] dark:text-[#d09272]">
+              <div className="mt-4 border-l-2 border-[#ff7a45]/40 bg-[#ff7a45]/6 px-3 py-3 sm:px-4">
+                <p className="text-xs font-black text-[#ff7a45]">
                   Anonim içerikler ayrı tutulur
                 </p>
-                <p className="mt-1 text-xs leading-5 text-[#1c2821]/64 dark:text-white/60">
+                <p className="mt-1 text-xs leading-5 text-white/62">
                   Anonim konular ve yorumlar profilinde gösterilmez; bu
                   içeriklerde bölüm veya sınıf bilgin de paylaşılmaz.
                 </p>
-              </div>
-            </SettingsSection>
-
-            <SettingsSection
-              eyebrow="Görünüm"
-              title="Renk teması"
-              description="Uygulamayı bulunduğun ortama göre açık veya koyu kullan."
-            >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="max-w-md text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]">
-                  Tema tercihin bu tarayıcıda saklanır ve tüm KAMPÜS
-                  ekranlarına uygulanır.
-                </p>
-                <ThemeToggle
-                  showLabel
-                  className="w-full shrink-0 sm:w-auto"
-                />
               </div>
             </SettingsSection>
           </div>
@@ -440,7 +422,7 @@ export default function CampusSettings() {
               title="Seni ne zaman bilgilendirelim?"
               description="Uygulama içindeki bildirim tercihlerini ayrı ayrı yönet."
             >
-              <div className="divide-y divide-[#1c2821]/9 dark:divide-white/8">
+              <div className="divide-y divide-white/8">
                 <SettingSwitch
                   id="notify-replies"
                   label="Yanıtlar"
@@ -491,7 +473,7 @@ export default function CampusSettings() {
                   }}
                 />
               </div>
-              <p className="mt-4 border-l-2 border-[#9a5944]/38 pl-3 text-xs leading-5 text-[#1c2821]/64 dark:border-[#c7896d]/42 dark:text-white/60">
+              <p className="mt-4 border-l-2 border-[#ff7a45]/40 pl-3 text-xs leading-5 text-white/62">
                 Tercihlerin hesabında saklanır ve giriş yaptığın cihazlarda
                 uygulanır. Bildirim gönderimi etkinleştiğinde bu seçimler
                 kullanılacak.
@@ -513,12 +495,12 @@ export default function CampusSettings() {
                     <div
                       key={item}
                       aria-hidden="true"
-                      className="h-14 animate-pulse bg-[#1c2821]/6 dark:bg-white/6 motion-reduce:animate-none"
+                      className="h-14 animate-pulse bg-white/6 motion-reduce:animate-none"
                     />
                   ))}
                 </div>
               ) : blockedUsers.length > 0 ? (
-                <ul className="divide-y divide-[#1c2821]/9 dark:divide-white/8">
+                <ul className="divide-y divide-white/8">
                   {blockedUsers.map((user) => (
                     <li
                       key={user.authorId}
@@ -533,7 +515,7 @@ export default function CampusSettings() {
                         <p className="truncate text-sm font-black">
                           {user.author}
                         </p>
-                        <p className="mt-0.5 text-[11px] text-[#58635c] dark:text-[#aeb4af]">
+                        <p className="mt-0.5 text-[11px] text-white/55">
                           Gönderileri ve yorumları gizleniyor
                         </p>
                       </div>
@@ -546,7 +528,7 @@ export default function CampusSettings() {
                             tone: "success",
                           });
                         }}
-                        className={`min-h-11 shrink-0 cursor-pointer px-3 text-xs font-black text-[#7d3c2d] transition-colors hover:bg-[#7d3c2d]/7 dark:text-[#d09272] dark:hover:bg-[#c7896d]/8 ${focusRing}`}
+                        className={`min-h-11 shrink-0 cursor-pointer px-3 text-xs font-black text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/8 ${focusRing}`}
                       >
                         Engeli kaldır
                       </button>
@@ -554,11 +536,11 @@ export default function CampusSettings() {
                   ))}
                 </ul>
               ) : (
-                <div className="border border-dashed border-[#1c2821]/15 px-4 py-5 text-center dark:border-white/13">
+                <div className="border border-dashed border-white/13 px-4 py-5 text-center">
                   <p className="text-sm font-black">
                     Engellenmiş bir kullanıcı yok
                   </p>
-                  <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]">
+                  <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-white/55">
                     Bir gönderinin seçeneklerinden kullanıcıyı
                     engelleyebilirsin.
                   </p>
@@ -574,7 +556,7 @@ export default function CampusSettings() {
               <button
                 type="button"
                 onClick={handleSignOut}
-                className={`inline-flex min-h-11 w-full items-center justify-center border border-[#1c2821]/15 px-4 text-xs font-black transition-colors hover:border-[#5a1f32]/35 hover:bg-[#5a1f32]/6 dark:border-white/13 dark:hover:border-[#c7896d]/35 dark:hover:bg-[#c7896d]/8 sm:w-auto ${focusRing}`}
+                className={`inline-flex min-h-11 w-full items-center justify-center border border-white/13 px-4 text-xs font-black text-white transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 sm:w-auto ${focusRing}`}
               >
                 Çıkış yap
               </button>
@@ -586,7 +568,7 @@ export default function CampusSettings() {
               description="Bu işlem bu cihazda saklanan frontend verilerini temizler."
               danger
             >
-              <p className="text-xs leading-5 text-[#1c2821]/64 dark:text-white/60">
+              <p className="text-xs leading-5 text-white/62">
                 Geçici profil fotoğrafın, bu cihazda oluşturduğun yerel konu
                 ve yorumlar, kaydettiklerin ve moderasyon tercihlerin
                 temizlenir. Sunucuda kayıtlı profil bilgilerin ve hesap
@@ -597,7 +579,7 @@ export default function CampusSettings() {
                 type="button"
                 onClick={openDeleteDialog}
                 disabled={!isHydrated}
-                className={`mt-4 inline-flex min-h-11 w-full items-center justify-center border border-[#a03c36]/42 px-4 text-xs font-black text-[#8b2f2a] transition-colors hover:border-[#8b2f2a] hover:bg-[#8b2f2a] hover:text-white disabled:cursor-not-allowed disabled:opacity-45 dark:border-[#d27368]/42 dark:text-[#e18a7d] dark:hover:border-[#d27368] dark:hover:bg-[#d27368] dark:hover:text-[#17191c] sm:w-auto ${focusRing}`}
+                className={`mt-4 inline-flex min-h-11 w-full items-center justify-center border border-[#ffb199]/42 px-4 text-xs font-black text-[#ffb199] transition-colors hover:border-[#ffb199] hover:bg-[#ffb199] hover:text-[#12100e] disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto ${focusRing}`}
               >
                 Yerel verileri sıfırla
               </button>
@@ -609,7 +591,7 @@ export default function CampusSettings() {
 
       {isDeleteDialogOpen && (
         <div
-          className="fixed inset-0 z-[100] grid place-items-start overflow-y-auto overscroll-contain bg-[#101512]/66 p-3 backdrop-blur-[3px] sm:place-items-center sm:p-6"
+          className="fixed inset-0 z-[100] grid place-items-start overflow-y-auto overscroll-contain bg-black/66 p-3 backdrop-blur-[3px] sm:place-items-center sm:p-6"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
               closeDeleteDialog();
@@ -622,11 +604,11 @@ export default function CampusSettings() {
             aria-modal="true"
             aria-labelledby="delete-account-title"
             aria-describedby="delete-account-description"
-            className="w-full max-w-lg overflow-y-auto border border-[#8b2f2a]/24 bg-[#fbf8f1] p-4 text-[#1c2821] shadow-[0_28px_90px_rgba(15,18,16,0.32)] dark:border-[#d27368]/24 dark:bg-[#1d2023] dark:text-[#ece8e1] sm:max-h-[calc(100svh-3rem)] sm:p-6"
+            className="w-full max-w-lg overflow-y-auto border border-[#ffb199]/24 bg-[#141720] p-4 text-white shadow-[0_28px_90px_rgba(0,0,0,0.5)] sm:max-h-[calc(100svh-3rem)] sm:p-6"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#8b2f2a] dark:text-[#e18a7d]">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ffb199]">
                   Son onay
                 </p>
                 <h2
@@ -641,7 +623,7 @@ export default function CampusSettings() {
                 onClick={closeDeleteDialog}
                 disabled={isResettingLocalData}
                 aria-label="Veri sıfırlama penceresini kapat"
-                className={`grid size-11 shrink-0 place-items-center rounded-full text-[#58635c] transition-colors hover:bg-[#1c2821]/7 hover:text-[#1c2821] dark:text-[#aeb4af] dark:hover:bg-white/8 dark:hover:text-white ${focusRing}`}
+                className={`grid size-11 shrink-0 place-items-center rounded-full text-white/55 transition-colors hover:bg-white/8 hover:text-white ${focusRing}`}
               >
                 <CloseIcon />
               </button>
@@ -649,7 +631,7 @@ export default function CampusSettings() {
 
             <div
               id="delete-account-description"
-              className="mt-4 text-sm leading-6 text-[#1c2821]/68 dark:text-white/64"
+              className="mt-4 text-sm leading-6 text-white/68"
             >
               <p>Onayladığında bu tarayıcıdaki:</p>
               <ul className="mt-2 grid gap-1.5 pl-5">
@@ -663,7 +645,7 @@ export default function CampusSettings() {
                   Beğeni ve kaydetme tercihlerin temizlenir.
                 </li>
               </ul>
-              <p className="mt-3 font-bold text-[#8b2f2a] dark:text-[#e18a7d]">
+              <p className="mt-3 font-bold text-[#ffb199]">
                 Sunucudaki profil bilgilerin ve hesap tercihlerin korunur.
               </p>
             </div>
@@ -674,7 +656,7 @@ export default function CampusSettings() {
                 className="block text-xs font-bold leading-5"
               >
                 Devam etmek için aşağıdaki alana tam olarak{" "}
-                <span className="font-black text-[#8b2f2a] dark:text-[#e18a7d]">
+                <span className="font-black text-[#ffb199]">
                   {DELETE_CONFIRMATION}
                 </span>{" "}
                 yaz.
@@ -696,17 +678,17 @@ export default function CampusSettings() {
                     ? "delete-account-confirmation-error"
                     : undefined
                 }
-                className={`mt-2 min-h-11 w-full border bg-white/70 px-3 text-sm font-black uppercase tracking-[0.08em] transition-colors placeholder:text-[#68736c] dark:bg-white/[0.035] dark:placeholder:text-[#9ba39d] ${
+                className={`mt-2 min-h-11 w-full border bg-white/5 px-3 text-sm font-black uppercase tracking-[0.08em] text-white transition-colors placeholder:text-white/40 ${
                   hasMismatchedDeleteConfirmation
-                    ? "border-[#a03c36] dark:border-[#d27368]"
-                    : "border-[#1c2821]/16 focus:border-[#8b2f2a] dark:border-white/14 dark:focus:border-[#d27368]"
+                    ? "border-[#ffb199]"
+                    : "border-white/14 focus:border-[#ffb199]"
                 } ${focusRing}`}
               />
               {hasMismatchedDeleteConfirmation && (
                 <p
                   id="delete-account-confirmation-error"
                   role="alert"
-                  className="mt-2 text-xs font-bold text-[#8b2f2a] dark:text-[#e18a7d]"
+                  className="mt-2 text-xs font-bold text-[#ffb199]"
                 >
                   Onay metni tam olarak “{DELETE_CONFIRMATION}” olmalı.
                 </p>
@@ -717,7 +699,7 @@ export default function CampusSettings() {
                   type="button"
                   onClick={closeDeleteDialog}
                   disabled={isResettingLocalData}
-                  className={`inline-flex min-h-11 items-center justify-center border border-[#1c2821]/15 px-4 text-xs font-black transition-colors hover:bg-[#1c2821]/6 dark:border-white/13 dark:hover:bg-white/7 ${focusRing}`}
+                  className={`inline-flex min-h-11 items-center justify-center border border-white/13 px-4 text-xs font-black text-white transition-colors hover:bg-white/7 ${focusRing}`}
                 >
                   Vazgeç
                 </button>
@@ -728,7 +710,7 @@ export default function CampusSettings() {
                     isResettingLocalData
                   }
                   aria-busy={isResettingLocalData}
-                  className={`inline-flex min-h-11 items-center justify-center bg-[#8b2f2a] px-4 text-xs font-black text-white transition-colors hover:bg-[#762620] disabled:cursor-not-allowed disabled:bg-[#8b2f2a]/35 disabled:text-white/75 dark:bg-[#d27368] dark:text-[#17191c] dark:hover:bg-[#df887d] dark:disabled:bg-[#d27368]/30 dark:disabled:text-white/45 ${focusRing}`}
+                  className={`inline-flex min-h-11 items-center justify-center bg-[#ffb199] px-4 text-xs font-black text-[#12100e] transition-colors hover:bg-[#ffb199]/90 disabled:cursor-not-allowed disabled:bg-[#ffb199]/35 disabled:text-white/60 ${focusRing}`}
                 >
                   {isResettingLocalData
                     ? "Oturum kapatılıyor…"
@@ -752,17 +734,13 @@ function SettingsSection({
 }: SettingsSectionProps) {
   return (
     <section
-      className={`min-w-0 border bg-white/28 p-4 dark:bg-white/[0.018] sm:p-5 ${
-        danger
-          ? "border-[#a03c36]/25 dark:border-[#d27368]/24"
-          : "border-[#1c2821]/11 dark:border-white/9"
+      className={`min-w-0 border bg-white/[0.03] p-4 sm:p-5 ${
+        danger ? "border-[#ffb199]/25" : "border-white/12"
       }`}
     >
       <p
         className={`font-mono text-[10px] font-bold uppercase tracking-[0.14em] sm:text-[11px] ${
-          danger
-            ? "text-[#8b2f2a] dark:text-[#e18a7d]"
-            : "text-[#7d3c2d] dark:text-[#c7896d]"
+          danger ? "text-[#ffb199]" : "text-[#ff7a45]"
         }`}
       >
         {eyebrow}
@@ -770,7 +748,7 @@ function SettingsSection({
       <h2 className="mt-1 text-lg font-black tracking-[-0.035em]">
         {title}
       </h2>
-      <p className="mt-1 text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]">
+      <p className="mt-1 text-xs leading-5 text-white/55">
         {description}
       </p>
       <div className="mt-5">{children}</div>
@@ -797,7 +775,7 @@ function SettingSwitch({
         </p>
         <p
           id={descriptionId}
-          className="mt-0.5 max-w-xl text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]"
+          className="mt-0.5 max-w-xl text-xs leading-5 text-white/55"
         >
           {description}
         </p>
@@ -812,16 +790,14 @@ function SettingSwitch({
         onClick={() => onChange(!checked)}
         className={`relative inline-flex min-h-11 w-[3.25rem] shrink-0 items-center rounded-full border px-1 transition-colors disabled:cursor-wait disabled:opacity-45 ${
           checked
-            ? "border-[#5a2538] bg-[#5a2538] dark:border-[#c7896d] dark:bg-[#c7896d]"
-            : "border-[#1c2821]/18 bg-[#1c2821]/8 dark:border-white/16 dark:bg-white/8"
+            ? "border-[#ff7a45] bg-[#ff7a45]"
+            : "border-white/16 bg-white/8"
         } ${focusRing}`}
       >
         <span
           aria-hidden="true"
           className={`block size-5 rounded-full shadow-sm transition-transform ${
-            checked
-              ? "translate-x-[1.25rem] bg-[#fffaf4] dark:bg-[#17191c]"
-              : "translate-x-0 bg-white dark:bg-white/72"
+            checked ? "translate-x-[1.25rem] bg-white" : "translate-x-0 bg-white/70"
           }`}
         />
       </button>

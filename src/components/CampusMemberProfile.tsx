@@ -31,7 +31,7 @@ type AuthoredComment = {
 };
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fbf8f1] dark:focus-visible:ring-[#c7896d]/30 dark:focus-visible:ring-offset-[#17191c]";
+  "outline-none focus-visible:ring-3 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
 
 function authorMatchesUsername(
   author: CampusAuthorReference,
@@ -279,19 +279,19 @@ export default function CampusMemberProfile({
   return (
     <section
       aria-labelledby="member-profile-title"
-      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#fbf8f1] text-[#1c2821] dark:bg-[#17191c] dark:text-[#ece8e1] md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
     >
-      <header className="sticky top-16 z-30 border-b border-[#1c2821]/12 bg-[#fbf8f1]/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#17191c]/95 md:top-0">
+      <header className="sticky top-16 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl md:top-0">
         <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 sm:px-6">
           <Link
             href="/akis"
             aria-label="Akışa dön"
-            className={`grid size-11 place-items-center rounded-full text-[#58635c] transition-colors hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-[#aeb4af] dark:hover:bg-white/7 dark:hover:text-white ${focusRing}`}
+            className={`grid size-11 place-items-center rounded-full text-white/55 transition-colors hover:bg-white/8 hover:text-white ${focusRing}`}
           >
             <BackIcon />
           </Link>
           <div className="min-w-0 text-center">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#7d3c2d] dark:text-[#c7896d]">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
               Topluluk profili
             </p>
             <h1
@@ -304,7 +304,7 @@ export default function CampusMemberProfile({
           {isSelf ? (
             <Link
               href="/profil"
-              className={`inline-flex min-h-11 items-center justify-center justify-self-end px-3 text-xs font-black text-[#7d3c2d] hover:bg-[#5a1f32]/6 dark:text-[#d09272] dark:hover:bg-[#c7896d]/8 ${focusRing}`}
+              className={`inline-flex min-h-11 items-center justify-center justify-self-end px-3 text-xs font-black text-[#ff7a45] hover:bg-[#ff7a45]/8 ${focusRing}`}
             >
               Profilim
             </Link>
@@ -315,7 +315,7 @@ export default function CampusMemberProfile({
       </header>
 
       <div className="mx-auto w-full max-w-6xl">
-        <div className="border-b border-[#1c2821]/10 px-4 py-7 dark:border-white/9 sm:px-6 sm:py-9">
+        <div className="border-b border-white/12 px-4 py-7 sm:px-6 sm:py-9">
           <div className="flex flex-col gap-5 min-[420px]:flex-row min-[420px]:items-start">
             <CampusAuthorAvatar
               author={author}
@@ -335,28 +335,28 @@ export default function CampusMemberProfile({
                         <RoleBadge user={managedUser} />
                       )}
                   </div>
-                  <p className="mt-1 break-all text-sm font-bold text-[#58635c] dark:text-[#aeb4af]">
+                  <p className="mt-1 break-all text-sm font-bold text-white/55">
                     @{username}
                   </p>
                 </div>
                 {isOfficial && (
-                  <span className="bg-[#52735a]/10 px-2.5 py-1.5 font-mono text-[9px] font-black uppercase tracking-[0.1em] text-[#31523d] dark:bg-[#8fba9b]/11 dark:text-[#b5d8bd]">
+                  <span className="bg-[#8fba9b]/12 px-2.5 py-1.5 font-mono text-[9px] font-black uppercase tracking-[0.1em] text-[#b5d8bd]">
                     Doğrulanmış
                   </span>
                 )}
               </div>
 
               {department && (
-                <p className="mt-4 text-sm font-semibold text-[#1c2821]/70 dark:text-white/66">
+                <p className="mt-4 text-sm font-semibold text-white/68">
                   {department}
                 </p>
               )}
-              <p className="mt-2 text-xs font-semibold text-[#58635c] dark:text-[#aeb4af]">
+              <p className="mt-2 text-xs font-semibold text-white/55">
                 {joinedLabel}
               </p>
               {!isSuspended && !isBlocked && (
                 <>
-                  <p className="mt-4 max-w-2xl whitespace-pre-wrap text-sm leading-6 text-[#1c2821]/78 dark:text-white/74">
+                  <p className="mt-4 max-w-2xl whitespace-pre-wrap text-sm leading-6 text-white/70">
                     {bio}
                   </p>
                   <CampusFollowConnections
@@ -375,7 +375,7 @@ export default function CampusMemberProfile({
           </div>
 
           {!isSuspended && !isBlocked && (
-            <dl className="mt-6 grid grid-cols-3 border-y border-[#1c2821]/10 dark:border-white/9">
+            <dl className="mt-6 grid grid-cols-3 border-y border-white/12">
               <ProfileStat label="Gönderi" value={authoredPosts.length} />
               <ProfileStat
                 label="Yorum"
@@ -406,7 +406,7 @@ export default function CampusMemberProfile({
             <div
               role="tablist"
               aria-label={`${displayName} profil içeriği`}
-              className="grid grid-cols-2 border-b border-[#1c2821]/11 px-3 py-2 dark:border-white/9 sm:px-6"
+              className="grid grid-cols-2 border-b border-white/12 px-3 py-2 sm:px-6"
             >
               {(
                 [
@@ -431,8 +431,8 @@ export default function CampusMemberProfile({
                     }
                     className={`min-h-11 px-3 text-xs font-black transition-colors ${focusRing} ${
                       isActive
-                        ? "bg-[#5a1f32]/9 text-[#5a1f32] dark:bg-[#c7896d]/12 dark:text-[#e0aa8d]"
-                        : "text-[#58635c] hover:bg-[#1c2821]/5 hover:text-[#1c2821] dark:text-[#aeb4af] dark:hover:bg-white/5 dark:hover:text-white"
+                        ? "bg-[#ff7a45]/12 text-[#ff7a45]"
+                        : "text-white/55 hover:bg-white/8 hover:text-white"
                     }`}
                   >
                     {label}
@@ -480,14 +480,14 @@ function MemberPosts({
           {posts.map((post) => (
             <li
               key={post.id}
-              className="border-b border-[#1c2821]/11 py-5 last:border-0 dark:border-white/9"
+              className="border-b border-white/12 py-5 last:border-0"
             >
               <CampusPostCardSurface postId={post.id}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-mono text-[10px] font-black uppercase tracking-[0.1em] text-[#7d3c2d] dark:text-[#d09272]">
+                  <span className="font-mono text-[10px] font-black uppercase tracking-[0.1em] text-[#ff7a45]">
                     {post.category}
                   </span>
-                  <time className="text-[11px] font-semibold text-[#58635c] dark:text-[#aeb4af]">
+                  <time className="text-[11px] font-semibold text-white/55">
                     {post.time}
                     {post.edited ? " · düzenlendi" : ""}
                   </time>
@@ -495,17 +495,17 @@ function MemberPosts({
                 <h3 className="mt-2 break-words text-lg font-black leading-6 tracking-[-0.025em] sm:text-xl">
                   <Link
                     href={`/gonderi/${post.id}`}
-                    className={`decoration-[#9a5944]/30 underline-offset-4 hover:text-[#7d3c2d] hover:underline dark:hover:text-[#d09272] ${focusRing}`}
+                    className={`decoration-[#ff7a45]/30 underline-offset-4 hover:text-[#ff7a45] hover:underline ${focusRing}`}
                   >
                     {post.title || "Başlıksız gönderi"}
                   </Link>
                 </h3>
                 {post.body && (
-                  <p className="mt-2 line-clamp-3 whitespace-pre-wrap break-words text-sm leading-6 text-[#1c2821]/76 dark:text-white/72">
+                  <p className="mt-2 line-clamp-3 whitespace-pre-wrap break-words text-sm leading-6 text-white/70">
                     {post.body}
                   </p>
                 )}
-                <div className="mt-3 flex items-center gap-4 text-xs font-bold text-[#58635c] dark:text-[#aeb4af]">
+                <div className="mt-3 flex items-center gap-4 text-xs font-bold text-white/55">
                   <span>{post.likes} beğeni</span>
                   <span>{getCampusPostCommentCount(post)} yorum</span>
                 </div>
@@ -541,18 +541,18 @@ function MemberComments({
           {comments.map(({ comment, post }) => (
             <li
               key={`${post.id}-${comment.id}`}
-              className="border-b border-[#1c2821]/11 py-5 last:border-0 dark:border-white/9"
+              className="border-b border-white/12 py-5 last:border-0"
             >
               <article>
-                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-[#58635c] dark:text-[#aeb4af]">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-white/55">
                   {post.title || "Başlıksız gönderi"} · {comment.time}
                 </p>
-                <blockquote className="mt-2 border-l-3 border-[#9a5944]/38 pl-3 text-sm leading-6 text-[#1c2821]/78 dark:border-[#c7896d]/42 dark:text-white/74">
+                <blockquote className="mt-2 border-l-3 border-[#ff7a45]/40 pl-3 text-sm leading-6 text-white/70">
                   {comment.body}
                 </blockquote>
                 <Link
                   href={getProfileHrefForComment(post.id, comment.id)}
-                  className={`mt-3 inline-flex min-h-11 items-center text-xs font-black text-[#7d3c2d] hover:text-[#5a1f32] dark:text-[#d09272] dark:hover:text-[#e0aa8d] ${focusRing}`}
+                  className={`mt-3 inline-flex min-h-11 items-center text-xs font-black text-[#ff7a45] hover:text-[#ff7a45]/80 ${focusRing}`}
                 >
                   Konuşmaya git
                 </Link>
@@ -583,12 +583,12 @@ function ProfileStat({
     <div
       className={`py-4 text-center ${
         bordered
-          ? "border-x border-[#1c2821]/10 dark:border-white/9"
+          ? "border-x border-white/12"
           : ""
       }`}
     >
       <dd className="text-xl font-black tracking-[-0.04em]">{value}</dd>
-      <dt className="mt-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.11em] text-[#58635c] dark:text-[#aeb4af]">
+      <dt className="mt-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.11em] text-white/55">
         {label}
       </dt>
     </div>
@@ -597,7 +597,7 @@ function ProfileStat({
 
 function RoleBadge({ user }: { user: CampusManagedUser }) {
   return (
-    <span className="bg-[#5a1f32]/9 px-2 py-1 font-mono text-[8px] font-black uppercase tracking-[0.09em] text-[#5a1f32] dark:bg-[#c7896d]/12 dark:text-[#e0aa8d]">
+    <span className="bg-[#ff7a45]/12 px-2 py-1 font-mono text-[8px] font-black uppercase tracking-[0.09em] text-[#ff7a45]">
       {campusAdminRoleLabels[user.role]}
     </span>
   );
@@ -618,19 +618,19 @@ function RestrictedProfileState({
 }) {
   return (
     <div className="px-4 py-14 sm:px-6 sm:py-20">
-      <div className="mx-auto max-w-xl border border-[#1c2821]/13 bg-white/28 p-6 text-center dark:border-white/11 dark:bg-white/[0.02] sm:p-8">
-        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#8b2f2a] dark:text-[#e18a7d]">
+      <div className="mx-auto max-w-xl border border-white/12 bg-[#141720] p-6 text-center sm:p-8">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ffb199]">
           {eyebrow}
         </p>
         <h3 className="mt-2 text-xl font-black tracking-[-0.04em]">
           {title}
         </h3>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#58635c] dark:text-[#aeb4af]">
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-white/55">
           {description}
         </p>
         <Link
           href={actionHref}
-          className={`mt-6 inline-flex min-h-11 items-center justify-center border border-[#1c2821]/14 px-4 text-xs font-black hover:bg-[#1c2821]/6 dark:border-white/12 dark:hover:bg-white/7 ${focusRing}`}
+          className={`mt-6 inline-flex min-h-11 items-center justify-center border border-white/12 px-4 text-xs font-black hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
         >
           {actionLabel}
         </Link>
@@ -641,26 +641,26 @@ function RestrictedProfileState({
 
 function ProfileNotFound({ username }: { username: string }) {
   return (
-    <section className="grid min-h-[calc(100svh-4rem)] place-items-center bg-[#fbf8f1] px-4 py-16 text-[#1c2821] dark:bg-[#17191c] dark:text-[#ece8e1] md:min-h-svh">
-      <div className="w-full max-w-lg border border-[#1c2821]/13 bg-white/30 p-6 text-center dark:border-white/11 dark:bg-white/[0.02] sm:p-8">
+    <section className="grid min-h-[calc(100svh-4rem)] place-items-center bg-[#0a0d16] px-4 py-16 text-white md:min-h-svh">
+      <div className="w-full max-w-lg border border-white/12 bg-[#141720] p-6 text-center sm:p-8">
         <span
           aria-hidden="true"
-          className="mx-auto grid size-14 place-items-center rounded-full bg-[#1c2821]/6 font-serif text-2xl font-black italic text-[#58635c] dark:bg-white/6 dark:text-[#aeb4af]"
+          className="mx-auto grid size-14 place-items-center rounded-full bg-white/8 font-serif text-2xl font-black italic text-white/55"
         >
           ?
         </span>
-        <p className="mt-4 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#7d3c2d] dark:text-[#c7896d]">
+        <p className="mt-4 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
           Profil bulunamadı
         </p>
         <h1 className="mt-2 break-all text-2xl font-black tracking-[-0.045em]">
           @{username || "kullanici"}
         </h1>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#58635c] dark:text-[#aeb4af]">
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-white/55">
           Bu kullanıcı adıyla görüntülenebilecek bir topluluk profili yok.
         </p>
         <Link
           href="/kesfet"
-          className={`mt-6 inline-flex min-h-11 items-center justify-center bg-[#5a1f32] px-5 text-xs font-black text-white hover:bg-[#481527] dark:bg-[#c7896d] dark:text-[#17191c] dark:hover:bg-[#d79a7b] ${focusRing}`}
+          className={`mt-6 inline-flex min-h-11 items-center justify-center bg-white px-5 text-xs font-black text-[#12100e] hover:bg-white/90 ${focusRing}`}
         >
           Keşfete dön
         </Link>
@@ -680,10 +680,10 @@ function ProfileEmptyState({
     <div className="px-4 py-14 text-center sm:px-6 sm:py-20">
       <span
         aria-hidden="true"
-        className="mx-auto block size-3 rotate-45 bg-[#9a5944]/45 dark:bg-[#c7896d]/50"
+        className="mx-auto block size-3 rotate-45 bg-[#ff7a45]/50"
       />
       <h3 className="mt-4 text-sm font-black">{title}</h3>
-      <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]">
+      <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-white/55">
         {description}
       </p>
     </div>
@@ -695,18 +695,18 @@ export function CampusMemberProfileLoading() {
     <section
       aria-busy="true"
       aria-label="Üye profili yükleniyor"
-      className="min-h-[calc(100svh-4rem)] bg-[#fbf8f1] p-4 dark:bg-[#17191c] sm:p-6 md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] bg-[#0a0d16] p-4 sm:p-6 md:min-h-svh"
     >
-      <div className="h-16 animate-pulse bg-[#1c2821]/6 dark:bg-white/6 motion-reduce:animate-none" />
+      <div className="h-16 animate-pulse bg-white/8 motion-reduce:animate-none" />
       <div className="mt-5 flex gap-5">
-        <div className="size-20 shrink-0 animate-pulse rounded-full bg-[#1c2821]/6 dark:bg-white/6 motion-reduce:animate-none sm:size-24" />
+        <div className="size-20 shrink-0 animate-pulse rounded-full bg-white/8 motion-reduce:animate-none sm:size-24" />
         <div className="min-w-0 flex-1">
-          <div className="h-8 w-48 max-w-full animate-pulse bg-[#1c2821]/6 dark:bg-white/6 motion-reduce:animate-none" />
-          <div className="mt-3 h-4 w-32 animate-pulse bg-[#1c2821]/6 dark:bg-white/6 motion-reduce:animate-none" />
-          <div className="mt-6 h-14 w-full animate-pulse bg-[#1c2821]/6 dark:bg-white/6 motion-reduce:animate-none" />
+          <div className="h-8 w-48 max-w-full animate-pulse bg-white/8 motion-reduce:animate-none" />
+          <div className="mt-3 h-4 w-32 animate-pulse bg-white/8 motion-reduce:animate-none" />
+          <div className="mt-6 h-14 w-full animate-pulse bg-white/8 motion-reduce:animate-none" />
         </div>
       </div>
-      <div className="mt-8 h-64 animate-pulse bg-[#1c2821]/6 dark:bg-white/6 motion-reduce:animate-none" />
+      <div className="mt-8 h-64 animate-pulse bg-white/8 motion-reduce:animate-none" />
     </section>
   );
 }

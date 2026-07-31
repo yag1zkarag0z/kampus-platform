@@ -100,7 +100,7 @@ export default function CampusSessionGate({
             onClick={() => {
               void retrySession();
             }}
-            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#5a1f32] px-5 text-xs font-black text-white outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 disabled:cursor-wait disabled:opacity-60 dark:bg-[#c7896d] dark:text-[#121417] dark:hover:bg-[#d39879] dark:focus-visible:ring-[#c7896d]/35"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-5 text-xs font-black text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40 disabled:cursor-wait disabled:opacity-60"
           >
             {isSessionLoading ? "Kontrol ediliyor…" : "Tekrar dene"}
           </button>

@@ -37,7 +37,7 @@ type TargetContext = {
 };
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#5a1f32]/28 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fbf8f1] dark:focus-visible:ring-[#c7896d]/38 dark:focus-visible:ring-offset-[#17191c]";
+  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
 
 const adminViews: { id: AdminView; label: string }[] = [
   { id: "overview", label: "Genel bakış" },
@@ -234,21 +234,21 @@ export default function CampusAdminPanel() {
     (role !== "admin" && role !== "moderator")
   ) {
     return (
-      <section className="grid min-h-[calc(100svh-4rem)] place-items-center bg-[#fbf8f1] px-4 py-16 text-[#1c2821] dark:bg-[#17191c] dark:text-[#ece8e1] md:min-h-svh">
-        <div className="w-full max-w-lg border border-[#1c2821]/13 bg-white/35 p-6 text-center dark:border-white/11 dark:bg-white/[0.025] sm:p-8">
-          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-[#8b2f2a] dark:text-[#e18a7d]">
+      <section className="grid min-h-[calc(100svh-4rem)] place-items-center bg-[#0a0d16] px-4 py-16 text-white md:min-h-svh">
+        <div className="w-full max-w-lg border border-white/12 bg-[#141720] p-6 text-center sm:p-8">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-[#ffb199]">
             Yetkili alanı
           </p>
           <h1 className="mt-2 text-2xl font-black tracking-[-0.045em]">
             Bu alan yönetici veya moderatör yetkisi gerektiriyor
           </h1>
-          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#58635c] dark:text-[#aeb4af]">
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-white/62">
             Misafir profiliyle topluluğu inceleyebilirsin; moderasyon
             araçlarına erişmek için yönetici hesabıyla giriş yapmalısın.
           </p>
           <Link
             href="/giris"
-            className={`mt-6 inline-flex min-h-11 items-center justify-center bg-[#5a1f32] px-5 text-xs font-black text-white transition-colors hover:bg-[#481527] dark:bg-[#c7896d] dark:text-[#17191c] dark:hover:bg-[#d79a7b] ${focusRing}`}
+            className={`mt-6 inline-flex min-h-11 items-center justify-center bg-white px-5 text-xs font-black text-[#12100e] transition-colors hover:bg-white/90 ${focusRing}`}
           >
             Giriş yap
           </Link>
@@ -381,17 +381,17 @@ export default function CampusAdminPanel() {
   return (
     <section
       aria-labelledby="admin-panel-title"
-      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#fbf8f1] text-[#1c2821] dark:bg-[#17191c] dark:text-[#ece8e1] md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
     >
-      <header className="border-b border-[#1c2821]/12 bg-[#f5efe6] dark:border-white/10 dark:bg-[#1b1d20]">
+      <header className="border-b border-white/10 bg-[#141720]">
         <div className="flex min-h-24 flex-col justify-center gap-3 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
             <div className="flex items-center gap-2">
               <span
                 aria-hidden="true"
-                className="size-2 rounded-full bg-[#52735a] shadow-[0_0_0_4px_rgba(82,115,90,0.12)]"
+                className="size-2 rounded-full bg-[#8fba9b] shadow-[0_0_0_4px_rgba(143,186,155,0.14)]"
               />
-              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-[#7d3c2d] dark:text-[#c7896d]">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-[#ff7a45]">
                 Yönetim merkezi
               </p>
             </div>
@@ -402,10 +402,10 @@ export default function CampusAdminPanel() {
               KAMPÜS Moderasyon
             </h1>
           </div>
-          <div className="flex items-center gap-3 border-l-2 border-[#5a1f32]/25 pl-3 dark:border-[#c7896d]/35">
+          <div className="flex items-center gap-3 border-l-2 border-[#ff7a45]/35 pl-3">
             <div className="text-right">
               <p className="text-xs font-black">Yağız Karagöz</p>
-              <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-[#58635c] dark:text-[#aeb4af]">
+              <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-white/55">
                 Yönetici
               </p>
             </div>
@@ -419,7 +419,7 @@ export default function CampusAdminPanel() {
 
         <nav
           aria-label="Yönetim paneli bölümleri"
-          className="overflow-x-auto border-t border-[#1c2821]/8 px-2 py-2 dark:border-white/7 sm:px-5"
+          className="overflow-x-auto border-t border-white/7 px-2 py-2 sm:px-5"
         >
           <div className="grid min-w-[31rem] grid-cols-4 gap-1">
             {adminViews.map((view) => {
@@ -439,13 +439,13 @@ export default function CampusAdminPanel() {
                   onClick={() => setActiveView(view.id)}
                   className={`min-h-11 cursor-pointer px-3 text-xs font-black transition-colors ${focusRing} ${
                     isActive
-                      ? "bg-[#5a1f32]/9 text-[#5a1f32] dark:bg-[#c7896d]/12 dark:text-[#e0aa8d]"
-                      : "text-[#1c2821]/58 hover:bg-[#1c2821]/5 hover:text-[#1c2821] dark:text-white/52 dark:hover:bg-white/5 dark:hover:text-white"
+                      ? "bg-[#ff7a45]/12 text-[#ff7a45]"
+                      : "text-white/55 hover:bg-white/5 hover:text-white"
                   }`}
                 >
                   {view.label}
                   {count !== undefined && count > 0 && (
-                    <span className="ml-2 inline-flex min-w-5 justify-center rounded-full bg-[#8b2f2a] px-1.5 py-0.5 font-mono text-[9px] text-white dark:bg-[#d27368] dark:text-[#17191c]">
+                    <span className="ml-2 inline-flex min-w-5 justify-center rounded-full bg-[#ffb199] px-1.5 py-0.5 font-mono text-[9px] text-[#0a0d16]">
                       {count}
                     </span>
                   )}
@@ -499,7 +499,7 @@ export default function CampusAdminPanel() {
                     setReportFilter("pending");
                     setActiveView("reports");
                   }}
-                  className={`min-h-11 px-3 text-xs font-black text-[#7d3c2d] hover:bg-[#5a1f32]/6 dark:text-[#d09272] dark:hover:bg-[#c7896d]/8 ${focusRing}`}
+                  className={`min-h-11 px-3 text-xs font-black text-[#ff7a45] hover:bg-[#ff7a45]/8 ${focusRing}`}
                 >
                   Tümünü incele
                 </button>
@@ -508,7 +508,7 @@ export default function CampusAdminPanel() {
               {sortedReports.filter(
                 (report) => report.status === "pending",
               ).length > 0 ? (
-                <ul className="divide-y divide-[#1c2821]/9 dark:divide-white/8">
+                <ul className="divide-y divide-white/8">
                   {sortedReports
                     .filter((report) => report.status === "pending")
                     .slice(0, 4)
@@ -524,7 +524,7 @@ export default function CampusAdminPanel() {
                               setReportFilter("pending");
                               setActiveView("reports");
                             }}
-                            className={`flex min-h-20 w-full cursor-pointer items-center gap-3 px-1 py-3 text-left transition-colors hover:bg-[#1c2821]/4 dark:hover:bg-white/4 ${focusRing}`}
+                            className={`flex min-h-20 w-full cursor-pointer items-center gap-3 px-1 py-3 text-left transition-colors hover:bg-white/4 ${focusRing}`}
                           >
                             <TargetTypeBadge
                               type={report.targetType}
@@ -533,12 +533,12 @@ export default function CampusAdminPanel() {
                               <span className="block truncate text-sm font-black">
                                 {target.title}
                               </span>
-                              <span className="mt-1 block truncate text-xs text-[#58635c] dark:text-[#aeb4af]">
+                              <span className="mt-1 block truncate text-xs text-white/55">
                                 {reasonLabels[report.reason]} ·{" "}
                                 {target.author}
                               </span>
                             </span>
-                            <span className="hidden font-mono text-[9px] text-[#58635c] dark:text-[#aeb4af] sm:block">
+                            <span className="hidden font-mono text-[9px] text-white/55 sm:block">
                               {formatDate(report.reportedAt)}
                             </span>
                           </button>
@@ -565,9 +565,9 @@ export default function CampusAdminPanel() {
                     (role) => (
                       <div
                         key={role}
-                        className="flex items-center justify-between border-b border-[#1c2821]/8 pb-3 last:border-0 last:pb-0 dark:border-white/7"
+                        className="flex items-center justify-between border-b border-white/7 pb-3 last:border-0 last:pb-0"
                       >
-                        <dt className="text-xs font-bold text-[#58635c] dark:text-[#aeb4af]">
+                        <dt className="text-xs font-bold text-white/55">
                           {campusAdminRoleLabels[role]}
                         </dt>
                         <dd className="font-mono text-sm font-black">
@@ -602,7 +602,7 @@ export default function CampusAdminPanel() {
                   type="button"
                   disabled={moderationHistory.length === 0}
                   onClick={() => setActiveView("history")}
-                  className={`min-h-11 w-full border border-[#1c2821]/13 px-3 text-xs font-black transition-colors hover:bg-[#1c2821]/5 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/11 dark:hover:bg-white/6 ${focusRing}`}
+                  className={`min-h-11 w-full border border-white/12 px-3 text-xs font-black transition-colors hover:bg-white/6 disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`}
                 >
                   Geçmişi aç
                 </button>
@@ -614,9 +614,9 @@ export default function CampusAdminPanel() {
 
       {activeView === "reports" && (
         <div className="grid min-w-0 gap-4 p-3 sm:p-6">
-          <div className="flex flex-col gap-3 border-b border-[#1c2821]/10 pb-4 dark:border-white/9 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-col gap-3 border-b border-white/9 pb-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#7d3c2d] dark:text-[#c7896d]">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
                 Moderasyon kuyruğu
               </p>
               <h2 className="mt-1 text-xl font-black tracking-[-0.04em]">
@@ -626,7 +626,7 @@ export default function CampusAdminPanel() {
             <div
               role="group"
               aria-label="Şikâyet durumunu filtrele"
-              className="grid grid-cols-3 gap-1 border border-[#1c2821]/11 p-1 dark:border-white/10"
+              className="grid grid-cols-3 gap-1 border border-white/10 p-1"
             >
               {reportFilters.map((filter) => {
                 const isActive = reportFilter === filter.id;
@@ -645,8 +645,8 @@ export default function CampusAdminPanel() {
                     onClick={() => setReportFilter(filter.id)}
                     className={`min-h-11 px-2 text-[11px] font-black transition-colors sm:px-3 sm:text-xs ${focusRing} ${
                       isActive
-                        ? "bg-[#5a1f32]/9 text-[#5a1f32] dark:bg-[#c7896d]/12 dark:text-[#e0aa8d]"
-                        : "text-[#58635c] hover:bg-[#1c2821]/5 dark:text-[#aeb4af] dark:hover:bg-white/5"
+                        ? "bg-[#ff7a45]/12 text-[#ff7a45]"
+                        : "text-white/55 hover:bg-white/5"
                     }`}
                   >
                     {filter.label}
@@ -661,8 +661,8 @@ export default function CampusAdminPanel() {
 
           {filteredReports.length > 0 && selectedReport && selectedTarget ? (
             <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(15rem,0.76fr)_minmax(0,1.24fr)]">
-              <div className="border border-[#1c2821]/11 bg-white/22 dark:border-white/9 dark:bg-white/[0.015]">
-                <ul className="divide-y divide-[#1c2821]/9 dark:divide-white/8">
+              <div className="border border-white/9 bg-[#141720]">
+                <ul className="divide-y divide-white/8">
                   {filteredReports.map((report) => {
                     const target = getReportTarget(report, allPosts);
                     const isSelected = report.id === selectedReport.id;
@@ -675,8 +675,8 @@ export default function CampusAdminPanel() {
                           onClick={() => setSelectedReportId(report.id)}
                           className={`flex min-h-24 w-full cursor-pointer gap-3 border-l-3 px-3 py-3 text-left transition-colors ${focusRing} ${
                             isSelected
-                              ? "border-[#5a1f32] bg-[#5a1f32]/7 dark:border-[#c7896d] dark:bg-[#c7896d]/9"
-                              : "border-transparent hover:bg-[#1c2821]/4 dark:hover:bg-white/4"
+                              ? "border-[#ff7a45] bg-[#ff7a45]/9"
+                              : "border-transparent hover:bg-white/4"
                           }`}
                         >
                           <TargetTypeBadge type={report.targetType} />
@@ -687,10 +687,10 @@ export default function CampusAdminPanel() {
                               </span>
                               <ReportStatusBadge report={report} compact />
                             </span>
-                            <span className="mt-1.5 block truncate text-xs text-[#58635c] dark:text-[#aeb4af]">
+                            <span className="mt-1.5 block truncate text-xs text-white/55">
                               {target.title}
                             </span>
-                            <span className="mt-2 block font-mono text-[9px] text-[#58635c]/75 dark:text-[#aeb4af]/78">
+                            <span className="mt-2 block font-mono text-[9px] text-white/45">
                               {formatDate(report.reportedAt)}
                             </span>
                           </span>
@@ -703,7 +703,7 @@ export default function CampusAdminPanel() {
 
               <article
                 aria-label="Seçili şikâyet ayrıntıları"
-                className="min-w-0 border border-[#1c2821]/12 bg-white/30 p-4 dark:border-white/10 dark:bg-white/[0.02] sm:p-5"
+                className="min-w-0 border border-white/10 bg-[#141720] p-4 sm:p-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -714,14 +714,14 @@ export default function CampusAdminPanel() {
                     <h3 className="mt-3 text-xl font-black tracking-[-0.04em]">
                       {reasonLabels[selectedReport.reason]}
                     </h3>
-                    <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.1em] text-[#58635c] dark:text-[#aeb4af]">
+                    <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.1em] text-white/55">
                       Bildirim · {formatDate(selectedReport.reportedAt)}
                     </p>
                   </div>
                   {selectedTarget.post && (
                     <Link
                       href={`/gonderi/${selectedTarget.post.id}`}
-                      className={`inline-flex min-h-11 items-center justify-center border border-[#1c2821]/13 px-3 text-xs font-black transition-colors hover:bg-[#1c2821]/5 dark:border-white/11 dark:hover:bg-white/6 ${focusRing}`}
+                      className={`inline-flex min-h-11 items-center justify-center border border-white/12 px-3 text-xs font-black transition-colors hover:bg-white/6 ${focusRing}`}
                     >
                       İçeriğe git
                     </Link>
@@ -729,21 +729,21 @@ export default function CampusAdminPanel() {
                 </div>
 
                 <div className="mt-5 grid gap-4">
-                  <div className="border-l-3 border-[#9a5944]/48 bg-[#9a5944]/6 px-4 py-3 dark:border-[#c7896d]/48 dark:bg-[#c7896d]/7">
-                    <p className="text-[10px] font-black uppercase tracking-[0.11em] text-[#7d3c2d] dark:text-[#d09272]">
+                  <div className="border-l-3 border-[#ff7a45]/48 bg-[#ff7a45]/7 px-4 py-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.11em] text-[#ff7a45]">
                       Şikâyet açıklaması
                     </p>
-                    <p className="mt-2 text-sm leading-6 text-[#1c2821]/75 dark:text-white/72">
+                    <p className="mt-2 text-sm leading-6 text-white/72">
                       {selectedReport.detail ||
                         "Kullanıcı ek bir açıklama paylaşmadı."}
                     </p>
                   </div>
 
                   <div>
-                    <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[#58635c] dark:text-[#aeb4af]">
+                    <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-white/55">
                       İncelenen içerik
                     </p>
-                    <div className="mt-2 border border-[#1c2821]/11 bg-[#f5efe6]/72 p-4 dark:border-white/9 dark:bg-[#202226]/72">
+                    <div className="mt-2 border border-white/9 bg-[#17191c]/72 p-4">
                       <div className="flex items-center gap-2">
                         <CampusAuthorAvatar
                           author={selectedTarget.author}
@@ -754,7 +754,7 @@ export default function CampusAdminPanel() {
                           <p className="truncate text-xs font-black">
                             {selectedTarget.author}
                           </p>
-                          <p className="mt-0.5 text-[10px] text-[#58635c] dark:text-[#aeb4af]">
+                          <p className="mt-0.5 text-[10px] text-white/55">
                             {selectedReport.targetType === "post"
                               ? "Gönderi sahibi"
                               : "Yorum sahibi"}
@@ -764,7 +764,7 @@ export default function CampusAdminPanel() {
                       <h4 className="mt-3 text-sm font-black">
                         {selectedTarget.title}
                       </h4>
-                      <p className="mt-1.5 line-clamp-5 whitespace-pre-wrap break-words text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]">
+                      <p className="mt-1.5 line-clamp-5 whitespace-pre-wrap break-words text-xs leading-5 text-white/55">
                         {selectedTarget.excerpt}
                       </p>
                     </div>
@@ -778,7 +778,7 @@ export default function CampusAdminPanel() {
                       onClick={() =>
                         handleReportAction(selectedReport, "dismissed")
                       }
-                      className={`min-h-11 border border-[#1c2821]/14 px-3 text-xs font-black transition-colors hover:bg-[#1c2821]/6 dark:border-white/12 dark:hover:bg-white/7 ${focusRing}`}
+                      className={`min-h-11 border border-white/12 px-3 text-xs font-black transition-colors hover:bg-white/7 ${focusRing}`}
                     >
                       Yok say
                     </button>
@@ -790,7 +790,7 @@ export default function CampusAdminPanel() {
                           "content-removed",
                         )
                       }
-                      className={`min-h-11 border border-[#9a5944]/38 px-3 text-xs font-black text-[#7d3c2d] transition-colors hover:bg-[#9a5944]/8 dark:border-[#c7896d]/38 dark:text-[#d09272] dark:hover:bg-[#c7896d]/9 ${focusRing}`}
+                      className={`min-h-11 border border-[#ffb199]/38 px-3 text-xs font-black text-[#ffb199] transition-colors hover:bg-[#ffb199]/9 ${focusRing}`}
                     >
                       İçeriği kaldır
                     </button>
@@ -803,19 +803,19 @@ export default function CampusAdminPanel() {
                           "user-suspended",
                         )
                       }
-                      className={`min-h-11 bg-[#8b2f2a] px-3 text-xs font-black text-white transition-colors hover:bg-[#762620] disabled:cursor-not-allowed disabled:bg-[#8b2f2a]/28 disabled:text-white/65 dark:bg-[#d27368] dark:text-[#17191c] dark:hover:bg-[#df887d] dark:disabled:bg-[#d27368]/25 dark:disabled:text-white/38 ${focusRing}`}
+                      className={`min-h-11 bg-[#ffb199] px-3 text-xs font-black text-[#0a0d16] transition-colors hover:bg-[#ffb199]/85 disabled:cursor-not-allowed disabled:bg-[#ffb199]/25 disabled:text-white/38 ${focusRing}`}
                     >
                       Kullanıcıyı askıya al
                     </button>
                   </div>
                 ) : (
-                  <div className="mt-5 border border-[#52735a]/24 bg-[#52735a]/7 px-4 py-3 dark:border-[#8fba9b]/22 dark:bg-[#8fba9b]/7">
-                    <p className="text-xs font-black text-[#31523d] dark:text-[#b5d8bd]">
+                  <div className="mt-5 border border-[#8fba9b]/22 bg-[#8fba9b]/7 px-4 py-3">
+                    <p className="text-xs font-black text-[#b5d8bd]">
                       {selectedReport.resolution
                         ? resolutionLabels[selectedReport.resolution]
                         : "Şikâyet çözüldü"}
                     </p>
-                    <p className="mt-1 text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]">
+                    <p className="mt-1 text-xs leading-5 text-white/55">
                       {selectedReport.resolutionNote ||
                         "Moderasyon kararı geçmişe kaydedildi."}
                       {selectedReport.resolvedAt
@@ -843,9 +843,9 @@ export default function CampusAdminPanel() {
 
       {activeView === "users" && (
         <div className="grid gap-4 p-3 sm:p-6">
-          <div className="flex flex-col gap-3 border-b border-[#1c2821]/10 pb-4 dark:border-white/9 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-col gap-3 border-b border-white/9 pb-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#7d3c2d] dark:text-[#c7896d]">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
                 Hesaplar ve roller
               </p>
               <h2 className="mt-1 text-xl font-black tracking-[-0.04em]">
@@ -859,7 +859,7 @@ export default function CampusAdminPanel() {
                 value={userQuery}
                 onChange={(event) => setUserQuery(event.target.value)}
                 placeholder="İsim, kullanıcı adı veya bölüm ara"
-                className={`min-h-11 w-full border border-[#1c2821]/14 bg-white/50 px-3 text-xs placeholder:text-[#68736c] dark:border-white/12 dark:bg-white/[0.035] dark:placeholder:text-[#9ba39d] ${focusRing}`}
+                className={`min-h-11 w-full border border-white/12 bg-white/[0.035] px-3 text-xs placeholder:text-white/45 ${focusRing}`}
               />
             </label>
           </div>
@@ -873,7 +873,7 @@ export default function CampusAdminPanel() {
                 return (
                   <li
                     key={user.authorId}
-                    className="grid min-w-0 gap-4 border border-[#1c2821]/11 bg-white/26 p-4 dark:border-white/9 dark:bg-white/[0.018] sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                    className="grid min-w-0 gap-4 border border-white/9 bg-white/[0.018] p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <CampusAuthorAvatar
@@ -888,10 +888,10 @@ export default function CampusAdminPanel() {
                           </p>
                           <AccountStatusBadge status={user.status} />
                         </div>
-                        <p className="mt-0.5 truncate text-xs text-[#58635c] dark:text-[#aeb4af]">
+                        <p className="mt-0.5 truncate text-xs text-white/55">
                           {user.author} · {user.department}
                         </p>
-                        <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.08em] text-[#58635c]/75 dark:text-[#aeb4af]/75">
+                        <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.08em] text-white/45">
                           Katılım · {user.joinedLabel}
                         </p>
                       </div>
@@ -918,7 +918,7 @@ export default function CampusAdminPanel() {
                               event.target.value as CampusAdminRole,
                             )
                           }
-                          className={`min-h-11 w-full border border-[#1c2821]/14 bg-[#fbf8f1] px-3 text-xs font-black disabled:cursor-not-allowed disabled:opacity-55 dark:border-white/12 dark:bg-[#202226] ${focusRing}`}
+                          className={`min-h-11 w-full border border-white/12 bg-[#17191c] px-3 text-xs font-black disabled:cursor-not-allowed disabled:opacity-55 ${focusRing}`}
                         >
                           {(
                             [
@@ -934,14 +934,14 @@ export default function CampusAdminPanel() {
                         </select>
                       </label>
                       {isCurrentAdmin ? (
-                        <span className="inline-flex min-h-11 items-center justify-center border border-[#1c2821]/10 px-3 text-center text-[10px] font-bold text-[#58635c] dark:border-white/9 dark:text-[#aeb4af]">
+                        <span className="inline-flex min-h-11 items-center justify-center border border-white/9 px-3 text-center text-[10px] font-bold text-white/55">
                           Mevcut hesap
                         </span>
                       ) : user.status === "active" ? (
                         <button
                           type="button"
                           onClick={() => handleSuspendUser(user)}
-                          className={`min-h-11 border border-[#a03c36]/35 px-3 text-xs font-black text-[#8b2f2a] transition-colors hover:bg-[#8b2f2a]/7 dark:border-[#d27368]/35 dark:text-[#e18a7d] dark:hover:bg-[#d27368]/8 ${focusRing}`}
+                          className={`min-h-11 border border-[#ffb199]/35 px-3 text-xs font-black text-[#ffb199] transition-colors hover:bg-[#ffb199]/8 ${focusRing}`}
                         >
                           Askıya al
                         </button>
@@ -949,7 +949,7 @@ export default function CampusAdminPanel() {
                         <button
                           type="button"
                           onClick={() => handleRestoreUser(user)}
-                          className={`min-h-11 border border-[#52735a]/34 px-3 text-xs font-black text-[#31523d] transition-colors hover:bg-[#52735a]/8 dark:border-[#8fba9b]/32 dark:text-[#b5d8bd] dark:hover:bg-[#8fba9b]/8 ${focusRing}`}
+                          className={`min-h-11 border border-[#8fba9b]/32 px-3 text-xs font-black text-[#b5d8bd] transition-colors hover:bg-[#8fba9b]/8 ${focusRing}`}
                         >
                           Etkinleştir
                         </button>
@@ -970,47 +970,47 @@ export default function CampusAdminPanel() {
 
       {activeView === "history" && (
         <div className="grid gap-4 p-3 sm:p-6">
-          <div className="border-b border-[#1c2821]/10 pb-4 dark:border-white/9">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#7d3c2d] dark:text-[#c7896d]">
+          <div className="border-b border-white/9 pb-4">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
               Denetim kaydı
             </p>
             <h2 className="mt-1 text-xl font-black tracking-[-0.04em]">
               Moderasyon geçmişi
             </h2>
-            <p className="mt-1 max-w-xl text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]">
+            <p className="mt-1 max-w-xl text-xs leading-5 text-white/55">
               Şikâyet kararları, hesap durumları ve rol değişiklikleri
               kronolojik olarak saklanır.
             </p>
           </div>
 
           {moderationHistory.length > 0 ? (
-            <ol className="relative grid gap-3 before:absolute before:bottom-6 before:left-[1.2rem] before:top-6 before:w-px before:bg-[#1c2821]/13 dark:before:bg-white/11">
+            <ol className="relative grid gap-3 before:absolute before:bottom-6 before:left-[1.2rem] before:top-6 before:w-px before:bg-white/11">
               {moderationHistory.map((entry) => (
                 <li
                   key={entry.id}
                   className="relative grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3"
                 >
-                  <span className="relative z-10 mt-4 grid size-10 place-items-center rounded-full border border-[#1c2821]/13 bg-[#fbf8f1] dark:border-white/12 dark:bg-[#202226]">
+                  <span className="relative z-10 mt-4 grid size-10 place-items-center rounded-full border border-white/12 bg-[#17191c]">
                     <span
                       aria-hidden="true"
                       className={`size-2.5 rounded-full ${
                         entry.action === "content-removed" ||
                         entry.action === "user-suspended"
-                          ? "bg-[#b34d42]"
+                          ? "bg-[#ffb199]"
                           : entry.action === "dismissed" ||
                               entry.action === "user-restored"
-                            ? "bg-[#52735a]"
-                            : "bg-[#9a5944]"
+                            ? "bg-[#8fba9b]"
+                            : "bg-[#ff7a45]"
                       }`}
                     />
                   </span>
-                  <article className="border border-[#1c2821]/11 bg-white/24 p-4 dark:border-white/9 dark:bg-white/[0.018]">
+                  <article className="border border-white/9 bg-white/[0.018] p-4">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
                         <h3 className="text-sm font-black">
                           {historyLabels[entry.action]}
                         </h3>
-                        <p className="mt-1 text-xs text-[#58635c] dark:text-[#aeb4af]">
+                        <p className="mt-1 text-xs text-white/55">
                           {entry.author
                             ? `${entry.author} · `
                             : ""}
@@ -1023,17 +1023,17 @@ export default function CampusAdminPanel() {
                       </div>
                       <time
                         dateTime={new Date(entry.createdAt).toISOString()}
-                        className="font-mono text-[9px] text-[#58635c] dark:text-[#aeb4af]"
+                        className="font-mono text-[9px] text-white/55"
                       >
                         {formatDate(entry.createdAt)}
                       </time>
                     </div>
                     {entry.note && (
-                      <p className="mt-3 border-l-2 border-[#9a5944]/35 pl-3 text-xs leading-5 text-[#58635c] dark:border-[#c7896d]/38 dark:text-[#aeb4af]">
+                      <p className="mt-3 border-l-2 border-[#ff7a45]/38 pl-3 text-xs leading-5 text-white/55">
                         {entry.note}
                       </p>
                     )}
-                    <p className="mt-3 font-mono text-[9px] uppercase tracking-[0.08em] text-[#58635c]/72 dark:text-[#aeb4af]/72">
+                    <p className="mt-3 font-mono text-[9px] uppercase tracking-[0.08em] text-white/45">
                       İşlemi yapan · {entry.moderator}
                     </p>
                   </article>
@@ -1064,24 +1064,21 @@ function StatCard({
   tone?: "default" | "alert" | "team" | "muted";
 }) {
   const toneClasses = {
-    default:
-      "border-[#52735a]/20 bg-[#52735a]/5 dark:border-[#8fba9b]/18 dark:bg-[#8fba9b]/5",
-    alert:
-      "border-[#a03c36]/23 bg-[#a03c36]/6 dark:border-[#d27368]/22 dark:bg-[#d27368]/6",
-    team: "border-[#5a1f32]/20 bg-[#5a1f32]/5 dark:border-[#c7896d]/20 dark:bg-[#c7896d]/6",
-    muted:
-      "border-[#1c2821]/12 bg-white/24 dark:border-white/10 dark:bg-white/[0.02]",
+    default: "border-[#8fba9b]/18 bg-[#8fba9b]/5",
+    alert: "border-[#ffb199]/22 bg-[#ffb199]/6",
+    team: "border-[#ff7a45]/20 bg-[#ff7a45]/6",
+    muted: "border-white/10 bg-white/[0.02]",
   };
 
   return (
     <article className={`min-w-0 border p-3 sm:p-4 ${toneClasses[tone]}`}>
-      <p className="font-mono text-[9px] font-bold uppercase tracking-[0.13em] text-[#58635c] dark:text-[#aeb4af]">
+      <p className="font-mono text-[9px] font-bold uppercase tracking-[0.13em] text-white/55">
         {label}
       </p>
       <p className="mt-2 text-3xl font-black tracking-[-0.06em] sm:text-4xl">
         {value}
       </p>
-      <p className="mt-1 text-[10px] leading-4 text-[#58635c] dark:text-[#aeb4af] sm:text-xs">
+      <p className="mt-1 text-[10px] leading-4 text-white/55 sm:text-xs">
         {helper}
       </p>
     </article>
@@ -1102,16 +1099,16 @@ function AdminCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="min-w-0 border border-[#1c2821]/11 bg-white/24 p-4 dark:border-white/9 dark:bg-white/[0.018] sm:p-5">
+    <section className="min-w-0 border border-white/9 bg-white/[0.018] p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.13em] text-[#7d3c2d] dark:text-[#c7896d]">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.13em] text-[#ff7a45]">
             {eyebrow}
           </p>
           <h2 className="mt-1 text-lg font-black tracking-[-0.035em]">
             {title}
           </h2>
-          <p className="mt-1 text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]">
+          <p className="mt-1 text-xs leading-5 text-white/55">
             {description}
           </p>
         </div>
@@ -1131,8 +1128,8 @@ function TargetTypeBadge({
     <span
       className={`inline-flex min-h-6 shrink-0 items-center px-2 font-mono text-[9px] font-black uppercase tracking-[0.08em] ${
         type === "post"
-          ? "bg-[#5a1f32]/9 text-[#5a1f32] dark:bg-[#c7896d]/12 dark:text-[#e0aa8d]"
-          : "bg-[#395943]/10 text-[#31523d] dark:bg-[#8fba9b]/11 dark:text-[#b5d8bd]"
+          ? "bg-[#ff7a45]/12 text-[#ff7a45]"
+          : "bg-[#8fba9b]/11 text-[#b5d8bd]"
       }`}
     >
       {type === "post" ? "Gönderi" : "Yorum"}
@@ -1153,8 +1150,8 @@ function ReportStatusBadge({
         compact ? "min-h-5 px-1.5 text-[8px]" : "min-h-6 px-2 text-[9px]"
       } ${
         report.status === "pending"
-          ? "bg-[#a03c36]/10 text-[#8b2f2a] dark:bg-[#d27368]/12 dark:text-[#e18a7d]"
-          : "bg-[#52735a]/10 text-[#31523d] dark:bg-[#8fba9b]/11 dark:text-[#b5d8bd]"
+          ? "bg-[#ffb199]/12 text-[#ffb199]"
+          : "bg-[#8fba9b]/11 text-[#b5d8bd]"
       }`}
     >
       {report.status === "pending" ? "Bekliyor" : "Çözüldü"}
@@ -1171,8 +1168,8 @@ function AccountStatusBadge({
     <span
       className={`inline-flex min-h-5 items-center rounded-full px-2 font-mono text-[8px] font-black uppercase tracking-[0.07em] ${
         status === "active"
-          ? "bg-[#52735a]/10 text-[#31523d] dark:bg-[#8fba9b]/11 dark:text-[#b5d8bd]"
-          : "bg-[#a03c36]/10 text-[#8b2f2a] dark:bg-[#d27368]/12 dark:text-[#e18a7d]"
+          ? "bg-[#8fba9b]/11 text-[#b5d8bd]"
+          : "bg-[#ffb199]/12 text-[#ffb199]"
       }`}
     >
       {status === "active" ? "Aktif" : "Askıda"}
@@ -1188,15 +1185,15 @@ function AdminEmptyState({
   description: string;
 }) {
   return (
-    <div className="border border-dashed border-[#1c2821]/16 px-4 py-10 text-center dark:border-white/13">
+    <div className="border border-dashed border-white/13 px-4 py-10 text-center">
       <span
         aria-hidden="true"
-        className="mx-auto grid size-12 place-items-center rounded-full bg-[#1c2821]/6 font-serif text-xl font-black italic text-[#58635c] dark:bg-white/6 dark:text-[#aeb4af]"
+        className="mx-auto grid size-12 place-items-center rounded-full bg-white/6 font-serif text-xl font-black italic text-white/55"
       >
         ✓
       </span>
       <h3 className="mt-3 text-sm font-black">{title}</h3>
-      <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]">
+      <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-white/55">
         {description}
       </p>
     </div>
@@ -1208,21 +1205,21 @@ function AdminPanelSkeleton() {
     <section
       aria-busy="true"
       aria-label="Yönetim paneli yükleniyor"
-      className="min-h-[calc(100svh-4rem)] bg-[#fbf8f1] p-3 dark:bg-[#17191c] sm:p-6 md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] bg-[#0a0d16] p-3 sm:p-6 md:min-h-svh"
     >
-      <div className="h-24 animate-pulse bg-[#1c2821]/6 dark:bg-white/6 motion-reduce:animate-none" />
+      <div className="h-24 animate-pulse bg-white/6 motion-reduce:animate-none" />
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         {[0, 1, 2, 3].map((item) => (
           <div
             key={item}
             aria-hidden="true"
-            className="h-28 animate-pulse bg-[#1c2821]/6 dark:bg-white/6 motion-reduce:animate-none"
+            className="h-28 animate-pulse bg-white/6 motion-reduce:animate-none"
           />
         ))}
       </div>
       <div className="mt-5 grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
-        <div className="h-80 animate-pulse bg-[#1c2821]/6 dark:bg-white/6 motion-reduce:animate-none" />
-        <div className="h-80 animate-pulse bg-[#1c2821]/6 dark:bg-white/6 motion-reduce:animate-none" />
+        <div className="h-80 animate-pulse bg-white/6 motion-reduce:animate-none" />
+        <div className="h-80 animate-pulse bg-white/6 motion-reduce:animate-none" />
       </div>
     </section>
   );

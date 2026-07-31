@@ -1,3 +1,11 @@
+import LottiePlayer from "@/components/LottiePlayer";
+import campusPulseAnimation from "./campus-pulse-lottie.json";
+
+const avatarToneClassNames = [
+  "bg-[#432a2d] text-[#f0c5b1]",
+  "bg-[#24382e] text-[#b5d8bd]",
+];
+
 function FeedMockup() {
   const posts = [
     {
@@ -15,33 +23,30 @@ function FeedMockup() {
   ];
 
   return (
-    <div className="flex h-full flex-col gap-2.5 p-4">
-      {posts.map((post) => (
-        <div
-          key={post.text}
-          className="rounded-xl border border-white/10 bg-[#1e2024] p-3"
-        >
-          <div className="flex items-center gap-2">
-            <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[#2a2d33] font-mono text-[8px] font-bold text-white/70">
+    <div className="flex h-full flex-col justify-center divide-y divide-white/10">
+      {posts.map((post, index) => (
+        <div key={post.text} className={index === 0 ? "pb-4" : "pt-4"}>
+          <div className="flex items-center gap-2.5">
+            <span
+              className={`grid size-8 shrink-0 place-items-center rounded-full font-mono text-[10px] font-bold ${avatarToneClassNames[index]}`}
+            >
               KA
             </span>
             <div className="min-w-0">
               <p
-                className={`font-mono text-[9px] font-bold uppercase tracking-[0.1em] ${
+                className={`font-mono text-[11px] font-bold uppercase tracking-[0.1em] ${
                   post.tag === "Anonim" ? "text-[#ff7a45]" : "text-white/55"
                 }`}
               >
                 {post.tag}
               </p>
-              <p className="font-mono text-[8px] text-white/40">{post.time}</p>
+              <p className="font-mono text-[10px] text-white/40">{post.time}</p>
             </div>
           </div>
 
-          <p className="mt-2.5 text-[11px] leading-4 text-white/85">
-            {post.text}
-          </p>
+          <p className="mt-3 text-sm leading-5 text-white/85">{post.text}</p>
 
-          <p className="mt-2.5 font-mono text-[8px] font-bold uppercase tracking-[0.08em] text-white/45">
+          <p className="mt-3 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-white/45">
             {post.stats}
           </p>
         </div>
@@ -58,12 +63,12 @@ function DiscoverMockup() {
   ];
 
   return (
-    <div className="flex h-full flex-col gap-3 p-4">
-      <div className="flex flex-wrap gap-1.5">
+    <div className="flex h-full flex-col justify-center gap-4">
+      <div className="flex flex-wrap gap-2">
         {categories.map((category, index) => (
           <span
             key={category}
-            className={`rounded-full px-2.5 py-1 font-mono text-[8px] font-bold uppercase tracking-[0.08em] ${
+            className={`rounded-full px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.08em] ${
               index === 0
                 ? "bg-[#ff7a45] text-[#141720]"
                 : "border border-white/12 text-white/55"
@@ -74,16 +79,16 @@ function DiscoverMockup() {
         ))}
       </div>
 
-      <div className="rounded-xl border border-white/10 bg-[#1e2024] p-3">
-        <p className="font-mono text-[9px] font-bold uppercase tracking-[0.1em] text-white/55">
+      <div className="rounded-xl border border-white/10 bg-white/[0.035] p-4">
+        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-white/55">
           Topluluk anketi
         </p>
 
-        <p className="mt-2 text-[11px] font-semibold leading-4 text-white/90">
+        <p className="mt-2.5 text-sm font-semibold leading-5 text-white/90">
           Final haftasında ne zaman başlarsın?
         </p>
 
-        <div className="mt-3 grid gap-1.5">
+        <div className="mt-3.5 grid gap-2">
           {pollOptions.map((option) => (
             <div
               key={option.label}
@@ -94,7 +99,7 @@ function DiscoverMockup() {
                 className="absolute inset-y-0 left-0 bg-[#ff7a45]/25"
                 style={{ width: `${option.pct}%` }}
               />
-              <div className="relative flex items-center justify-between px-2.5 py-1.5 text-[9px] font-bold text-white/80">
+              <div className="relative flex items-center justify-between px-3 py-2 text-[11px] font-bold text-white/80">
                 <span>{option.label}</span>
                 <span className="font-mono text-white/50">{option.pct}%</span>
               </div>
@@ -105,6 +110,13 @@ function DiscoverMockup() {
     </div>
   );
 }
+
+const notificationToneClassNames = [
+  "bg-[#432a2d] text-[#f0c5b1]",
+  "bg-[#24382e] text-[#b5d8bd]",
+  "bg-[#293044] text-[#c4cce8]",
+  "bg-[#3d3425] text-[#e3cf9c]",
+];
 
 function NotificationsMockup() {
   const notifications = [
@@ -136,23 +148,27 @@ function NotificationsMockup() {
   ];
 
   return (
-    <div className="flex h-full flex-col gap-1.5 p-4">
-      {notifications.map((item) => (
+    <div className="flex h-full flex-col justify-center gap-2.5">
+      {notifications.map((item, index) => (
         <div
           key={item.name + item.action}
-          className={`flex items-start gap-2.5 rounded-lg px-2 py-1.5 ${
+          className={`flex items-start gap-3 rounded-lg px-2.5 py-2 ${
             item.accent ? "bg-[#ff7a45]/10" : ""
           }`}
         >
-          <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-[#2a2d33] font-mono text-[8px] font-bold text-white/70">
+          <span
+            className={`mt-0.5 grid size-8 shrink-0 place-items-center rounded-full font-mono text-[10px] font-bold ${
+              notificationToneClassNames[index % notificationToneClassNames.length]
+            }`}
+          >
             {item.initials}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] leading-4 text-white/85">
+            <p className="text-xs leading-5 text-white/85">
               <span className="font-bold text-white">{item.name}</span>{" "}
               {item.action}
             </p>
-            <p className="mt-0.5 font-mono text-[8px] uppercase tracking-[0.08em] text-white/40">
+            <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-white/40">
               {item.time}
             </p>
           </div>
@@ -196,23 +212,15 @@ export default function CampusPulseSection() {
         className="paper-noise pointer-events-none absolute inset-0"
       />
 
-      <div className="relative mx-auto flex w-full max-w-[1360px] flex-col items-center px-5 py-24 text-center sm:px-8 sm:py-32 lg:px-12 lg:py-40">
-        <div className="reveal-item">
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 100 36"
-            fill="none"
-            className="prism-emoji pointer-events-none h-9 w-24 -rotate-2 text-white sm:h-11 sm:w-28"
-          >
-            <path
-              className="pulse-ecg-line"
-              d="M3 21c3-.6 4.6.9 6.4.3 2-.7 2.9.9 6.1.1 2.1-.5 3.4.6 6.9-.1L32 20.6c1.7 0 2.4-14 5-14.6 2.6-.6 1.6 27.4 4.4 26.9 2.4-.4 3.3-12 6.4-11.7l7.6.2c2-.7 3.6.9 6.4.1 2-.6 2.9.9 6 .1 2.4-.6 4.1.6 7.4-.2 2.3-.5 3.9.6 7.9-.1"
-              stroke="currentColor"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+      <div className="relative mx-auto flex w-full max-w-[1360px] flex-col items-center px-5 py-14 text-center sm:px-8 sm:py-20 lg:px-12 lg:py-24">
+        <div
+          className="reveal-item relative mx-auto w-72 overflow-hidden sm:w-80 lg:w-96"
+          style={{ aspectRatio: "1034 / 575" }}
+        >
+          <LottiePlayer
+            animationData={campusPulseAnimation}
+            className="absolute left-0 top-0 aspect-square w-[116%] -translate-x-[6.8%] -translate-y-[42.2%]"
+          />
         </div>
 
         <h2
@@ -227,7 +235,7 @@ export default function CampusPulseSection() {
             {appScreens.map((screen) => (
               <div
                 key={screen.title}
-                className="reveal-item flex flex-col items-start text-left"
+                className="reveal-item flex flex-col items-center text-center sm:items-start sm:text-left"
               >
                 <div className="relative w-full">
                   <div

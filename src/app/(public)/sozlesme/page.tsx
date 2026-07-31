@@ -3,7 +3,6 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import CampusLogo from "@/components/CampusLogo";
-import ForceDarkTheme from "@/components/ForceDarkTheme";
 import SiteFooter from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
@@ -33,8 +32,6 @@ export default function TermsPage() {
   return (
     <>
       <div className="relative isolate overflow-hidden bg-[#0a0d16] text-white">
-        <ForceDarkTheme />
-
         <a
           href="#terms-content"
           className="fixed top-3 left-3 z-[60] -translate-y-20 bg-white px-4 py-3 text-xs font-black text-[#12100e] outline-none transition-transform focus:translate-y-0"

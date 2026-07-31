@@ -9,7 +9,7 @@ function SkeletonBlock({ className }: { className: string }) {
   return (
     <span
       aria-hidden="true"
-      className={`block animate-pulse rounded-full bg-[#1c2821]/9 motion-reduce:animate-none dark:bg-white/9 ${className}`}
+      className={`block animate-pulse rounded-full bg-white/9 motion-reduce:animate-none ${className}`}
     />
   );
 }
@@ -20,19 +20,19 @@ export default function PlatformFeedSkeleton() {
       role="status"
       aria-live="polite"
       aria-busy="true"
-      className="min-h-[calc(100svh-4rem)] bg-[#f8f4ed]/62 dark:bg-[#141619] md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] bg-[#0a0d16] md:min-h-svh"
     >
       <span className="sr-only">Sayfa yükleniyor</span>
 
       <div
         aria-hidden="true"
-        className="sticky top-16 z-20 flex min-h-16 items-center justify-between border-b border-[#1c2821]/10 bg-[#eee9e1]/88 px-4 backdrop-blur-xl dark:border-white/9 dark:bg-[#111315]/88 sm:px-5 md:top-0"
+        className="sticky top-16 z-20 flex min-h-16 items-center justify-between border-b border-white/10 bg-[#0a0d16]/88 px-4 backdrop-blur-xl sm:px-5 md:top-0"
       >
         <SkeletonBlock className="h-4 w-28" />
         <SkeletonBlock className="size-9" />
       </div>
 
-      <div aria-hidden="true" className="border-b border-[#1c2821]/10 px-4 py-4 dark:border-white/9 sm:px-5">
+      <div aria-hidden="true" className="border-b border-white/10 px-4 py-4 sm:px-5">
         <div className="flex items-center gap-3">
           <SkeletonBlock className="size-10 shrink-0" />
           <SkeletonBlock className="h-4 w-44 max-w-[58vw]" />
@@ -51,7 +51,7 @@ export default function PlatformFeedSkeleton() {
         {skeletonRows.map((row, index) => (
           <article
             key={index}
-            className="border-b border-[#1c2821]/10 px-4 py-5 dark:border-white/9 sm:px-5"
+            className="border-b border-white/10 px-4 py-5 sm:px-5"
           >
             <div className="flex gap-3">
               <SkeletonBlock className="size-10 shrink-0" />
@@ -64,7 +64,7 @@ export default function PlatformFeedSkeleton() {
                 <SkeletonBlock className="mt-2 h-3.5 w-3/5" />
 
                 {row.media ? (
-                  <span className="mt-4 block aspect-[16/8.5] animate-pulse rounded-2xl bg-[#1c2821]/7 motion-reduce:animate-none dark:bg-white/7" />
+                  <span className="mt-4 block aspect-[16/8.5] animate-pulse rounded-2xl bg-white/7 motion-reduce:animate-none" />
                 ) : null}
 
                 <div className="mt-5 flex max-w-sm items-center justify-between">

@@ -26,7 +26,7 @@ export default function CampusPostImage({
         : "max-h-[32rem]";
 
   return (
-    <div className="mt-4 overflow-hidden border border-[#1c2821]/12 bg-[#ece7df] dark:border-white/10 dark:bg-[#101214]">
+    <div className="mt-4 overflow-hidden border border-white/12 bg-[#141720]">
       {hasImageError ? (
         <div
           role="img"
@@ -40,7 +40,7 @@ export default function CampusPostImage({
               markClassName="mx-auto h-10 w-9 opacity-55"
             />
             <p className="mt-4 text-sm font-black">Görsel yüklenemedi</p>
-            <p className="mt-1 text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]">
+            <p className="mt-1 text-xs leading-5 text-white/55">
               Diğer içerikleri görüntülemeye devam edebilirsin.
             </p>
           </div>

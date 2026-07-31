@@ -1,27 +1,27 @@
 import LottiePlayer from "@/components/LottiePlayer";
-import securityWalkerAnimation from "./security-walker-lottie.json";
+import securityDinoAnimation from "./security-dino-lottie.json";
 
 const securityPrinciples = [
   {
-    code: "G-01",
+    code: "1",
     title: "Öğrenci doğrulaması",
     description:
       "Akışa yalnızca @stu.yasar.edu.tr adresini doğrulayan öğrenciler katılabilir.",
   },
   {
-    code: "G-02",
+    code: "2",
     title: "Adın gizli kalır",
     description:
       "Anonim gönderilerde adın görünmez; ancak kötüye kullanım şikâyetleri incelenebilir.",
   },
   {
-    code: "G-03",
+    code: "3",
     title: "Şikâyetler incelenir",
     description:
       "Uygunsuz gönderi ve yorumları bildirebilirsin. İçerik, işlem yapılmadan önce bir moderatör tarafından incelenir.",
   },
   {
-    code: "G-04",
+    code: "4",
     title: "Yönetici erişimi sınırlıdır",
     description:
       "Moderatörler yalnızca inceleme için gereken bilgileri görebilir. Yapılan işlemler kayıt altında tutulur.",
@@ -42,30 +42,14 @@ export default function SecuritySection() {
         className="paper-noise pointer-events-none absolute inset-0"
       />
 
-      <div className="relative mx-auto flex w-full max-w-[1360px] flex-col items-center px-5 py-24 text-center sm:px-8 sm:py-32 lg:px-12 lg:py-40">
+      <div className="relative mx-auto flex w-full max-w-[1360px] flex-col items-center px-5 py-14 text-center sm:px-8 sm:py-20 lg:px-12 lg:py-24">
         <div className="reveal-item">
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            fill="none"
-            className="prism-emoji pointer-events-none size-11 text-white sm:size-14"
-          >
-            <path
-              d="M12 2.5 4 5.5v5.2c0 5.4 3.4 8.9 8 10.3 4.6-1.4 8-4.9 8-10.3V5.5L12 2.5Z"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M8.6 12.1 11 14.5l4.4-4.8"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <LottiePlayer
+            animationData={securityDinoAnimation}
+            className="h-24 w-48 sm:h-28 sm:w-56"
+          />
         </div>
-       
+
         <h2
           id="security-title"
           className="reveal-item mt-6 text-[clamp(2.5rem,6vw,4.5rem)] font-black leading-[0.95] tracking-[-0.04em] sm:mt-8"
@@ -78,13 +62,6 @@ export default function SecuritySection() {
           öğrenci e-postasıyla doğrulanır.
         </p>
 
-        <div className="reveal-item mt-10 sm:mt-12">
-          <LottiePlayer
-            animationData={securityWalkerAnimation}
-            className="h-10 w-44 sm:h-12 sm:w-56"
-          />
-        </div>
-
         <ol className="mt-14 grid w-full gap-10 sm:mt-16 md:grid-cols-4 md:gap-8">
           {securityPrinciples.map((principle, index) => (
             <li
@@ -93,7 +70,7 @@ export default function SecuritySection() {
                 index === 0 ? "md:pl-0" : "md:border-l md:border-white/12"
               } ${index === securityPrinciples.length - 1 ? "md:pr-0" : ""}`}
             >
-              <span className="font-mono text-[10px] font-bold tracking-[0.14em] text-[#ff7a45]">
+              <span className="font-mono text-4xl font-black leading-none tracking-[-0.02em] text-[#ff7a45] sm:text-5xl">
                 {principle.code}
               </span>
 
@@ -113,17 +90,17 @@ export default function SecuritySection() {
             Bir şikâyet geldiğinde
           </p>
 
-          <ol className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
+          <ol className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-2xl">
             {moderationFlow.map((item, index) => (
               <li
                 key={item}
                 className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.1em] text-white/72"
               >
-                <span className="font-mono text-[9px] text-[#ff7a45]">
-                  0{index + 1}
+                <span className="font-mono text-xl text-[#ff7a45] ">
+                  {index + 1}
                 </span>
                 {item}
-                {index < moderationFlow.length - 1 && (
+                {index < moderationFlow.length -1 && (
                   <span aria-hidden="true" className="ml-1 text-white/25">
                     →
                   </span>

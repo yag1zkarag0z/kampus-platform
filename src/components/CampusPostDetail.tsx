@@ -44,7 +44,7 @@ const quickEmojis = [
 ] as const;
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:focus-visible:ring-[#c7896d]/30";
+  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40";
 
 export default function CampusPostDetail({ postId }: { postId: string }) {
   const { showToast } = useFeedback();
@@ -227,19 +227,19 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
   }
 
   return (
-    <section className="min-h-full min-w-0 bg-[#fbf8f1] text-[#1c2821] dark:bg-[#17191c] dark:text-[#ece8e1]">
-      <header className="sticky top-16 z-30 border-b border-[#1c2821]/14 bg-[#fbf8f1]/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#17191c]/95 md:top-0">
+    <section className="min-h-full min-w-0 bg-[#0a0d16] text-white">
+      <header className="sticky top-16 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl md:top-0">
         <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 sm:px-5">
           <Link
             href="/akis"
             aria-label="Kampüs akışına dön"
-            className={`grid size-11 shrink-0 place-items-center justify-self-start rounded-full text-[#1c2821]/70 transition-colors hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-white/65 dark:hover:bg-white/7 dark:hover:text-white ${focusRing}`}
+            className={`grid size-11 shrink-0 place-items-center justify-self-start rounded-full text-white/65 transition-colors hover:bg-white/7 hover:text-white ${focusRing}`}
           >
             <BackIcon />
           </Link>
 
           <div className="min-w-0 justify-self-center text-center">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#8f3427] dark:text-[#c7896d]">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
               Gönderi
             </p>
             <p className="truncate text-sm font-black tracking-[-0.02em]">
@@ -250,7 +250,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
         </div>
       </header>
 
-      <article className="border-b border-[#1c2821]/14 px-4 py-6 dark:border-white/10 sm:m-3 sm:border sm:bg-white/20 sm:px-6 sm:py-7 dark:sm:bg-white/[0.015]">
+      <article className="border-b border-white/10 px-4 py-6 sm:m-3 sm:border sm:bg-white/[0.015] sm:px-6 sm:py-7">
         <header className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-3">
             <CampusAuthorProfileLink
@@ -269,12 +269,12 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
             </CampusAuthorProfileLink>
             <div className="min-w-0 pt-0.5">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#8f3427] dark:text-[#d09272]">
+                <span className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#ff7a45]">
                   {post.category}
                 </span>
                 <span
                   aria-hidden="true"
-                  className="size-1 rotate-45 bg-[#9a5944]/55 dark:bg-[#c7896d]/60"
+                  className="size-1 rotate-45 bg-[#ff7a45]/60"
                 />
                 <CampusAuthorProfileLink
                   author={post.author}
@@ -282,7 +282,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                   isAnonymous={post.isAnonymous}
                   ariaLabel={`${post.author} profilini aç`}
                   className="min-w-0"
-                  linkClassName={`truncate text-xs font-black transition-colors hover:text-[#5a1f32] dark:hover:text-[#d09272] ${focusRing}`}
+                  linkClassName={`truncate text-xs font-black transition-colors hover:text-[#ff7a45] ${focusRing}`}
                 >
                   <span className="truncate text-xs font-black">
                     {post.author}
@@ -291,14 +291,14 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
               </div>
               {!isAnonymousCampusAuthor(post) &&
                 post.detail && (
-                  <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-[#58635c] dark:text-[#aeb4af]">
+                  <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-white/55">
                     {post.detail}
                   </p>
                 )}
             </div>
           </div>
           <div className="-mr-2 flex shrink-0 items-center gap-0.5">
-            <time className="text-[11px] font-semibold text-[#58635c] dark:text-[#aeb4af]">
+            <time className="text-[11px] font-semibold text-white/55">
               {post.time}
               {post.edited && !post.isDeleted ? " · düzenlendi" : ""}
             </time>
@@ -311,9 +311,9 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
         </header>
 
         {post.isDeleted ? (
-          <div className="mt-5 border border-dashed border-[#1c2821]/16 bg-[#eee9e1]/55 px-4 py-5 dark:border-white/12 dark:bg-white/[0.025]">
+          <div className="mt-5 border border-dashed border-white/12 bg-white/[0.025] px-4 py-5">
             <p className="text-sm font-black">Bu gönderi kaldırıldı.</p>
-            <p className="mt-1 text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]">
+            <p className="mt-1 text-xs leading-5 text-white/55">
               Yorumların sırası ve konuşma bağlamı korunmaya devam ediyor.
             </p>
           </div>
@@ -330,7 +330,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
             )}
 
             {post.body && (
-              <p className="mt-4 max-w-[78ch] whitespace-pre-wrap break-words text-[15px] leading-7 tracking-[-0.01em] text-[#1c2821]/82 dark:text-white/80 sm:text-base sm:leading-7">
+              <p className="mt-4 max-w-[78ch] whitespace-pre-wrap break-words text-[15px] leading-7 tracking-[-0.01em] text-white/80 sm:text-base sm:leading-7">
                 {post.body}
               </p>
             )}
@@ -342,16 +342,16 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
               <CampusPoll postId={post.id} poll={post.poll} />
             )}
 
-            <footer className="mt-6 border-t border-[#1c2821]/10 pt-3 dark:border-white/8">
+            <footer className="mt-6 border-t border-white/8 pt-3">
           {isGuest ? (
             <div className="flex min-h-11 flex-wrap items-center justify-between gap-3">
-              <span className="inline-flex items-center gap-2 px-2 text-xs font-bold text-[#58635c] dark:text-[#aeb4af]">
+              <span className="inline-flex items-center gap-2 px-2 text-xs font-bold text-white/55">
                 <HeartIcon filled={false} />
                 {post.likes} beğeni
               </span>
               <Link
                 href="/giris"
-                className={`inline-flex min-h-11 items-center px-3 text-xs font-black text-[#5a1f32] transition-colors hover:text-[#7a2c45] dark:text-[#d09272] dark:hover:text-[#e3a386] ${focusRing}`}
+                className={`inline-flex min-h-11 items-center px-3 text-xs font-black text-[#ff7a45] transition-colors hover:text-[#ff7a45]/80 ${focusRing}`}
               >
                 Etkileşim için giriş yap
               </Link>
@@ -369,8 +369,8 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                 onClick={() => toggleLike(post.id)}
                 className={`inline-flex min-h-11 items-center gap-2 px-2 text-xs font-bold transition-colors ${focusRing} ${
                   post.liked
-                    ? "text-[#8f2336] dark:text-[#df8b83]"
-                    : "text-[#1c2821]/58 hover:text-[#8f2336] dark:text-white/54 dark:hover:text-[#df8b83]"
+                    ? "text-[#df8b83]"
+                    : "text-white/54 hover:text-[#df8b83]"
                 }`}
               >
                 <HeartIcon filled={post.liked} />
@@ -391,8 +391,8 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                 onClick={() => toggleBookmark(post.id)}
                 className={`grid size-11 shrink-0 place-items-center rounded-full transition-colors ${focusRing} ${
                   post.bookmarked
-                    ? "text-[#5a1f32] dark:text-[#d09272]"
-                    : "text-[#1c2821]/50 hover:bg-[#1c2821]/5 hover:text-[#5a1f32] dark:text-white/48 dark:hover:bg-white/6 dark:hover:text-[#d09272]"
+                    ? "text-[#ff7a45]"
+                    : "text-white/48 hover:bg-white/6 hover:text-[#ff7a45]"
                 }`}
               >
                 <BookmarkIcon filled={post.bookmarked} />
@@ -410,39 +410,39 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
         aria-labelledby={commentsTitleId}
         className={`scroll-mt-44 px-4 pt-2 pb-8 transition-[background-color,box-shadow] duration-700 motion-reduce:duration-0 sm:px-6 sm:pt-3 md:scroll-mt-28 ${
           isNotificationTarget
-            ? "bg-[#d46a2f]/8 shadow-[inset_4px_0_0_#d46a2f] dark:bg-[#d09272]/8 dark:shadow-[inset_4px_0_0_#d09272]"
+            ? "bg-[#ff7a45]/8 shadow-[inset_4px_0_0_#ff7a45]"
             : ""
         }`}
       >
-        <div className="flex min-h-14 items-center justify-between gap-4 border-b border-[#1c2821]/10 dark:border-white/8">
+        <div className="flex min-h-14 items-center justify-between gap-4 border-b border-white/8">
           <h2
             id={commentsTitleId}
             className="text-base font-black tracking-[-0.025em]"
           >
             Yorumlar
           </h2>
-          <span className="font-mono text-[11px] font-bold text-[#58635c] dark:text-[#aeb4af]">
+          <span className="font-mono text-[11px] font-bold text-white/55">
             {post.comments.length}
           </span>
         </div>
 
         {post.isDeleted ? (
-          <div className="border-b border-[#1c2821]/10 py-5 dark:border-white/8">
+          <div className="border-b border-white/8 py-5">
             <p className="text-sm font-black">
               Kaldırılmış gönderilere yeni yorum eklenemez.
             </p>
           </div>
         ) : isGuest ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1c2821]/10 py-5 dark:border-white/8">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/8 py-5">
             <div>
               <p className="text-sm font-black">Yorum yapmak için giriş yap.</p>
-              <p className="mt-1 text-xs text-[#58635c] dark:text-[#aeb4af]">
+              <p className="mt-1 text-xs text-white/55">
                 Misafirler gönderileri yalnızca görüntüleyebilir.
               </p>
             </div>
             <Link
               href="/giris"
-              className={`inline-flex min-h-11 items-center justify-center bg-[#5a1f32] px-4 text-xs font-bold text-white transition-colors hover:bg-[#6b2940] dark:bg-[#9a5944] dark:text-[#121417] dark:hover:bg-[#ad6b53] ${focusRing}`}
+              className={`inline-flex min-h-11 items-center justify-center bg-white px-4 text-xs font-bold text-[#12100e] transition-colors hover:bg-white/90 ${focusRing}`}
             >
               Giriş yap
             </Link>
@@ -450,17 +450,17 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
         ) : (
           <form
             onSubmit={submitComment}
-            className="border-b border-[#1c2821]/10 py-5 dark:border-white/8"
+            className="border-b border-white/8 py-5"
           >
           {replyTarget && (
-            <div className="mb-3 flex min-h-11 items-center justify-between gap-3 border-l-2 border-[#9a5944] bg-[#9a5944]/7 px-3 text-xs dark:border-[#c7896d] dark:bg-[#c7896d]/8">
+            <div className="mb-3 flex min-h-11 items-center justify-between gap-3 border-l-2 border-[#ff7a45] bg-[#ff7a45]/8 px-3 text-xs">
               <p className="min-w-0 truncate">
                 <CampusAuthorProfileLink
                   author={replyTarget.author}
                   authorId={replyTarget.authorId}
                   isAnonymous={replyTarget.isAnonymous}
                   ariaLabel={`${replyTarget.author} profilini aç`}
-                  linkClassName={`font-black transition-colors hover:text-[#5a1f32] dark:hover:text-[#e0aa8d] ${focusRing}`}
+                  linkClassName={`font-black transition-colors hover:text-[#ff7a45] ${focusRing}`}
                 >
                   <span className="font-black">{replyTarget.author}</span>
                 </CampusAuthorProfileLink>{" "}
@@ -469,7 +469,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
               <button
                 type="button"
                 onClick={() => setReplyTargetId(null)}
-                className={`min-h-10 shrink-0 cursor-pointer px-2 font-black text-[#7d3c2d] dark:text-[#d09272] ${focusRing}`}
+                className={`min-h-10 shrink-0 cursor-pointer px-2 font-black text-[#ff7a45] ${focusRing}`}
               >
                 Vazgeç
               </button>
@@ -491,7 +491,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
               </label>
               <p
                 id={commentIdentityId}
-                className="mt-0.5 text-[11px] font-semibold text-[#58635c] dark:text-[#aeb4af]"
+                className="mt-0.5 text-[11px] font-semibold text-white/55"
               >
                 {isAnonymous
                   ? "Diğer öğrenciler seni anonim görecek."
@@ -511,17 +511,17 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
             rows={4}
             placeholder="Ne düşünüyorsun?"
             aria-describedby={`${commentIdentityId} post-comment-help-${post.id}`}
-            className={`mt-3 min-h-28 w-full resize-y border border-[#1c2821]/14 bg-white/25 px-3.5 py-3 text-sm leading-6 placeholder:text-[#667169] dark:border-white/12 dark:bg-white/[0.02] dark:placeholder:text-[#9ca39f] ${focusRing}`}
+            className={`mt-3 min-h-28 w-full resize-y border border-white/12 bg-white/[0.02] px-3.5 py-3 text-sm leading-6 placeholder:text-white/45 ${focusRing}`}
           />
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 border border-[#1c2821]/14 px-3 text-xs font-bold dark:border-white/12">
+              <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 border border-white/12 px-3 text-xs font-bold">
                 <input
                   type="checkbox"
                   checked={isAnonymous}
                   onChange={(event) => setIsAnonymous(event.target.checked)}
-                  className="size-4 accent-[#5a1f32] dark:accent-[#c7896d]"
+                  className="size-4 accent-[#ff7a45]"
                 />
                 Anonim yorumla
               </label>
@@ -534,7 +534,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                   onClick={() =>
                     setIsEmojiPickerOpen((currentValue) => !currentValue)
                   }
-                  className={`grid size-11 place-items-center border border-[#1c2821]/14 text-lg transition-colors hover:border-[#5a1f32]/35 hover:bg-[#5a1f32]/6 dark:border-white/12 dark:hover:border-[#c7896d]/35 dark:hover:bg-[#c7896d]/8 ${focusRing}`}
+                  className={`grid size-11 place-items-center border border-white/12 text-lg transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
                 >
                   <span aria-hidden="true">☺</span>
                 </button>
@@ -550,7 +550,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
               disabled={
                 !commentDraft.trim() || isCommentSubmitting
               }
-              className={`inline-flex min-h-11 items-center justify-center bg-[#5a1f32] px-5 text-xs font-bold text-white transition-colors hover:bg-[#6b2940] disabled:cursor-not-allowed disabled:opacity-45 dark:bg-[#9a5944] dark:text-[#121417] dark:hover:bg-[#ad6b53] ${focusRing}`}
+              className={`inline-flex min-h-11 items-center justify-center bg-white px-5 text-xs font-bold text-[#12100e] transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
             >
               Yorum yap
             </button>
@@ -565,13 +565,13 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
               aria-live="polite"
               className={
                 formMessage === "Yorumun eklendi."
-                  ? "text-[#416649] dark:text-[#9fc5a3]"
-                  : "text-[#8a2e25] dark:text-[#e0a083]"
+                  ? "text-[#9fc5a3]"
+                  : "text-[#ffb199]"
               }
             >
               {formMessage}
             </p>
-            <span className="ml-auto shrink-0 font-mono text-[#1c2821]/45 dark:text-white/42">
+            <span className="ml-auto shrink-0 font-mono text-white/42">
               {commentDraft.length}/500
             </span>
           </div>
@@ -579,7 +579,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
         )}
 
         {post.comments.length > 0 ? (
-          <ol className="divide-y divide-[#1c2821]/10 dark:divide-white/8">
+          <ol className="divide-y divide-white/8">
             {post.comments.map((comment) => {
               const parentComment = comment.parentId
                 ? post.comments.find(
@@ -596,11 +596,11 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                 <article
                   className={`flex items-start gap-3 py-5 sm:py-6 ${
                     comment.parentId
-                      ? "ml-7 border-l-2 border-[#9a5944]/18 pl-3 sm:ml-12 sm:pl-4 dark:border-[#c7896d]/18"
+                      ? "ml-7 border-l-2 border-[#ff7a45]/18 pl-3 sm:ml-12 sm:pl-4"
                       : ""
                   } ${
                     targetCommentId === comment.id
-                      ? "bg-[#d46a2f]/8 shadow-[inset_3px_0_0_#d46a2f] dark:bg-[#d09272]/8 dark:shadow-[inset_3px_0_0_#d09272]"
+                      ? "bg-[#ff7a45]/8 shadow-[inset_3px_0_0_#ff7a45]"
                       : ""
                   }`}
                 >
@@ -626,7 +626,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                         authorId={comment.authorId}
                         isAnonymous={comment.isAnonymous}
                         ariaLabel={`${comment.author} profilini aç`}
-                        linkClassName={`text-xs font-black transition-colors hover:text-[#5a1f32] dark:hover:text-[#d09272] ${focusRing}`}
+                        linkClassName={`text-xs font-black transition-colors hover:text-[#ff7a45] ${focusRing}`}
                       >
                         <span className="text-xs font-black">
                           {comment.author}
@@ -634,22 +634,22 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                       </CampusAuthorProfileLink>
                       <span
                         aria-hidden="true"
-                        className="size-1 rounded-full bg-[#1c2821]/25 dark:bg-white/24"
+                        className="size-1 rounded-full bg-white/24"
                       />
-                      <time className="text-[11px] font-semibold text-[#58635c] dark:text-[#aeb4af]">
+                      <time className="text-[11px] font-semibold text-white/55">
                         {comment.time}
                         {comment.edited && !comment.isDeleted
                           ? " · düzenlendi"
                           : ""}
                       </time>
                       {isSameVisibleCampusAuthor(post, comment) && (
-                        <span className="border border-[#9a5944]/25 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-[#8f3427] dark:border-[#c7896d]/25 dark:text-[#d09272]">
+                        <span className="border border-[#ff7a45]/25 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-[#ff7a45]">
                           Gönderi sahibi
                         </span>
                       )}
                     </header>
                     {parentComment && (
-                      <p className="mt-1 text-[11px] font-bold text-[#7d3c2d] dark:text-[#d09272]">
+                      <p className="mt-1 text-[11px] font-bold text-[#ff7a45]">
                         {parentComment.isDeleted ? (
                           "Kaldırılmış yoruma yanıt"
                         ) : (
@@ -659,7 +659,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                               authorId={parentComment.authorId}
                               isAnonymous={parentComment.isAnonymous}
                               ariaLabel={`${parentComment.author} profilini aç`}
-                              linkClassName={`transition-colors hover:text-[#5a1f32] dark:hover:text-[#e0aa8d] ${focusRing}`}
+                              linkClassName={`transition-colors hover:text-[#ff7a45] ${focusRing}`}
                             >
                               <span>{parentComment.author}</span>
                             </CampusAuthorProfileLink>{" "}
@@ -669,14 +669,14 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                       </p>
                     )}
                     {comment.isDeleted ? (
-                      <div className="mt-2 border border-dashed border-[#1c2821]/14 bg-[#eee9e1]/45 px-3 py-3 dark:border-white/11 dark:bg-white/[0.02]">
-                        <p className="text-xs font-bold text-[#58635c] dark:text-[#aeb4af]">
+                      <div className="mt-2 border border-dashed border-white/11 bg-white/[0.02] px-3 py-3">
+                        <p className="text-xs font-bold text-white/55">
                           Bu yorum kaldırıldı.
                         </p>
                       </div>
                     ) : (
                       <>
-                        <p className="mt-2 max-w-[78ch] whitespace-pre-wrap break-words text-sm leading-6 text-[#1c2821]/80 dark:text-white/78 sm:text-[15px] sm:leading-7">
+                        <p className="mt-2 max-w-[78ch] whitespace-pre-wrap break-words text-sm leading-6 text-white/78 sm:text-[15px] sm:leading-7">
                           {comment.body}
                         </p>
                         <CampusCommentActions
@@ -708,7 +708,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
         ) : (
           <div className="py-12 text-center">
             <p className="text-sm font-black">Henüz yorum yok.</p>
-            <p className="mt-1 text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]">
+            <p className="mt-1 text-xs leading-5 text-white/55">
               {isGuest
                 ? "Yorum yapmak için üye girişi gerekir."
                 : "Bu konuya ilk yanıtı sen bırak."}
@@ -725,14 +725,14 @@ function PostDetailLoading() {
     <section
       aria-busy="true"
       aria-label="Gönderi yükleniyor"
-      className="grid min-h-[calc(100svh-4rem)] place-items-center bg-[#fbf8f1] px-5 dark:bg-[#17191c] md:min-h-svh"
+      className="grid min-h-[calc(100svh-4rem)] place-items-center bg-[#0a0d16] px-5 md:min-h-svh"
     >
       <div className="text-center">
         <span
           aria-hidden="true"
-          className="mx-auto block size-7 animate-spin rounded-full border-2 border-[#1c2821]/15 border-t-[#8f3427] motion-reduce:animate-none dark:border-white/14 dark:border-t-[#c7896d]"
+          className="mx-auto block size-7 animate-spin rounded-full border-2 border-white/14 border-t-[#ff7a45] motion-reduce:animate-none"
         />
-        <p className="mt-4 text-sm font-bold text-[#1c2821]/62 dark:text-white/60">
+        <p className="mt-4 text-sm font-bold text-white/60">
           Gönderi yükleniyor…
         </p>
       </div>
@@ -742,20 +742,20 @@ function PostDetailLoading() {
 
 function MissingPost() {
   return (
-    <section className="grid min-h-[calc(100svh-4rem)] place-items-center bg-[#fbf8f1] px-5 py-16 text-center dark:bg-[#17191c] md:min-h-svh">
+    <section className="grid min-h-[calc(100svh-4rem)] place-items-center bg-[#0a0d16] px-5 py-16 text-center md:min-h-svh">
       <div className="max-w-md">
-        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[#7d3c2d] dark:text-[#c7896d]">
+        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
           Gönderi bulunamadı
         </p>
         <h1 className="mt-3 text-3xl font-black tracking-[-0.05em]">
           Bu konu artık burada değil.
         </h1>
-        <p className="mt-3 text-sm leading-6 text-[#58635c] dark:text-[#aeb4af]">
+        <p className="mt-3 text-sm leading-6 text-white/55">
           Gönderi kaldırılmış veya tarayıcı verileri temizlenmiş olabilir.
         </p>
         <Link
           href="/akis"
-          className={`mt-7 inline-flex min-h-11 items-center justify-center bg-[#5a1f32] px-5 text-sm font-bold text-white transition-colors hover:bg-[#6b2940] dark:bg-[#9a5944] dark:text-[#121417] dark:hover:bg-[#ad6b53] ${focusRing}`}
+          className={`mt-7 inline-flex min-h-11 items-center justify-center bg-white px-5 text-sm font-bold text-[#12100e] transition-colors hover:bg-white/90 ${focusRing}`}
         >
           Akışa dön
         </Link>
@@ -769,7 +769,7 @@ function EmojiPicker({ onSelect }: { onSelect: (emoji: string) => void }) {
     <div
       role="group"
       aria-label="Yorum emojileri"
-      className="absolute right-0 bottom-[calc(100%+0.5rem)] z-40 grid w-48 grid-cols-4 gap-1 border border-[#1c2821]/14 bg-[#fffaf4] p-2 shadow-[0_16px_42px_rgba(28,40,33,0.16)] dark:border-white/12 dark:bg-[#202226] dark:shadow-[0_16px_42px_rgba(0,0,0,0.4)] sm:right-auto sm:left-0"
+      className="absolute right-0 bottom-[calc(100%+0.5rem)] z-40 grid w-48 grid-cols-4 gap-1 border border-white/12 bg-[#17191c] p-2 shadow-[0_16px_42px_rgba(0,0,0,0.4)] sm:right-auto sm:left-0"
     >
       {quickEmojis.map((emoji) => (
         <button
@@ -777,7 +777,7 @@ function EmojiPicker({ onSelect }: { onSelect: (emoji: string) => void }) {
           type="button"
           aria-label={`${emoji.label} emojisini ekle`}
           onClick={() => onSelect(emoji.value)}
-          className={`grid size-10 place-items-center rounded-lg text-xl transition-colors hover:bg-[#5a1f32]/8 dark:hover:bg-[#c7896d]/10 ${focusRing}`}
+          className={`grid size-10 place-items-center rounded-lg text-xl transition-colors hover:bg-[#ff7a45]/10 ${focusRing}`}
         >
           <span aria-hidden="true">{emoji.value}</span>
         </button>

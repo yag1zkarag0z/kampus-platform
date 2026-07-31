@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import CampusLogo from "@/components/CampusLogo";
-import ForceDarkTheme from "@/components/ForceDarkTheme";
 
 type AuthShellProps = {
   mode: "login" | "register";
@@ -18,8 +17,6 @@ export default function AuthShell({
 }: AuthShellProps) {
   return (
     <main className="relative isolate min-h-svh overflow-hidden bg-[#0a0d16] text-white">
-      <ForceDarkTheme />
-
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -z-20 bg-[radial-gradient(ellipse_120%_80%_at_82%_-8%,rgba(255,122,69,0.14)_0%,transparent_55%),radial-gradient(ellipse_90%_70%_at_-8%_112%,rgba(94,74,196,0.12)_0%,transparent_58%),linear-gradient(175deg,#05060a_0%,#0a0d16_55%,#0e1220_100%)]"
@@ -44,16 +41,16 @@ export default function AuthShell({
         </header>
 
         <div className="grid flex-1 items-center gap-10 py-10 sm:py-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(28rem,0.78fr)] lg:gap-16 lg:py-16 xl:gap-24">
-          <section className="max-w-2xl">
-            <h1 className="max-w-3xl text-[clamp(2.8rem,9vw,5.6rem)] font-black leading-[0.91] tracking-[-0.06em]">
+          <section className="max-w-2xl text-center lg:text-left">
+            <h1 className="mx-auto max-w-3xl text-[clamp(2.8rem,9vw,5.6rem)] font-black leading-[0.91] tracking-[-0.06em] lg:mx-0">
               {title}
             </h1>
 
-            <p className="mt-6 max-w-xl text-base leading-7 text-white/68 sm:text-lg sm:leading-8">
+            <p className="mx-auto mt-6 max-w-xl text-base leading-7 text-white/68 sm:text-lg sm:leading-8 lg:mx-0">
               {description}
             </p>
 
-            <aside className="mt-7 max-w-xl border-l-2 border-[#ff7a45] pl-3 text-[11px] leading-5 text-white/62 sm:text-xs">
+            <aside className="mx-auto mt-7 max-w-xl border-t-2 border-[#ff7a45] pt-3 text-[11px] leading-5 text-white/62 sm:text-xs lg:mx-0 lg:border-l-2 lg:border-t-0 lg:pl-3 lg:pt-0">
               KAMPÜS bağımsız bir öğrenci projesidir;{" "}
               <strong className="font-bold text-[#ff7a45]">
                 Yaşar Üniversitesi’nin resmî platformu değildir.

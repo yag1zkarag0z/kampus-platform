@@ -20,12 +20,12 @@ export default function CampusListingMeta({
 
   return (
     <div
-      className={`flex flex-wrap items-center gap-2 border-l-2 border-[#9a5944]/45 pl-3 dark:border-[#c7896d]/48 ${
+      className={`flex flex-wrap items-center gap-2 border-l-2 border-[#ff7a45]/45 pl-3 ${
         variant === "detail" ? "mt-5" : "mt-3"
       }`}
     >
       <p
-        className={`mr-1 font-black tracking-[-0.025em] text-[#5a1f32] dark:text-[#d09272] ${
+        className={`mr-1 font-black tracking-[-0.025em] text-[#ff7a45] ${
           variant === "detail"
             ? "text-2xl sm:text-3xl"
             : variant === "compact"
@@ -36,11 +36,11 @@ export default function CampusListingMeta({
         {priceLabel}
       </p>
       {listing.type !== "Ücretsiz" && (
-        <span className="border border-[#1c2821]/13 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#1c2821]/66 dark:border-white/11 dark:text-white/62">
+        <span className="border border-white/12 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-white/62">
           {listing.type}
         </span>
       )}
-      <span className="border border-[#1c2821]/10 px-2 py-1 text-[10px] font-bold text-[#58635c] dark:border-white/9 dark:text-[#aeb4af]">
+      <span className="border border-white/12 px-2 py-1 text-[10px] font-bold text-white/55">
         {listing.condition}
       </span>
     </div>

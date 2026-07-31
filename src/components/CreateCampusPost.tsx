@@ -101,7 +101,7 @@ const quickEmojis = [
 ] as const;
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:focus-visible:ring-[#c7896d]/30";
+  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40";
 const MAX_SOURCE_IMAGE_SIZE = 5 * 1024 * 1024;
 const MAX_OUTPUT_IMAGE_SIZE = 700 * 1024;
 const acceptedImageTypes = new Set([
@@ -437,14 +437,14 @@ export default function CreateCampusPost() {
   return (
     <section
       aria-labelledby="create-post-title"
-      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#fbf8f1] text-[#1c2821] dark:bg-[#17191c] dark:text-[#ece8e1] md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
     >
-      <header className="sticky top-16 z-30 border-b border-[#1c2821]/14 bg-[#fbf8f1]/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#17191c]/95 md:top-0">
+      <header className="sticky top-16 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl md:top-0">
         <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 sm:px-5">
           <span aria-hidden="true" />
 
           <div className="min-w-0 justify-self-center text-center">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#8f3427] dark:text-[#c7896d]">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
               {isListing ? "Kampüs pazarı" : "Kampüse yaz"}
             </p>
             <h1
@@ -460,7 +460,7 @@ export default function CreateCampusPost() {
 
       <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-8 lg:py-10">
         <div className="mb-6 sm:mb-8">
-          <p className="max-w-xl text-sm leading-6 text-[#1c2821]/66 dark:text-white/62">
+          <p className="max-w-xl text-sm leading-6 text-white/62">
             {isListing
               ? "Ürünü açıkça tanımla, durumunu belirt ve kampüs içinde güvenli bir şekilde paylaş."
               : "Sorunu, duyurunu veya kampüste konuşulmasını istediğin konuyu anlaşılır bir başlıkla paylaş."}
@@ -470,7 +470,7 @@ export default function CreateCampusPost() {
         <form
           noValidate
           onSubmit={submitPost}
-          className="border-y border-[#1c2821]/13 py-6 dark:border-white/10 sm:border sm:bg-white/20 sm:p-7 dark:sm:bg-white/[0.015]"
+          className="border-y border-white/12 py-6 sm:border sm:bg-white/[0.02] sm:p-7"
         >
           <div>
             <div className="flex items-baseline justify-between gap-4">
@@ -480,7 +480,7 @@ export default function CreateCampusPost() {
               >
                 Başlık
               </label>
-              <span className="font-mono text-[10px] font-bold text-[#58635c] dark:text-[#aeb4af]">
+              <span className="font-mono text-[10px] font-bold text-white/55">
                 {title.length}/{CAMPUS_POST_TITLE_MAX_LENGTH}
               </span>
             </div>
@@ -509,17 +509,17 @@ export default function CreateCampusPost() {
                   ? "Ne satıyor veya arıyorsun?"
                   : "Konu ne hakkında?"
               }
-              className={`mt-2 min-h-12 w-full border bg-white/35 px-3.5 py-2.5 text-[15px] font-bold text-[#1c2821] placeholder:font-medium placeholder:text-[#667169] dark:bg-white/[0.025] dark:text-[#ece8e1] dark:placeholder:text-[#9ca39f] ${
+              className={`mt-2 min-h-12 w-full border bg-white/[0.03] px-3.5 py-2.5 text-[15px] font-bold text-white placeholder:font-medium placeholder:text-white/40 ${
                 titleError
-                  ? "border-[#9b3028] dark:border-[#df8b83]"
-                  : "border-[#1c2821]/14 dark:border-white/12"
+                  ? "border-[#ffb199]"
+                  : "border-white/12"
               } ${focusRing}`}
             />
             {titleError && (
               <p
                 id="campus-post-title-error"
                 role="alert"
-                className="mt-2 text-xs font-semibold text-[#8a2e25] dark:text-[#e0a083]"
+                className="mt-2 text-xs font-semibold text-[#ffb199]"
               >
                 {titleError}
               </p>
@@ -539,8 +539,8 @@ export default function CreateCampusPost() {
                     key={option.value}
                     className={`flex min-h-16 cursor-pointer items-start gap-3 border px-3.5 py-3 transition-colors ${
                       isSelected
-                        ? "border-[#9a5944]/60 bg-[#9a5944]/9 dark:border-[#c7896d]/60 dark:bg-[#c7896d]/10"
-                        : "border-[#1c2821]/12 bg-white/18 hover:border-[#9a5944]/35 dark:border-white/10 dark:bg-white/[0.015] dark:hover:border-[#c7896d]/35"
+                        ? "border-[#ff7a45]/60 bg-[#ff7a45]/9"
+                        : "border-white/12 bg-white/[0.02] hover:border-[#ff7a45]/35"
                     } ${focusRing}`}
                   >
                     <input
@@ -563,13 +563,13 @@ export default function CreateCampusPost() {
                           setListingPrice("");
                         }
                       }}
-                      className="mt-0.5 size-4 shrink-0 accent-[#5a1f32] dark:accent-[#c7896d]"
+                      className="mt-0.5 size-4 shrink-0 accent-[#ff7a45]"
                     />
                     <span>
                       <span className="block text-xs font-black">
                         {option.value}
                       </span>
-                      <span className="mt-0.5 block text-[11px] leading-4 text-[#58635c] dark:text-[#aeb4af]">
+                      <span className="mt-0.5 block text-[11px] leading-4 text-white/55">
                         {option.description}
                       </span>
                     </span>
@@ -580,11 +580,11 @@ export default function CreateCampusPost() {
           </fieldset>
 
           {isListing && (
-            <fieldset className="mt-7 border border-[#9a5944]/28 bg-[#9a5944]/5 p-4 dark:border-[#c7896d]/28 dark:bg-[#c7896d]/6 sm:p-5">
-              <legend className="px-1 text-sm font-black tracking-[-0.015em] text-[#5a1f32] dark:text-[#d09272]">
+            <fieldset className="mt-7 border border-[#ff7a45]/28 bg-[#ff7a45]/6 p-4 sm:p-5">
+              <legend className="px-1 text-sm font-black tracking-[-0.015em] text-[#ff7a45]">
                 İlan bilgileri
               </legend>
-              <p className="text-[11px] leading-5 text-[#58635c] dark:text-[#aeb4af]">
+              <p className="text-[11px] leading-5 text-white/55">
                 İlan türünü, ürünün durumunu ve fiyatını belirt.
               </p>
 
@@ -597,8 +597,8 @@ export default function CreateCampusPost() {
                       key={option.value}
                       className={`flex min-h-20 cursor-pointer flex-col border px-3 py-3 transition-colors ${
                         isSelected
-                          ? "border-[#5a1f32]/45 bg-[#5a1f32]/8 dark:border-[#c7896d]/48 dark:bg-[#c7896d]/9"
-                          : "border-[#1c2821]/12 bg-white/25 hover:border-[#5a1f32]/28 dark:border-white/10 dark:bg-white/[0.02] dark:hover:border-[#c7896d]/30"
+                          ? "border-[#ff7a45]/48 bg-[#ff7a45]/9"
+                          : "border-white/12 bg-white/[0.02] hover:border-[#ff7a45]/30"
                       } ${focusRing}`}
                     >
                       <span className="flex items-center gap-2">
@@ -615,13 +615,13 @@ export default function CreateCampusPost() {
                               setListingPrice("");
                             }
                           }}
-                          className="size-4 shrink-0 accent-[#5a1f32] dark:accent-[#c7896d]"
+                          className="size-4 shrink-0 accent-[#ff7a45]"
                         />
                         <span className="text-xs font-black">
                           {option.value}
                         </span>
                       </span>
-                      <span className="mt-1 pl-6 text-[10px] leading-4 text-[#58635c] dark:text-[#aeb4af]">
+                      <span className="mt-1 pl-6 text-[10px] leading-4 text-white/55">
                         {option.description}
                       </span>
                     </label>
@@ -643,7 +643,7 @@ export default function CreateCampusPost() {
                   )}
 
                   {listingType === "Ücretsiz" ? (
-                    <div className="mt-2 flex min-h-12 items-center border border-[#1c2821]/12 bg-white/22 px-3.5 text-sm font-black text-[#5a1f32] dark:border-white/10 dark:bg-white/[0.02] dark:text-[#d09272]">
+                    <div className="mt-2 flex min-h-12 items-center border border-white/12 bg-white/[0.02] px-3.5 text-sm font-black text-[#ff7a45]">
                       Fiyat gerekmiyor
                     </div>
                   ) : (
@@ -675,13 +675,13 @@ export default function CreateCampusPost() {
                             ? "En yüksek bütçe"
                             : "Satış fiyatı"
                         }
-                        className={`min-h-12 w-full border bg-white/35 px-3.5 py-2.5 pr-12 text-sm font-bold placeholder:font-medium placeholder:text-[#667169] dark:bg-white/[0.025] dark:placeholder:text-[#9ca39f] ${
+                        className={`min-h-12 w-full border bg-white/[0.03] px-3.5 py-2.5 pr-12 text-sm font-bold placeholder:font-medium placeholder:text-white/40 ${
                           listingError
-                            ? "border-[#9b3028] dark:border-[#df8b83]"
-                            : "border-[#1c2821]/14 dark:border-white/12"
+                            ? "border-[#ffb199]"
+                            : "border-white/12"
                         } ${focusRing}`}
                       />
-                      <span className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-xs font-black text-[#58635c] dark:text-[#aeb4af]">
+                      <span className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-xs font-black text-white/55">
                         TL
                       </span>
                     </div>
@@ -691,14 +691,14 @@ export default function CreateCampusPost() {
                     <p
                       id="campus-listing-price-error"
                       role="alert"
-                      className="mt-2 text-xs font-semibold text-[#8a2e25] dark:text-[#e0a083]"
+                      className="mt-2 text-xs font-semibold text-[#ffb199]"
                     >
                       {listingError}
                     </p>
                   ) : (
                     <p
                       id="campus-listing-price-help"
-                      className="mt-2 text-[10px] leading-4 text-[#58635c] dark:text-[#aeb4af]"
+                      className="mt-2 text-[10px] leading-4 text-white/55"
                     >
                       Yalnızca tam sayı olarak Türk lirası gir.
                     </p>
@@ -721,7 +721,7 @@ export default function CreateCampusPost() {
                         event.target.value as CampusListingCondition,
                       )
                     }
-                    className={`mt-2 min-h-12 w-full border border-[#1c2821]/14 bg-white/35 px-3.5 text-sm font-bold dark:border-white/12 dark:bg-[#1c1e21] ${focusRing}`}
+                    className={`mt-2 min-h-12 w-full border border-white/12 bg-[#141720] px-3.5 text-sm font-bold ${focusRing}`}
                   >
                     {listingConditions.map((condition) => (
                       <option key={condition} value={condition}>
@@ -732,7 +732,7 @@ export default function CreateCampusPost() {
                 </div>
               </div>
 
-              <p className="mt-4 border-l-2 border-[#9a5944]/45 pl-3 text-[11px] leading-5 text-[#1c2821]/64 dark:border-[#c7896d]/48 dark:text-white/60">
+              <p className="mt-4 border-l-2 border-[#ff7a45]/45 pl-3 text-[11px] leading-5 text-white/60">
                 İlanlar güven için profilinle yayımlanır. Telefon, e-posta veya
                 açık adresini açıklamaya yazma.
               </p>
@@ -747,12 +747,12 @@ export default function CreateCampusPost() {
               >
                 {isListing ? "İlan açıklaması" : "Açıklama"}{" "}
                 {!isListing && (
-                  <span className="font-medium text-[#58635c] dark:text-[#aeb4af]">
+                  <span className="font-medium text-white/55">
                     (isteğe bağlı)
                   </span>
                 )}
               </label>
-              <span className="font-mono text-[10px] font-bold text-[#58635c] dark:text-[#aeb4af]">
+              <span className="font-mono text-[10px] font-bold text-white/55">
                 {body.length}/{CAMPUS_POST_BODY_MAX_LENGTH}
               </span>
             </div>
@@ -781,10 +781,10 @@ export default function CreateCampusPost() {
                   ? "Ürünün özelliklerini, kusurlarını ve teslim için uygun olduğun kampüs alanını yaz."
                   : "Detay vermek istersen buraya yazabilirsin."
               }
-              className={`mt-2 min-h-40 w-full resize-y border bg-white/35 px-3.5 py-3 text-sm leading-6 text-[#1c2821] placeholder:text-[#667169] dark:bg-white/[0.025] dark:text-[#ece8e1] dark:placeholder:text-[#9ca39f] ${
+              className={`mt-2 min-h-40 w-full resize-y border bg-white/[0.03] px-3.5 py-3 text-sm leading-6 text-white placeholder:text-white/40 ${
                 bodyError
-                  ? "border-[#9b3028] dark:border-[#df8b83]"
-                  : "border-[#1c2821]/14 dark:border-white/12"
+                  ? "border-[#ffb199]"
+                  : "border-white/12"
               } ${focusRing}`}
             />
 
@@ -794,14 +794,14 @@ export default function CreateCampusPost() {
                   <p
                     id="campus-post-body-error"
                     role="alert"
-                    className="text-xs font-semibold text-[#8a2e25] dark:text-[#e0a083]"
+                    className="text-xs font-semibold text-[#ffb199]"
                   >
                     {bodyError}
                   </p>
                 )}
                 <p
                   id="campus-post-body-help"
-                  className={`${bodyError ? "mt-1" : ""} text-[11px] leading-5 text-[#58635c] dark:text-[#aeb4af]`}
+                  className={`${bodyError ? "mt-1" : ""} text-[11px] leading-5 text-white/55`}
                 >
                   {isListing
                     ? "Kişisel iletişim bilgilerini değil, ürünün ayrıntılarını paylaş."
@@ -818,7 +818,7 @@ export default function CreateCampusPost() {
                   onClick={() =>
                     setIsEmojiPickerOpen((currentValue) => !currentValue)
                   }
-                  className={`inline-flex min-h-11 items-center gap-2 border border-[#1c2821]/14 px-3 text-xs font-bold transition-colors hover:border-[#5a1f32]/35 hover:bg-[#5a1f32]/6 dark:border-white/12 dark:hover:border-[#c7896d]/35 dark:hover:bg-[#c7896d]/8 ${focusRing}`}
+                  className={`inline-flex min-h-11 items-center gap-2 border border-white/12 px-3 text-xs font-bold transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
                 >
                   <span aria-hidden="true" className="text-base">
                     ☺
@@ -832,7 +832,7 @@ export default function CreateCampusPost() {
                     role="group"
                     aria-label="Açıklama emojileri"
                     onKeyDown={handleEmojiPickerKeyDown}
-                    className="absolute right-0 bottom-[calc(100%+0.5rem)] z-40 grid w-52 grid-cols-4 gap-1 border border-[#1c2821]/14 bg-[#fffaf4] p-2 shadow-[0_16px_42px_rgba(28,40,33,0.16)] dark:border-white/12 dark:bg-[#202226] dark:shadow-[0_16px_42px_rgba(0,0,0,0.4)]"
+                    className="absolute right-0 bottom-[calc(100%+0.5rem)] z-40 grid w-52 grid-cols-4 gap-1 border border-white/12 bg-[#17191c] p-2 shadow-[0_16px_42px_rgba(0,0,0,0.4)]"
                   >
                     {quickEmojis.map((emoji) => (
                       <button
@@ -840,7 +840,7 @@ export default function CreateCampusPost() {
                         type="button"
                         aria-label={`${emoji.label} emojisini ekle`}
                         onClick={() => appendEmoji(emoji.value)}
-                        className={`grid size-11 place-items-center rounded-lg text-xl transition-colors hover:bg-[#5a1f32]/8 dark:hover:bg-[#c7896d]/10 ${focusRing}`}
+                        className={`grid size-11 place-items-center rounded-lg text-xl transition-colors hover:bg-[#ff7a45]/10 ${focusRing}`}
                       >
                         <span aria-hidden="true">{emoji.value}</span>
                       </button>
@@ -851,16 +851,16 @@ export default function CreateCampusPost() {
             </div>
           </div>
 
-          <div className="mt-7 border-t border-[#1c2821]/10 pt-5 dark:border-white/8">
+          <div className="mt-7 border-t border-white/10 pt-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-black tracking-[-0.015em]">
                   {isListing ? "İlan fotoğrafı" : "Fotoğraf"}{" "}
-                  <span className="font-medium text-[#58635c] dark:text-[#aeb4af]">
+                  <span className="font-medium text-white/55">
                     {isListing ? "(önerilir)" : "(isteğe bağlı)"}
                   </span>
                 </p>
-                <p className="mt-1 text-[11px] leading-5 text-[#58635c] dark:text-[#aeb4af]">
+                <p className="mt-1 text-[11px] leading-5 text-white/55">
                   Tek fotoğraf · JPEG, PNG veya WebP · en fazla 5 MB
                 </p>
               </div>
@@ -880,7 +880,7 @@ export default function CreateCampusPost() {
                   type="button"
                   onClick={() => imageInputRef.current?.click()}
                   disabled={isProcessingImage}
-                  className={`inline-flex min-h-11 items-center justify-center border border-[#1c2821]/14 px-4 text-xs font-black transition-colors hover:border-[#5a1f32]/35 hover:bg-[#5a1f32]/6 disabled:cursor-wait disabled:opacity-50 dark:border-white/12 dark:hover:border-[#c7896d]/35 dark:hover:bg-[#c7896d]/8 ${focusRing}`}
+                  className={`inline-flex min-h-11 items-center justify-center border border-white/12 px-4 text-xs font-black transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 disabled:cursor-wait disabled:opacity-50 ${focusRing}`}
                 >
                   {isProcessingImage ? "İşleniyor…" : "Fotoğraf ekle"}
                 </button>
@@ -888,7 +888,7 @@ export default function CreateCampusPost() {
             </div>
 
             {imagePreview && (
-              <div className="mt-4 overflow-hidden border border-[#1c2821]/12 bg-[#ece7df] dark:border-white/10 dark:bg-[#101214]">
+              <div className="mt-4 overflow-hidden border border-white/12 bg-[#141720]">
                 <Image
                   src={imagePreview.src}
                   alt={
@@ -902,19 +902,19 @@ export default function CreateCampusPost() {
                   unoptimized
                   className="max-h-[30rem] h-auto w-full object-contain"
                 />
-                <div className="flex flex-wrap justify-end gap-2 border-t border-[#1c2821]/10 bg-[#fbf8f1]/80 p-3 dark:border-white/9 dark:bg-[#17191c]/86">
+                <div className="flex flex-wrap justify-end gap-2 border-t border-white/10 bg-[#0a0d16]/80 p-3">
                   <button
                     type="button"
                     onClick={() => imageInputRef.current?.click()}
                     disabled={isProcessingImage}
-                    className={`inline-flex min-h-11 items-center justify-center border border-[#1c2821]/14 px-4 text-xs font-black transition-colors hover:bg-[#1c2821]/5 disabled:cursor-wait disabled:opacity-50 dark:border-white/12 dark:hover:bg-white/6 ${focusRing}`}
+                    className={`inline-flex min-h-11 items-center justify-center border border-white/12 px-4 text-xs font-black transition-colors hover:bg-white/6 disabled:cursor-wait disabled:opacity-50 ${focusRing}`}
                   >
                     Değiştir
                   </button>
                   <button
                     type="button"
                     onClick={removeImage}
-                    className={`inline-flex min-h-11 items-center justify-center px-4 text-xs font-black text-[#8b2f2a] transition-colors hover:bg-[#8b2f2a]/7 dark:text-[#e18a7d] dark:hover:bg-[#d27368]/9 ${focusRing}`}
+                    className={`inline-flex min-h-11 items-center justify-center px-4 text-xs font-black text-[#ffb199] transition-colors hover:bg-[#ffb199]/8 ${focusRing}`}
                   >
                     Kaldır
                   </button>
@@ -925,14 +925,14 @@ export default function CreateCampusPost() {
             {imageError && (
               <p
                 role="alert"
-                className="mt-3 text-xs font-semibold text-[#8a2e25] dark:text-[#e0a083]"
+                className="mt-3 text-xs font-semibold text-[#ffb199]"
               >
                 {imageError}
               </p>
             )}
 
             {imagePreview && isAnonymous && (
-              <p className="mt-3 border-l-2 border-[#9a5944]/45 pl-3 text-[11px] leading-5 text-[#1c2821]/64 dark:border-[#c7896d]/48 dark:text-white/60">
+              <p className="mt-3 border-l-2 border-[#ff7a45]/45 pl-3 text-[11px] leading-5 text-white/60">
                 Anonim paylaşımda fotoğraftaki yüz, plaka veya belgeler seni
                 belli edebilir.
               </p>
@@ -940,13 +940,13 @@ export default function CreateCampusPost() {
           </div>
 
           {!isListing && (
-            <div className="mt-7 border-t border-[#1c2821]/10 pt-5 dark:border-white/8">
+            <div className="mt-7 border-t border-white/10 pt-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-black tracking-[-0.015em]">
                   Anket
                 </p>
-                <p className="mt-1 text-[11px] leading-5 text-[#58635c] dark:text-[#aeb4af]">
+                <p className="mt-1 text-[11px] leading-5 text-white/55">
                   Başlığın anket sorusu, aşağıdakiler seçenekler olur.
                 </p>
               </div>
@@ -967,8 +967,8 @@ export default function CreateCampusPost() {
                 }}
                 className={`inline-flex min-h-11 items-center justify-center border px-4 text-xs font-black transition-colors ${focusRing} ${
                   isPollEnabled
-                    ? "border-[#5a1f32]/38 bg-[#5a1f32]/8 text-[#5a1f32] dark:border-[#c7896d]/42 dark:bg-[#c7896d]/10 dark:text-[#d09272]"
-                    : "border-[#1c2821]/14 hover:border-[#5a1f32]/35 hover:bg-[#5a1f32]/6 dark:border-white/12 dark:hover:border-[#c7896d]/35 dark:hover:bg-[#c7896d]/8"
+                    ? "border-[#ff7a45]/42 bg-[#ff7a45]/10 text-[#ff7a45]"
+                    : "border-white/12 hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8"
                 }`}
               >
                 {isPollEnabled ? "Anketi kaldır" : "Anket ekle"}
@@ -1002,14 +1002,14 @@ export default function CreateCampusPost() {
                           updatePollOption(index, event.target.value)
                         }
                         placeholder={`${index + 1}. seçenek`}
-                        className={`min-h-12 min-w-0 flex-1 border border-[#1c2821]/14 bg-white/35 px-3.5 text-sm font-semibold placeholder:text-[#667169] dark:border-white/12 dark:bg-white/[0.025] dark:placeholder:text-[#9ca39f] ${focusRing}`}
+                        className={`min-h-12 min-w-0 flex-1 border border-white/12 bg-white/[0.03] px-3.5 text-sm font-semibold placeholder:text-white/40 ${focusRing}`}
                       />
                       {pollOptions.length > 2 && (
                         <button
                           type="button"
                           aria-label={`${index + 1}. anket seçeneğini kaldır`}
                           onClick={() => removePollOption(index)}
-                          className={`grid size-12 shrink-0 place-items-center text-lg font-bold text-[#8b2f2a] transition-colors hover:bg-[#8b2f2a]/7 dark:text-[#e18a7d] dark:hover:bg-[#d27368]/9 ${focusRing}`}
+                          className={`grid size-12 shrink-0 place-items-center text-lg font-bold text-[#ffb199] transition-colors hover:bg-[#ffb199]/8 ${focusRing}`}
                         >
                           <span aria-hidden="true">×</span>
                         </button>
@@ -1019,14 +1019,14 @@ export default function CreateCampusPost() {
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-[11px] font-semibold text-[#58635c] dark:text-[#aeb4af]">
+                  <p className="text-[11px] font-semibold text-white/55">
                     {pollOptions.length}/4 seçenek
                   </p>
                   {pollOptions.length < 4 && (
                     <button
                       type="button"
                       onClick={addPollOption}
-                      className={`inline-flex min-h-11 items-center justify-center px-3 text-xs font-black text-[#5a1f32] transition-colors hover:bg-[#5a1f32]/6 dark:text-[#d09272] dark:hover:bg-[#c7896d]/8 ${focusRing}`}
+                      className={`inline-flex min-h-11 items-center justify-center px-3 text-xs font-black text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/8 ${focusRing}`}
                     >
                       Seçenek ekle
                     </button>
@@ -1037,7 +1037,7 @@ export default function CreateCampusPost() {
                   <p
                     id="campus-poll-error"
                     role="alert"
-                    className="mt-2 text-xs font-semibold text-[#8a2e25] dark:text-[#e0a083]"
+                    className="mt-2 text-xs font-semibold text-[#ffb199]"
                   >
                     {pollError}
                   </p>
@@ -1047,29 +1047,29 @@ export default function CreateCampusPost() {
             </div>
           )}
 
-          <div className="mt-7 border-t border-[#1c2821]/10 pt-5 dark:border-white/8">
+          <div className="mt-7 border-t border-white/10 pt-5">
             {isListing ? (
-              <div className="flex min-h-16 items-center gap-3 border border-[#9a5944]/24 bg-[#9a5944]/5 px-3.5 py-3 dark:border-[#c7896d]/25 dark:bg-[#c7896d]/6">
+              <div className="flex min-h-16 items-center gap-3 border border-[#ff7a45]/25 bg-[#ff7a45]/6 px-3.5 py-3">
                 <span
                   aria-hidden="true"
-                  className="grid size-9 shrink-0 place-items-center border border-[#9a5944]/30 text-sm font-black text-[#5a1f32] dark:border-[#c7896d]/34 dark:text-[#d09272]"
+                  className="grid size-9 shrink-0 place-items-center border border-[#ff7a45]/34 text-sm font-black text-[#ff7a45]"
                 >
                   @
                 </span>
                 <div>
                   <p className="text-xs font-black">Profilinle yayımlanacak</p>
-                  <p className="mt-0.5 text-[11px] leading-4 text-[#58635c] dark:text-[#aeb4af]">
+                  <p className="mt-0.5 text-[11px] leading-4 text-white/55">
                     İlanlarda güven ve iletişim için anonim paylaşım kapalıdır.
                   </p>
                 </div>
               </div>
             ) : (
-              <label className="flex min-h-14 cursor-pointer items-center justify-between gap-4 border border-[#1c2821]/13 px-3.5 py-2.5 dark:border-white/11">
+              <label className="flex min-h-14 cursor-pointer items-center justify-between gap-4 border border-white/12 px-3.5 py-2.5">
                 <span>
                   <span className="block text-xs font-black">
                     Anonim paylaş
                   </span>
-                  <span className="mt-0.5 block text-[11px] leading-4 text-[#58635c] dark:text-[#aeb4af]">
+                  <span className="mt-0.5 block text-[11px] leading-4 text-white/55">
                     Adın ve bölüm bilgin gönderide görünmez.
                   </span>
                 </span>
@@ -1078,7 +1078,7 @@ export default function CreateCampusPost() {
                   name="anonymous"
                   checked={isAnonymous}
                   onChange={(event) => setIsAnonymous(event.target.checked)}
-                  className={`size-5 shrink-0 accent-[#5a1f32] dark:accent-[#c7896d] ${focusRing}`}
+                  className={`size-5 shrink-0 accent-[#ff7a45] ${focusRing}`}
                 />
               </label>
             )}
@@ -1093,10 +1093,10 @@ export default function CreateCampusPost() {
               aria-atomic="true"
               className={`min-h-5 text-xs font-semibold ${
                 statusTone === "error"
-                  ? "text-[#8a2e25] dark:text-[#e0a083]"
+                  ? "text-[#ffb199]"
                   : statusTone === "success"
-                    ? "text-[#416649] dark:text-[#9fc5a3]"
-                    : "text-[#58635c] dark:text-[#aeb4af]"
+                    ? "text-[#7fd9a3]"
+                    : "text-white/55"
               }`}
             >
               {statusMessage}
@@ -1105,7 +1105,7 @@ export default function CreateCampusPost() {
             <div className="flex shrink-0 gap-2">
               <Link
                 href="/akis"
-                className={`inline-flex min-h-11 items-center justify-center border border-[#1c2821]/14 px-4 text-xs font-bold text-[#1c2821]/68 transition-colors hover:bg-[#1c2821]/5 hover:text-[#1c2821] dark:border-white/12 dark:text-white/62 dark:hover:bg-white/6 dark:hover:text-white ${focusRing}`}
+                className={`inline-flex min-h-11 items-center justify-center border border-white/12 px-4 text-xs font-bold text-white/62 transition-colors hover:bg-white/6 hover:text-white ${focusRing}`}
               >
                 Vazgeç
               </Link>
@@ -1114,7 +1114,7 @@ export default function CreateCampusPost() {
                 disabled={
                   isSubmitting || isProcessingImage || !isHydrated
                 }
-                className={`inline-flex min-h-11 min-w-28 items-center justify-center bg-[#5a1f32] px-5 text-xs font-bold text-white transition-colors hover:bg-[#6b2940] disabled:cursor-not-allowed disabled:opacity-45 dark:bg-[#9a5944] dark:text-[#121417] dark:hover:bg-[#ad6b53] ${focusRing}`}
+                className={`inline-flex min-h-11 min-w-28 items-center justify-center bg-white px-5 text-xs font-bold text-[#12100e] transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
               >
                 {isSubmitting
                   ? isListing

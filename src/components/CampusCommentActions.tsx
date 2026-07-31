@@ -30,7 +30,7 @@ const reportReasons: { id: CampusReportReason; label: string }[] = [
 ];
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#5a1f32]/28 dark:focus-visible:ring-[#c7896d]/38";
+  "outline-none focus-visible:ring-3 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
 
 export default function CampusCommentActions({
   postId,
@@ -309,7 +309,7 @@ export default function CampusCommentActions({
         <button
           type="button"
           onClick={openReply}
-          className={`inline-flex min-h-10 cursor-pointer items-center px-2 text-[11px] font-black text-[#58635c] transition-colors hover:text-[#5a1f32] dark:text-[#aeb4af] dark:hover:text-[#d09272] ${focusRing}`}
+          className={`inline-flex min-h-10 cursor-pointer items-center px-2 text-[11px] font-black text-white/55 transition-colors hover:text-[#ff7a45] ${focusRing}`}
         >
           Yanıtla
         </button>
@@ -321,7 +321,7 @@ export default function CampusCommentActions({
             aria-label={`${comment.author} yorumunun seçeneklerini aç`}
             aria-expanded={isMenuOpen}
             onClick={openMenu}
-            className={`grid size-10 cursor-pointer place-items-center rounded-full text-[#58635c] transition-colors hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-[#aeb4af] dark:hover:bg-white/7 dark:hover:text-white ${focusRing}`}
+            className={`grid size-10 cursor-pointer place-items-center rounded-full text-white/55 transition-colors hover:bg-white/7 hover:text-white ${focusRing}`}
           >
             <MoreIcon />
           </button>
@@ -330,21 +330,21 @@ export default function CampusCommentActions({
             <div
               role="group"
               aria-label="Yorum seçenekleri"
-              className="absolute top-[calc(100%+0.2rem)] left-1/2 z-40 w-[min(14rem,calc(100vw-1.5rem))] -translate-x-1/2 border border-[#1c2821]/13 bg-[#fffaf4] p-1.5 shadow-[0_18px_55px_rgba(28,40,33,0.18)] dark:border-white/12 dark:bg-[#202226] dark:shadow-[0_18px_55px_rgba(0,0,0,0.42)] sm:left-0 sm:w-56 sm:translate-x-0"
+              className="absolute top-[calc(100%+0.2rem)] left-1/2 z-40 w-[min(14rem,calc(100vw-1.5rem))] -translate-x-1/2 border border-white/12 bg-[#17191c] p-1.5 shadow-[0_18px_55px_rgba(0,0,0,0.42)] sm:left-0 sm:w-56 sm:translate-x-0"
             >
               {isOwnComment ? (
                 <>
                   <button
                     type="button"
                     onClick={openEdit}
-                    className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black hover:bg-[#1c2821]/6 dark:hover:bg-white/7 ${focusRing}`}
+                    className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black hover:bg-white/7 ${focusRing}`}
                   >
                     Yorumu düzenle
                   </button>
                   <button
                     type="button"
                     onClick={handleDelete}
-                    className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black text-[#8b2f2a] hover:bg-[#8b2f2a]/7 dark:text-[#e18a7d] dark:hover:bg-[#d27368]/9 ${focusRing}`}
+                    className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black text-[#ffb199] hover:bg-[#ffb199]/9 ${focusRing}`}
                   >
                     Yorumu sil
                   </button>
@@ -358,7 +358,7 @@ export default function CampusCommentActions({
                       setIsMenuOpen(false);
                       setDialog("report");
                     }}
-                    className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black hover:bg-[#1c2821]/6 disabled:cursor-default disabled:opacity-45 dark:hover:bg-white/7 ${focusRing}`}
+                    className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black hover:bg-white/7 disabled:cursor-default disabled:opacity-45 ${focusRing}`}
                   >
                     {isReported
                       ? "Şikâyet gönderildi"
@@ -368,7 +368,7 @@ export default function CampusCommentActions({
                     <button
                       type="button"
                       onClick={handleBlock}
-                      className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black text-[#8b2f2a] hover:bg-[#8b2f2a]/7 dark:text-[#e18a7d] dark:hover:bg-[#d27368]/9 ${focusRing}`}
+                      className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black text-[#ffb199] hover:bg-[#ffb199]/9 ${focusRing}`}
                     >
                       Kullanıcıyı engelle
                     </button>
@@ -382,7 +382,7 @@ export default function CampusCommentActions({
 
       {dialog && (
         <div
-          className="fixed inset-0 z-[145] grid place-items-end overflow-y-auto bg-[#101512]/64 p-3 backdrop-blur-[3px] sm:place-items-center sm:p-6"
+          className="fixed inset-0 z-[145] grid place-items-end overflow-y-auto bg-black/64 p-3 backdrop-blur-[3px] sm:place-items-center sm:p-6"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
               setDialog(null);
@@ -394,11 +394,11 @@ export default function CampusCommentActions({
             role="dialog"
             aria-modal="true"
             aria-labelledby={`comment-action-title-${comment.id}`}
-            className="max-h-[calc(100svh-1.5rem)] w-full max-w-lg overflow-y-auto border border-[#1c2821]/14 bg-[#fbf8f1] p-4 text-[#1c2821] shadow-[0_28px_90px_rgba(15,18,16,0.34)] dark:border-white/13 dark:bg-[#202226] dark:text-[#ece8e1] sm:p-6"
+            className="max-h-[calc(100svh-1.5rem)] w-full max-w-lg overflow-y-auto border border-white/12 bg-[#17191c] p-4 text-white shadow-[0_28px_90px_rgba(0,0,0,0.5)] sm:p-6"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#8f3427] dark:text-[#d09272]">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
                   {dialog === "edit" ? "Yorumun" : "Moderasyon"}
                 </p>
                 <h2
@@ -416,7 +416,7 @@ export default function CampusCommentActions({
                 type="button"
                 aria-label="Pencereyi kapat"
                 onClick={() => setDialog(null)}
-                className={`grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-xl text-[#58635c] hover:bg-[#1c2821]/7 dark:text-[#aeb4af] dark:hover:bg-white/8 ${focusRing}`}
+                className={`grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-xl text-white/55 hover:bg-white/8 ${focusRing}`}
               >
                 <span aria-hidden="true">×</span>
               </button>
@@ -439,16 +439,16 @@ export default function CampusCommentActions({
                   }}
                   maxLength={500}
                   rows={5}
-                  className={`min-h-32 w-full resize-y border border-[#1c2821]/14 bg-white/40 px-3 py-2.5 text-sm leading-6 dark:border-white/12 dark:bg-white/[0.025] ${focusRing}`}
+                  className={`min-h-32 w-full resize-y border border-white/12 bg-white/[0.025] px-3 py-2.5 text-sm leading-6 ${focusRing}`}
                 />
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <p
                     role="status"
-                    className="text-xs font-semibold text-[#8b2f2a] dark:text-[#e18a7d]"
+                    className="text-xs font-semibold text-[#ffb199]"
                   >
                     {formMessage}
                   </p>
-                  <span className="font-mono text-[10px] text-[#58635c] dark:text-[#aeb4af]">
+                  <span className="font-mono text-[10px] text-white/55">
                     {editBody.length}/500
                   </span>
                 </div>
@@ -468,8 +468,8 @@ export default function CampusCommentActions({
                         key={reason.id}
                         className={`flex min-h-12 cursor-pointer items-center gap-3 border px-3 py-2.5 text-xs font-black ${
                           reportReason === reason.id
-                            ? "border-[#5a1f32]/45 bg-[#5a1f32]/6 dark:border-[#c7896d]/45 dark:bg-[#c7896d]/8"
-                            : "border-[#1c2821]/13 dark:border-white/11"
+                            ? "border-[#ff7a45]/45 bg-[#ff7a45]/8"
+                            : "border-white/11"
                         }`}
                       >
                         <input
@@ -477,7 +477,7 @@ export default function CampusCommentActions({
                           name={`comment-report-${comment.id}`}
                           checked={reportReason === reason.id}
                           onChange={() => setReportReason(reason.id)}
-                          className="size-4 accent-[#5a1f32] dark:accent-[#c7896d]"
+                          className="size-4 accent-[#ff7a45]"
                         />
                         {reason.label}
                       </label>
@@ -489,7 +489,7 @@ export default function CampusCommentActions({
                   className="mt-4 block text-xs font-black"
                 >
                   Ek açıklama{" "}
-                  <span className="font-medium text-[#58635c] dark:text-[#aeb4af]">
+                  <span className="font-medium text-white/55">
                     (isteğe bağlı)
                   </span>
                 </label>
@@ -499,7 +499,7 @@ export default function CampusCommentActions({
                   onChange={(event) => setReportDetail(event.target.value)}
                   maxLength={300}
                   rows={3}
-                  className={`mt-2 min-h-24 w-full resize-y border border-[#1c2821]/14 bg-white/40 px-3 py-2.5 text-sm leading-6 dark:border-white/12 dark:bg-white/[0.025] ${focusRing}`}
+                  className={`mt-2 min-h-24 w-full resize-y border border-white/12 bg-white/[0.025] px-3 py-2.5 text-sm leading-6 ${focusRing}`}
                 />
                 <DialogButtons
                   onCancel={() => setDialog(null)}
@@ -528,14 +528,14 @@ function DialogButtons({
       <button
         type="button"
         onClick={onCancel}
-        className={`min-h-11 cursor-pointer border border-[#1c2821]/14 px-4 text-xs font-black hover:bg-[#1c2821]/6 dark:border-white/12 dark:hover:bg-white/7 ${focusRing}`}
+        className={`min-h-11 cursor-pointer border border-white/12 px-4 text-xs font-black hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
       >
         Vazgeç
       </button>
       <button
         type="submit"
         disabled={submitDisabled}
-        className={`min-h-11 cursor-pointer bg-[#1c2821] px-4 text-xs font-black text-white hover:bg-[#5a1f32] disabled:cursor-not-allowed disabled:opacity-45 dark:bg-[#c7896d] dark:text-[#17191c] dark:hover:bg-[#d09272] ${focusRing}`}
+        className={`min-h-11 cursor-pointer bg-white px-4 text-xs font-black text-[#12100e] hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
       >
         {submitLabel}
       </button>

@@ -21,7 +21,7 @@ const commentTargetKinds = new Set<CampusNotificationKind>([
   "reply",
 ]);
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fbf8f1] dark:focus-visible:ring-[#c7896d]/30 dark:focus-visible:ring-offset-[#17191c]";
+  "outline-none focus-visible:ring-3 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
 
 const filterOptions: {
   id: NotificationFilter;
@@ -126,13 +126,13 @@ export default function CampusNotifications() {
     <section
       aria-labelledby="notifications-title"
       aria-busy={!isHydrated}
-      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#fbf8f1] text-[#1c2821] dark:bg-[#17191c] dark:text-[#ece8e1] md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
     >
-      <header className="sticky top-16 z-30 border-b border-[#1c2821]/12 bg-[#fbf8f1]/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#17191c]/95 md:top-0">
+      <header className="sticky top-16 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl md:top-0">
         <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-3 sm:gap-3 sm:px-6">
           <span aria-hidden="true" />
           <div className="min-w-0 justify-self-center text-center">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.13em] text-[#7d3c2d] dark:text-[#c7896d] sm:text-[11px]">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.13em] text-[#ff7a45] sm:text-[11px]">
               Güncellemeler
             </p>
             <h1
@@ -150,7 +150,7 @@ export default function CampusNotifications() {
             disabled={!isHydrated || unreadCount === 0}
             onClick={handleMarkAllAsRead}
             aria-label="Tüm bildirimleri okundu olarak işaretle"
-            className={`inline-flex min-h-11 min-w-11 items-center justify-center justify-self-end gap-1.5 px-1.5 text-[11px] font-black text-[#7d3c2d] transition-colors hover:bg-[#5a1f32]/6 disabled:cursor-not-allowed disabled:opacity-38 dark:text-[#d09272] dark:hover:bg-[#c7896d]/8 sm:px-3 sm:text-xs ${focusRing}`}
+            className={`inline-flex min-h-11 min-w-11 items-center justify-center justify-self-end gap-1.5 px-1.5 text-[11px] font-black text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/8 disabled:cursor-not-allowed disabled:opacity-38 sm:px-3 sm:text-xs ${focusRing}`}
           >
             <ReadAllIcon />
             <span className="hidden min-[460px]:inline">Tümünü oku</span>
@@ -160,7 +160,7 @@ export default function CampusNotifications() {
         <div
           role="group"
           aria-label="Bildirimleri filtrele"
-          className="grid grid-cols-3 border-t border-[#1c2821]/8 px-2 py-2 dark:border-white/7 sm:px-5"
+          className="grid grid-cols-3 border-t border-white/10 px-2 py-2 sm:px-5"
         >
           {filterOptions.map((filter) => {
             const isActive = activeFilter === filter.id;
@@ -174,8 +174,8 @@ export default function CampusNotifications() {
                 onClick={() => setActiveFilter(filter.id)}
                 className={`relative min-h-11 px-2 text-[11px] font-black transition-colors sm:text-xs ${focusRing} ${
                   isActive
-                    ? "bg-[#5a1f32]/9 text-[#5a1f32] dark:bg-[#c7896d]/12 dark:text-[#e0aa8d]"
-                    : "text-[#58635c] hover:bg-[#1c2821]/5 hover:text-[#1c2821] dark:text-[#aeb4af] dark:hover:bg-white/5 dark:hover:text-white"
+                    ? "bg-[#ff7a45]/12 text-[#ff7a45]"
+                    : "text-white/55 hover:bg-white/8 hover:text-white"
                 }`}
               >
                 {filter.label}
@@ -183,8 +183,8 @@ export default function CampusNotifications() {
                   aria-label={`${count} bildirim`}
                   className={`ml-1.5 inline-flex min-w-5 justify-center rounded-full px-1.5 py-0.5 font-mono text-[9px] ${
                     isActive
-                      ? "bg-[#5a1f32] text-white dark:bg-[#c7896d] dark:text-[#17191c]"
-                      : "bg-[#1c2821]/7 text-[#58635c] dark:bg-white/8 dark:text-[#aeb4af]"
+                      ? "bg-[#ff7a45] text-[#12100e]"
+                      : "bg-white/10 text-white/55"
                   }`}
                 >
                   {count}
@@ -248,16 +248,16 @@ function NotificationItem({
 
   return (
     <li
-      className={`relative border-b border-[#1c2821]/10 transition-colors last:border-b-0 dark:border-white/8 ${
+      className={`relative border-b border-white/10 transition-colors last:border-b-0 ${
         isRead
           ? "bg-transparent"
-          : "bg-[#d46a2f]/[0.055] dark:bg-[#d09272]/[0.065]"
+          : "bg-[#ff7a45]/[0.065]"
       }`}
     >
       {!isRead && (
         <span
           aria-hidden="true"
-          className="absolute inset-y-0 left-0 w-0.5 bg-[#c35f2a] dark:bg-[#d09272]"
+          className="absolute inset-y-0 left-0 w-0.5 bg-[#ff7a45]"
         />
       )}
 
@@ -277,20 +277,20 @@ function NotificationItem({
         >
           <p className="text-sm leading-5.5">
             <span className="font-black">{notification.actor.name}</span>{" "}
-            <span className="font-medium text-[#475149] dark:text-[#c2c7c3]">
+            <span className="font-medium text-white/70">
               {notification.action}
             </span>
           </p>
           <p
             className={`mt-1 line-clamp-2 text-sm leading-5.5 ${
               isRead
-                ? "text-[#58635c] dark:text-[#aeb4af]"
-                : "font-semibold text-[#1c2821]/82 dark:text-white/80"
+                ? "text-white/55"
+                : "font-semibold text-white/80"
             }`}
           >
             {notification.preview}
           </p>
-          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#7d3c2d]/76 dark:text-[#d09272]/82">
+          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#ff7a45]/80">
             {notification.postTitle && (
               <>
                 <span className="max-w-full truncate">
@@ -312,7 +312,7 @@ function NotificationItem({
                 type="button"
                 onClick={() => onMarkAsRead(notification.id)}
                 aria-label={`${notification.actor.name} bildirimini okundu olarak işaretle`}
-                className={`grid size-10 place-items-center rounded-full text-[#b45427] transition-colors hover:bg-[#d46a2f]/10 hover:text-[#7d3c2d] dark:text-[#d09272] dark:hover:bg-[#c7896d]/10 dark:hover:text-[#efb99d] ${focusRing}`}
+                className={`grid size-10 place-items-center rounded-full text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/10 hover:text-[#ffb18c] ${focusRing}`}
               >
                 <span
                   aria-hidden="true"
@@ -332,7 +332,7 @@ function NotificationsLoading() {
     <div
       role="status"
       aria-label="Bildirimler yükleniyor"
-      className="divide-y divide-[#1c2821]/8 dark:divide-white/7"
+      className="divide-y divide-white/10"
     >
       {Array.from({ length: 5 }, (_, index) => (
         <div
@@ -340,11 +340,11 @@ function NotificationsLoading() {
           aria-hidden="true"
           className="flex animate-pulse items-start gap-3 px-4 py-5 motion-reduce:animate-none sm:px-6"
         >
-          <span className="size-10 shrink-0 rounded-full bg-[#1c2821]/8 dark:bg-white/8" />
+          <span className="size-10 shrink-0 rounded-full bg-white/8" />
           <span className="min-w-0 flex-1 space-y-2 pt-0.5">
-            <span className="block h-3.5 w-3/4 rounded-full bg-[#1c2821]/8 dark:bg-white/8" />
-            <span className="block h-3.5 w-full rounded-full bg-[#1c2821]/6 dark:bg-white/6" />
-            <span className="block h-2.5 w-2/5 rounded-full bg-[#1c2821]/6 dark:bg-white/6" />
+            <span className="block h-3.5 w-3/4 rounded-full bg-white/8" />
+            <span className="block h-3.5 w-full rounded-full bg-white/6" />
+            <span className="block h-2.5 w-2/5 rounded-full bg-white/6" />
           </span>
         </div>
       ))}
@@ -382,14 +382,14 @@ function NotificationsEmptyState({
       <div className="max-w-sm">
         <span
           aria-hidden="true"
-          className="mx-auto grid size-12 place-items-center rounded-full border border-[#1c2821]/13 text-[#7d3c2d] dark:border-white/11 dark:text-[#d09272]"
+          className="mx-auto grid size-12 place-items-center rounded-full border border-white/12 text-[#ff7a45]"
         >
           <BellIcon />
         </span>
         <h2 className="mt-5 text-lg font-black tracking-[-0.03em]">
           {content.title}
         </h2>
-        <p className="mt-2 text-sm leading-6 text-[#58635c] dark:text-[#aeb4af]">
+        <p className="mt-2 text-sm leading-6 text-white/55">
           {content.description}
         </p>
       </div>
@@ -415,7 +415,7 @@ function NotificationKindIcon({
     <span
       role="img"
       aria-label={labelByKind[kind]}
-      className="grid size-8 place-items-center rounded-full bg-[#1c2821]/5 text-[#7d3c2d] dark:bg-white/6 dark:text-[#d09272]"
+      className="grid size-8 place-items-center rounded-full bg-white/8 text-[#ff7a45]"
     >
       {kind === "like" ? (
         <HeartIcon />

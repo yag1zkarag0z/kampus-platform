@@ -38,7 +38,7 @@ const feedViews: { id: FeedView; label: string }[] = [
 ];
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:focus-visible:ring-[#c7896d]/30";
+  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
 
 function normalizeSearchValue(value: string) {
   return value
@@ -198,14 +198,14 @@ export default function CampusFeed() {
   return (
     <section
       aria-labelledby="campus-feed-title"
-      className="mx-auto min-h-[calc(100svh-4rem)] w-full max-w-[900px] min-w-0 bg-[#fbf8f1] text-[#1c2821] dark:bg-[#17191c] dark:text-[#ece8e1] sm:border-x sm:border-[#1c2821]/10 dark:sm:border-white/9 md:min-h-svh"
+      className="mx-auto min-h-[calc(100svh-4rem)] w-full max-w-[900px] min-w-0 bg-[#0a0d16] text-white sm:border-x sm:border-white/12 md:min-h-svh"
     >
       <h1 id="campus-feed-title" className="sr-only">
         Kampüs akışı
       </h1>
 
-      <header className="sticky top-16 z-30 border-b border-[#1c2821]/14 bg-[#fbf8f1]/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#17191c]/95 md:top-0">
-        <div className="border-b border-[#1c2821]/10 px-3 py-3 dark:border-white/8 sm:px-4">
+      <header className="sticky top-16 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl md:top-0">
+        <div className="border-b border-white/10 px-3 py-3 sm:px-4">
           <label htmlFor="campus-feed-search" className="sr-only">
             Kampüs akışında ara
           </label>
@@ -217,14 +217,14 @@ export default function CampusFeed() {
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Kampüste ara"
               autoComplete="off"
-              className={`min-h-11 w-full rounded-full border border-[#1c2821]/13 bg-[#eee9e1]/72 px-4 pr-12 text-sm font-semibold text-[#1c2821] placeholder:text-[#667169] hover:border-[#5a1f32]/24 dark:border-white/11 dark:bg-white/5 dark:text-[#ece8e1] dark:placeholder:text-[#9ca39f] dark:hover:border-[#c7896d]/30 ${focusRing}`}
+              className={`min-h-11 w-full rounded-full border border-white/12 bg-white/5 px-4 pr-12 text-sm font-semibold text-white placeholder:text-white/45 hover:border-[#ff7a45]/35 ${focusRing}`}
             />
             {searchQuery && (
               <button
                 type="button"
                 aria-label="Aramayı temizle"
                 onClick={() => setSearchQuery("")}
-                className={`absolute top-1/2 right-1 grid size-9 -translate-y-1/2 cursor-pointer place-items-center rounded-full text-base font-medium text-[#58635c] transition-colors hover:bg-[#1c2821]/7 hover:text-[#1c2821] dark:text-[#aeb4af] dark:hover:bg-white/8 dark:hover:text-white ${focusRing}`}
+                className={`absolute top-1/2 right-1 grid size-9 -translate-y-1/2 cursor-pointer place-items-center rounded-full text-base font-medium text-white/55 transition-colors hover:bg-white/8 hover:text-white ${focusRing}`}
               >
                 <span aria-hidden="true">×</span>
               </button>
@@ -251,8 +251,8 @@ export default function CampusFeed() {
                   onClick={() => setActiveView(view.id)}
                   className={`relative min-h-14 min-w-0 px-1 text-[10px] font-black transition-colors min-[380px]:px-2 min-[380px]:text-[11px] sm:text-xs ${focusRing} ${
                     isActive
-                      ? "text-[#5a1f32] after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-[#9a5944] dark:text-[#d09272] dark:after:bg-[#c7896d] sm:after:inset-x-6"
-                      : "text-[#58635c] hover:bg-[#1c2821]/4 hover:text-[#1c2821] dark:text-[#aeb4af] dark:hover:bg-white/4 dark:hover:text-white"
+                      ? "text-[#ff7a45] after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-[#ff7a45] sm:after:inset-x-6"
+                      : "text-white/55 hover:bg-white/4 hover:text-white"
                   }`}
                 >
                   <span className="block truncate">{view.label}</span>
@@ -263,7 +263,7 @@ export default function CampusFeed() {
 
           <div
             ref={categoryMenuRef}
-            className="relative shrink-0 border-l border-[#1c2821]/10 dark:border-white/8"
+            className="relative shrink-0 border-l border-white/10"
           >
             <button
               type="button"
@@ -273,10 +273,10 @@ export default function CampusFeed() {
               onClick={() =>
                 setIsCategoryMenuOpen((currentValue) => !currentValue)
               }
-              className={`inline-flex min-h-14 min-w-12 items-center justify-center gap-1.5 px-2 text-xs font-black transition-colors hover:bg-[#1c2821]/4 dark:hover:bg-white/4 min-[460px]:min-w-28 min-[460px]:px-3 ${focusRing} ${
+              className={`inline-flex min-h-14 min-w-12 items-center justify-center gap-1.5 px-2 text-xs font-black transition-colors hover:bg-white/4 min-[460px]:min-w-28 min-[460px]:px-3 ${focusRing} ${
                 activeCategory !== "Tümü"
-                  ? "bg-[#ddd2c7] text-[#5a1f32] dark:bg-[#2c3034] dark:text-[#d09272]"
-                  : "text-[#58635c] dark:text-[#aeb4af]"
+                  ? "bg-[#ff7a45]/12 text-[#ff7a45]"
+                  : "text-white/55"
               }`}
             >
               <span aria-hidden="true" className="text-base leading-none">
@@ -302,9 +302,9 @@ export default function CampusFeed() {
                 id="campus-feed-category-menu"
                 role="group"
                 aria-label="Gönderi kategorileri"
-                className="absolute top-[calc(100%+1px)] right-0 z-50 w-60 border border-[#1c2821]/14 bg-[#fffaf4] p-2 shadow-[0_20px_50px_rgba(28,40,33,0.16)] dark:border-white/12 dark:bg-[#202226] dark:shadow-[0_20px_50px_rgba(0,0,0,0.42)]"
+                className="absolute top-[calc(100%+1px)] right-0 z-50 w-60 border border-white/12 bg-[#141720] p-2 shadow-[0_20px_50px_rgba(0,0,0,0.42)]"
               >
-                <p className="px-2 pt-1 pb-2 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-[#58635c] dark:text-[#aeb4af]">
+                <p className="px-2 pt-1 pb-2 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-white/55">
                   Kategori seç
                 </p>
                 <div className="grid grid-cols-2 gap-1">
@@ -322,8 +322,8 @@ export default function CampusFeed() {
                         }}
                         className={`inline-flex min-h-11 items-center px-2.5 text-left text-[11px] font-bold transition-colors ${focusRing} ${
                           isActive
-                            ? "bg-[#ddd2c7] text-[#5a1f32] dark:bg-[#2c3034] dark:text-[#d09272]"
-                            : "text-[#58635c] hover:bg-[#eee7df] hover:text-[#1c2821] dark:text-[#aeb4af] dark:hover:bg-white/6 dark:hover:text-white"
+                            ? "bg-[#ff7a45]/12 text-[#ff7a45]"
+                            : "text-white/55 hover:bg-white/6 hover:text-white"
                         }`}
                       >
                         {category}
@@ -338,18 +338,18 @@ export default function CampusFeed() {
       </header>
 
       {isGuest ? (
-        <section className="flex items-center justify-between gap-4 border-b border-[#1c2821]/14 bg-[#eee9e1]/55 px-4 py-4 dark:border-white/10 dark:bg-white/[0.025] sm:px-5">
+        <section className="flex items-center justify-between gap-4 border-b border-white/12 bg-white/[0.025] px-4 py-4 sm:px-5">
           <div className="min-w-0">
-            <p className="font-mono text-[10px] font-black uppercase tracking-[0.13em] text-[#d46a2f]">
+            <p className="font-mono text-[10px] font-black uppercase tracking-[0.13em] text-[#ff7a45]">
               Misafir görünümü
             </p>
-            <p className="mt-1 text-xs font-semibold leading-5 text-[#1c2821]/64 dark:text-white/60">
+            <p className="mt-1 text-xs font-semibold leading-5 text-white/62">
               Misafir akışındaki 20 gönderiyi görüntülüyorsun.
             </p>
           </div>
           <Link
             href="/giris"
-            className={`inline-flex min-h-11 shrink-0 items-center bg-[#1c2821] px-4 text-xs font-black text-white hover:bg-[#5a1f32] dark:bg-[#c7896d] dark:text-[#17191c] dark:hover:bg-[#d09272] ${focusRing}`}
+            className={`inline-flex min-h-11 shrink-0 items-center bg-white px-4 text-xs font-black text-[#12100e] hover:bg-white/90 ${focusRing}`}
           >
             Giriş yap
           </Link>
@@ -359,7 +359,7 @@ export default function CampusFeed() {
           onSubmit={submitQuickPost}
           aria-labelledby="campus-composer-title"
           aria-busy={isQuickPostSubmitting}
-          className="relative border-b border-[#1c2821]/14 px-4 py-4 dark:border-white/10 sm:px-5 sm:py-5"
+          className="relative border-b border-white/12 px-4 py-4 sm:px-5 sm:py-5"
         >
         <div className="flex items-center gap-3">
           <CampusAuthorAvatar
@@ -379,7 +379,7 @@ export default function CampusFeed() {
             maxLength={500}
             placeholder="Kampüste ne oluyor?"
             aria-label="Gönderi metni"
-            className={`max-h-36 min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2.5 text-[15px] font-semibold leading-6 text-[#1c2821] placeholder:text-[#667169] dark:text-[#ece8e1] dark:placeholder:text-[#9ca39f] sm:text-base ${focusRing}`}
+            className={`max-h-36 min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2.5 text-[15px] font-semibold leading-6 text-white placeholder:text-white/45 sm:text-base ${focusRing}`}
           />
         </div>
 
@@ -410,7 +410,7 @@ export default function CampusFeed() {
               !isHydrated ||
               isQuickPostSubmitting
             }
-            className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center bg-[#5a1f32] px-4 text-xs font-black text-white transition-colors hover:bg-[#6b2940] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-[#9a5944] dark:text-[#121417] dark:hover:bg-[#ad6b53] sm:px-5 ${focusRing}`}
+            className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center bg-white px-4 text-xs font-black text-[#12100e] transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40 sm:px-5 ${focusRing}`}
           >
             {isQuickPostSubmitting ? "Paylaşılıyor" : "Paylaş"}
           </button>
@@ -419,7 +419,7 @@ export default function CampusFeed() {
         <p
           role="status"
           aria-live="polite"
-          className="min-h-4 pt-1 pl-11 text-[11px] font-bold text-[#7d3c2d] dark:text-[#d09272] sm:pl-[3.25rem]"
+          className="min-h-4 pt-1 pl-11 text-[11px] font-bold text-[#ffb18c] sm:pl-[3.25rem]"
         >
           {quickPostMessage}
         </p>
@@ -427,9 +427,9 @@ export default function CampusFeed() {
         {isQuickPostSubmitting && (
           <span
             aria-hidden="true"
-            className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden bg-[#c7896d]/20"
+            className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden bg-[#ff7a45]/20"
           >
-            <span className="block h-full w-full animate-pulse bg-[#d46a2f] motion-reduce:animate-none" />
+            <span className="block h-full w-full animate-pulse bg-[#ff7a45] motion-reduce:animate-none" />
           </span>
         )}
         </form>
@@ -442,7 +442,7 @@ export default function CampusFeed() {
               <li key={post.id}>
               <CampusPostCardSurface
                 postId={post.id}
-                className="border-b border-[#1c2821]/14 px-4 py-5 dark:border-white/10 sm:bg-white/20 sm:px-5 sm:py-5 dark:sm:bg-white/[0.015]"
+                className="border-b border-white/12 px-4 py-5 sm:bg-white/[0.015] sm:px-5 sm:py-5"
               >
                 <header className="flex items-start justify-between gap-4">
                   <div className="flex min-w-0 items-start gap-3">
@@ -462,12 +462,12 @@ export default function CampusFeed() {
                     </CampusAuthorProfileLink>
                     <div className="min-w-0 pt-0.5">
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#8f3427] dark:text-[#d09272]">
+                        <span className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#ff7a45]">
                           {post.category}
                         </span>
                         <span
                           aria-hidden="true"
-                          className="size-1 rotate-45 bg-[#9a5944]/55 dark:bg-[#c7896d]/60"
+                          className="size-1 rotate-45 bg-[#ff7a45]/55"
                         />
                         <CampusAuthorProfileLink
                           author={post.author}
@@ -475,7 +475,7 @@ export default function CampusFeed() {
                           isAnonymous={post.isAnonymous}
                           ariaLabel={`${post.author} profilini aç`}
                           className="min-w-0"
-                          linkClassName={`truncate text-xs font-black transition-colors hover:text-[#5a1f32] dark:hover:text-[#d09272] ${focusRing}`}
+                          linkClassName={`truncate text-xs font-black transition-colors hover:text-[#ff7a45] ${focusRing}`}
                         >
                           <span className="truncate text-xs font-black">
                             {post.author}
@@ -484,14 +484,14 @@ export default function CampusFeed() {
                       </div>
                       {!isAnonymousCampusAuthor(post) &&
                         post.detail && (
-                          <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-[#58635c] dark:text-[#aeb4af]">
+                          <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-white/55">
                             {post.detail}
                           </p>
                         )}
                     </div>
                   </div>
                   <div className="-mr-2 flex shrink-0 items-center gap-0.5">
-                    <time className="text-[11px] font-semibold text-[#58635c] dark:text-[#aeb4af]">
+                    <time className="text-[11px] font-semibold text-white/55">
                       {post.time}
                       {post.edited && !post.isDeleted ? " · düzenlendi" : ""}
                     </time>
@@ -500,18 +500,18 @@ export default function CampusFeed() {
                 </header>
 
                 {post.isDeleted ? (
-                  <div className="mt-4 border border-dashed border-[#1c2821]/16 bg-[#eee9e1]/55 px-4 py-4 dark:border-white/12 dark:bg-white/[0.025]">
+                  <div className="mt-4 border border-dashed border-white/12 bg-white/[0.025] px-4 py-4">
                     <p className="text-sm font-black">
                       Bu gönderi kaldırıldı.
                     </p>
-                    <p className="mt-1 text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]">
+                    <p className="mt-1 text-xs leading-5 text-white/55">
                       Konuşma bağlamı korundu; varsa yorumları hâlâ
                       görüntüleyebilirsin.
                     </p>
                     {getCampusPostCommentCount(post) > 0 && (
                       <Link
                         href={`/gonderi/${post.id}#yorumlar`}
-                        className={`mt-2 inline-flex min-h-11 items-center text-xs font-black text-[#7d3c2d] dark:text-[#d09272] ${focusRing}`}
+                        className={`mt-2 inline-flex min-h-11 items-center text-xs font-black text-[#ff7a45] ${focusRing}`}
                       >
                         {getCampusPostCommentCount(post)} yorumu görüntüle
                       </Link>
@@ -524,7 +524,7 @@ export default function CampusFeed() {
                         <Link
                           href={`/gonderi/${post.id}`}
                           aria-label={`${post.title} konusunu aç`}
-                          className={`decoration-[#9a5944]/30 underline-offset-4 transition-colors hover:text-[#7d3c2d] hover:underline dark:hover:text-[#d09272] ${focusRing}`}
+                          className={`decoration-[#ff7a45]/40 underline-offset-4 transition-colors hover:text-[#ff7a45] hover:underline ${focusRing}`}
                         >
                           {post.title}
                         </Link>
@@ -536,7 +536,7 @@ export default function CampusFeed() {
                     )}
 
                     {post.body && (
-                      <p className="mt-2 max-w-[78ch] whitespace-pre-wrap break-words text-[14px] leading-6 tracking-[-0.01em] text-[#1c2821]/82 [overflow-wrap:anywhere] dark:text-white/80 sm:text-[15px] sm:leading-7">
+                      <p className="mt-2 max-w-[78ch] whitespace-pre-wrap break-words text-[14px] leading-6 tracking-[-0.01em] text-white/68 [overflow-wrap:anywhere] sm:text-[15px] sm:leading-7">
                         {post.body}
                       </p>
                     )}
@@ -547,14 +547,14 @@ export default function CampusFeed() {
                     )}
 
                     {isGuest ? (
-                  <footer className="mt-4 flex min-h-11 items-center justify-between gap-3 text-xs font-bold text-[#58635c] dark:text-[#aeb4af] sm:mt-5">
+                  <footer className="mt-4 flex min-h-11 items-center justify-between gap-3 text-xs font-bold text-white/55 sm:mt-5">
                     <span className="inline-flex items-center gap-2">
                       <HeartIcon filled={false} />
                       {post.likes} beğeni
                     </span>
                     <Link
                       href={`/gonderi/${post.id}`}
-                      className={`inline-flex min-h-11 items-center px-2 text-[#7d3c2d] dark:text-[#d09272] ${focusRing}`}
+                      className={`inline-flex min-h-11 items-center px-2 text-[#ff7a45] ${focusRing}`}
                     >
                       Görüntüle
                     </Link>
@@ -573,8 +573,8 @@ export default function CampusFeed() {
                       onClick={() => toggleLike(post.id)}
                       className={`inline-flex min-h-11 items-center gap-2 px-2 text-xs font-bold transition-colors ${focusRing} ${
                         post.liked
-                          ? "bg-[#8f3427]/10 text-[#8f3427] dark:bg-[#d09272]/12 dark:text-[#d09272]"
-                          : "text-[#58635c] hover:bg-[#1c2821]/4 hover:text-[#8f3427] dark:text-[#aeb4af] dark:hover:bg-white/4 dark:hover:text-[#d09272]"
+                          ? "bg-[#ff7a45]/10 text-[#ff7a45]"
+                          : "text-white/55 hover:bg-white/4 hover:text-[#ff7a45]"
                       }`}
                     >
                       <HeartIcon filled={post.liked} />
@@ -587,7 +587,7 @@ export default function CampusFeed() {
                     <Link
                       href={`/gonderi/${post.id}#yorumlar`}
                       aria-label={`${post.title || "Gönderi"} konusunun ${getCampusPostCommentCount(post)} yorumunu aç`}
-                      className={`inline-flex min-h-11 items-center gap-2 px-2 text-xs font-bold text-[#58635c] transition-colors hover:text-[#5a1f32] dark:text-[#aeb4af] dark:hover:text-[#d09272] ${focusRing}`}
+                      className={`inline-flex min-h-11 items-center gap-2 px-2 text-xs font-bold text-white/55 transition-colors hover:text-[#ff7a45] ${focusRing}`}
                     >
                       <CommentIcon />
                       <span>{getCampusPostCommentCount(post)}</span>
@@ -606,8 +606,8 @@ export default function CampusFeed() {
                     onClick={() => toggleBookmark(post.id)}
                     className={`grid size-11 shrink-0 place-items-center transition-colors ${focusRing} ${
                       post.bookmarked
-                        ? "text-[#5a1f32] dark:text-[#d09272]"
-                        : "text-[#58635c] hover:text-[#5a1f32] dark:text-[#aeb4af] dark:hover:text-[#d09272]"
+                        ? "text-[#ff7a45]"
+                        : "text-white/55 hover:text-[#ff7a45]"
                     }`}
                   >
                     <BookmarkIcon filled={post.bookmarked} />
@@ -622,14 +622,14 @@ export default function CampusFeed() {
           </ol>
 
           {!isGuest && hasMore && (
-            <div className="border-b border-[#1c2821]/14 px-4 py-5 text-center dark:border-white/10 sm:px-5">
+            <div className="border-b border-white/12 px-4 py-5 text-center sm:px-5">
               <button
                 type="button"
                 aria-label="Daha fazla gönderi yükle"
                 aria-busy={isLoadingMore}
                 disabled={isLoadingMore}
                 onClick={() => void loadMorePosts()}
-                className={`inline-flex min-h-11 items-center justify-center border border-[#1c2821]/16 bg-[#eee9e1]/70 px-5 text-xs font-black text-[#1c2821] transition-colors hover:bg-[#ddd2c7] disabled:cursor-wait disabled:opacity-60 dark:border-white/12 dark:bg-white/[0.035] dark:text-[#ece8e1] dark:hover:bg-white/[0.07] ${focusRing}`}
+                className={`inline-flex min-h-11 items-center justify-center border border-white/12 bg-white/[0.035] px-5 text-xs font-black text-white transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 disabled:cursor-wait disabled:opacity-60 ${focusRing}`}
               >
                 {isLoadingMore
                   ? "Gönderiler yükleniyor…"
@@ -639,7 +639,7 @@ export default function CampusFeed() {
           )}
         </>
       ) : (
-        <div className="border-b border-[#1c2821]/14 px-4 py-14 text-center dark:border-white/10 sm:m-3 sm:border">
+        <div className="border-b border-white/12 px-4 py-14 text-center sm:m-3 sm:border">
           <p className="text-sm font-black">
             {searchQuery
               ? "Aramanla eşleşen bir konu bulunamadı."
@@ -654,7 +654,7 @@ export default function CampusFeed() {
               setActiveCategory("Tümü");
               setSearchQuery("");
             }}
-            className={`mt-3 inline-flex min-h-11 items-center text-xs font-bold text-[#8f3427] underline decoration-[#9a5944]/35 underline-offset-4 dark:text-[#d09272] ${focusRing}`}
+            className={`mt-3 inline-flex min-h-11 items-center text-xs font-bold text-[#ff7a45] underline decoration-[#ff7a45]/40 underline-offset-4 ${focusRing}`}
           >
             Ana akışa dön
           </button>
@@ -678,7 +678,7 @@ function ComposerAction({
       href="/konu-olustur"
       aria-label={label}
       title={label}
-      className={`size-11 shrink-0 place-items-center text-base font-black text-[#7d3c2d] transition-colors hover:bg-[#5a1f32]/6 hover:text-[#5a1f32] dark:text-[#d09272] dark:hover:bg-[#c7896d]/8 dark:hover:text-[#e0aa8d] ${focusRing} ${className || "grid"}`}
+      className={`size-11 shrink-0 place-items-center text-base font-black text-[#ff7a45]/80 transition-colors hover:bg-[#ff7a45]/8 hover:text-[#ff7a45] ${focusRing} ${className || "grid"}`}
     >
       <span aria-hidden="true">{symbol}</span>
     </Link>

@@ -8,7 +8,6 @@ import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusLogo from "@/components/CampusLogo";
 import { useCampusNotificationStore } from "@/components/CampusNotificationStore";
 import { useFeedback } from "@/components/FeedbackProvider";
-import ThemeToggle from "@/components/ThemeToggle";
 
 type NavigationIconName =
   | "feed"
@@ -152,7 +151,7 @@ function NotificationBadge({ count }: { count: number }) {
   return (
     <span
       aria-hidden="true"
-      className="absolute -right-2 -top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#a63f32] px-1 font-mono text-[8px] font-black leading-none text-white ring-2 ring-[#f8f4ed] dark:bg-[#e18a70] dark:text-[#121417] dark:ring-[#141619]"
+      className="absolute -right-2 -top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#ff7a45] px-1 font-mono text-[8px] font-black leading-none text-[#12100e] ring-2 ring-[#0a0d16]"
     >
       {count > 9 ? "9+" : count}
     </span>
@@ -241,11 +240,11 @@ export default function AppNavigation() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 flex min-h-16 items-center justify-between gap-3 border-b border-[#1c2821]/12 bg-[#fbf8f1]/95 px-3 py-2 text-[#1c2821] shadow-[0_10px_32px_rgba(28,40,33,0.05)] backdrop-blur-xl dark:border-white/10 dark:bg-[#121417]/95 dark:text-[#ece8e1] dark:shadow-[0_10px_32px_rgba(0,0,0,0.2)] md:hidden">
+      <header className="sticky top-0 z-40 flex min-h-16 items-center justify-between gap-3 border-b border-white/10 bg-[#0a0d16]/95 px-3 py-2 text-white shadow-[0_10px_32px_rgba(0,0,0,0.2)] backdrop-blur-xl md:hidden">
         <Link
           href="/akis"
           aria-label="KAMPÜS akışına git"
-          className="inline-flex min-h-11 items-center rounded-lg px-1 outline-none transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:focus-visible:ring-[#c7896d]/40"
+          className="inline-flex min-h-11 items-center rounded-lg px-1 outline-none transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40"
         >
           <CampusLogo
             idPrefix="mobile-app-navigation-logo"
@@ -261,10 +260,10 @@ export default function AppNavigation() {
               aria-current={
                 isActivePath(pathname, "/admin") ? "page" : undefined
               }
-              className={`grid size-11 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:focus-visible:ring-[#c7896d]/40 ${
+              className={`grid size-11 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 ${
                 isActivePath(pathname, "/admin")
-                  ? "bg-[#5a2538]/10 text-[#5a2538] dark:bg-[#c7896d]/12 dark:text-[#d09272]"
-                  : "text-[#58635c] hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-[#aeb4af] dark:hover:bg-white/8 dark:hover:text-[#ece8e1]"
+                  ? "bg-[#ff7a45]/12 text-[#ff7a45]"
+                  : "text-white/55 hover:bg-white/8 hover:text-white"
               }`}
             >
               <NavigationIcon name="admin" className="size-[1.15rem]" />
@@ -278,10 +277,10 @@ export default function AppNavigation() {
                 ? "page"
                 : undefined
             }
-            className={`grid size-11 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:focus-visible:ring-[#c7896d]/40 ${
+            className={`grid size-11 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 ${
               isActivePath(pathname, "/kaydedilenler")
-                ? "bg-[#5a2538]/10 text-[#5a2538] dark:bg-[#c7896d]/12 dark:text-[#d09272]"
-                : "text-[#1c2821]/62 hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-white/58 dark:hover:bg-white/8 dark:hover:text-[#ece8e1]"
+                ? "bg-[#ff7a45]/12 text-[#ff7a45]"
+                : "text-white/58 hover:bg-white/8 hover:text-white"
             }`}
           >
             <NavigationIcon name="saved" className="size-[1.15rem]" />
@@ -290,16 +289,15 @@ export default function AppNavigation() {
             <button
               type="button"
               onClick={handleSignOut}
-              className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full px-3 text-xs font-black text-[#7f302b] outline-none transition-colors hover:bg-[#8b2f2a]/7 focus-visible:ring-3 focus-visible:ring-[#8b2f2a]/25 dark:text-[#e18a7d] dark:hover:bg-[#d27368]/9 dark:focus-visible:ring-[#d27368]/35"
+              className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full px-3 text-xs font-black text-[#ffb199] outline-none transition-colors hover:bg-[#ffb199]/9 focus-visible:ring-3 focus-visible:ring-[#ffb199]/35"
             >
               Çıkış
             </button>
           )}
-          <ThemeToggle />
         </div>
       </header>
 
-      <div className="relative z-40 hidden min-w-0 text-[#1c2821] md:col-start-1 md:row-start-1 md:flex md:justify-end dark:text-[#ece8e1]">
+      <div className="relative z-40 hidden min-w-0 text-white md:col-start-1 md:row-start-1 md:flex md:justify-end">
         <div className="sticky top-0 flex h-svh min-h-0 w-full max-w-[15rem] flex-col items-center px-2 py-2 xl:items-stretch xl:px-3">
           <button
             type="button"
@@ -313,7 +311,7 @@ export default function AppNavigation() {
             onClick={() =>
               setIsDesktopNavigationOpen((current) => !current)
             }
-            className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full outline-none transition-colors hover:bg-[#1c2821]/7 focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:hover:bg-white/8 dark:focus-visible:ring-[#c7896d]/40 xl:self-start"
+            className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full outline-none transition-colors hover:bg-white/8 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 xl:self-start"
           >
             <span aria-hidden="true" className="relative block size-5">
               <span
@@ -353,7 +351,7 @@ export default function AppNavigation() {
               <Link
                 href="/akis"
                 aria-label="KAMPÜS akışına git"
-                className="mb-2 flex min-h-12 items-center justify-center rounded-xl outline-none transition-colors hover:bg-[#1c2821]/6 focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:hover:bg-white/7 dark:focus-visible:ring-[#c7896d]/40 xl:justify-start xl:px-3"
+                className="mb-2 flex min-h-12 items-center justify-center rounded-xl outline-none transition-colors hover:bg-white/7 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 xl:justify-start xl:px-3"
               >
                 <CampusLogo
                   variant="mark"
@@ -397,10 +395,10 @@ export default function AppNavigation() {
                               : undefined
                           }
                           title={item.label}
-                          className={`group relative flex min-h-[4.1rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-center text-[10px] font-black leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:focus-visible:ring-[#c7896d]/40 xl:min-h-12 xl:flex-row xl:justify-start xl:gap-3 xl:px-3 xl:text-left xl:text-sm ${
+                          className={`group relative flex min-h-[4.1rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-center text-[10px] font-black leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 xl:min-h-12 xl:flex-row xl:justify-start xl:gap-3 xl:px-3 xl:text-left xl:text-sm ${
                             isActive
-                              ? "bg-[#5a2538]/11 text-[#5a2538] dark:bg-[#c7896d]/13 dark:text-[#d09272]"
-                              : "text-[#1c2821]/66 hover:bg-[#1c2821]/7 hover:text-[#1c2821] dark:text-white/62 dark:hover:bg-white/8 dark:hover:text-[#ece8e1]"
+                              ? "bg-[#ff7a45]/13 text-[#ff7a45]"
+                              : "text-white/62 hover:bg-white/8 hover:text-white"
                           }`}
                         >
                           <span className="relative grid size-[1.35rem] shrink-0 place-items-center">
@@ -438,21 +436,18 @@ export default function AppNavigation() {
                     : undefined
                 }
                 title="Konu aç"
-                className="mt-2 inline-flex min-h-[4.1rem] w-full flex-col items-center justify-center gap-1.5 rounded-xl bg-[#1c2821] px-1 text-[10px] font-black leading-none text-[#fbf8f1] shadow-[0_8px_20px_rgba(28,40,33,0.14)] outline-none transition-colors hover:bg-[#5a2538] focus-visible:ring-3 focus-visible:ring-[#5a2538]/30 dark:bg-[#c7896d] dark:text-[#121417] dark:shadow-none dark:hover:bg-[#d09272] dark:focus-visible:ring-[#c7896d]/45 xl:min-h-12 xl:flex-row xl:justify-start xl:gap-3 xl:px-3 xl:text-sm"
+                className="mt-2 inline-flex min-h-[4.1rem] w-full flex-col items-center justify-center gap-1.5 rounded-xl bg-white px-1 text-[10px] font-black leading-none text-[#12100e] shadow-none outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/45 xl:min-h-12 xl:flex-row xl:justify-start xl:gap-3 xl:px-3 xl:text-sm"
               >
                 <ShareIcon className="size-[1.35rem] shrink-0" />
                 <span>Konu aç</span>
               </Link>
 
-              <div className="mt-auto grid gap-1 border-t border-[#1c2821]/10 pt-3 dark:border-white/10">
-                <div className="flex justify-center">
-                  <ThemeToggle />
-                </div>
+              <div className="mt-auto grid gap-1 border-t border-white/10 pt-3">
                 <button
                   type="button"
                   onClick={handleSignOut}
                   title="Çıkış yap"
-                  className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-xl px-1 text-[10px] font-black text-[#7f302b] outline-none transition-colors hover:bg-[#8b2f2a]/7 focus-visible:ring-3 focus-visible:ring-[#8b2f2a]/25 dark:text-[#e18a7d] dark:hover:bg-[#d27368]/9 dark:focus-visible:ring-[#d27368]/35"
+                  className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-xl px-1 text-[10px] font-black text-[#ffb199] outline-none transition-colors hover:bg-[#ffb199]/9 focus-visible:ring-3 focus-visible:ring-[#ffb199]/35"
                 >
                   Çıkış
                 </button>
@@ -464,7 +459,7 @@ export default function AppNavigation() {
 
       <nav
         aria-label="Mobil uygulama menüsü"
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-[#1c2821]/12 bg-[#fbf8f1]/96 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-[#1c2821] shadow-[0_-12px_34px_rgba(28,40,33,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-[#121417]/96 dark:text-[#ece8e1] dark:shadow-[0_-12px_34px_rgba(0,0,0,0.24)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0a0d16]/96 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-white shadow-[0_-12px_34px_rgba(0,0,0,0.24)] backdrop-blur-xl md:hidden"
       >
         <ul
           className="mx-auto grid max-w-lg grid-cols-5 gap-1"
@@ -491,18 +486,18 @@ export default function AppNavigation() {
                         ? `${item.label}, ${unreadCount} okunmamış bildirim`
                         : undefined
                   }
-                  className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-bold leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#5a2538]/25 dark:focus-visible:ring-[#c7896d]/40 ${
+                  className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-bold leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 ${
                     item.primary
-                      ? "text-[#5a2538] dark:text-[#d09272]"
+                      ? "text-[#ff7a45]"
                       : isActive
-                        ? "bg-[#5a2538]/10 text-[#5a2538] dark:bg-[#c7896d]/12 dark:text-[#d09272]"
-                        : "text-[#1c2821]/60 hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-white/58 dark:hover:bg-white/8 dark:hover:text-[#ece8e1]"
+                        ? "bg-[#ff7a45]/12 text-[#ff7a45]"
+                        : "text-white/58 hover:bg-white/8 hover:text-white"
                   }`}
                 >
                   <span
                     className={
                       item.primary
-                        ? "relative grid size-8 -translate-y-1 place-items-center rounded-full bg-[#5a2538] text-[#fbf8f1] shadow-[0_7px_18px_rgba(90,37,56,0.24)] dark:bg-[#c7896d] dark:text-[#121417] dark:shadow-none"
+                        ? "relative grid size-8 -translate-y-1 place-items-center rounded-full bg-[#ff7a45] text-[#12100e] shadow-none"
                         : "relative grid size-8 place-items-center"
                     }
                   >

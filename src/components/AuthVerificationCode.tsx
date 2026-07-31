@@ -288,8 +288,8 @@ export function VerificationCodePanel({
       <div
         className={`rounded-xl border px-3 py-2.5 ${
           isExpired || isLocked
-            ? "border-[#9a3f32]/22 bg-[#9a3f32]/7 text-[#7a2924] dark:border-[#e0a083]/24 dark:bg-[#e0a083]/8 dark:text-[#edb29a]"
-            : "border-[#1c2821]/10 bg-white/32 text-[#58635c] dark:border-white/9 dark:bg-white/4 dark:text-[#aeb4af]"
+            ? "border-[#ffb18c]/24 bg-[#ffb18c]/8 text-[#ffb18c]"
+            : "border-white/10 bg-white/4 text-white/55"
         }`}
       >
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
@@ -301,8 +301,8 @@ export function VerificationCodePanel({
               aria-hidden="true"
               className={`size-1.5 rounded-full ${
                 isExpired || isLocked
-                  ? "bg-[#9a3f32] dark:bg-[#e0a083]"
-                  : "bg-[#49725e] dark:bg-[#83af97]"
+                  ? "bg-[#ffb18c]"
+                  : "bg-[#7fd9a3]"
               }`}
             />
             {statusText}
@@ -320,7 +320,7 @@ export function VerificationCodePanel({
         onClick={onResend}
         disabled={!canResend || isResending}
         aria-controls={inputId}
-        className="min-h-11 w-full rounded-xl border border-[#1c2821]/13 px-4 text-xs font-black text-[#1c2821] outline-none transition-colors hover:border-[#7d3c2d]/30 hover:bg-[#7d3c2d]/6 focus-visible:ring-3 focus-visible:ring-[#7d3c2d]/20 disabled:cursor-not-allowed disabled:opacity-48 dark:border-white/12 dark:text-[#ece8e1] dark:hover:border-[#c7896d]/35 dark:hover:bg-[#c7896d]/8 dark:focus-visible:ring-[#c7896d]/24"
+        className="min-h-11 w-full rounded-xl border border-white/12 px-4 text-xs font-black text-white outline-none transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 disabled:cursor-not-allowed disabled:opacity-48"
       >
         {resendLabel}
       </button>

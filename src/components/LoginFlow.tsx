@@ -370,7 +370,7 @@ export default function LoginFlow() {
             }}
             disabled={isOpeningGuestView}
             aria-busy={isOpeningGuestView}
-            className="mt-3 min-h-11 w-full border border-white/12 px-4 text-xs font-black text-white transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8"
+            className="mt-3 min-h-11 w-full rounded-xl border border-white/12 px-4 text-xs font-black text-white transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8"
           >
             {isOpeningGuestView
               ? "Misafir görünümü açılıyor…"

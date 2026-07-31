@@ -13,12 +13,12 @@ export default function CampusLoadingScreen({
       aria-live="polite"
       aria-busy="true"
       aria-label={statusText}
-      className="campus-loading-screen fixed inset-0 z-[200] grid min-h-svh place-items-center overflow-hidden px-5 text-[#1c2821] dark:text-[#ece8e1]"
+      className="campus-loading-screen fixed inset-0 z-[200] grid min-h-svh place-items-center overflow-hidden px-5 text-white"
     >
       <span className="sr-only">{statusText}</span>
 
       <div aria-hidden="true" className="relative flex flex-col items-center">
-        <div className="campus-loading-logo text-[#5a2538] dark:text-[#c7896d]">
+        <div className="campus-loading-logo text-[#ff7a45]">
           <CampusLogo
             variant="mark"
             idPrefix="session-loading-logo"
@@ -28,11 +28,11 @@ export default function CampusLoadingScreen({
 
         <p className="campus-loading-wordmark mt-3 text-2xl font-black tracking-[-0.06em] sm:text-3xl">
           KAMPÜS
-          <span className="text-[#9a5944] dark:text-[#d09272]">.</span>
+          <span className="text-[#ff7a45]">.</span>
         </p>
 
-        <p className="campus-loading-credit mt-4 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#58635c] dark:text-[#aeb4af] sm:text-[11px]">
-          by <span className="text-[#7d3c2d] dark:text-[#d09272]">Yagiz Karagoz</span>
+        <p className="campus-loading-credit mt-4 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-white/55 sm:text-[11px]">
+          by <span className="text-[#ff7a45]">Yagiz Karagoz</span>
         </p>
       </div>
     </div>

@@ -3,28 +3,22 @@ import campusWorkflowAnimation from "./campus-workflow-lottie.json";
 
 const steps = [
   {
-    number: "01",
+    number: "1",
     label: "Öğrenci e-postası",
     title: "Yaşar e-postanı doğrula.",
-    description:
-      "@stu.yasar.edu.tr adresine gönderilen 6 haneli kodu gir ve hesabını aç.",
-    
+    description: "@stu.yasar.edu.tr adresine gelen kodu gir.",
   },
   {
-    number: "02",
+    number: "2",
     label: "Kampüs akışı",
     title: "Kampüste olup biteni gör.",
-    description:
-      "İtirafları, soruları, kayıp eşya ilanlarını ve etkinlikleri tek yerde takip et.",
-    
+    description: "İtirafları, soruları ve etkinlikleri tek yerde takip et.",
   },
   {
-    number: "03",
+    number: "3",
     label: "Paylaşmaya başla",
     title: "İster adınla, ister anonim paylaş.",
-    description:
-      "İtirafını, sorunu ya da duyurunu yaz. Anonim gönderilerde adın görünmez; topluluk kuralları yine geçerlidir.",
-    
+    description: "İstersen adınla, istersen anonim paylaş.",
   },
 ];
 
@@ -40,7 +34,7 @@ export default function HowItWorks() {
         className="paper-noise pointer-events-none absolute inset-0"
       />
 
-      <div className="relative mx-auto flex w-full max-w-[1360px] flex-col items-center px-5 py-24 text-center sm:px-8 sm:py-32 lg:px-12 lg:py-40">
+      <div className="relative mx-auto flex w-full max-w-[1360px] flex-col items-center px-5 pb-24 pt-14 text-center sm:px-8 sm:pb-32 sm:pt-20 lg:px-12 lg:pb-40 lg:pt-24">
         <div className="reveal-item">
           <LottiePlayer
             animationData={campusWorkflowAnimation}
@@ -63,7 +57,7 @@ export default function HowItWorks() {
                 index === 0 ? "md:pl-0" : "md:border-l md:border-white/12"
               } ${index === steps.length - 1 ? "md:pr-0" : ""}`}
             >
-              <span className="font-mono text-[11px] font-bold text-[#ff7a45]">
+              <span className="font-mono text-4xl font-black leading-none tracking-[-0.02em] text-[#ff7a45] sm:text-5xl">
                 {step.number}
               </span>
 

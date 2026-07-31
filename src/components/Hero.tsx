@@ -16,7 +16,6 @@ import CampusLogo from "@/components/CampusLogo";
 import HeroParticles, {
   createHeroParticles,
 } from "@/components/HeroParticles";
-import { useForceDarkTheme } from "@/components/ForceDarkTheme";
 
 gsap.registerPlugin(useGSAP);
 
@@ -239,8 +238,6 @@ export default function Hero() {
     window.history.pushState(null, "", href);
   };
 
-  useForceDarkTheme();
-
   useGSAP(
     () => {
       const media = gsap.matchMedia();
@@ -385,8 +382,8 @@ export default function Hero() {
         <main
           className="grid flex-1 gap-8 py-8 sm:gap-10 sm:py-11 lg:grid-cols-[minmax(0,1fr)_minmax(390px,470px)] lg:items-center lg:gap-x-14 lg:gap-y-8 lg:py-10 xl:gap-x-24 xl:py-14"
         >
-          <div className="min-w-0 lg:col-start-1 lg:row-start-1 lg:self-end">
-            <div className="hero-kicker mb-6 flex items-center gap-3 sm:mb-7">
+          <div className="min-w-0 text-center lg:col-start-1 lg:row-start-1 lg:self-end lg:text-left">
+            <div className="hero-kicker mb-6 flex items-center justify-center gap-3 sm:mb-7 lg:justify-start">
               <span
                 aria-hidden="true"
                 className="size-2.5 rotate-45 bg-[#ff7a45]"
@@ -428,7 +425,7 @@ export default function Hero() {
               ))}
             </h1>
 
-            <p className="hero-description mt-5 max-w-xl text-base leading-7 text-white/70 sm:mt-7 sm:text-lg sm:leading-8">
+            <p className="hero-description mx-auto mt-5 max-w-xl text-base leading-7 text-white/70 sm:mt-7 sm:text-lg sm:leading-8 lg:mx-0">
               Kampüste olup biteni tek yerde gör.
 
               <span className="hidden sm:inline">
@@ -449,7 +446,7 @@ export default function Hero() {
 
             <aside
               aria-label="Resmî platform uyarısı"
-              className="hero-disclaimer mt-5 flex max-w-xl items-start gap-3 rounded-xl border border-white/12 bg-black/48 px-3.5 py-3 backdrop-blur-[3px] sm:px-4"
+              className="hero-disclaimer mx-auto mt-5 flex max-w-xl items-start gap-3 rounded-xl border border-white/12 bg-black/48 px-3.5 py-3 text-left backdrop-blur-[3px] sm:px-4 lg:mx-0"
             >
               <span
                 aria-hidden="true"

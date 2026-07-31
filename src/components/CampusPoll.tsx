@@ -6,7 +6,7 @@ import { useFeedback } from "@/components/FeedbackProvider";
 import type { CampusPostPoll } from "@/data/campusPosts";
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:focus-visible:ring-[#c7896d]/30";
+  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40";
 
 export default function CampusPoll({
   postId,
@@ -59,8 +59,8 @@ export default function CampusPoll({
               }}
               className={`relative isolate min-h-12 cursor-pointer overflow-hidden border px-3.5 py-2.5 text-left transition-colors ${focusRing} ${
                 isSelected
-                  ? "border-[#5a1f32]/42 dark:border-[#c7896d]/48"
-                  : "border-[#1c2821]/14 hover:border-[#5a1f32]/28 dark:border-white/12 dark:hover:border-[#c7896d]/30"
+                  ? "border-[#ff7a45]/48"
+                  : "border-white/12 hover:border-[#ff7a45]/30"
               }`}
             >
               {hasVoted && (
@@ -68,8 +68,8 @@ export default function CampusPoll({
                   aria-hidden="true"
                   className={`absolute inset-y-0 left-0 -z-10 transition-[width] duration-300 motion-reduce:transition-none ${
                     isSelected
-                      ? "bg-[#5a1f32]/13 dark:bg-[#c7896d]/18"
-                      : "bg-[#1c2821]/6 dark:bg-white/7"
+                      ? "bg-[#ff7a45]/18"
+                      : "bg-white/7"
                   }`}
                   style={{ width: `${percentage}%` }}
                 />
@@ -93,7 +93,7 @@ export default function CampusPoll({
         })}
       </div>
 
-      <p className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] font-semibold text-[#58635c] dark:text-[#aeb4af]">
+      <p className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] font-semibold text-white/55">
         <span>{totalVotes} oy</span>
         <span>
           {hasVoted

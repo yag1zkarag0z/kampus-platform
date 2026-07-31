@@ -28,7 +28,7 @@ type CampusFollowConnectionsProps = {
 };
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fbf8f1] dark:focus-visible:ring-[#c7896d]/30 dark:focus-visible:ring-offset-[#17191c]";
+  "outline-none focus-visible:ring-3 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
 
 function getProfileHref(
   member: CampusFollowMember,
@@ -157,8 +157,8 @@ export default function CampusFollowConnections({
             onClick={handleFollow}
             className={`inline-flex min-h-11 cursor-pointer items-center justify-center px-5 text-xs font-black transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${focusRing} ${
               followed
-                ? "border border-[#1c2821]/16 bg-transparent text-[#1c2821] hover:bg-[#1c2821]/6 dark:border-white/14 dark:text-[#ece8e1] dark:hover:bg-white/7"
-                : "bg-[#5a1f32] text-white hover:bg-[#6b2940] dark:bg-[#c7896d] dark:text-[#17191c] dark:hover:bg-[#d79a7b]"
+                ? "border border-white/12 bg-transparent text-white hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8"
+                : "bg-white text-[#12100e] hover:bg-white/90"
             }`}
           >
             {followed ? "Takip ediliyor" : "Takip et"}
@@ -169,9 +169,9 @@ export default function CampusFollowConnections({
           type="button"
           disabled={!isHydrated}
           onClick={(event) => openList("followers", event)}
-          className={`inline-flex min-h-11 cursor-pointer items-center gap-1.5 px-1 text-xs text-[#58635c] transition-colors hover:text-[#1c2821] disabled:cursor-wait disabled:opacity-50 dark:text-[#aeb4af] dark:hover:text-white ${focusRing}`}
+          className={`inline-flex min-h-11 cursor-pointer items-center gap-1.5 px-1 text-xs text-white/62 transition-colors hover:text-white disabled:cursor-wait disabled:opacity-50 ${focusRing}`}
         >
-          <strong className="text-sm font-black text-[#1c2821] dark:text-[#ece8e1]">
+          <strong className="text-sm font-black text-white">
             {isHydrated ? followerCount : "—"}
           </strong>
           takipçi
@@ -181,9 +181,9 @@ export default function CampusFollowConnections({
           type="button"
           disabled={!isHydrated}
           onClick={(event) => openList("following", event)}
-          className={`inline-flex min-h-11 cursor-pointer items-center gap-1.5 px-1 text-xs text-[#58635c] transition-colors hover:text-[#1c2821] disabled:cursor-wait disabled:opacity-50 dark:text-[#aeb4af] dark:hover:text-white ${focusRing}`}
+          className={`inline-flex min-h-11 cursor-pointer items-center gap-1.5 px-1 text-xs text-white/62 transition-colors hover:text-white disabled:cursor-wait disabled:opacity-50 ${focusRing}`}
         >
-          <strong className="text-sm font-black text-[#1c2821] dark:text-[#ece8e1]">
+          <strong className="text-sm font-black text-white">
             {isHydrated ? followingCount : "—"}
           </strong>
           takip
@@ -193,7 +193,7 @@ export default function CampusFollowConnections({
       {activeList && (
         <div
           role="presentation"
-          className="fixed inset-0 z-[110] grid items-end bg-[#111315]/55 p-0 backdrop-blur-[2px] sm:place-items-center sm:p-5"
+          className="fixed inset-0 z-[110] grid items-end bg-[#0a0d16]/70 p-0 backdrop-blur-[2px] sm:place-items-center sm:p-5"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
               setActiveList(null);
@@ -204,11 +204,11 @@ export default function CampusFollowConnections({
             role="dialog"
             aria-modal="true"
             aria-labelledby="follow-list-title"
-            className="max-h-[min(78svh,42rem)] w-full overflow-hidden border border-[#1c2821]/14 bg-[#fbf8f1] text-[#1c2821] shadow-[0_24px_80px_rgba(17,19,21,0.28)] dark:border-white/12 dark:bg-[#202226] dark:text-[#ece8e1] sm:max-w-md"
+            className="max-h-[min(78svh,42rem)] w-full overflow-hidden border border-white/12 bg-[#141720] text-white shadow-[0_24px_80px_rgba(0,0,0,0.45)] sm:max-w-md"
           >
-            <header className="flex min-h-16 items-center justify-between border-b border-[#1c2821]/11 px-4 dark:border-white/9">
+            <header className="flex min-h-16 items-center justify-between border-b border-white/10 px-4">
               <div>
-                <p className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-[#7d3c2d] dark:text-[#d09272]">
+                <p className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-[#ff7a45]">
                   @{member.username}
                 </p>
                 <h2
@@ -225,7 +225,7 @@ export default function CampusFollowConnections({
                 type="button"
                 aria-label="Listeyi kapat"
                 onClick={() => setActiveList(null)}
-                className={`grid size-11 cursor-pointer place-items-center rounded-full text-xl text-[#58635c] hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-[#aeb4af] dark:hover:bg-white/7 dark:hover:text-white ${focusRing}`}
+                className={`grid size-11 cursor-pointer place-items-center rounded-full text-xl text-white/62 hover:bg-white/8 hover:text-white ${focusRing}`}
               >
                 <span aria-hidden="true">×</span>
               </button>
@@ -233,7 +233,7 @@ export default function CampusFollowConnections({
 
             <div className="max-h-[calc(min(78svh,42rem)-4rem)] overflow-y-auto">
               {visibleMembers.length > 0 ? (
-                <ul className="divide-y divide-[#1c2821]/9 dark:divide-white/8">
+                <ul className="divide-y divide-white/10">
                   {visibleMembers.map((visibleMember) => (
                     <li key={visibleMember.authorId}>
                       <Link
@@ -242,7 +242,7 @@ export default function CampusFollowConnections({
                           sessionMode,
                         )}
                         onClick={() => setActiveList(null)}
-                        className={`flex min-h-16 items-center gap-3 px-4 py-3 transition-colors hover:bg-[#1c2821]/5 dark:hover:bg-white/5 ${focusRing}`}
+                        className={`flex min-h-16 items-center gap-3 px-4 py-3 transition-colors hover:bg-white/5 ${focusRing}`}
                       >
                         <CampusAuthorAvatar
                           author={visibleMember.author}
@@ -252,7 +252,7 @@ export default function CampusFollowConnections({
                           <span className="block truncate text-sm font-black">
                             {visibleMember.displayName}
                           </span>
-                          <span className="mt-0.5 block truncate text-xs font-semibold text-[#58635c] dark:text-[#aeb4af]">
+                          <span className="mt-0.5 block truncate text-xs font-semibold text-white/62">
                             @{visibleMember.username}
                           </span>
                         </span>
@@ -267,7 +267,7 @@ export default function CampusFollowConnections({
                       ? "Henüz takipçi yok"
                       : "Henüz kimse takip edilmiyor"}
                   </p>
-                  <p className="mx-auto mt-2 max-w-xs text-xs leading-5 text-[#58635c] dark:text-[#aeb4af]">
+                  <p className="mx-auto mt-2 max-w-xs text-xs leading-5 text-white/62">
                     Topluluktaki yeni bağlantılar burada görünecek.
                   </p>
                 </div>

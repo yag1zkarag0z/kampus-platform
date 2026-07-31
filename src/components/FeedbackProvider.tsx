@@ -51,7 +51,7 @@ const FeedbackContext = createContext<FeedbackContextValue | undefined>(
 );
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#5a1f32]/28 dark:focus-visible:ring-[#c7896d]/38";
+  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40";
 
 export function FeedbackProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -197,16 +197,16 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
           <div
             key={toast.id}
             role={toast.tone === "error" ? "alert" : "status"}
-            className="pointer-events-auto flex w-full items-center gap-3 border border-[#1c2821]/14 bg-[#fffaf4]/98 px-3 py-3 text-[#1c2821] shadow-[0_18px_55px_rgba(28,40,33,0.18)] backdrop-blur-xl dark:border-white/13 dark:bg-[#202226]/98 dark:text-[#ece8e1] dark:shadow-[0_18px_55px_rgba(0,0,0,0.42)]"
+            className="pointer-events-auto flex w-full items-center gap-3 border border-white/12 bg-[#17191c]/98 px-3 py-3 text-white shadow-[0_18px_55px_rgba(0,0,0,0.42)] backdrop-blur-xl"
           >
             <span
               aria-hidden="true"
               className={`size-2.5 shrink-0 rounded-full ${
                 toast.tone === "success"
-                  ? "bg-[#52735a]"
+                  ? "bg-[#7fd9a3]"
                   : toast.tone === "error"
-                    ? "bg-[#b34d42]"
-                    : "bg-[#d46a2f]"
+                    ? "bg-[#ffb199]"
+                    : "bg-[#ff7a45]"
               }`}
             />
             <p className="min-w-0 flex-1 text-xs font-bold leading-5">
@@ -219,7 +219,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
                   toast.action?.onClick();
                   dismissToast(toast.id);
                 }}
-                className={`min-h-10 shrink-0 cursor-pointer px-2 text-xs font-black text-[#7d3c2d] dark:text-[#d09272] ${focusRing}`}
+                className={`min-h-10 shrink-0 cursor-pointer px-2 text-xs font-black text-[#ff7a45] ${focusRing}`}
               >
                 {toast.action.label}
               </button>
@@ -228,7 +228,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
               type="button"
               aria-label="Bildirimi kapat"
               onClick={() => dismissToast(toast.id)}
-              className={`grid size-10 shrink-0 cursor-pointer place-items-center rounded-full text-lg text-[#1c2821]/48 hover:bg-[#1c2821]/7 hover:text-[#1c2821] dark:text-white/46 dark:hover:bg-white/8 dark:hover:text-white ${focusRing}`}
+              className={`grid size-10 shrink-0 cursor-pointer place-items-center rounded-full text-lg text-white/46 hover:bg-white/8 hover:text-white ${focusRing}`}
             >
               <span aria-hidden="true">×</span>
             </button>
@@ -238,7 +238,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
 
       {confirmation && (
         <div
-          className="fixed inset-0 z-[130] grid place-items-end bg-[#101512]/62 p-3 backdrop-blur-[3px] sm:place-items-center sm:p-6"
+          className="fixed inset-0 z-[130] grid place-items-end bg-[#0a0d16]/70 p-3 backdrop-blur-[3px] sm:place-items-center sm:p-6"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
               closeConfirmation(false);
@@ -251,9 +251,9 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
             aria-modal="true"
             aria-labelledby="shared-confirmation-title"
             aria-describedby="shared-confirmation-description"
-            className="w-full max-w-md border border-[#1c2821]/14 bg-[#fbf8f1] p-5 text-[#1c2821] shadow-[0_28px_90px_rgba(15,18,16,0.32)] dark:border-white/13 dark:bg-[#202226] dark:text-[#ece8e1] sm:p-6"
+            className="w-full max-w-md border border-white/12 bg-[#17191c] p-5 text-white shadow-[0_28px_90px_rgba(0,0,0,0.5)] sm:p-6"
           >
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#7d3c2d] dark:text-[#d09272]">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
               Onay gerekiyor
             </p>
             <h2
@@ -264,7 +264,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
             </h2>
             <p
               id="shared-confirmation-description"
-              className="mt-3 text-sm leading-6 text-[#1c2821]/66 dark:text-white/62"
+              className="mt-3 text-sm leading-6 text-white/62"
             >
               {confirmation.description}
             </p>
@@ -272,7 +272,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 onClick={() => closeConfirmation(false)}
-                className={`min-h-11 cursor-pointer border border-[#1c2821]/14 px-4 text-xs font-black hover:bg-[#1c2821]/6 dark:border-white/12 dark:hover:bg-white/7 ${focusRing}`}
+                className={`min-h-11 cursor-pointer border border-white/12 px-4 text-xs font-black hover:bg-white/7 ${focusRing}`}
               >
                 {confirmation.cancelLabel ?? "Vazgeç"}
               </button>
@@ -282,8 +282,8 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
                 onClick={() => closeConfirmation(true)}
                 className={`min-h-11 cursor-pointer px-4 text-xs font-black ${
                   confirmation.tone === "danger"
-                    ? "bg-[#8b2f2a] text-white hover:bg-[#752620] dark:bg-[#d27368] dark:text-[#17191c] dark:hover:bg-[#df8277]"
-                    : "bg-[#1c2821] text-white hover:bg-[#5a1f32] dark:bg-[#c7896d] dark:text-[#17191c] dark:hover:bg-[#d09272]"
+                    ? "bg-[#ffb199] text-[#12100e] hover:bg-[#ffb199]/85"
+                    : "bg-white text-[#12100e] hover:bg-white/90"
                 } ${focusRing}`}
               >
                 {confirmation.confirmLabel ?? "Onayla"}

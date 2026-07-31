@@ -28,7 +28,7 @@ const sortOptions: { id: ExploreSort; label: string }[] = [
 ];
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:focus-visible:ring-[#c7896d]/30";
+  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
 
 function normalizeSearchValue(value: string) {
   return value
@@ -124,13 +124,13 @@ export default function CampusExplore() {
   return (
     <section
       aria-labelledby="explore-title"
-      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#fbf8f1] text-[#1c2821] dark:bg-[#17191c] dark:text-[#ece8e1] md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
     >
-      <header className="sticky top-16 z-30 border-b border-[#1c2821]/12 bg-[#fbf8f1]/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#17191c]/95 md:top-0">
+      <header className="sticky top-16 z-30 border-b border-white/10 bg-[#0a0d16]/95 backdrop-blur-xl md:top-0">
         <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 sm:px-6">
           <span aria-hidden="true" />
           <div className="min-w-0 justify-self-center text-center">
-            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-[#7d3c2d] dark:text-[#c7896d]">
+            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-[#ff7a45]">
               Kampüste ara
             </p>
             <h1
@@ -144,7 +144,7 @@ export default function CampusExplore() {
             role="status"
             aria-live="polite"
             aria-atomic="true"
-            className="shrink-0 justify-self-end text-right text-xs font-bold text-[#58635c] dark:text-[#aeb4af]"
+            className="shrink-0 justify-self-end text-right text-xs font-bold text-white/55"
           >
             {visiblePosts.length} sonuç
           </p>
@@ -163,14 +163,14 @@ export default function CampusExplore() {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Başlık, kategori veya kullanıcı ara"
               autoComplete="off"
-              className={`min-h-12 w-full rounded-full border border-[#1c2821]/14 bg-[#f8f4ed]/84 py-2.5 pr-12 pl-11 text-sm font-medium text-[#1c2821] placeholder:text-[#667169] dark:border-white/12 dark:bg-white/5 dark:text-[#ece8e1] dark:placeholder:text-[#9ca39f] ${focusRing}`}
+              className={`min-h-12 w-full rounded-full border border-white/12 bg-white/5 py-2.5 pr-12 pl-11 text-sm font-medium text-white placeholder:text-white/45 ${focusRing}`}
             />
             {query && (
               <button
                 type="button"
                 aria-label="Aramayı temizle"
                 onClick={() => setQuery("")}
-                className={`absolute top-1/2 right-1 grid size-10 -translate-y-1/2 place-items-center rounded-full text-[#58635c] transition-colors hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-[#aeb4af] dark:hover:bg-white/7 dark:hover:text-white ${focusRing}`}
+                className={`absolute top-1/2 right-1 grid size-10 -translate-y-1/2 place-items-center rounded-full text-white/55 transition-colors hover:bg-white/7 hover:text-white ${focusRing}`}
               >
                 <CloseIcon />
               </button>
@@ -179,7 +179,7 @@ export default function CampusExplore() {
         </div>
       </header>
 
-      <div className="border-b border-[#1c2821]/10 dark:border-white/8">
+      <div className="border-b border-white/8">
         <CampusCategoryNav
           activeCategory={activeCategory}
           ariaLabel="Keşfet kategorileri"
@@ -202,8 +202,8 @@ export default function CampusExplore() {
                 onClick={() => setActiveSort(sort.id)}
                 className={`min-h-11 rounded-full px-3 text-[11px] font-bold transition-colors sm:px-4 sm:text-xs ${focusRing} ${
                   isActive
-                    ? "bg-[#5a1f32] text-[#fffaf4] dark:bg-[#9a5944] dark:text-[#121417]"
-                    : "text-[#58635c] hover:bg-[#1c2821]/5 hover:text-[#1c2821] dark:text-[#aeb4af] dark:hover:bg-white/5 dark:hover:text-white"
+                    ? "bg-white text-[#12100e]"
+                    : "text-white/55 hover:bg-white/5 hover:text-white"
                 }`}
               >
                 {sort.label}
@@ -218,7 +218,7 @@ export default function CampusExplore() {
           {visiblePosts.map((post) => (
             <li
               key={post.id}
-              className="border-b border-[#1c2821]/11 last:border-b-0 dark:border-white/9 2xl:border 2xl:bg-white/20 2xl:px-5 2xl:last:border-b dark:2xl:bg-white/[0.015]"
+              className="border-b border-white/9 last:border-b-0 2xl:border 2xl:bg-white/1.5 2xl:px-5 2xl:last:border-b"
             >
               <CampusPostCardSurface
                 postId={post.id}
@@ -241,12 +241,12 @@ export default function CampusExplore() {
                     />
                   </CampusAuthorProfileLink>
                   <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
-                    <span className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#7d3c2d] dark:text-[#d09272]">
+                    <span className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#ff7a45]">
                       {post.category}
                     </span>
                     <span
                       aria-hidden="true"
-                      className="size-1 rotate-45 bg-[#9a5944]/55 dark:bg-[#c7896d]/58"
+                      className="size-1 rotate-45 bg-[#ff7a45]/55"
                     />
                     <CampusAuthorProfileLink
                       author={post.author}
@@ -254,7 +254,7 @@ export default function CampusExplore() {
                       isAnonymous={post.isAnonymous}
                       ariaLabel={`${post.author} profilini aç`}
                       className="min-w-0"
-                      linkClassName={`truncate text-xs font-black transition-colors hover:text-[#5a1f32] dark:hover:text-[#d09272] ${focusRing}`}
+                      linkClassName={`truncate text-xs font-black transition-colors hover:text-[#ff7a45] ${focusRing}`}
                     >
                       <span className="truncate text-xs font-black">
                         {post.author}
@@ -262,17 +262,17 @@ export default function CampusExplore() {
                     </CampusAuthorProfileLink>
                     {!isAnonymousCampusAuthor(post) &&
                       post.detail && (
-                        <span className="text-[11px] font-semibold text-[#58635c] dark:text-[#aeb4af]">
+                        <span className="text-[11px] font-semibold text-white/55">
                           {post.detail}
                         </span>
                       )}
                     <span
                       aria-hidden="true"
-                      className="text-[#1c2821]/32 dark:text-white/28"
+                      className="text-white/28"
                     >
                       ·
                     </span>
-                    <time className="text-[11px] font-semibold text-[#58635c] dark:text-[#aeb4af]">
+                    <time className="text-[11px] font-semibold text-white/55">
                       {post.time}
                     </time>
                   </div>
@@ -281,7 +281,7 @@ export default function CampusExplore() {
                 <h2 className="mt-2.5 max-w-[78ch] break-words text-lg font-black leading-6 tracking-[-0.025em] [overflow-wrap:anywhere] sm:text-xl sm:leading-7">
                   <Link
                     href={`/gonderi/${post.id}`}
-                    className={`decoration-[#9a5944]/30 underline-offset-4 transition-colors hover:text-[#7d3c2d] hover:underline dark:hover:text-[#d09272] ${focusRing}`}
+                    className={`decoration-[#ff7a45]/30 underline-offset-4 transition-colors hover:text-[#ff7a45] hover:underline ${focusRing}`}
                   >
                     {post.title}
                   </Link>
@@ -292,7 +292,7 @@ export default function CampusExplore() {
                     variant="compact"
                   />
                 )}
-                <p className="mt-2 max-w-[78ch] whitespace-pre-wrap break-words text-sm leading-6 tracking-[-0.01em] text-[#1c2821]/76 [overflow-wrap:anywhere] dark:text-white/74 sm:text-[15px] sm:leading-7">
+                <p className="mt-2 max-w-[78ch] whitespace-pre-wrap break-words text-sm leading-6 tracking-[-0.01em] text-white/70 [overflow-wrap:anywhere] sm:text-[15px] sm:leading-7">
                   {post.body}
                 </p>
 
@@ -307,7 +307,7 @@ export default function CampusExplore() {
                   />
                 )}
 
-                <footer className="mt-4 flex min-h-11 items-center gap-4 text-xs font-bold text-[#58635c] dark:text-[#aeb4af]">
+                <footer className="mt-4 flex min-h-11 items-center gap-4 text-xs font-bold text-white/55">
                   <span className="inline-flex items-center gap-1.5">
                     <HeartIcon />
                     {post.likes} beğeni
@@ -326,20 +326,20 @@ export default function CampusExplore() {
           <div className="max-w-sm">
             <span
               aria-hidden="true"
-              className="mx-auto grid size-12 place-items-center rounded-full border border-[#1c2821]/13 text-[#7d3c2d] dark:border-white/11 dark:text-[#d09272]"
+              className="mx-auto grid size-12 place-items-center rounded-full border border-white/11 text-[#ff7a45]"
             >
               <SearchIcon standalone />
             </span>
             <h2 className="mt-5 text-lg font-black tracking-[-0.03em]">
               Eşleşen bir konu bulunamadı
             </h2>
-            <p className="mt-2 text-sm leading-6 text-[#58635c] dark:text-[#aeb4af]">
+            <p className="mt-2 text-sm leading-6 text-white/55">
               Arama kelimeni değiştir veya tüm kategorilere geri dön.
             </p>
             <button
               type="button"
               onClick={clearFilters}
-              className={`mt-5 inline-flex min-h-11 items-center justify-center bg-[#5a1f32] px-4 text-xs font-bold text-[#fffaf4] transition-colors hover:bg-[#6b2940] dark:bg-[#9a5944] dark:text-[#121417] dark:hover:bg-[#ad6b53] ${focusRing}`}
+              className={`mt-5 inline-flex min-h-11 items-center justify-center bg-white px-4 text-xs font-bold text-[#12100e] transition-colors hover:bg-white/90 ${focusRing}`}
             >
               Aramayı temizle
             </button>
@@ -359,7 +359,7 @@ function SearchIcon({ standalone = false }: { standalone?: boolean }) {
       className={
         standalone
           ? "size-5"
-          : "pointer-events-none absolute top-1/2 left-4 size-[18px] -translate-y-1/2 text-[#1c2821]/48 dark:text-white/46"
+          : "pointer-events-none absolute top-1/2 left-4 size-[18px] -translate-y-1/2 text-white/45"
       }
     >
       <circle

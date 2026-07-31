@@ -34,8 +34,8 @@ const acceptedAvatarTypes = new Set([
   "image/webp",
 ]);
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fbf8f1] dark:focus-visible:ring-[#c7896d]/30 dark:focus-visible:ring-offset-[#17191c]";
-const fieldClassName = `mt-2 min-h-12 w-full border border-[#1c2821]/14 bg-white/35 px-3.5 py-2.5 text-sm font-semibold text-[#1c2821] placeholder:font-medium placeholder:text-[#68736c] dark:border-white/12 dark:bg-white/[0.025] dark:text-[#ece8e1] dark:placeholder:text-[#9ba39d] ${focusRing}`;
+  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
+const fieldClassName = `mt-2 min-h-12 w-full border border-white/12 bg-white/[0.03] px-3.5 py-2.5 text-sm font-semibold text-white placeholder:font-medium placeholder:text-white/40 ${focusRing}`;
 
 type EditableProfile = {
   displayName: string;
@@ -457,9 +457,9 @@ function EditProfileForm({
   return (
     <section
       aria-labelledby="edit-profile-title"
-      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#fbf8f1] text-[#1c2821] dark:bg-[#17191c] dark:text-[#ece8e1] md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
     >
-      <header className="sticky top-16 z-30 border-b border-[#1c2821]/12 bg-[#fbf8f1]/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#17191c]/95 md:top-0">
+      <header className="sticky top-16 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl md:top-0">
         <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 sm:px-5">
           <Link
             href="/profil"
@@ -471,14 +471,14 @@ function EditProfileForm({
                 event.preventDefault();
               }
             }}
-            className={`grid size-11 shrink-0 place-items-center justify-self-start rounded-full text-[#1c2821]/66 transition-colors hover:bg-[#1c2821]/6 hover:text-[#1c2821] dark:text-white/62 dark:hover:bg-white/7 dark:hover:text-white ${
+            className={`grid size-11 shrink-0 place-items-center justify-self-start rounded-full text-white/62 transition-colors hover:bg-white/7 hover:text-white ${
               isSaving ? "pointer-events-none opacity-45" : ""
             } ${focusRing}`}
           >
             <BackIcon />
           </Link>
           <div className="min-w-0 justify-self-center text-center">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#7d3c2d] dark:text-[#c7896d]">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
               Profil
             </p>
             <h1
@@ -496,7 +496,7 @@ function EditProfileForm({
         <form noValidate onSubmit={handleSubmit}>
           <section
             aria-labelledby="profile-photo-title"
-            className="border-b border-[#1c2821]/11 pb-7 dark:border-white/9"
+            className="border-b border-white/10 pb-7"
           >
             <h2
               id="profile-photo-title"
@@ -506,7 +506,7 @@ function EditProfileForm({
             </h2>
 
             <div className="mt-4 flex flex-col gap-5 min-[360px]:flex-row min-[360px]:items-center">
-              <div className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-full border border-[#1c2821]/12 bg-[#eee9e1] text-2xl font-black text-[#5a1f32] dark:border-white/11 dark:bg-[#22252a] dark:text-[#d09272]">
+              <div className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-full border border-white/12 bg-[#17191c] text-2xl font-black text-[#ff7a45]">
                 {avatarPreview ? (
                   <Image
                     src={avatarPreview}
@@ -536,7 +536,7 @@ function EditProfileForm({
                   />
                   <label
                     htmlFor="profile-avatar"
-                    className="inline-flex min-h-11 cursor-pointer items-center justify-center border border-[#1c2821]/14 px-4 text-xs font-black transition-colors hover:border-[#5a1f32]/30 hover:bg-[#5a1f32]/5 peer-focus-visible:ring-3 peer-focus-visible:ring-[#5a1f32]/25 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-[#fbf8f1] dark:border-white/12 dark:hover:border-[#c7896d]/32 dark:hover:bg-[#c7896d]/7 dark:peer-focus-visible:ring-[#c7896d]/30 dark:peer-focus-visible:ring-offset-[#17191c]"
+                    className="inline-flex min-h-11 cursor-pointer items-center justify-center border border-white/12 px-4 text-xs font-black transition-colors hover:border-[#ff7a45]/32 hover:bg-[#ff7a45]/7 peer-focus-visible:ring-3 peer-focus-visible:ring-[#ff7a45]/40 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-[#0a0d16]"
                   >
                     {isProcessingAvatar ? "Hazırlanıyor…" : "Fotoğraf seç"}
                   </label>
@@ -544,7 +544,7 @@ function EditProfileForm({
                     <button
                       type="button"
                       onClick={handleRemoveAvatar}
-                      className={`inline-flex min-h-11 items-center justify-center px-4 text-xs font-black text-[#8a2e25] transition-colors hover:bg-[#8a2e25]/6 dark:text-[#e0a083] dark:hover:bg-[#e0a083]/7 ${focusRing}`}
+                      className={`inline-flex min-h-11 items-center justify-center px-4 text-xs font-black text-[#ffb199] transition-colors hover:bg-[#ffb199]/8 ${focusRing}`}
                     >
                       Fotoğrafı kaldır
                     </button>
@@ -552,7 +552,7 @@ function EditProfileForm({
                 </div>
                 <p
                   id="profile-avatar-help"
-                  className="mt-2 text-[11px] leading-5 text-[#58635c] dark:text-[#aeb4af]"
+                  className="mt-2 text-[11px] leading-5 text-white/55"
                 >
                   PNG, JPEG veya WebP · En fazla 2 MB · Kare kırpılır ·
                   Yalnızca bu cihazda geçici saklanır
@@ -560,7 +560,7 @@ function EditProfileForm({
                 <p
                   id="profile-avatar-error"
                   role={avatarError ? "alert" : undefined}
-                  className="mt-1 min-h-4 text-[11px] font-semibold text-[#8a2e25] dark:text-[#e0a083]"
+                  className="mt-1 min-h-4 text-[11px] font-semibold text-[#ffb199]"
                 >
                   {avatarError}
                 </p>
@@ -599,7 +599,7 @@ function EditProfileForm({
                   }}
                   className={`${fieldClassName} ${
                     fieldErrors.displayName
-                      ? "border-[#9b3028] dark:border-[#df8b83]"
+                      ? "border-[#ffb199]"
                       : ""
                   }`}
                 />
@@ -617,14 +617,14 @@ function EditProfileForm({
                   >
                     Kullanıcı adı
                   </label>
-                  <span className="font-mono text-[10px] font-bold text-[#58635c] dark:text-[#aeb4af]">
+                  <span className="font-mono text-[10px] font-bold text-white/55">
                     {username.length}/24
                   </span>
                 </div>
                 <div className="relative">
                   <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute top-1/2 left-3.5 z-10 -translate-y-1/2 text-sm font-black text-[#58635c] dark:text-[#aeb4af]"
+                    className="pointer-events-none absolute top-1/2 left-3.5 z-10 -translate-y-1/2 text-sm font-black text-white/55"
                   >
                     @
                   </span>
@@ -647,14 +647,14 @@ function EditProfileForm({
                     }}
                     className={`${fieldClassName} pl-8 ${
                       fieldErrors.username
-                        ? "border-[#9b3028] dark:border-[#df8b83]"
+                        ? "border-[#ffb199]"
                         : ""
                     }`}
                   />
                 </div>
                 <p
                   id="profile-username-help"
-                  className="mt-1.5 text-[11px] leading-5 text-[#58635c] dark:text-[#aeb4af]"
+                  className="mt-1.5 text-[11px] leading-5 text-white/55"
                 >
                   Küçük harf, rakam, nokta ve alt çizgi kullanabilirsin.
                 </p>
@@ -672,7 +672,7 @@ function EditProfileForm({
                   >
                     Biyografi
                   </label>
-                  <span className="font-mono text-[10px] font-bold text-[#58635c] dark:text-[#aeb4af]">
+                  <span className="font-mono text-[10px] font-bold text-white/55">
                     {bio.length}/160
                   </span>
                 </div>
@@ -691,7 +691,7 @@ function EditProfileForm({
                   placeholder="Kendinden kısaca bahset."
                   className={`${fieldClassName} min-h-32 resize-y leading-6 ${
                     fieldErrors.bio
-                      ? "border-[#9b3028] dark:border-[#df8b83]"
+                      ? "border-[#ffb199]"
                       : ""
                   }`}
                 />
@@ -736,7 +736,7 @@ function EditProfileForm({
                   }}
                   className={`${fieldClassName} ${
                     fieldErrors.department
-                      ? "border-[#9b3028] dark:border-[#df8b83]"
+                      ? "border-[#ffb199]"
                       : ""
                   }`}
                 >
@@ -780,7 +780,7 @@ function EditProfileForm({
                   }}
                   className={`${fieldClassName} ${
                     fieldErrors.year
-                      ? "border-[#9b3028] dark:border-[#df8b83]"
+                      ? "border-[#ffb199]"
                       : ""
                   }`}
                 >
@@ -796,12 +796,12 @@ function EditProfileForm({
                 />
               </div>
 
-              <label className="mt-6 flex min-h-16 cursor-pointer items-center justify-between gap-4 border border-[#1c2821]/13 px-3.5 py-3 dark:border-white/11">
+              <label className="mt-6 flex min-h-16 cursor-pointer items-center justify-between gap-4 border border-white/12 px-3.5 py-3">
                 <span>
                   <span className="block text-xs font-black">
                     Bölüm ve sınıfı göster
                   </span>
-                  <span className="mt-1 block text-[11px] leading-4 text-[#58635c] dark:text-[#aeb4af]">
+                  <span className="mt-1 block text-[11px] leading-4 text-white/55">
                     Bu bilgiler profilinde kullanıcılarla paylaşılır.
                   </span>
                 </span>
@@ -813,12 +813,12 @@ function EditProfileForm({
                     setShowDepartment(event.target.checked);
                     setStatusMessage("");
                   }}
-                  className={`size-5 shrink-0 accent-[#5a1f32] dark:accent-[#c7896d] ${focusRing}`}
+                  className={`size-5 shrink-0 accent-[#ff7a45] ${focusRing}`}
                 />
               </label>
 
-              <div className="mt-6 border-l-2 border-[#9a5944]/40 pl-3.5 dark:border-[#c7896d]/40">
-                <p className="text-[11px] leading-5 text-[#58635c] dark:text-[#aeb4af]">
+              <div className="mt-6 border-l-2 border-[#ff7a45]/40 pl-3.5">
+                <p className="text-[11px] leading-5 text-white/55">
                   Anonim açtığın konular ve anonim yorumların profilinde hiçbir
                   zaman gösterilmez.
                 </p>
@@ -826,12 +826,12 @@ function EditProfileForm({
             </section>
           </div>
 
-          <div className="flex flex-col-reverse gap-3 border-t border-[#1c2821]/11 pt-6 dark:border-white/9 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col-reverse gap-3 border-t border-white/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <p
               role="status"
               aria-live="polite"
               aria-atomic="true"
-              className="min-h-5 text-xs font-semibold text-[#8a2e25] dark:text-[#e0a083]"
+              className="min-h-5 text-xs font-semibold text-[#ffb199]"
             >
               {statusMessage}
             </p>
@@ -846,7 +846,7 @@ function EditProfileForm({
                     event.preventDefault();
                   }
                 }}
-                className={`inline-flex min-h-11 flex-1 items-center justify-center border border-[#1c2821]/14 px-4 text-xs font-black text-[#1c2821]/68 transition-colors hover:bg-[#1c2821]/5 hover:text-[#1c2821] dark:border-white/12 dark:text-white/62 dark:hover:bg-white/6 dark:hover:text-white sm:flex-none ${
+                className={`inline-flex min-h-11 flex-1 items-center justify-center border border-white/12 px-4 text-xs font-black text-white/62 transition-colors hover:bg-white/6 hover:text-white sm:flex-none ${
                   isSaving ? "pointer-events-none opacity-45" : ""
                 } ${focusRing}`}
               >
@@ -855,7 +855,7 @@ function EditProfileForm({
               <button
                 type="submit"
                 disabled={isSaving || isProcessingAvatar}
-                className={`inline-flex min-h-11 flex-1 items-center justify-center bg-[#5a1f32] px-5 text-xs font-black text-white transition-colors hover:bg-[#6b2940] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[#9a5944] dark:text-[#121417] dark:hover:bg-[#ad6b53] sm:flex-none ${focusRing}`}
+                className={`inline-flex min-h-11 flex-1 items-center justify-center bg-white px-5 text-xs font-black text-[#12100e] transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none ${focusRing}`}
               >
                 {isSaving ? "Kaydediliyor…" : "Değişiklikleri kaydet"}
               </button>
@@ -878,7 +878,7 @@ function FieldError({
     <p
       id={id}
       role={message ? "alert" : undefined}
-      className="mt-1.5 min-h-4 text-[11px] font-semibold text-[#8a2e25] dark:text-[#e0a083]"
+      className="mt-1.5 min-h-4 text-[11px] font-semibold text-[#ffb199]"
     >
       {message}
     </p>
@@ -890,17 +890,17 @@ function EditProfileLoading() {
     <section
       aria-busy="true"
       aria-label="Profil düzenleme alanı yükleniyor"
-      className="min-h-[calc(100svh-4rem)] bg-[#fbf8f1] text-[#1c2821] dark:bg-[#17191c] dark:text-[#ece8e1] md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] bg-[#0a0d16] text-white md:min-h-svh"
     >
-      <div className="flex min-h-16 items-center gap-3 border-b border-[#1c2821]/12 px-4 dark:border-white/10">
-        <div className="size-11 animate-pulse rounded-full bg-[#1c2821]/8 motion-reduce:animate-none dark:bg-white/8" />
-        <div className="h-5 w-32 animate-pulse bg-[#1c2821]/8 motion-reduce:animate-none dark:bg-white/8" />
+      <div className="flex min-h-16 items-center gap-3 border-b border-white/12 px-4">
+        <div className="size-11 animate-pulse rounded-full bg-white/8 motion-reduce:animate-none" />
+        <div className="h-5 w-32 animate-pulse bg-white/8 motion-reduce:animate-none" />
       </div>
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        <div className="size-24 animate-pulse rounded-full bg-[#1c2821]/8 motion-reduce:animate-none dark:bg-white/8" />
+        <div className="size-24 animate-pulse rounded-full bg-white/8 motion-reduce:animate-none" />
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          <div className="h-80 animate-pulse bg-[#1c2821]/6 motion-reduce:animate-none dark:bg-white/6" />
-          <div className="h-80 animate-pulse bg-[#1c2821]/6 motion-reduce:animate-none dark:bg-white/6" />
+          <div className="h-80 animate-pulse bg-white/6 motion-reduce:animate-none" />
+          <div className="h-80 animate-pulse bg-white/6 motion-reduce:animate-none" />
         </div>
         <span className="sr-only">Profil düzenleme alanı yükleniyor…</span>
       </div>
