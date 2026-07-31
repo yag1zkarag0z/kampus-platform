@@ -69,7 +69,7 @@ export default function HowItWorks() {
                 {step.title}
               </h3>
 
-              <p className="mt-3 max-w-xs text-sm leading-6 text-white/62">
+              <p className="mt-3 max-w-xs text-base leading-7 text-white/75">
                 {step.description}
               </p>
             </li>

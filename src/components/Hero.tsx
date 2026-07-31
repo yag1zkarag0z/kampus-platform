@@ -425,7 +425,7 @@ export default function Hero() {
               ))}
             </h1>
 
-            <p className="hero-description mx-auto mt-5 max-w-xl text-base leading-7 text-white/70 sm:mt-7 sm:text-lg sm:leading-8 lg:mx-0">
+            <p className="hero-description mx-auto mt-5 max-w-xl text-base leading-7 text-white/78 sm:mt-7 sm:text-lg sm:leading-8 lg:mx-0">
               Kampüste olup biteni tek yerde gör.
 
               <span className="hidden sm:inline">
@@ -458,7 +458,7 @@ export default function Hero() {
                   Önemli not
                 </span>
 
-                <span className="mt-1 block text-xs font-medium leading-5 text-white/70 sm:text-[13px]">
+                <span className="mt-1 block text-xs font-medium leading-5 text-white/78 sm:text-[13px]">
                   <strong className="font-black text-white">
                     KAMPÜS bağımsız bir öğrenci projesidir.
                   </strong>{" "}

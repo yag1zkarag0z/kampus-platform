@@ -57,7 +57,7 @@ export default function SecuritySection() {
           Güvenlik
         </h2>
 
-        <p className="reveal-item mt-5 max-w-xl text-base leading-7 text-white/66 sm:text-lg sm:leading-8">
+        <p className="reveal-item mt-5 max-w-xl text-base leading-7 text-white/78 sm:text-lg sm:leading-8">
           Anonim paylaşımlarda adın diğer öğrencilere görünmez. Her hesap
           öğrenci e-postasıyla doğrulanır.
         </p>
@@ -78,7 +78,7 @@ export default function SecuritySection() {
                 {principle.title}
               </h3>
 
-              <p className="mt-3 max-w-xs text-sm leading-6 text-white/62">
+              <p className="mt-3 max-w-xs text-base leading-7 text-white/75">
                 {principle.description}
               </p>
             </li>

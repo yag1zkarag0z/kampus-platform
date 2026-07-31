@@ -344,7 +344,7 @@ export default function RegisterFlow() {
             <button
               type="submit"
               disabled={verification.isRequesting}
-              className="mt-6 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-white px-4 text-sm font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40"
+              className="mt-4 inline-flex min-h-12 w-fit items-center justify-center rounded-xl bg-white px-6 text-sm font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40"
             >
               {verification.isRequesting
                 ? "Kod gönderiliyor…"

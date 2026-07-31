@@ -40,7 +40,7 @@ export default function ClosingCTA() {
               ↑
             </span>
           </Link>
-          <p className="mt-4 text-xs leading-5 text-white/68">
+          <p className="mt-4 text-sm leading-6 text-white/78">
             @stu.yasar.edu.tr uzantılı öğrenci e-postanı doğrulaman yeterli.
           </p>
         </div>

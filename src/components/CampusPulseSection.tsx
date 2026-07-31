@@ -252,7 +252,7 @@ export default function CampusPulseSection() {
                   {screen.title}
                 </h3>
 
-                <p className="mt-2 text-sm leading-6 text-white/62">
+                <p className="mt-2 text-base leading-7 text-white/75">
                   {screen.description}
                 </p>
 

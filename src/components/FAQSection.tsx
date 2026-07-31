@@ -106,7 +106,7 @@ export default function FAQSection() {
                   </span>
                 </summary>
 
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-white/62 sm:text-[15px] sm:leading-7">
+                <p className="mt-3 max-w-2xl text-base leading-7 text-white/75">
                   {item.answer}
                 </p>
               </details>
