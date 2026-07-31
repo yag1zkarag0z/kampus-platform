@@ -332,25 +332,24 @@ export default function RegisterFlow() {
               aria-describedby="register-email-help register-message"
               required
             />
+            <FormMessage message={message} />
+
+            <button
+              type="submit"
+              disabled={verification.isRequesting}
+              className="mt-2 inline-flex min-h-12 w-fit items-center justify-center rounded-xl bg-white px-6 text-sm font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40"
+            >
+              {verification.isRequesting
+                ? "Kod gönderiliyor…"
+                : "Doğrulama kodu gönder"}
+            </button>
+
             <p
               id="register-email-help"
               className={helperTextClassName}
             >
               E-posta adresin profilinde görünmez.
             </p>
-
-            <FormMessage message={message} />
-
-            <button
-              type="submit"
-              disabled={verification.isRequesting}
-              className="mt-4 inline-flex min-h-12 w-fit items-center justify-center rounded-xl bg-white px-6 text-sm font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40"
-            >
-              {verification.isRequesting
-                ? "Kod gönderiliyor…"
-                : "Doğrulama kodu gönder"}
-              <span aria-hidden="true">→</span>
-            </button>
           </form>
         ) : step === 2 ? (
           <form onSubmit={submitCode} noValidate>
@@ -752,7 +751,9 @@ function FormMessage({ message }: { message: string | null }) {
       id="register-message"
       role={message ? "alert" : "status"}
       aria-live={message ? "assertive" : "polite"}
-      className="mt-4 min-h-5 text-xs font-medium leading-5 text-[#ffb199]"
+      className={`text-xs font-medium leading-5 text-[#ffb199] ${
+        message ? "mt-2" : ""
+      }`}
     >
       {message}
     </p>

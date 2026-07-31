@@ -33,6 +33,7 @@ const navItems = [
   { href: "#kampus-nabzi", label: "Kampüs Nabzı" },
   { href: "#nasil-calisir", label: "Nasıl çalışır?" },
   { href: "#guvenlik", label: "Güvenlik" },
+  { href: "#sss", label: "SSS" },
 ];
 
 const heroParticles = createHeroParticles(52);

@@ -8,9 +8,9 @@ const faqParticles = createHeroParticles(16, 0x2e2418);
 
 const faqItems = [
   {
-    question: "Bu resmi bir üniversite uygulaması mı?",
+    question: "Bu resmi bir üniversite websitesi mi?",
     answer:
-      "Hayır, alakası yok. Üniversitenin bundan haberi bile olmayabilir, tamamen bağımsız.",
+      "Hayır, alakası yok. Üniversitenin bundan haberi bile yok, tamamen bağımsız.",
   },
   {
     question: "Bunu kim yaptı?",
@@ -53,7 +53,7 @@ const faqItems = [
   {
     question: "Bir sorun olursa ya da fikrim olursa ne yapmalıyım?",
     answer:
-      "Direkt bana ulaşabilirsin, yazabiliriz. Footer'daki isme tıklaman yeterli.",
+      "Direkt bana ulaşabilirsin dm'den. Footer'daki isme tıklaman yeterli.",
   },
 ];
 

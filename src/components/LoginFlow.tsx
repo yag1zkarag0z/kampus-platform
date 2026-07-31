@@ -232,12 +232,11 @@ export default function LoginFlow() {
             <button
               type="submit"
               disabled={verification.isRequesting}
-              className="mt-4 inline-flex min-h-12 w-fit items-center justify-center rounded-xl bg-white px-6 text-sm font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40"
+              className="mt-2 inline-flex min-h-12 w-fit items-center justify-center rounded-xl bg-white px-6 text-sm font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40"
             >
               {verification.isRequesting
                 ? "Kod gönderiliyor…"
                 : "Giriş kodu gönder"}
-              <span aria-hidden="true">→</span>
             </button>
           </form>
         ) : (
@@ -388,7 +387,9 @@ function FormMessage({ message }: { message: string | null }) {
       id="login-message"
       role={message ? "alert" : "status"}
       aria-live={message ? "assertive" : "polite"}
-      className="mt-4 min-h-5 text-xs font-medium leading-5 text-[#ffb199]"
+      className={`text-xs font-medium leading-5 text-[#ffb199] ${
+        message ? "mt-2" : ""
+      }`}
     >
       {message}
     </p>
