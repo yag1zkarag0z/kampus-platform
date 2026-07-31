@@ -12,7 +12,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin-ext"],
 });
 
-const themeScript = `(function(){try{var saved=localStorage.getItem("kampus-theme");var theme=saved==="dark"||saved==="light"?saved:window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";var root=document.documentElement;root.setAttribute("data-theme",theme);root.style.colorScheme=theme}catch(e){}})()`;
+const themeScript = `(function(){try{var root=document.documentElement;if(window.location.pathname==="/"){root.setAttribute("data-theme","dark");root.style.colorScheme="dark";return}var saved=localStorage.getItem("kampus-theme");var theme=saved==="dark"||saved==="light"?saved:window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";root.setAttribute("data-theme",theme);root.style.colorScheme=theme}catch(e){}})()`;
 
 export const metadata: Metadata = {
   title: "KAMPÜS. | Yaşar Öğrencileri İçin Sosyal Ağ",

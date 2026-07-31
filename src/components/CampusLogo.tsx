@@ -121,7 +121,7 @@ export default function CampusLogo({
           className="h-[1.28em] w-[1.07em] translate-y-[0.05em]"
         />
         <span>
-          S<span className="text-[#9a5944] dark:text-[#d09272]">.</span>
+          S<span className="text-[#9a5944] dark:text-[#ff7a45]">.</span>
         </span>
       </span>
     </span>

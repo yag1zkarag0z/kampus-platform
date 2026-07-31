@@ -15,7 +15,7 @@ export default function RegisterPage() {
       title={
         <>
           Kampüse
-          <span className="block font-serif font-normal italic text-[#7d3c2d] dark:text-[#d09272]">
+          <span className="block font-serif font-normal italic text-[#ff7a45]">
             katıl.
           </span>
         </>

@@ -1,3 +1,6 @@
+import LottiePlayer from "@/components/LottiePlayer";
+import securityWalkerAnimation from "./security-walker-lottie.json";
+
 const securityPrinciples = [
   {
     code: "G-01",
@@ -32,107 +35,102 @@ export default function SecuritySection() {
     <section
       id="guvenlik"
       aria-labelledby="security-title"
-      className="security-surface relative overflow-x-clip text-[#f8f4eb] dark:text-[#ece8e1]"
+      className="reveal-item relative overflow-x-clip border-b border-white/10 bg-[#0a0d16] text-white"
     >
       <div
         aria-hidden="true"
-        className="paper-noise pointer-events-none absolute inset-0 opacity-[0.07]"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#e7b897]/65 to-transparent dark:via-[#c7896d]/65"
+        className="paper-noise pointer-events-none absolute inset-0"
       />
 
-      <div className="relative mx-auto w-full max-w-[1360px] px-5 py-16 sm:px-8 sm:py-20 lg:px-12 lg:py-28 xl:py-32">
-        <header className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-end lg:gap-24">
-          <div>
-            <div className="mb-5 flex items-center gap-3">
-              <span
-                aria-hidden="true"
-                className="size-2.5 rotate-45 bg-[#e7b897] dark:bg-[#c7896d]"
-              />
-              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#e7b897] dark:text-[#c7896d] sm:text-xs">
-                Gizlilik ve güvenlik
-              </p>
-            </div>
+      <div className="relative mx-auto flex w-full max-w-[1360px] flex-col items-center px-5 py-24 text-center sm:px-8 sm:py-32 lg:px-12 lg:py-40">
+        <div className="reveal-item">
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            className="prism-emoji pointer-events-none size-11 text-white sm:size-14"
+          >
+            <path
+              d="M12 2.5 4 5.5v5.2c0 5.4 3.4 8.9 8 10.3 4.6-1.4 8-4.9 8-10.3V5.5L12 2.5Z"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M8.6 12.1 11 14.5l4.4-4.8"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+       
+        <h2
+          id="security-title"
+          className="reveal-item mt-6 text-[clamp(2.5rem,6vw,4.5rem)] font-black leading-[0.95] tracking-[-0.04em] sm:mt-8"
+        >
+          Güvenlik
+        </h2>
 
-            <h2
-              id="security-title"
-              className="max-w-4xl text-[clamp(2.75rem,7vw,6.2rem)] font-black leading-[0.91] tracking-[-0.06em]"
-            >
-              Adın gizli.
-              <span className="block font-serif font-normal italic text-[#e7b897] dark:text-[#c7896d]">
-                Kurallar herkes için aynı.
-              </span>
-            </h2>
-          </div>
+        <p className="reveal-item mt-5 max-w-xl text-base leading-7 text-white/66 sm:text-lg sm:leading-8">
+          Anonim paylaşımlarda adın diğer öğrencilere görünmez. Her hesap
+          öğrenci e-postasıyla doğrulanır.
+        </p>
 
-          <div className="border-l border-[#e7b897]/45 pl-5 dark:border-[#c7896d]/45 sm:pl-7">
-            <p className="max-w-xl text-lg font-semibold leading-8 tracking-[-0.02em] text-[#f8f4eb]/88 dark:text-white/88 sm:text-xl">
-              Anonim paylaşımlarda adın diğer öğrencilere görünmez. Her hesap
-              öğrenci e-postasıyla doğrulanır.
-            </p>
-            <p className="mt-4 hidden max-w-xl text-sm leading-6 text-[#f8f4eb]/66 dark:text-white/66 sm:block">
-              KAMPÜS, Yaşar Üniversitesi sistemlerine bağlı değildir.
-              Moderatörler yalnızca bir şikâyeti incelemek için gereken
-              bilgilere erişebilir.
-            </p>
-          </div>
-        </header>
-
-        <div className="mt-14 grid border-t border-white/16 sm:mt-16 sm:grid-cols-2 xl:grid-cols-4">
-          {securityPrinciples.map((principle, index) => (
-            <article
-              key={principle.code}
-              className={`border-b border-white/14 py-6 sm:min-h-64 sm:px-6 sm:py-9 xl:min-h-72 xl:border-b-0 xl:px-7 ${
-                index % 2 === 1
-                  ? "sm:border-l sm:border-white/14 sm:pr-0"
-                  : "sm:pl-0"
-              } ${index > 0 ? "xl:border-l xl:border-white/14" : ""} ${
-                index === 0 ? "xl:pl-0" : ""
-              } ${index === securityPrinciples.length - 1 ? "xl:pr-0" : ""}`}
-            >
-              <span className="font-mono text-[10px] font-bold tracking-[0.14em] text-[#e7b897] dark:text-[#c7896d]">
-                {principle.code}
-              </span>
-              <h3 className="mt-5 max-w-xs text-xl font-black tracking-[-0.035em] sm:mt-8 xl:mt-10">
-                {principle.title}
-              </h3>
-              <p className="mt-3 max-w-xs text-sm leading-6 text-[#f8f4eb]/66 dark:text-white/66 sm:mt-4">
-                {principle.description}
-              </p>
-            </article>
-          ))}
+        <div className="reveal-item mt-10 sm:mt-12">
+          <LottiePlayer
+            animationData={securityWalkerAnimation}
+            className="h-10 w-44 sm:h-12 sm:w-56"
+          />
         </div>
 
-        <div className="mt-10 border-t border-white/16 pt-7 sm:mt-14 sm:pt-9">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#e7b897] dark:text-[#c7896d]">
-              Bir şikâyet geldiğinde
-            </p>
+        <ol className="mt-14 grid w-full gap-10 sm:mt-16 md:grid-cols-4 md:gap-8">
+          {securityPrinciples.map((principle, index) => (
+            <li
+              key={principle.code}
+              className={`reveal-item flex flex-col items-center border-t border-white/12 pt-8 md:border-t-0 md:px-5 md:py-4 lg:px-7 ${
+                index === 0 ? "md:pl-0" : "md:border-l md:border-white/12"
+              } ${index === securityPrinciples.length - 1 ? "md:pr-0" : ""}`}
+            >
+              <span className="font-mono text-[10px] font-bold tracking-[0.14em] text-[#ff7a45]">
+                {principle.code}
+              </span>
 
-            <ol className="grid flex-1 grid-cols-2 gap-y-4 sm:grid-cols-4 lg:max-w-3xl">
-              {moderationFlow.map((item, index) => (
-                <li
-                  key={item}
-                  className="flex items-center gap-3 text-xs font-bold uppercase tracking-[0.1em] text-[#f8f4eb]/72 dark:text-white/72"
-                >
-                  <span className="font-mono text-[9px] text-[#e7b897] dark:text-[#c7896d]">
-                    0{index + 1}
+              <h3 className="mt-5 max-w-xs text-lg font-black leading-[1.1] tracking-[-0.03em] sm:text-xl md:min-h-[3.2rem]">
+                {principle.title}
+              </h3>
+
+              <p className="mt-3 max-w-xs text-sm leading-6 text-white/62">
+                {principle.description}
+              </p>
+            </li>
+          ))}
+        </ol>
+
+        <div className="reveal-item mt-14 flex flex-col items-center gap-5 border-t border-white/12 pt-8 sm:mt-16">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#ff7a45]">
+            Bir şikâyet geldiğinde
+          </p>
+
+          <ol className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
+            {moderationFlow.map((item, index) => (
+              <li
+                key={item}
+                className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.1em] text-white/72"
+              >
+                <span className="font-mono text-[9px] text-[#ff7a45]">
+                  0{index + 1}
+                </span>
+                {item}
+                {index < moderationFlow.length - 1 && (
+                  <span aria-hidden="true" className="ml-1 text-white/25">
+                    →
                   </span>
-                  {item}
-                  {index < moderationFlow.length - 1 && (
-                    <span
-                      aria-hidden="true"
-                      className="ml-auto hidden text-[#f8f4eb]/22 sm:inline"
-                    >
-                      →
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ol>
-          </div>
+                )}
+              </li>
+            ))}
+          </ol>
         </div>
       </div>
     </section>

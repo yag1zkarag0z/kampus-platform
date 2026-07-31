@@ -36,9 +36,8 @@ type RegisterField =
 
 const studentEmailPattern = /^[^\s@]+@stu\.yasar\.edu\.tr$/i;
 const inputClassName =
-  "auth-input h-12 w-full rounded-xl border border-[#1c2821]/14 bg-white/55 px-3.5 text-base text-[#1c2821] outline-none transition placeholder:text-[#68736c] hover:border-[#1c2821]/28 focus:border-[#7d3c2d] focus:ring-3 focus:ring-[#9a5944]/14 dark:border-white/12 dark:bg-white/6 dark:text-[#ece8e1] dark:placeholder:text-[#9ba39d] dark:hover:border-white/24 dark:focus:border-[#c7896d] dark:focus:ring-[#c7896d]/16";
-const helperTextClassName =
-  "mt-2 text-[11px] leading-5 text-[#58635c] dark:text-[#aeb4af]";
+  "auth-input h-12 w-full rounded-xl border border-white/12 bg-white/6 px-3.5 text-base text-white outline-none transition placeholder:text-white/40 hover:border-white/24 focus:border-[#ff7a45] focus:ring-3 focus:ring-[#ff7a45]/20";
+const helperTextClassName = "mt-2 text-[11px] leading-5 text-white/50";
 
 export default function RegisterFlow() {
   const [step, setStep] = useState<RegisterStep>(1);
@@ -247,8 +246,8 @@ export default function RegisterFlow() {
   const stepLabels = ["E-posta", "Doğrulama", "Profil"];
 
   return (
-    <div className="mx-auto w-full max-w-[31rem] overflow-hidden rounded-[1.6rem] border border-[#1c2821]/15 bg-[#fbf8f1]/92 shadow-[0_28px_80px_rgba(42,27,31,0.14)] backdrop-blur-xl dark:border-white/12 dark:bg-[#1a1c20]/94 dark:shadow-[0_28px_80px_rgba(0,0,0,0.36)]">
-      <div className="border-b border-[#1c2821]/12 px-5 py-5 dark:border-white/10 sm:px-7">
+    <div className="mx-auto w-full max-w-[31rem] overflow-hidden rounded-[1.6rem] border border-white/12 bg-[#141720]/94 shadow-[0_28px_80px_rgba(0,0,0,0.4)] backdrop-blur-xl">
+      <div className="border-b border-white/10 px-5 py-5 sm:px-7">
         <ol className="grid grid-cols-3 gap-2" aria-label="Kayıt adımları">
           {stepLabels.map((label, index) => {
             const number = index + 1;
@@ -260,8 +259,8 @@ export default function RegisterFlow() {
                 key={label}
                 className={`border-t-2 pt-2 text-[10px] font-bold transition-colors ${
                   isCurrent || isDone
-                    ? "border-[#9a5944] text-[#1c2821] dark:border-[#c7896d] dark:text-[#ece8e1]"
-                    : "border-[#1c2821]/12 text-[#58635c] dark:border-white/10 dark:text-[#aeb4af]"
+                    ? "border-[#ff7a45] text-white"
+                    : "border-white/10 text-white/45"
                 }`}
                 aria-current={isCurrent ? "step" : undefined}
               >
@@ -287,7 +286,7 @@ export default function RegisterFlow() {
           <div aria-live="polite">
             <span
               aria-hidden="true"
-              className="grid size-11 place-items-center rounded-full bg-[#d8d3c8] text-[#3b2028] dark:bg-[#c7896d] dark:text-[#121417]"
+              className="grid size-11 place-items-center rounded-full bg-[#ff7a45] text-[#12100e]"
             >
               ✓
             </span>
@@ -296,7 +295,7 @@ export default function RegisterFlow() {
             </h2>
             <Link
               href="/akis"
-              className="mt-7 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[#5a1f32] px-4 text-sm font-bold text-[#fffaf4] outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:bg-[#9a5944] dark:hover:bg-[#ad6b53]"
+              className="mt-7 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-white px-4 text-sm font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40"
             >
               Akışa geç
             </Link>
@@ -306,7 +305,7 @@ export default function RegisterFlow() {
             <h2 className="text-2xl font-black tracking-[-0.04em] sm:text-3xl">
               Öğrenci e-postanla başlayalım.
             </h2>
-            <p className="mt-3 text-sm leading-6 text-[#1c2821]/64 dark:text-white/62">
+            <p className="mt-3 text-sm leading-6 text-white/62">
               Katılım yalnızca Yaşar öğrenci e-postasını doğrulayanlara açık.
             </p>
 
@@ -345,7 +344,7 @@ export default function RegisterFlow() {
             <button
               type="submit"
               disabled={verification.isRequesting}
-              className="mt-6 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-[#5a1f32] px-4 text-sm font-bold text-[#fffaf4] outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:bg-[#9a5944] dark:hover:bg-[#ad6b53] dark:focus-visible:ring-[#c7896d]/30"
+              className="mt-6 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-white px-4 text-sm font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40"
             >
               {verification.isRequesting
                 ? "Kod gönderiliyor…"
@@ -358,9 +357,9 @@ export default function RegisterFlow() {
             <h2 className="text-2xl font-black tracking-[-0.04em] sm:text-3xl">
               Kod e-postanda.
             </h2>
-            <p className="mt-3 text-sm leading-6 text-[#1c2821]/64 dark:text-white/62">
+            <p className="mt-3 text-sm leading-6 text-white/62">
               6 haneli doğrulama kodunu{" "}
-              <strong className="font-bold text-[#1c2821] dark:text-[#ece8e1]">
+              <strong className="font-bold text-white">
                 {email}
               </strong>{" "}
               adresi için hazırladık.
@@ -442,7 +441,7 @@ export default function RegisterFlow() {
                 verification.isResending ||
                 verification.isVerifying
               }
-              className="mt-5 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-[#5a1f32] px-4 text-sm font-bold text-[#fffaf4] outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 disabled:cursor-not-allowed disabled:opacity-55 dark:bg-[#9a5944] dark:hover:bg-[#ad6b53]"
+              className="mt-5 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-white px-4 text-sm font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40 disabled:cursor-not-allowed disabled:opacity-55"
             >
               {verification.isVerifying ? "Doğrulanıyor…" : "Kodu doğrula"}
               <span aria-hidden="true">→</span>
@@ -457,7 +456,7 @@ export default function RegisterFlow() {
                 clearMessage();
                 verification.resetVerification();
               }}
-              className="mt-3 min-h-11 w-full text-xs font-bold text-[#58635c] underline decoration-[#1c2821]/22 underline-offset-4 dark:text-[#aeb4af] dark:decoration-white/20"
+              className="mt-3 min-h-11 w-full text-xs font-bold text-white/55 underline decoration-white/20 underline-offset-4"
             >
               E-posta adresini değiştir
             </button>
@@ -476,7 +475,7 @@ export default function RegisterFlow() {
             >
               Kampüs profilini oluştur.
             </h2>
-            <p className="mt-3 text-sm leading-6 text-[#1c2821]/64 dark:text-white/62">
+            <p className="mt-3 text-sm leading-6 text-white/62">
               Yalnızca kullanıcı adın zorunlu olarak görünür. Diğer profil
               bilgilerini sen yönetirsin.
             </p>
@@ -490,7 +489,7 @@ export default function RegisterFlow() {
                   Kullanıcı adı
                 </label>
                 <div className="relative mt-2">
-                  <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-sm font-bold text-[#58635c] dark:text-[#aeb4af]">
+                  <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-sm font-bold text-white/50">
                     @
                   </span>
                   <input
@@ -619,7 +618,7 @@ export default function RegisterFlow() {
                 </select>
               </div>
 
-              <label className="flex min-h-20 cursor-pointer items-start gap-3 rounded-xl border border-[#1c2821]/12 bg-white/35 p-3 text-xs leading-5 dark:border-white/10 dark:bg-white/4">
+              <label className="flex min-h-20 cursor-pointer items-start gap-3 rounded-xl border border-white/12 bg-white/5 p-3 text-xs leading-5">
                 <input
                   type="checkbox"
                   name="showDepartment"
@@ -628,13 +627,13 @@ export default function RegisterFlow() {
                     setShowDepartment(event.target.checked);
                     clearMessage();
                   }}
-                  className="mt-0.5 size-4 shrink-0 accent-[#7d3c2d] outline-none focus-visible:ring-3 focus-visible:ring-[#7d3c2d]/25 dark:accent-[#c7896d] dark:focus-visible:ring-[#c7896d]/30"
+                  className="mt-0.5 size-4 shrink-0 accent-[#ff7a45] outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/30"
                 />
                 <span>
                   <span className="block font-bold">
                     Bölüm ve sınıfımı göster
                   </span>
-                  <span className="mt-1 block text-[#58635c] dark:text-[#aeb4af]">
+                  <span className="mt-1 block text-white/50">
                     İstersen daha sonra ayarlardan değiştirebilirsin.
                   </span>
                 </span>
@@ -649,7 +648,7 @@ export default function RegisterFlow() {
                     Biyografi{" "}
                     <span className="font-normal">(isteğe bağlı)</span>
                   </label>
-                  <span className="font-mono text-[10px] font-bold text-[#58635c] dark:text-[#aeb4af]">
+                  <span className="font-mono text-[10px] font-bold text-white/50">
                     {bio.length}/160
                   </span>
                 </div>
@@ -669,7 +668,7 @@ export default function RegisterFlow() {
               </div>
             </div>
 
-            <div className="mt-6 flex items-start gap-3 rounded-xl border border-[#1c2821]/12 bg-white/35 p-3 text-xs leading-5 dark:border-white/10 dark:bg-white/4">
+            <div className="mt-6 flex items-start gap-3 rounded-xl border border-white/12 bg-white/5 p-3 text-xs leading-5">
               <input
                 id="register-rules"
                 type="checkbox"
@@ -681,7 +680,7 @@ export default function RegisterFlow() {
                 required
                 aria-invalid={invalidField === "rules"}
                 aria-describedby="register-message"
-                className="mt-0.5 size-4 shrink-0 accent-[#7d3c2d] outline-none focus-visible:ring-3 focus-visible:ring-[#7d3c2d]/25 dark:accent-[#c7896d] dark:focus-visible:ring-[#c7896d]/30"
+                className="mt-0.5 size-4 shrink-0 accent-[#ff7a45] outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/30"
               />
               <div>
                 <label
@@ -695,7 +694,7 @@ export default function RegisterFlow() {
                   href="/sozlesme"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-1 block w-fit font-bold text-[#7d3c2d] underline decoration-[#9a5944]/35 underline-offset-4 outline-none hover:text-[#5a1f32] focus-visible:ring-2 focus-visible:ring-[#7d3c2d]/25 dark:text-[#d09272] dark:hover:text-[#e0a083] dark:focus-visible:ring-[#c7896d]/30"
+                  className="mt-1 block w-fit font-bold text-[#ff7a45] underline decoration-[#ff7a45]/35 underline-offset-4 outline-none hover:text-[#ffb18c] focus-visible:ring-2 focus-visible:ring-[#ff7a45]/30"
                 >
                   Sözleşmeyi oku
                   <span className="sr-only"> (yeni sekmede açılır)</span>
@@ -709,7 +708,7 @@ export default function RegisterFlow() {
             <button
               type="submit"
               disabled={isRegistering}
-              className="mt-6 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-[#5a1f32] px-4 text-sm font-bold text-[#fffaf4] outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:bg-[#9a5944] dark:hover:bg-[#ad6b53]"
+              className="mt-6 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-white px-4 text-sm font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40"
             >
               {isRegistering ? "Hesap oluşturuluyor…" : "Kaydı tamamla"}
               <span aria-hidden="true">→</span>
@@ -724,7 +723,7 @@ export default function RegisterFlow() {
                 verification.resetVerification();
                 setStep(1);
               }}
-              className="mt-3 min-h-11 w-full text-xs font-bold text-[#58635c] underline decoration-[#1c2821]/22 underline-offset-4 dark:text-[#aeb4af] dark:decoration-white/20"
+              className="mt-3 min-h-11 w-full text-xs font-bold text-white/55 underline decoration-white/20 underline-offset-4"
             >
               E-posta doğrulamasını yeniden başlat
             </button>
@@ -733,11 +732,11 @@ export default function RegisterFlow() {
       </div>
 
       {!complete && (
-        <div className="border-t border-[#1c2821]/10 bg-white/24 px-5 py-4 text-center text-[11px] text-[#58635c] dark:border-white/8 dark:bg-black/8 dark:text-[#aeb4af] sm:px-7">
+        <div className="border-t border-white/10 bg-black/20 px-5 py-4 text-center text-[11px] text-white/55 sm:px-7">
           Zaten hesabın var mı?{" "}
           <Link
             href="/giris"
-            className="font-bold text-[#7d3c2d] underline decoration-[#9a5944]/30 underline-offset-4 dark:text-[#d09272]"
+            className="font-bold text-[#ff7a45] underline decoration-[#ff7a45]/35 underline-offset-4"
           >
             Giriş yap
           </Link>
@@ -753,7 +752,7 @@ function FormMessage({ message }: { message: string | null }) {
       id="register-message"
       role={message ? "alert" : "status"}
       aria-live={message ? "assertive" : "polite"}
-      className="mt-4 min-h-5 text-xs font-medium leading-5 text-[#8a2e25] dark:text-[#e0a083]"
+      className="mt-4 min-h-5 text-xs font-medium leading-5 text-[#ffb199]"
     >
       {message}
     </p>

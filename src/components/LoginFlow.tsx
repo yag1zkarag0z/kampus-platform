@@ -18,7 +18,7 @@ type LoginStep = 1 | 2;
 const studentEmailPattern = /^[^\s@]+@stu\.yasar\.edu\.tr$/i;
 
 const inputClassName =
-  "auth-input h-12 w-full rounded-xl border border-[#1c2821]/14 bg-white/55 px-3.5 text-base text-[#1c2821] outline-none transition placeholder:text-[#68736c] hover:border-[#1c2821]/28 focus:border-[#7d3c2d] focus:ring-3 focus:ring-[#9a5944]/14 dark:border-white/12 dark:bg-white/6 dark:text-[#ece8e1] dark:placeholder:text-[#9ba39d] dark:hover:border-white/24 dark:focus:border-[#c7896d] dark:focus:ring-[#c7896d]/16";
+  "auth-input h-12 w-full rounded-xl border border-white/12 bg-white/6 px-3.5 text-base text-white outline-none transition placeholder:text-white/40 hover:border-white/24 focus:border-[#ff7a45] focus:ring-3 focus:ring-[#ff7a45]/20";
 
 export default function LoginFlow() {
   const router = useRouter();
@@ -140,8 +140,8 @@ export default function LoginFlow() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[31rem] overflow-hidden rounded-[1.6rem] border border-[#1c2821]/15 bg-[#fbf8f1]/92 shadow-[0_28px_80px_rgba(42,27,31,0.14)] backdrop-blur-xl dark:border-white/12 dark:bg-[#1a1c20]/94 dark:shadow-[0_28px_80px_rgba(0,0,0,0.36)]">
-      <div className="border-b border-[#1c2821]/12 px-5 py-5 dark:border-white/10 sm:px-7">
+    <div className="mx-auto w-full max-w-[31rem] overflow-hidden rounded-[1.6rem] border border-white/12 bg-[#141720]/94 shadow-[0_28px_80px_rgba(0,0,0,0.4)] backdrop-blur-xl">
+      <div className="border-b border-white/10 px-5 py-5 sm:px-7">
         <ol className="grid grid-cols-2 gap-2" aria-label="Giriş adımları">
           {["E-posta", "Giriş kodu"].map((label, index) => {
             const number = index + 1;
@@ -153,8 +153,8 @@ export default function LoginFlow() {
                 key={label}
                 className={`border-t-2 pt-2 text-[10px] font-bold transition-colors ${
                   isCurrent || isDone
-                    ? "border-[#9a5944] text-[#1c2821] dark:border-[#c7896d] dark:text-[#ece8e1]"
-                    : "border-[#1c2821]/12 text-[#68736c] dark:border-white/10 dark:text-[#9ba39d]"
+                    ? "border-[#ff7a45] text-white"
+                    : "border-white/10 text-white/45"
                 }`}
                 aria-current={isCurrent ? "step" : undefined}
               >
@@ -169,7 +169,7 @@ export default function LoginFlow() {
         {sessionNotice && !complete && (
           <div
             role="status"
-            className="mb-5 border border-[#9a5944]/24 bg-[#9a5944]/8 px-3.5 py-3 text-xs font-bold leading-5 text-[#6f3528] dark:border-[#c7896d]/25 dark:bg-[#c7896d]/9 dark:text-[#e3ad91]"
+            className="mb-5 border border-[#ff7a45]/25 bg-[#ff7a45]/9 px-3.5 py-3 text-xs font-bold leading-5 text-[#ffb18c]"
           >
             {sessionNotice}
           </div>
@@ -178,7 +178,7 @@ export default function LoginFlow() {
           <div aria-live="polite">
             <span
               aria-hidden="true"
-              className="grid size-11 place-items-center rounded-full bg-[#d8d3c8] text-[#3b2028] dark:bg-[#c7896d] dark:text-[#121417]"
+              className="grid size-11 place-items-center rounded-full bg-[#ff7a45] text-[#12100e]"
             >
               ✓
             </span>
@@ -187,7 +187,7 @@ export default function LoginFlow() {
             </h2>
             <Link
               href="/akis"
-              className="mt-7 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[#5a1f32] px-4 text-sm font-bold text-[#fffaf4] outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:bg-[#9a5944] dark:hover:bg-[#ad6b53]"
+              className="mt-7 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-white px-4 text-sm font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40"
             >
               Akışa geç
             </Link>
@@ -197,7 +197,7 @@ export default function LoginFlow() {
             <h2 className="text-2xl font-black tracking-[-0.04em] sm:text-3xl">
               Tekrar hoş geldin.
             </h2>
-            <p className="mt-3 text-sm leading-6 text-[#1c2821]/64 dark:text-white/62">
+            <p className="mt-3 text-sm leading-6 text-white/62">
               Öğrenci e-postana beş dakika geçerli tek kullanımlık bir kod
               göndereceğiz.
             </p>
@@ -232,7 +232,7 @@ export default function LoginFlow() {
             <button
               type="submit"
               disabled={verification.isRequesting}
-              className="mt-6 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-[#5a1f32] px-4 text-sm font-bold text-[#fffaf4] outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 dark:bg-[#9a5944] dark:hover:bg-[#ad6b53]"
+              className="mt-6 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-white px-4 text-sm font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40"
             >
               {verification.isRequesting
                 ? "Kod gönderiliyor…"
@@ -245,9 +245,9 @@ export default function LoginFlow() {
             <h2 className="text-2xl font-black tracking-[-0.04em] sm:text-3xl">
               Giriş kodunu yaz.
             </h2>
-            <p className="mt-3 text-sm leading-6 text-[#1c2821]/64 dark:text-white/62">
+            <p className="mt-3 text-sm leading-6 text-white/62">
               6 haneli kodu{" "}
-              <strong className="font-bold text-[#1c2821] dark:text-[#ece8e1]">
+              <strong className="font-bold text-white">
                 {email}
               </strong>{" "}
               adresi için hazırladık.
@@ -300,7 +300,7 @@ export default function LoginFlow() {
             />
             <p
               id="login-code-help"
-              className="mt-2 text-[11px] leading-5 text-[#58635c] dark:text-[#aeb4af]"
+              className="mt-2 text-[11px] leading-5 text-white/50"
             >
               Kodu e-postadan kopyalayıp buraya yapıştırabilirsin. Kodunu
               kimseyle paylaşma.
@@ -330,7 +330,7 @@ export default function LoginFlow() {
                 verification.isResending ||
                 verification.isVerifying
               }
-              className="mt-5 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-[#5a1f32] px-4 text-sm font-bold text-[#fffaf4] outline-none transition-colors hover:bg-[#6b2940] focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 disabled:cursor-not-allowed disabled:opacity-55 dark:bg-[#9a5944] dark:hover:bg-[#ad6b53]"
+              className="mt-5 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-white px-4 text-sm font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40 disabled:cursor-not-allowed disabled:opacity-55"
             >
               {verification.isVerifying ? "Doğrulanıyor…" : "Giriş yap"}
               <span aria-hidden="true">→</span>
@@ -344,7 +344,7 @@ export default function LoginFlow() {
                 setMessage(null);
                 verification.resetVerification();
               }}
-              className="mt-3 min-h-11 w-full text-xs font-bold text-[#58635c] underline decoration-[#1c2821]/22 underline-offset-4 dark:text-[#aeb4af] dark:decoration-white/20"
+              className="mt-3 min-h-11 w-full text-xs font-bold text-white/55 underline decoration-white/20 underline-offset-4"
             >
               E-posta adresini değiştir
             </button>
@@ -353,12 +353,12 @@ export default function LoginFlow() {
       </div>
 
       {!complete && (
-        <div className="border-t border-[#1c2821]/10 bg-white/24 px-5 py-4 text-center text-[11px] text-[#58635c] dark:border-white/8 dark:bg-black/8 dark:text-[#aeb4af] sm:px-7">
+        <div className="border-t border-white/10 bg-black/20 px-5 py-4 text-center text-[11px] text-white/55 sm:px-7">
           <p>
             Hesabın yok mu?{" "}
             <Link
               href="/kayit"
-              className="font-bold text-[#7d3c2d] underline decoration-[#9a5944]/30 underline-offset-4 dark:text-[#d09272]"
+              className="font-bold text-[#ff7a45] underline decoration-[#ff7a45]/35 underline-offset-4"
             >
               Kayıt ol
             </Link>
@@ -370,7 +370,7 @@ export default function LoginFlow() {
             }}
             disabled={isOpeningGuestView}
             aria-busy={isOpeningGuestView}
-            className="mt-3 min-h-11 w-full border border-[#1c2821]/13 px-4 text-xs font-black text-[#1c2821] transition-colors hover:border-[#7d3c2d]/30 hover:bg-[#7d3c2d]/6 dark:border-white/12 dark:text-[#ece8e1] dark:hover:border-[#c7896d]/35 dark:hover:bg-[#c7896d]/8"
+            className="mt-3 min-h-11 w-full border border-white/12 px-4 text-xs font-black text-white transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8"
           >
             {isOpeningGuestView
               ? "Misafir görünümü açılıyor…"
@@ -388,7 +388,7 @@ function FormMessage({ message }: { message: string | null }) {
       id="login-message"
       role={message ? "alert" : "status"}
       aria-live={message ? "assertive" : "polite"}
-      className="mt-4 min-h-5 text-xs font-medium leading-5 text-[#8a2e25] dark:text-[#e0a083]"
+      className="mt-4 min-h-5 text-xs font-medium leading-5 text-[#ffb199]"
     >
       {message}
     </p>

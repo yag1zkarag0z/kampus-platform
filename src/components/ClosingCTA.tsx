@@ -4,7 +4,7 @@ export default function ClosingCTA() {
   return (
     <section
       aria-labelledby="closing-title"
-      className="closing-cta-surface relative overflow-hidden border-b border-[#1c2821]/18 text-[#1c2821] dark:border-white/12 dark:text-[#ece8e1]"
+      className="reveal-item relative overflow-hidden border-b border-white/10 bg-[#0a0d16] text-white"
     >
       <div
         aria-hidden="true"
@@ -12,8 +12,8 @@ export default function ClosingCTA() {
       />
 
       <div className="relative mx-auto grid w-full max-w-[1360px] gap-9 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[1fr_auto] lg:items-end lg:gap-20 lg:px-12 lg:py-24">
-        <div>
-          <p className="mb-5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#3b2028] dark:text-[#c7896d] sm:text-xs">
+        <div className="reveal-item">
+          <p className="mb-5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#ff7a45] sm:text-xs">
             Sıra sende
           </p>
           <h2
@@ -21,16 +21,16 @@ export default function ClosingCTA() {
             className="max-w-4xl text-[clamp(2.65rem,7vw,6rem)] font-black leading-[0.92] tracking-[-0.06em]"
           >
             Kampüste konuşulanlara
-            <span className="block font-serif font-normal italic dark:text-[#c7896d]">
+            <span className="block font-serif font-normal italic text-[#ff7a45]">
               sen de katıl.
             </span>
           </h2>
         </div>
 
-        <div className="lg:max-w-xs">
+        <div className="reveal-item lg:max-w-xs">
           <Link
             href="/kayit"
-            className="group flex min-h-14 w-full items-center justify-between gap-8 rounded-xl bg-[#1c2821] px-5 font-bold text-[#fbf8f1] outline-none transition-colors hover:bg-[#5a2135] focus-visible:ring-4 focus-visible:ring-[#1c2821]/25 focus-visible:ring-offset-4 focus-visible:ring-offset-[#b8795f] dark:bg-[#c7896d] dark:text-[#121417] dark:hover:bg-[#8f8ba3] dark:focus-visible:ring-[#c7896d]/35 dark:focus-visible:ring-offset-[#211b1c] sm:w-fit lg:w-full"
+            className="group flex min-h-14 w-full items-center justify-between gap-8 rounded-xl bg-white px-5 font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-4 focus-visible:ring-white/40 focus-visible:ring-offset-4 focus-visible:ring-offset-[#0a0d16] sm:w-fit lg:w-full"
           >
             Öğrenci e-postanla katıl
             <span
@@ -40,7 +40,7 @@ export default function ClosingCTA() {
               ↑
             </span>
           </Link>
-          <p className="mt-4 text-xs leading-5 text-[#1c2821]/68 dark:text-white/68">
+          <p className="mt-4 text-xs leading-5 text-white/68">
             @stu.yasar.edu.tr uzantılı öğrenci e-postanı doğrulaman yeterli.
           </p>
         </div>

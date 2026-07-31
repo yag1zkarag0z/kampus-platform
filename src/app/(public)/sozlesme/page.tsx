@@ -3,8 +3,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import CampusLogo from "@/components/CampusLogo";
+import ForceDarkTheme from "@/components/ForceDarkTheme";
 import SiteFooter from "@/components/SiteFooter";
-import ThemeToggle from "@/components/ThemeToggle";
 
 export const metadata: Metadata = {
   title: "Kullanım ve Topluluk Sözleşmesi | KAMPÜS.",
@@ -27,28 +27,30 @@ const sections = [
 ] as const;
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#5a1f32]/25 focus-visible:ring-offset-2 focus-visible:ring-offset-[#eee9e1] dark:focus-visible:ring-[#c7896d]/30 dark:focus-visible:ring-offset-[#111315]";
+  "outline-none focus-visible:ring-3 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
 
 export default function TermsPage() {
   return (
     <>
-      <div className="relative isolate overflow-hidden bg-[#eee9e1] text-[#1c2821] dark:bg-[#111315] dark:text-[#ece8e1]">
+      <div className="relative isolate overflow-hidden bg-[#0a0d16] text-white">
+        <ForceDarkTheme />
+
         <a
           href="#terms-content"
-          className="fixed top-3 left-3 z-[60] -translate-y-20 bg-[#5a1f32] px-4 py-3 text-xs font-black text-white outline-none transition-transform focus:translate-y-0 dark:bg-[#c7896d] dark:text-[#121417]"
+          className="fixed top-3 left-3 z-[60] -translate-y-20 bg-white px-4 py-3 text-xs font-black text-[#12100e] outline-none transition-transform focus:translate-y-0"
         >
           İçeriğe geç
         </a>
         <div
           aria-hidden="true"
-          className="hero-gradient-motion pointer-events-none absolute inset-0 -z-30 opacity-70 dark:opacity-55"
+          className="pointer-events-none absolute inset-0 -z-20 bg-[radial-gradient(ellipse_120%_80%_at_82%_-8%,rgba(255,122,69,0.12)_0%,transparent_55%),linear-gradient(175deg,#05060a_0%,#0a0d16_55%,#0e1220_100%)]"
         />
         <div
           aria-hidden="true"
-          className="paper-noise pointer-events-none absolute inset-0 -z-20"
+          className="paper-noise pointer-events-none absolute inset-0 -z-10"
         />
 
-        <header className="sticky top-0 z-50 border-b border-[#1c2821]/13 bg-[#eee9e1]/92 backdrop-blur-xl dark:border-white/11 dark:bg-[#111315]/92">
+        <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0d16]/92 backdrop-blur-xl">
           <div className="mx-auto flex min-h-[4.5rem] w-full max-w-[1360px] items-center justify-between gap-3 px-5 sm:min-h-20 sm:px-8 lg:px-12">
             <Link
               href="/"
@@ -61,15 +63,12 @@ export default function TermsPage() {
               />
             </Link>
 
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Link
-                href="/"
-                className={`hidden min-h-11 items-center px-3 text-xs font-black text-[#58635c] transition-colors hover:text-[#5a1f32] dark:text-[#aeb4af] dark:hover:text-[#d09272] sm:inline-flex ${focusRing}`}
-              >
-                Ana sayfaya dön
-              </Link>
-              <ThemeToggle className="size-11 px-0" />
-            </div>
+            <Link
+              href="/"
+              className={`hidden min-h-11 items-center px-3 text-xs font-black text-white/55 transition-colors hover:text-[#ff7a45] sm:inline-flex ${focusRing}`}
+            >
+              Ana sayfaya dön
+            </Link>
           </div>
         </header>
 
@@ -79,28 +78,28 @@ export default function TermsPage() {
           className="mx-auto w-full max-w-[1360px] px-5 pt-10 pb-16 outline-none sm:px-8 sm:pt-14 sm:pb-20 lg:px-12 lg:pt-16"
         >
           <div className="mx-auto max-w-6xl">
-            <header className="max-w-4xl border-b border-[#1c2821]/13 pb-9 dark:border-white/11 sm:pb-12">
-              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#7d3c2d] dark:text-[#c7896d] sm:text-xs">
+            <header className="max-w-4xl border-b border-white/10 pb-9 sm:pb-12">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#ff7a45] sm:text-xs">
                 KAMPÜS. / Sözleşme v1.0
               </p>
               <h1 className="mt-4 max-w-4xl text-[clamp(2.55rem,8vw,5.7rem)] font-black leading-[0.92] tracking-[-0.06em]">
                 Kullanım ve
-                <span className="block font-serif font-normal italic text-[#7d3c2d] dark:text-[#d09272]">
+                <span className="block font-serif font-normal italic text-[#ff7a45]">
                   topluluk sözleşmesi.
                 </span>
               </h1>
-              <p className="mt-6 max-w-3xl text-base leading-7 text-[#475149] dark:text-[#bcc1bd] sm:text-lg sm:leading-8">
+              <p className="mt-6 max-w-3xl text-base leading-7 text-white/68 sm:text-lg sm:leading-8">
                 Bu metin KAMPÜS’e katılırken kabul ettiğin temel kullanım
                 koşullarını, topluluğun sınırlarını ve moderasyon yaklaşımını
                 açıklar.
               </p>
-              <p className="mt-5 text-xs font-bold text-[#58635c] dark:text-[#aeb4af]">
+              <p className="mt-5 text-xs font-bold text-white/55">
                 Son güncelleme:{" "}
                 <time dateTime="2026-07-27">27 Temmuz 2026</time>
               </p>
             </header>
 
-            <dl className="grid border-b border-[#1c2821]/13 dark:border-white/11 sm:grid-cols-3">
+            <dl className="grid border-b border-white/10 sm:grid-cols-3">
               <SummaryItem
                 label="Öğrenci alanı"
                 value="Öğrenci gönderileri yalnızca doğrulanmış üyelere açıktır."
@@ -115,7 +114,7 @@ export default function TermsPage() {
               />
             </dl>
 
-            <details className="mt-7 border-y border-[#1c2821]/13 py-1 dark:border-white/11 lg:hidden">
+            <details className="mt-7 border-y border-white/10 py-1 lg:hidden">
               <summary className={`flex min-h-12 cursor-pointer list-none items-center justify-between text-xs font-black [&::-webkit-details-marker]:hidden ${focusRing}`}>
                 Bölümler
                 <span aria-hidden="true" className="font-mono text-base">
@@ -127,7 +126,7 @@ export default function TermsPage() {
 
             <div className="mt-10 grid items-start gap-12 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-16 xl:gap-24">
               <aside className="sticky top-28 hidden lg:block">
-                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#7d3c2d] dark:text-[#c7896d]">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#ff7a45]">
                   Bu sayfada
                 </p>
                 <TermsNavigation className="mt-4" />
@@ -378,15 +377,15 @@ export default function TermsPage() {
                   </p>
                 </TermsSection>
 
-                <div className="mt-12 border-t border-[#1c2821]/13 pt-8 dark:border-white/11">
-                  <p className="max-w-2xl text-sm leading-6 text-[#58635c] dark:text-[#aeb4af]">
+                <div className="mt-12 border-t border-white/10 pt-8">
+                  <p className="max-w-2xl text-sm leading-6 text-white/55">
                     Kayıt ekranındaki kutuyu işaretlediğinde bu sözleşmenin
                     güncel sürümünü okuduğunu ve kabul ettiğini belirtmiş
                     olursun.
                   </p>
                   <Link
                     href="/kayit"
-                    className={`mt-5 inline-flex min-h-12 items-center justify-center bg-[#5a1f32] px-5 text-sm font-black text-white transition-colors hover:bg-[#6b2940] dark:bg-[#9a5944] dark:text-[#121417] dark:hover:bg-[#ad6b53] ${focusRing}`}
+                    className={`mt-5 inline-flex min-h-12 items-center justify-center bg-white px-5 text-sm font-black text-[#12100e] transition-colors hover:bg-white/90 ${focusRing}`}
                   >
                     Kayıt ekranına dön
                   </Link>
@@ -410,11 +409,11 @@ function TermsNavigation({ className = "" }: { className?: string }) {
           <li key={section.id}>
             <a
               href={`#${section.id}`}
-              className={`flex min-h-11 items-center gap-2 text-[11px] font-bold leading-4 text-[#58635c] transition-colors hover:text-[#5a1f32] dark:text-[#aeb4af] dark:hover:text-[#d09272] ${focusRing}`}
+              className={`flex min-h-11 items-center gap-2 text-[11px] font-bold leading-4 text-white/55 transition-colors hover:text-[#ff7a45] ${focusRing}`}
             >
               <span
                 aria-hidden="true"
-                className="font-mono text-[9px] text-[#9a5944] dark:text-[#c7896d]"
+                className="font-mono text-[9px] text-[#ff7a45]"
               >
                 {String(index + 1).padStart(2, "0")}
               </span>
@@ -429,11 +428,11 @@ function TermsNavigation({ className = "" }: { className?: string }) {
 
 function SummaryItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border-b border-[#1c2821]/13 py-5 last:border-b-0 dark:border-white/11 sm:border-r sm:border-b-0 sm:px-5 sm:first:pl-0 sm:last:border-r-0 sm:last:pr-0">
-      <dt className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#7d3c2d] dark:text-[#c7896d]">
+    <div className="border-b border-white/10 py-5 last:border-b-0 sm:border-r sm:border-b-0 sm:px-5 sm:first:pl-0 sm:last:border-r-0 sm:last:pr-0">
+      <dt className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
         {label}
       </dt>
-      <dd className="mt-2 text-xs font-semibold leading-5 text-[#475149] dark:text-[#bcc1bd]">
+      <dd className="mt-2 text-xs font-semibold leading-5 text-white/68">
         {value}
       </dd>
     </div>
@@ -455,12 +454,12 @@ function TermsSection({
     <section
       id={id}
       aria-labelledby={`${id}-title`}
-      className="scroll-mt-28 border-t border-[#1c2821]/13 py-9 first:border-t-0 first:pt-0 dark:border-white/11 sm:py-11"
+      className="scroll-mt-28 border-t border-white/10 py-9 first:border-t-0 first:pt-0 sm:py-11"
     >
       <div className="flex items-baseline gap-3">
         <span
           aria-hidden="true"
-          className="font-mono text-[10px] font-bold text-[#9a5944] dark:text-[#c7896d]"
+          className="font-mono text-[10px] font-bold text-[#ff7a45]"
         >
           {number}
         </span>
@@ -471,7 +470,7 @@ function TermsSection({
           {title}
         </h2>
       </div>
-      <div className="mt-5 space-y-4 text-sm leading-7 text-[#475149] marker:text-[#9a5944] dark:text-[#bcc1bd] dark:marker:text-[#c7896d] [&_li]:pl-1 [&_strong]:font-black [&_strong]:text-[#1c2821] dark:[&_strong]:text-[#ece8e1] [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-2.5">
+      <div className="mt-5 space-y-4 text-sm leading-7 text-white/68 marker:text-[#ff7a45] [&_li]:pl-1 [&_strong]:font-black [&_strong]:text-white [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-2.5">
         {children}
       </div>
     </section>
