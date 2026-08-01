@@ -79,7 +79,7 @@ export default function SiteFooter() {
           <p className="shrink-0 text-[11px] leading-5 text-white/60 sm:text-xs lg:text-right">
             © 2026 KAMPÜS. //{" "}
             <a
-              href="https://www.instagram.com/yagizkaragoz_/"
+              href="https://www.yagizkaragoz.com"
               target="_blank"
               rel="noopener noreferrer"
               className="font-bold text-white outline-none transition-colors hover:text-[#ff7a45] focus-visible:rounded focus-visible:ring-2 focus-visible:ring-white"

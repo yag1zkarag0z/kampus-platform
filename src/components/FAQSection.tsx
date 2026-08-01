@@ -53,7 +53,7 @@ const faqItems = [
   {
     question: "Bir sorun olursa ya da fikrim olursa ne yapmalıyım?",
     answer:
-      "Direkt bana ulaşabilirsin dm'den. Footer'daki isme tıklaman yeterli.",
+      "Direkt bana ulaşabilirsin.Email atman yeterli.",
   },
 ];
 
