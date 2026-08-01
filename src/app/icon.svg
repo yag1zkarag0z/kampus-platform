@@ -1,24 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 36">
   <defs>
     <linearGradient id="lens" x1="7" y1="1" x2="23" y2="11" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#6f2c5d"/>
-      <stop offset=".48" stop-color="#32152f"/>
-      <stop offset=".78" stop-color="#241124"/>
-      <stop offset="1" stop-color="#784071"/>
+      <stop offset="0" stop-color="#77435b"/>
+      <stop offset=".48" stop-color="#34202c"/>
+      <stop offset=".78" stop-color="#17151a"/>
+      <stop offset="1" stop-color="#675163"/>
     </linearGradient>
     <linearGradient id="rim" x1="6" y1="1" x2="24" y2="11" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ff9a72"/>
-      <stop offset=".52" stop-color="#d86b9d"/>
-      <stop offset="1" stop-color="#9f8cf1"/>
-    </linearGradient>
-    <linearGradient id="smile" x1="5" y1="20" x2="25" y2="31" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#e87557"/>
-      <stop offset=".5" stop-color="#b84f7b"/>
-      <stop offset="1" stop-color="#8177d5"/>
+      <stop offset="0" stop-color="#ffb18c"/>
+      <stop offset=".52" stop-color="#ff7a45"/>
+      <stop offset="1" stop-color="#aaa6ba"/>
     </linearGradient>
   </defs>
 
-  <path d="M5.2 19.5c1.1 8.2 4.7 12.4 9.8 12.4s8.7-4.2 9.8-12.4" fill="none" stroke="url(#smile)" stroke-width="5.2" stroke-linecap="round"/>
+  <rect width="30" height="36" fill="#0a0d16"/>
+
+  <path d="M5.2 19.5c1.1 8.2 4.7 12.4 9.8 12.4s8.7-4.2 9.8-12.4" fill="none" stroke="#ffffff" stroke-width="5.2" stroke-linecap="round"/>
 
   <rect x="6.6" y="2" width="6.8" height="9.3" rx="3.4" transform="rotate(-5 10 6.65)" fill="url(#lens)" stroke="url(#rim)" stroke-width=".85"/>
   <rect x="16.9" y="1.5" width="6.8" height="9.6" rx="3.4" transform="rotate(5 20.3 6.3)" fill="url(#lens)" stroke="url(#rim)" stroke-width=".85"/>

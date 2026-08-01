@@ -18,7 +18,7 @@ export default function CampusLoadingScreen({
       <span className="sr-only">{statusText}</span>
 
       <div aria-hidden="true" className="relative flex flex-col items-center">
-        <div className="campus-loading-logo text-[#ff7a45]">
+        <div className="campus-loading-logo text-white">
           <CampusLogo
             variant="mark"
             idPrefix="session-loading-logo"
