@@ -936,7 +936,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
 
       const body = input.body.trim();
 
-      if (!body) {
+      if (!body && !input.gif) {
         throw new Error("Comment content is invalid.");
       }
 

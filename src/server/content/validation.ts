@@ -185,14 +185,18 @@ const postBodySchema = z
   .trim()
   .max(500, "Gönderi metni en fazla 500 karakter olabilir.");
 
-const commentBodySchema = z
+const commentBodyBaseSchema = z
   .string({ error: "Yorum metni geçersiz." })
   .trim()
-  .min(1, "Yorum boş bırakılamaz.")
   .max(500, "Yorum en fazla 500 karakter olabilir.")
   .refine((value) => !containsBlockedUrl(value), {
     message: URL_NOT_ALLOWED_MESSAGE,
   });
+
+const commentBodySchema = commentBodyBaseSchema.refine(
+  (value) => value.length > 0,
+  { message: "Yorum boş bırakılamaz." },
+);
 
 const gifIdSchema = z
   .string({ error: "GIF kimliği geçersiz." })
@@ -356,7 +360,7 @@ export const updatePostSchema = z
 
 export const createCommentSchema = z
   .object({
-    body: commentBodySchema,
+    body: commentBodyBaseSchema.default(""),
     isAnonymous: z
       .boolean({ error: "Anonimlik tercihi doğru veya yanlış olmalıdır." })
       .default(false),
@@ -365,7 +369,16 @@ export const createCommentSchema = z
       .optional(),
     gifId: gifIdSchema.optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (!value.body && !value.gifId) {
+      context.addIssue({
+        code: "custom",
+        message: "Yorum yazmalı veya bir GIF seçmelisin.",
+        path: ["body"],
+      });
+    }
+  });
 
 export const updateCommentSchema = z
   .object({

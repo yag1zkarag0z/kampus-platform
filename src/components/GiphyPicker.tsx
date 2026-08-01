@@ -51,7 +51,7 @@ export default function GiphyPicker({
       const endpoint = searchTerm ? "search" : "trending";
       const url = new URL(`https://api.giphy.com/v1/gifs/${endpoint}`);
       url.searchParams.set("api_key", apiKey);
-      url.searchParams.set("limit", "18");
+      url.searchParams.set("limit", "50");
       url.searchParams.set("rating", "pg-13");
       url.searchParams.set("bundle", "messaging_non_clips");
       url.searchParams.set("country_code", "TR");

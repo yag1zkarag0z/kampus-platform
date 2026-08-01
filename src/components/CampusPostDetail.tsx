@@ -182,8 +182,8 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
 
     const body = commentDraft.trim();
 
-    if (!body) {
-      setFormMessage("Yorumunu yazmadan gönderemezsin.");
+    if (!body && !selectedGif) {
+      setFormMessage("Yorum yazmalı veya bir GIF seçmelisin.");
       return;
     }
 
@@ -587,7 +587,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
             <button
               type="submit"
               disabled={
-                !commentDraft.trim() || isCommentSubmitting
+                (!commentDraft.trim() && !selectedGif) || isCommentSubmitting
               }
               className={`inline-flex min-h-11 items-center justify-center bg-white px-5 text-xs font-bold text-[#12100e] transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
             >
@@ -715,9 +715,11 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                       </div>
                     ) : (
                       <>
-                        <p className="mt-2 max-w-[78ch] whitespace-pre-wrap break-words text-sm leading-6 text-white/78 sm:text-[15px] sm:leading-7">
-                          {comment.body}
-                        </p>
+                        {comment.body && (
+                          <p className="mt-2 max-w-[78ch] whitespace-pre-wrap break-words text-sm leading-6 text-white/78 sm:text-[15px] sm:leading-7">
+                            {comment.body}
+                          </p>
+                        )}
                         {comment.gif && <CampusGif gif={comment.gif} compact />}
                         <CampusCommentActions
                           postId={post.id}

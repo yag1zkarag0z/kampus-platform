@@ -149,7 +149,8 @@ export const comments = pgTable(
     index("comments_author_id_idx").on(table.authorId),
     check(
       "comments_body_not_blank_check",
-      sql`char_length(btrim(${table.body})) > 0`,
+      sql`char_length(btrim(${table.body})) > 0
+        or ${table.gifId} is not null`,
     ),
     check(
       "comments_gif_metadata_check",

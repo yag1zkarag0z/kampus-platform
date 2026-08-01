@@ -269,8 +269,19 @@ describe("content validation", () => {
       }),
     );
     expect(blankError.fieldErrors.body).toContain(
-      "Yorum boş bırakılamaz.",
+      "Yorum yazmalı veya bir GIF seçmelisin.",
     );
+
+    expect(
+      parseContentInput(createCommentSchema, {
+        body: "",
+        gifId: "happyReaction123",
+      }),
+    ).toEqual({
+      body: "",
+      isAnonymous: false,
+      gifId: "happyReaction123",
+    });
 
     captureInvalidInput(() =>
       parseContentInput(createCommentSchema, {
