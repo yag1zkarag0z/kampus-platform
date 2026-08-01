@@ -75,7 +75,7 @@ export default function GiphyPicker({ onSelect }: { onSelect: (gif: CampusGif) =
   };
 
   return (
-    <div className="absolute bottom-[calc(100%+0.6rem)] left-0 z-50 w-[min(90vw,22rem)] border border-white/12 bg-[#141720] p-3 shadow-[0_24px_70px_rgba(0,0,0,0.55)]">
+    <div className="fixed inset-x-3 bottom-3 z-[70] max-h-[min(78svh,34rem)] min-w-0 overflow-hidden border border-white/12 bg-[#141720] p-3 shadow-[0_24px_70px_rgba(0,0,0,0.55)] sm:absolute sm:inset-x-auto sm:bottom-[calc(100%+0.6rem)] sm:left-0 sm:w-[22rem] sm:max-w-[calc(100vw-2rem)]">
       <form onSubmit={submit} className="flex gap-2">
         <input
           type="search"
@@ -92,7 +92,7 @@ export default function GiphyPicker({ onSelect }: { onSelect: (gif: CampusGif) =
       {message && <p role="status" className="py-8 text-center text-xs font-semibold text-white/55">{message}</p>}
 
       {results.length > 0 && (
-        <div className="mt-3 grid max-h-72 grid-cols-3 gap-1.5 overflow-y-auto pr-1">
+        <div className="mt-3 grid max-h-[min(56svh,18rem)] grid-cols-3 gap-1.5 overflow-y-auto overscroll-contain pr-1">
           {results.map((gif) => (
             <button
               key={gif.id}

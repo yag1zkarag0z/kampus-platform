@@ -239,6 +239,12 @@ export function startGuestSession() {
   });
 }
 
+export function startDevelopmentSession() {
+  return requestApi<SessionState>("/v1/auth/development", {
+    method: "POST",
+  });
+}
+
 export function getCurrentSession() {
   return requestApi<SessionState>("/v1/session", {
     method: "GET",

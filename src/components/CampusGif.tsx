@@ -6,7 +6,7 @@ import type { CampusGif as CampusGifData } from "@/data/campusPosts";
 
 export default function CampusGif({ gif, compact = false }: { gif: CampusGifData; compact?: boolean }) {
   return (
-    <figure className={`mt-3 overflow-hidden border border-white/10 bg-black/25 ${compact ? "max-w-sm" : "max-w-xl"}`}>
+    <figure className={`mt-3 w-full min-w-0 max-w-full overflow-hidden border border-white/10 bg-black/25 ${compact ? "sm:max-w-sm" : "sm:max-w-xl"}`}>
       <Image
         src={gif.src}
         alt={gif.alt}
@@ -14,7 +14,7 @@ export default function CampusGif({ gif, compact = false }: { gif: CampusGifData
         height={gif.height}
         sizes={compact ? "(max-width: 640px) 82vw, 384px" : "(max-width: 900px) 92vw, 576px"}
         unoptimized
-        className="h-auto max-h-[28rem] w-full object-contain"
+        className="block h-auto max-h-[28rem] w-full max-w-full object-contain"
       />
       <figcaption className="sr-only">GIPHY tarafından sağlanan GIF</figcaption>
     </figure>

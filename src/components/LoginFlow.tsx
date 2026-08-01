@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import {
   AuthClientError,
+  startDevelopmentSession,
   startGuestSession,
 } from "@/auth/client";
 import {
@@ -29,6 +30,7 @@ export default function LoginFlow() {
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const [complete, setComplete] = useState(false);
   const [isOpeningGuestView, setIsOpeningGuestView] = useState(false);
+  const [isOpeningDevelopmentAccount, setIsOpeningDevelopmentAccount] = useState(false);
   const verification = useVerificationCode("login");
 
   useEffect(() => {
@@ -136,6 +138,25 @@ export default function LoginFlow() {
           : "Misafir görünümü şu anda açılamıyor.",
       );
       setIsOpeningGuestView(false);
+    }
+  };
+
+  const continueAsDeveloper = async () => {
+    if (isOpeningDevelopmentAccount) return;
+
+    setMessage(null);
+    setIsOpeningDevelopmentAccount(true);
+
+    try {
+      await startDevelopmentSession();
+      router.push("/akis");
+    } catch (error) {
+      setMessage(
+        error instanceof AuthClientError
+          ? error.message
+          : "Geliştirici hesabı açılamadı.",
+      );
+      setIsOpeningDevelopmentAccount(false);
     }
   };
 
@@ -375,6 +396,20 @@ export default function LoginFlow() {
               ? "Misafir görünümü açılıyor…"
               : "Misafir olarak göz at"}
           </button>
+          {process.env.NODE_ENV !== "production" &&
+            process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === "true" && (
+            <button
+              type="button"
+              onClick={() => void continueAsDeveloper()}
+              disabled={isOpeningDevelopmentAccount}
+              aria-busy={isOpeningDevelopmentAccount}
+              className="mt-2 min-h-11 w-full rounded-xl border border-[#ff7a45]/30 bg-[#ff7a45]/8 px-4 text-xs font-black text-[#ffb18c] transition-colors hover:bg-[#ff7a45]/14"
+            >
+              {isOpeningDevelopmentAccount
+                ? "Test hesabı açılıyor…"
+                : "Geliştirici hesabıyla giriş yap"}
+            </button>
+          )}
         </div>
       )}
     </div>
