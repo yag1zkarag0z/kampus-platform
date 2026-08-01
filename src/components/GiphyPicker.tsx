@@ -23,7 +23,13 @@ function toCampusGif(result: GiphyResult): CampusGif | null {
   return { id: result.id, src, width, height, alt: (result.title?.trim() || "GIPHY GIF").slice(0, 160) };
 }
 
-export default function GiphyPicker({ onSelect }: { onSelect: (gif: CampusGif) => void }) {
+export default function GiphyPicker({
+  onClose,
+  onSelect,
+}: {
+  onClose: () => void;
+  onSelect: (gif: CampusGif) => void;
+}) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CampusGif[]>([]);
   const [message, setMessage] = useState("GIF'ler yükleniyor…");
@@ -74,8 +80,21 @@ export default function GiphyPicker({ onSelect }: { onSelect: (gif: CampusGif) =
   };
 
   return (
-    <div className="fixed inset-x-3 bottom-3 z-[70] max-h-[min(78svh,34rem)] min-w-0 overflow-hidden border border-white/12 bg-[#141720] p-3 shadow-[0_24px_70px_rgba(0,0,0,0.55)] sm:absolute sm:inset-x-auto sm:bottom-[calc(100%+0.6rem)] sm:left-0 sm:w-[22rem] sm:max-w-[calc(100vw-2rem)]">
-      <div role="search" className="flex gap-2">
+    <>
+      <button
+        type="button"
+        aria-label="GIF seçiciyi kapat"
+        onClick={onClose}
+        className="fixed inset-0 z-[69] cursor-default bg-black/55 backdrop-blur-[2px]"
+      />
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-label="GIPHY GIF seçici"
+        className="fixed inset-x-3 bottom-3 z-[70] max-h-[calc(100svh-1.5rem)] min-w-0 overflow-hidden border border-white/12 bg-[#141720] p-3 shadow-[0_24px_70px_rgba(0,0,0,0.65)] sm:inset-x-auto sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:w-[min(44rem,calc(100vw-3rem))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:p-4"
+      >
+      <div className="flex items-center gap-2">
+        <div role="search" className="flex min-w-0 flex-1 gap-2">
         <input
           type="search"
           value={query}
@@ -92,6 +111,15 @@ export default function GiphyPicker({ onSelect }: { onSelect: (gif: CampusGif) =
           className={`min-h-10 min-w-0 flex-1 border border-white/12 bg-white/5 px-3 text-xs text-white placeholder:text-white/40 ${focusRing}`}
         />
         <button type="button" onClick={submit} className={`min-h-10 bg-white px-3 text-xs font-black text-[#12100e] ${focusRing}`}>Ara</button>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="GIF seçiciyi kapat"
+          className={`grid size-10 shrink-0 place-items-center border border-white/12 text-lg text-white/65 hover:bg-white/8 hover:text-white ${focusRing}`}
+        >
+          ×
+        </button>
       </div>
 
       {message && <p role="status" className="py-8 text-center text-xs font-semibold text-white/55">{message}</p>}
@@ -101,7 +129,7 @@ export default function GiphyPicker({ onSelect }: { onSelect: (gif: CampusGif) =
           <p className="mt-3 text-[10px] font-bold text-white/45">
             {results.length} GIF · Daha fazlası için aşağı kaydır
           </p>
-          <div className="mt-2 grid max-h-[min(56svh,18rem)] grid-cols-3 gap-1.5 overflow-y-auto overscroll-contain pr-1">
+          <div className="mt-2 grid max-h-[min(56svh,24rem)] grid-cols-3 gap-1.5 overflow-y-auto overscroll-contain pr-1 sm:grid-cols-4">
           {results.map((gif) => (
             <button
               key={gif.id}
@@ -120,6 +148,7 @@ export default function GiphyPicker({ onSelect }: { onSelect: (gif: CampusGif) =
       <a href="https://giphy.com/" target="_blank" rel="noreferrer" className={`mt-3 inline-flex text-[10px] font-black uppercase tracking-[0.12em] text-white/55 hover:text-white ${focusRing}`}>
         Powered by GIPHY
       </a>
-    </div>
+      </section>
+    </>
   );
 }

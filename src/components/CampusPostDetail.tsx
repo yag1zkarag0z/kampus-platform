@@ -576,7 +576,10 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                   GIF
                 </button>
                 {isGifPickerOpen && (
-                  <GiphyPicker onSelect={(gif) => { setSelectedGif(gif); setIsGifPickerOpen(false); }} />
+                  <GiphyPicker
+                    onClose={() => setIsGifPickerOpen(false)}
+                    onSelect={(gif) => { setSelectedGif(gif); setIsGifPickerOpen(false); }}
+                  />
                 )}
               </div>
             </div>

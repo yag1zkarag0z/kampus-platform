@@ -427,7 +427,8 @@ export default function CampusFeed() {
 	            GIF
 	          </button>
 	          {isGifPickerOpen && (
-	            <GiphyPicker
+                <GiphyPicker
+	              onClose={() => setIsGifPickerOpen(false)}
 	              onSelect={(gif) => {
 	                setQuickPostGif(gif);
 	                setIsGifPickerOpen(false);

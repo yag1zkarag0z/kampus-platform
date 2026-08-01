@@ -904,7 +904,10 @@ export default function CreateCampusPost() {
                   GIF seç
                 </button>
                 {isGifPickerOpen && (
-                  <GiphyPicker onSelect={(gif) => { setSelectedGif(gif); removeImage(); setIsGifPickerOpen(false); }} />
+                  <GiphyPicker
+                    onClose={() => setIsGifPickerOpen(false)}
+                    onSelect={(gif) => { setSelectedGif(gif); removeImage(); setIsGifPickerOpen(false); }}
+                  />
                 )}
               </div>
             </div>
