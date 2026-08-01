@@ -44,7 +44,7 @@ describe("POST /v1/auth/code/request", () => {
   it("returns challenge timing but never returns the raw OTP", async () => {
     const response = await POST(
       createRequest({
-        email: "Student@stu.yasar.edu.tr",
+        email: "202612345@STU.YASAR.EDU.TR",
         purpose: "login",
       }),
     );
@@ -53,7 +53,7 @@ describe("POST /v1/auth/code/request", () => {
     expect(response.status).toBe(202);
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(mockedRequestOtpCode).toHaveBeenCalledWith({
-      email: "student@stu.yasar.edu.tr",
+      email: "202612345@stu.yasar.edu.tr",
       purpose: "login",
       ipAddress: "127.0.0.8",
     });
@@ -68,10 +68,13 @@ describe("POST /v1/auth/code/request", () => {
     expect(JSON.stringify(body)).not.toMatch(/code/i);
   });
 
-  it("rejects non-student email addresses before calling the service", async () => {
+  it.each([
+    "student@example.com",
+    "student@stu.yasar.edu.tr",
+  ])("rejects a non-student-number email before calling the service: %s", async (email) => {
     const response = await POST(
       createRequest({
-        email: "student@example.com",
+        email,
         purpose: "login",
       }),
     );

@@ -80,12 +80,13 @@ export function createUniqueStudentIdentity(
   prefix = "member",
 ): E2eStudentIdentity {
   const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
+  const studentNumber = `99${BigInt(`0x${suffix}`).toString()}`;
   const ipPartOne = suffix.slice(0, 4);
   const ipPartTwo = suffix.slice(4, 8);
 
   return {
     displayName: `E2E ${prefix}`,
-    email: `e2e.${prefix}.${suffix}@stu.yasar.edu.tr`,
+    email: `${studentNumber}@stu.yasar.edu.tr`,
     requestIp: `2001:db8:${ipPartOne}:${ipPartTwo}::1`,
     username: `e2e_${suffix}`,
   };

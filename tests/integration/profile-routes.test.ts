@@ -20,9 +20,10 @@ const testEmails = new Set<string>();
 
 function createAccountFixture() {
   const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
+  const studentNumber = BigInt(`0x${suffix}`).toString();
 
   return {
-    email: `route.${suffix}@stu.yasar.edu.tr`,
+    email: `${studentNumber}@stu.yasar.edu.tr`,
     username: `r${suffix}`,
   };
 }

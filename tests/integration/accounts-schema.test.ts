@@ -34,9 +34,10 @@ afterAll(async () => {
 
 function createUserFixture() {
   const suffix = randomUUID().replaceAll("-", "").slice(0, 20);
+  const studentNumber = BigInt(`0x${suffix}`).toString();
 
   return {
-    email: `student.${suffix}@stu.yasar.edu.tr`,
+    email: `${studentNumber}@stu.yasar.edu.tr`,
     username: `u${suffix}`,
   };
 }
@@ -215,6 +216,40 @@ describe("account schema migration", () => {
           ],
         ),
       "23505",
+    );
+  });
+
+  it("requires the student-number email format", async () => {
+    await expectSqlState(
+      () => insertUser({ email: "student@stu.yasar.edu.tr" }),
+      "23514",
+    );
+
+    await expectSqlState(
+      () =>
+        client.query(
+          `insert into otp_challenges (
+            email,
+            purpose,
+            code_hash,
+            request_ip_hash,
+            expires_at,
+            resend_available_at
+          ) values (
+            $1,
+            'login',
+            $2,
+            $3,
+            now() + interval '5 minutes',
+            now() + interval '30 seconds'
+          )`,
+          [
+            "student@stu.yasar.edu.tr",
+            "c".repeat(64),
+            "i".repeat(64),
+          ],
+        ),
+      "23514",
     );
   });
 

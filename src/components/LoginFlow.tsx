@@ -15,7 +15,7 @@ import {
 
 type LoginStep = 1 | 2;
 
-const studentEmailPattern = /^[^\s@]+@stu\.yasar\.edu\.tr$/i;
+const studentEmailPattern = /^\d+@stu\.yasar\.edu\.tr$/i;
 
 const inputClassName =
   "auth-input h-12 w-full rounded-xl border border-white/12 bg-white/6 px-3.5 text-base text-white outline-none transition placeholder:text-white/40 hover:border-white/24 focus:border-[#ff7a45] focus:ring-3 focus:ring-[#ff7a45]/20";
@@ -55,7 +55,7 @@ export default function LoginFlow() {
 
     if (!studentEmailPattern.test(normalizedEmail)) {
       setMessage(
-        "Yalnızca @stu.yasar.edu.tr uzantılı öğrenci e-postası kullanabilirsin."
+        "Öğrenci numaranla oluşturulan @stu.yasar.edu.tr e-posta adresini kullanmalısın."
       );
       return;
     }

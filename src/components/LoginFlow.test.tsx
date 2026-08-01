@@ -80,13 +80,13 @@ describe("LoginFlow", () => {
     window.history.replaceState({}, "", "/giris");
   });
 
-  it("rejects an email outside the Yaşar student domain", async () => {
+  it("rejects an email that does not start with a student number", async () => {
     const user = userEvent.setup();
     render(<LoginFlow />);
 
     await user.type(
       screen.getByLabelText("Yaşar öğrenci e-postan"),
-      "student@example.com",
+      "student@stu.yasar.edu.tr",
     );
     await user.click(
       screen.getByRole("button", {
@@ -95,7 +95,7 @@ describe("LoginFlow", () => {
     );
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "@stu.yasar.edu.tr",
+      "Öğrenci numaranla",
     );
     expect(mockedRequestOtpCode).not.toHaveBeenCalled();
     expect(screen.queryByLabelText("Giriş kodu")).not.toBeInTheDocument();
@@ -107,7 +107,7 @@ describe("LoginFlow", () => {
 
     await user.type(
       screen.getByLabelText("Yaşar öğrenci e-postan"),
-      "student@stu.yasar.edu.tr",
+      "202612345@stu.yasar.edu.tr",
     );
     await user.click(
       screen.getByRole("button", { name: "Giriş kodu gönder" }),
@@ -199,7 +199,7 @@ describe("LoginFlow", () => {
 
     await user.type(
       screen.getByLabelText("Yaşar öğrenci e-postan"),
-      "student@stu.yasar.edu.tr",
+      "202612345@stu.yasar.edu.tr",
     );
     await user.click(
       screen.getByRole("button", { name: "Giriş kodu gönder" }),

@@ -71,7 +71,7 @@ export const users = pgTable(
     check(
       "users_email_student_domain_check",
       sql`${table.email}::text = btrim(${table.email}::text)
-        and lower(${table.email}::text) ~ '^[^@[:space:]]+@stu[.]yasar[.]edu[.]tr$'`,
+        and lower(${table.email}::text) ~ '^[0-9]+@stu[.]yasar[.]edu[.]tr$'`,
     ),
     check(
       "users_username_format_check",
@@ -196,7 +196,7 @@ export const otpChallenges = pgTable(
     check(
       "otp_challenges_email_student_domain_check",
       sql`${table.email}::text = btrim(${table.email}::text)
-        and lower(${table.email}::text) ~ '^[^@[:space:]]+@stu[.]yasar[.]edu[.]tr$'`,
+        and lower(${table.email}::text) ~ '^[0-9]+@stu[.]yasar[.]edu[.]tr$'`,
     ),
     check(
       "otp_challenges_purpose_check",

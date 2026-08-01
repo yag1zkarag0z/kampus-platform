@@ -29,7 +29,7 @@ describe("auth client response validation", () => {
     );
 
     await expect(
-      requestOtpCode("student@stu.yasar.edu.tr", "login"),
+      requestOtpCode("202612345@stu.yasar.edu.tr", "login"),
     ).rejects.toMatchObject({
       code: "UNEXPECTED_RESPONSE",
       status: 500,
@@ -47,7 +47,7 @@ describe("auth client response validation", () => {
     );
 
     await expect(
-      requestOtpCode("student@stu.yasar.edu.tr", "login"),
+      requestOtpCode("202612345@stu.yasar.edu.tr", "login"),
     ).rejects.toMatchObject({
       code: "UNEXPECTED_RESPONSE",
       status: 502,
@@ -93,7 +93,7 @@ describe("auth client response validation", () => {
     );
 
     await expect(
-      requestOtpCode("student@stu.yasar.edu.tr", "login"),
+      requestOtpCode("202612345@stu.yasar.edu.tr", "login"),
     ).rejects.toMatchObject({
       attemptsLeft: 2,
       code: "OTP_INCORRECT",

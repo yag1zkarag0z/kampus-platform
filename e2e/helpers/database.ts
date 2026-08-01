@@ -64,7 +64,7 @@ export async function cleanupE2eAuthData() {
     await client.query("begin");
 
     try {
-      const emailPattern = "e2e.%@stu.yasar.edu.tr";
+      const emailPattern = "99%@stu.yasar.edu.tr";
 
       await client.query(
         "delete from otp_challenges where lower(email::text) like $1",

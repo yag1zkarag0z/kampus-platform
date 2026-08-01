@@ -57,6 +57,7 @@ async function expectSqlState(
 
 async function insertUser() {
   const suffix = randomUUID().replaceAll("-", "").slice(0, 20);
+  const studentNumber = BigInt(`0x${suffix}`).toString();
   const result = await client.query<{ id: string }>(
     `insert into users (
       email,
@@ -67,7 +68,7 @@ async function insertUser() {
     ) values ($1, $2, $3, $4, $5)
     returning id`,
     [
-      `content.${suffix}@stu.yasar.edu.tr`,
+      `${studentNumber}@stu.yasar.edu.tr`,
       `c${suffix}`,
       "İçerik Testi",
       "Yazılım Mühendisliği",

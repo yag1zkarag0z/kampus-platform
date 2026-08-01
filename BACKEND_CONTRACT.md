@@ -410,7 +410,8 @@ hesabını yönetemez.
 
 ## 7. Güvenlik kuralları
 
-- OTP yalnızca `@stu.yasar.edu.tr` adresine gönderilmeli.
+- OTP yalnızca `öğrenci-numarası@stu.yasar.edu.tr` biçimindeki adreslere
+  gönderilmeli; `@` öncesinde yalnızca rakam bulunmalı.
 - OTP kodu hash’lenmeli; e-posta ve IP bazlı rate limit uygulanmalı.
 - İstemci IP’si yalnızca deployment tarafından üzerine yazılan, açıkça
   yapılandırılmış tek bir trusted proxy başlığından okunmalı.

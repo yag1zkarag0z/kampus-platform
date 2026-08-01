@@ -9,7 +9,13 @@ const studentEmailSchema = z
   .email()
   .trim()
   .transform((value) => value.toLowerCase())
-  .refine((value) => value.endsWith("@stu.yasar.edu.tr"));
+  .refine(
+    (value) => /^\d+@stu\.yasar\.edu\.tr$/.test(value),
+    {
+      message:
+        "E-posta adresi öğrenci numarasıyla başlamalıdır.",
+    },
+  );
 
 export const requestCodeSchema = z.object({
   email: studentEmailSchema,

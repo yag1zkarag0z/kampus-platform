@@ -66,13 +66,36 @@ describe("RegisterFlow", () => {
     });
   });
 
-  it("verifies the email, consumes the grant, and registers the profile", async () => {
+  it("rejects an email that does not start with a student number", async () => {
     const user = userEvent.setup();
     render(<RegisterFlow />);
 
     await user.type(
       screen.getByLabelText("Yaşar öğrenci e-postan"),
       "student@stu.yasar.edu.tr",
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Doğrulama kodu gönder",
+      }),
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Öğrenci numaranla",
+    );
+    expect(mockedRequestOtpCode).not.toHaveBeenCalled();
+    expect(
+      screen.queryByLabelText("Doğrulama kodu"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("verifies the email, consumes the grant, and registers the profile", async () => {
+    const user = userEvent.setup();
+    render(<RegisterFlow />);
+
+    await user.type(
+      screen.getByLabelText("Yaşar öğrenci e-postan"),
+      "202612345@stu.yasar.edu.tr",
     );
     await user.click(
       screen.getByRole("button", {
@@ -146,7 +169,7 @@ describe("RegisterFlow", () => {
 
     await user.type(
       screen.getByLabelText("Yaşar öğrenci e-postan"),
-      "student@stu.yasar.edu.tr",
+      "202612345@stu.yasar.edu.tr",
     );
     await user.click(
       screen.getByRole("button", {

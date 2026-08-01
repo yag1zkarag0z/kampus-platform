@@ -21,7 +21,8 @@ const testEmails = new Set<string>();
 
 function createStudentEmail() {
   const suffix = randomUUID().replaceAll("-", "").slice(0, 20);
-  const email = `auth.${suffix}@stu.yasar.edu.tr`;
+  const studentNumber = BigInt(`0x${suffix}`).toString();
+  const email = `${studentNumber}@stu.yasar.edu.tr`;
   testEmails.add(email);
   return email;
 }

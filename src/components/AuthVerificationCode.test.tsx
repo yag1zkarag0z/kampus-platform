@@ -88,11 +88,11 @@ describe("server-backed verification code", () => {
     const { result } = renderHook(() => useVerificationCode("login"));
 
     await act(async () => {
-      await result.current.issueCode("student@stu.yasar.edu.tr");
+      await result.current.issueCode("202612345@stu.yasar.edu.tr");
     });
 
     expect(mockedRequestOtpCode).toHaveBeenCalledWith(
-      "student@stu.yasar.edu.tr",
+      "202612345@stu.yasar.edu.tr",
       "login",
     );
     expect(result.current.expiresInSeconds).toBeGreaterThanOrEqual(299);
@@ -105,7 +105,7 @@ describe("server-backed verification code", () => {
     const { result } = renderHook(() => useVerificationCode("login"));
 
     await act(async () => {
-      await result.current.issueCode("student@stu.yasar.edu.tr");
+      await result.current.issueCode("202612345@stu.yasar.edu.tr");
     });
     await act(async () => {
       await result.current.verifyCode("482951");
@@ -130,7 +130,7 @@ describe("server-backed verification code", () => {
     const { result } = renderHook(() => useVerificationCode("login"));
 
     await act(async () => {
-      await result.current.issueCode("student@stu.yasar.edu.tr");
+      await result.current.issueCode("202612345@stu.yasar.edu.tr");
     });
     let caughtError: unknown;
 

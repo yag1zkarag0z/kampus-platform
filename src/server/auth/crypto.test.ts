@@ -30,7 +30,7 @@ describe("auth cryptography", () => {
     const code = createOtpCode();
     const input = {
       challengeId: "36ac7e65-60a6-4d47-b4ba-75d99060e2a4",
-      email: "student@stu.yasar.edu.tr",
+      email: "202612345@stu.yasar.edu.tr",
       purpose: "login" as const,
     };
     const hash = hashOtpCode({ ...input, code });
@@ -61,13 +61,13 @@ describe("auth cryptography", () => {
     const now = new Date("2026-07-28T10:00:00.000Z");
     const grant = createRegistrationGrant({
       challengeId: "36ac7e65-60a6-4d47-b4ba-75d99060e2a4",
-      email: "student@stu.yasar.edu.tr",
+      email: "202612345@stu.yasar.edu.tr",
       now,
     });
 
     expect(verifyRegistrationGrant(grant.token, now)).toMatchObject({
       challengeId: "36ac7e65-60a6-4d47-b4ba-75d99060e2a4",
-      email: "student@stu.yasar.edu.tr",
+      email: "202612345@stu.yasar.edu.tr",
     });
     expect(
       verifyRegistrationGrant(`${grant.token}tampered`, now),

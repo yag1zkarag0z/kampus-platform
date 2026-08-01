@@ -38,6 +38,7 @@ function newestFeed(
 
 async function insertUser(label = "Content User") {
   const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
+  const studentNumber = BigInt(`0x${suffix}`).toString();
   const result = await pool.query<{ id: string }>(
     `insert into users (
       email,
@@ -48,7 +49,7 @@ async function insertUser(label = "Content User") {
     ) values ($1, $2, $3, $4, $5)
     returning id`,
     [
-      `service.${suffix}@stu.yasar.edu.tr`,
+      `${studentNumber}@stu.yasar.edu.tr`,
       `s${suffix}`,
       label,
       "Software Engineering",
