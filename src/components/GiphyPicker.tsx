@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { CampusGif } from "@/data/campusPosts";
 
@@ -33,10 +33,13 @@ export default function GiphyPicker({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CampusGif[]>([]);
   const [message, setMessage] = useState("GIF'ler yükleniyor…");
+  const requestIdRef = useRef(0);
   const apiKey = process.env.NEXT_PUBLIC_GIPHY_API_KEY;
 
   const load = useCallback(async (searchTerm = "") => {
     await Promise.resolve();
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
 
     if (!apiKey) {
       setMessage("GIF araması için GIPHY anahtarı henüz ayarlanmadı.");
@@ -62,22 +65,28 @@ export default function GiphyPicker({
       if (!response.ok) throw new Error("GIPHY request failed");
       const payload = (await response.json()) as { data?: GiphyResult[] };
       const gifs = (payload.data ?? []).map(toCampusGif).filter((gif): gif is CampusGif => gif !== null);
+
+      if (requestId !== requestIdRef.current) return;
+
       setResults(gifs);
       setMessage(gifs.length ? "" : "Bu aramada GIF bulunamadı.");
     } catch {
+      if (requestId !== requestIdRef.current) return;
+
       setResults([]);
       setMessage("GIF'ler yüklenemedi. Biraz sonra tekrar dene.");
     }
   }, [apiKey]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0);
+    const searchTerm = query.trim();
+    requestIdRef.current += 1;
+    const timer = window.setTimeout(
+      () => void load(searchTerm),
+      searchTerm ? 350 : 0,
+    );
     return () => window.clearTimeout(timer);
-  }, [load]);
-
-  const submit = () => {
-    void load(query.trim());
-  };
+  }, [load, query]);
 
   return (
     <>
@@ -94,7 +103,7 @@ export default function GiphyPicker({
         className="fixed inset-x-3 bottom-3 z-[70] max-h-[calc(100svh-1.5rem)] min-w-0 overflow-hidden border border-white/12 bg-[#141720] p-3 shadow-[0_24px_70px_rgba(0,0,0,0.65)] sm:inset-x-auto sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:w-[min(44rem,calc(100vw-3rem))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:p-4"
       >
       <div className="flex items-center gap-2">
-        <div role="search" className="flex min-w-0 flex-1 gap-2">
+        <div role="search" className="min-w-0 flex-1">
         <input
           type="search"
           value={query}
@@ -103,14 +112,10 @@ export default function GiphyPicker({
           placeholder="GIF ara"
           aria-label="GIPHY'de GIF ara"
           onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              submit();
-            }
+            if (event.key === "Enter") event.preventDefault();
           }}
           className={`min-h-10 min-w-0 flex-1 border border-white/12 bg-white/5 px-3 text-xs text-white placeholder:text-white/40 ${focusRing}`}
         />
-        <button type="button" onClick={submit} className={`min-h-10 bg-white px-3 text-xs font-black text-[#12100e] ${focusRing}`}>Ara</button>
         </div>
         <button
           type="button"
