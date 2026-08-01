@@ -270,48 +270,37 @@ describe("POST /v1/posts", () => {
     expect(mockedCreateContentPost).not.toHaveBeenCalled();
   });
 
-  it("returns the service error for the unsupported listing category", async () => {
-      const category = "listing" as const;
-      mockedCreateContentPost.mockRejectedValueOnce(
-        new AuthError(
-          "INVALID_REQUEST",
-          "Bu gönderi türü henüz kullanılamıyor.",
-          {
-            fieldErrors: {
-              category: ["Farklı bir kategori seç."],
-            },
-            status: 400,
-          },
-        ),
-      );
-
-      const response = await POST(
-        createPostRequest({
-          category,
-          body: "İçerik",
-          isAnonymous: false,
-        }),
-      );
-
-      expect(response.status).toBe(400);
-      expect(mockedCreateContentPost).toHaveBeenCalledWith(
-        memberId,
-        {
-          category,
-          title: "",
-          body: "İçerik",
-          isAnonymous: false,
-        },
-      );
-      await expect(response.json()).resolves.toMatchObject({
-        error: {
-          code: "INVALID_REQUEST",
-          fieldErrors: {
-            category: expect.any(Array),
-          },
-        },
-      });
+  it("passes valid listing details to the service", async () => {
+    const listing = {
+      type: "sale" as const,
+      condition: "lightly_used" as const,
+      price: 180,
+    };
+    mockedCreateContentPost.mockResolvedValueOnce({
+      ...post,
+      category: "listing",
+      listing,
     });
+
+    const response = await POST(
+      createPostRequest({
+        category: "listing",
+        title: "Tasarım kitabı",
+        body: "Temiz durumda.",
+        isAnonymous: false,
+        listing,
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(mockedCreateContentPost).toHaveBeenCalledWith(memberId, {
+      category: "listing",
+      title: "Tasarım kitabı",
+      body: "Temiz durumda.",
+      isAnonymous: false,
+      listing,
+    });
+  });
 
   it("passes valid poll options to the service", async () => {
     const pollPost = {

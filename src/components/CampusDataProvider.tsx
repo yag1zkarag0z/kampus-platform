@@ -71,6 +71,18 @@ const validListingConditions = new Set<CampusPostListing["condition"]>([
   "Kullanılmış",
 ]);
 
+const listingTypeValues = {
+  "Satılık": "sale",
+  "Aranıyor": "wanted",
+  "Ücretsiz": "free",
+} as const;
+
+const listingConditionValues = {
+  Yeni: "new",
+  "Az kullanılmış": "lightly_used",
+  Kullanılmış: "used",
+} as const;
+
 export type CreateCampusPostInput = {
   title?: string;
   body: string;
@@ -603,10 +615,8 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         throw new Error("Post content is invalid.");
       }
 
-      if (input.image || input.listing || input.category === "İlan") {
-        throw new Error(
-          "Listing and image persistence is not available yet.",
-        );
+      if (input.image) {
+        throw new Error("Image persistence is not available yet.");
       }
 
       const pollOptions = input.pollOptions?.map((option) => option.trim());
@@ -622,11 +632,24 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         throw new Error("Poll content is invalid.");
       }
 
-      const category = toContentCategory(input.category);
-
-      if (category === "listing") {
-        throw new Error("This post category is not available yet.");
+      if (
+        (input.category === "İlan" &&
+          (!input.listing ||
+            input.isAnonymous ||
+            !validListingTypes.has(input.listing.type) ||
+            !validListingConditions.has(input.listing.condition) ||
+            !Number.isInteger(input.listing.price) ||
+            input.listing.price < 0 ||
+            input.listing.price > 1_000_000 ||
+            (input.listing.type === "Ücretsiz"
+              ? input.listing.price !== 0
+              : input.listing.price === 0))) ||
+        (input.category !== "İlan" && input.listing)
+      ) {
+        throw new Error("Listing content is invalid.");
       }
+
+      const category = toContentCategory(input.category);
 
       const coreCategory: CoreContentPostCategory = category;
       const created = await createContentPostRequest({
@@ -635,6 +658,14 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         body,
         isAnonymous: input.isAnonymous,
         pollOptions,
+        listing: input.listing
+          ? {
+              type: listingTypeValues[input.listing.type],
+              condition:
+                listingConditionValues[input.listing.condition],
+              price: input.listing.price,
+            }
+          : undefined,
       });
       const post = toCampusPost(created);
 

@@ -5,15 +5,13 @@ import { requestApi, requestApiPayload } from "@/auth/client";
 import type {
   ContentCommentDto,
   ContentPostCategory,
+  ContentListingDto,
   ContentPostDetailDto,
   ContentPostListDto,
   ContentPostDto,
 } from "./types";
 
-export type CoreContentPostCategory = Exclude<
-  ContentPostCategory,
-  "listing"
->;
+export type CoreContentPostCategory = ContentPostCategory;
 
 export function listContentPosts({
   category,
@@ -67,6 +65,7 @@ export function createContentPost(input: {
   body: string;
   isAnonymous: boolean;
   pollOptions?: string[];
+  listing?: ContentListingDto;
 }) {
   return requestApi<ContentPostDetailDto>("/v1/posts", {
     method: "POST",

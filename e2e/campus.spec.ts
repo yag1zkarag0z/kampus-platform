@@ -321,6 +321,39 @@ test("member can publish a quick post and open it from the card body", async ({
   ).toBeVisible();
 });
 
+test("member can publish a priced campus listing", async ({ page }) => {
+  await seedMemberSession(page);
+  const title = `E2E tasarım kitabı ${Date.now()}`;
+
+  await page.goto("/konu-olustur");
+  await page.locator('input[name="category"][value="İlan"]').check();
+  await page.getByLabel("Başlık").fill(title);
+  await page.getByLabel("İlan açıklaması").fill("Temiz durumda.");
+  await page.getByLabel("Fiyat", { exact: true }).fill("180");
+  await page.getByLabel("Ürün durumu").selectOption("Az kullanılmış");
+
+  const createResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.url().endsWith("/v1/posts"),
+  );
+  await page.getByRole("button", { name: "İlanı yayımla" }).click();
+
+  expect((await createResponse).status()).toBe(201);
+  await expect(page).toHaveURL(
+    /\/gonderi\/[0-9a-f]{8}-[0-9a-f-]{27}$/i,
+  );
+  await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  await expect(page.getByText("180 TL", { exact: true })).toBeVisible();
+  await expect(page.getByText("Satılık", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Az kullanılmış", { exact: true }),
+  ).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByText("180 TL", { exact: true })).toBeVisible();
+});
+
 test("responsive application navigation reaches explore", async ({
   page,
 }, testInfo) => {

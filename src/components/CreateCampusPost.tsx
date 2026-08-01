@@ -390,9 +390,9 @@ export default function CreateCampusPost() {
       return;
     }
 
-    if (isListing || imagePreview) {
+    if (imagePreview) {
       setStatusMessage(
-        "İlan ve görsel yükleme altyapısı sıradaki backend aşamasında açılacak.",
+        "Görsel yükleme altyapısı sıradaki backend aşamasında açılacak.",
       );
       setStatusTone("error");
       return;
@@ -415,6 +415,13 @@ export default function CreateCampusPost() {
         category,
         isAnonymous,
         pollOptions: isPollEnabled ? normalizedPollOptions : undefined,
+        listing: isListing
+          ? {
+              type: listingType,
+              condition: listingCondition,
+              price: normalizedListingPrice,
+            }
+          : undefined,
       });
 
       setStatusMessage(

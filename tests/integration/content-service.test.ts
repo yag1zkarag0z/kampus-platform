@@ -122,6 +122,39 @@ afterAll(async () => {
 });
 
 describe("content service with PostgreSQL", () => {
+  it("creates listings and returns their market details in feed and detail", async () => {
+    const owner = await insertUser("Listing Owner");
+    const viewer = await insertUser("Listing Viewer");
+    const created = await createContentPost(owner.id, {
+      category: "listing",
+      title: "Tasarım kitabı",
+      body: "Temiz durumda.",
+      isAnonymous: false,
+      listing: {
+        type: "sale",
+        condition: "lightly_used",
+        price: 180,
+      },
+    });
+
+    expect(created.listing).toEqual({
+      type: "sale",
+      condition: "lightly_used",
+      price: 180,
+    });
+    expect(created.isAnonymous).toBe(false);
+
+    const feed = await listContentPosts(
+      viewer.id,
+      newestFeed({ category: "listing" }),
+    );
+    const fromFeed = feed.data.find((post) => post.id === created.id);
+    const detail = await getContentPost(viewer.id, created.id);
+
+    expect(fromFeed?.listing).toEqual(created.listing);
+    expect(detail.listing).toEqual(created.listing);
+  });
+
   it("creates polls and keeps one movable vote per member", async () => {
     const owner = await insertUser("Poll Owner");
     const voter = await insertUser("Poll Voter");

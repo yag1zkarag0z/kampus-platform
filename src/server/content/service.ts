@@ -20,6 +20,7 @@ import {
 import type {
   ContentAuthorDto,
   ContentCommentDto,
+  ContentListingDto,
   ContentPollDto,
   ContentPostDetailDto,
   ContentPostDto,
@@ -28,6 +29,7 @@ import { AuthError } from "@/server/auth/errors";
 import { getDatabase } from "@/server/db/client";
 import {
   comments,
+  listings,
   postBookmarks,
   postLikes,
   pollOptions,
@@ -170,19 +172,6 @@ function invalidCursorError() {
     {
       fieldErrors: {
         cursor: ["Akışı baştan yükleyip yeniden dene."],
-      },
-      status: 400,
-    },
-  );
-}
-
-function unsupportedPostCategoryError() {
-  return new AuthError(
-    "INVALID_REQUEST",
-    "İlan gönderileri kendi veri yapısı tamamlandıktan sonra paylaşılabilecek.",
-    {
-      fieldErrors: {
-        category: ["İlan dışında bir gönderi kategorisi seç."],
       },
       status: 400,
     },
@@ -421,6 +410,7 @@ function serializePost(
   row: PostRow,
   viewerId: string,
   pollView?: PollView,
+  listing?: ContentListingDto,
 ): ContentPostDto {
   return {
     id: row.id,
@@ -440,6 +430,7 @@ function serializePost(
     likeCount: Number(row.likeCount),
     commentCount: Number(row.commentCount),
     poll: pollView?.poll ?? null,
+    listing: listing ?? null,
     viewerState: {
       isAuthor: row.authorId === viewerId,
       canEdit: row.authorId === viewerId,
@@ -449,6 +440,37 @@ function serializePost(
       selectedPollOptionId: pollView?.selectedOptionId ?? null,
     },
   };
+}
+
+async function selectPostListings(
+  executor: ContentReadExecutor,
+  postIds: string[],
+) {
+  const result = new Map<string, ContentListingDto>();
+
+  if (postIds.length === 0) {
+    return result;
+  }
+
+  const rows = await executor
+    .select({
+      postId: listings.postId,
+      type: listings.type,
+      condition: listings.condition,
+      price: listings.price,
+    })
+    .from(listings)
+    .where(inArray(listings.postId, postIds));
+
+  for (const row of rows) {
+    result.set(row.postId, {
+      type: row.type,
+      condition: row.condition,
+      price: row.price,
+    });
+  }
+
+  return result;
 }
 
 async function selectPostPolls(
@@ -741,15 +763,20 @@ export async function listContentPosts(
   const hasMore = rows.length > query.limit;
   const visibleRows = hasMore ? rows.slice(0, query.limit) : rows;
   const lastVisibleRow = visibleRows.at(-1);
-  const pollViews = await selectPostPolls(
-    database,
-    visibleRows.map((row) => row.id),
-    viewerId,
-  );
+  const visiblePostIds = visibleRows.map((row) => row.id);
+  const [pollViews, listingViews] = await Promise.all([
+    selectPostPolls(database, visiblePostIds, viewerId),
+    selectPostListings(database, visiblePostIds),
+  ]);
 
   return {
     data: visibleRows.map((row) =>
-      serializePost(row, viewerId, pollViews.get(row.id)),
+      serializePost(
+        row,
+        viewerId,
+        pollViews.get(row.id),
+        listingViews.get(row.id),
+      ),
     ),
     page: {
       nextCursor:
@@ -779,14 +806,18 @@ export async function getContentPost(
         transaction,
         postId,
       );
-      const pollViews = await selectPostPolls(
-        transaction,
-        [postId],
-        viewerId,
-      );
+      const [pollViews, listingViews] = await Promise.all([
+        selectPostPolls(transaction, [postId], viewerId),
+        selectPostListings(transaction, [postId]),
+      ]);
 
       return {
-        ...serializePost(post, viewerId, pollViews.get(postId)),
+        ...serializePost(
+          post,
+          viewerId,
+          pollViews.get(postId),
+          listingViews.get(postId),
+        ),
         comments: commentRows.map((comment) =>
           serializeComment(comment, viewerId),
         ),
@@ -832,12 +863,16 @@ export async function setContentPostLike(
       throw postNotFoundError();
     }
 
-    const pollViews = await selectPostPolls(
-      transaction,
-      [postId],
+    const [pollViews, listingViews] = await Promise.all([
+      selectPostPolls(transaction, [postId], viewerId),
+      selectPostListings(transaction, [postId]),
+    ]);
+    return serializePost(
+      post,
       viewerId,
+      pollViews.get(postId),
+      listingViews.get(postId),
     );
-    return serializePost(post, viewerId, pollViews.get(postId));
   });
 }
 
@@ -874,12 +909,16 @@ export async function setContentPostBookmark(
       throw postNotFoundError();
     }
 
-    const pollViews = await selectPostPolls(
-      transaction,
-      [postId],
+    const [pollViews, listingViews] = await Promise.all([
+      selectPostPolls(transaction, [postId], viewerId),
+      selectPostListings(transaction, [postId]),
+    ]);
+    return serializePost(
+      post,
       viewerId,
+      pollViews.get(postId),
+      listingViews.get(postId),
     );
-    return serializePost(post, viewerId, pollViews.get(postId));
   });
 }
 
@@ -887,10 +926,6 @@ export async function createContentPost(
   viewerId: string,
   input: CreatePostInput,
 ) {
-  if (input.category === "listing") {
-    throw unsupportedPostCategoryError();
-  }
-
   const created = await getDatabase().transaction(
     async (transaction) => {
       await assertActiveContentMember(transaction, viewerId);
@@ -915,6 +950,15 @@ export async function createContentPost(
             position,
           })),
         );
+      }
+
+      if (inserted && input.category === "listing" && input.listing) {
+        await transaction.insert(listings).values({
+          postId: inserted.id,
+          type: input.listing.type,
+          condition: input.listing.condition,
+          price: input.listing.price,
+        });
       }
 
       return inserted;
@@ -1003,6 +1047,7 @@ export async function updateContentPost(
       .select({
         id: posts.id,
         authorId: posts.authorId,
+        category: posts.category,
         title: posts.title,
         body: posts.body,
       })
@@ -1022,6 +1067,23 @@ export async function updateContentPost(
     }
 
     const finalContent = validateFinalPostContent(current, input);
+
+    if (
+      current.category === "listing" &&
+      (!finalContent.title || !finalContent.body)
+    ) {
+      throw new AuthError(
+        "INVALID_REQUEST",
+        "İlan başlığı ve açıklaması boş bırakılamaz.",
+        {
+          fieldErrors: {
+            title: finalContent.title ? [] : ["İlan başlığını yazmalısın."],
+            body: finalContent.body ? [] : ["İlan açıklamasını yazmalısın."],
+          },
+          status: 400,
+        },
+      );
+    }
 
     await transaction
       .update(posts)

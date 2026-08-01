@@ -35,6 +35,15 @@ export type ContentPollDto = {
   options: ContentPollOptionDto[];
 };
 
+export type ContentListingType = "sale" | "wanted" | "free";
+export type ContentListingCondition = "new" | "lightly_used" | "used";
+
+export type ContentListingDto = {
+  type: ContentListingType;
+  condition: ContentListingCondition;
+  price: number;
+};
+
 export type ContentPostDto = {
   id: string;
   category: ContentPostCategory;
@@ -47,6 +56,7 @@ export type ContentPostDto = {
   likeCount: number;
   commentCount: number;
   poll?: ContentPollDto | null;
+  listing?: ContentListingDto | null;
   viewerState: ContentViewerStateDto;
 };
 

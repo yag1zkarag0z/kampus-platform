@@ -8,7 +8,27 @@ import {
   type CampusComment,
   type CampusPost,
   type CampusPostCategory,
+  type CampusListingCondition,
+  type CampusListingType,
 } from "@/data/campusPosts";
+
+const listingTypeLabels: Record<
+  "sale" | "wanted" | "free",
+  CampusListingType
+> = {
+  sale: "Satılık",
+  wanted: "Aranıyor",
+  free: "Ücretsiz",
+};
+
+const listingConditionLabels: Record<
+  "new" | "lightly_used" | "used",
+  CampusListingCondition
+> = {
+  new: "Yeni",
+  lightly_used: "Az kullanılmış",
+  used: "Kullanılmış",
+};
 
 const categoryLabels: Record<
   ContentPostDto["category"],
@@ -158,6 +178,13 @@ export function toCampusPost(
           })),
           selectedOptionId:
             dto.viewerState.selectedPollOptionId ?? undefined,
+        }
+      : undefined,
+    listing: dto.listing
+      ? {
+          type: listingTypeLabels[dto.listing.type],
+          condition: listingConditionLabels[dto.listing.condition],
+          price: dto.listing.price,
         }
       : undefined,
     edited: dto.editedAt !== null,

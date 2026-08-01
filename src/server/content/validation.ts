@@ -200,6 +200,35 @@ const pollOptionSchema = z
   .min(1, "Anket seçeneği boş olamaz.")
   .max(60, "Anket seçeneği en fazla 60 karakter olabilir.");
 
+const listingSchema = z
+  .object({
+    type: z.enum(["sale", "wanted", "free"]),
+    condition: z.enum(["new", "lightly_used", "used"]),
+    price: z
+      .number({ error: "İlan fiyatı sayı olmalıdır." })
+      .int("İlan fiyatı tam sayı olmalıdır.")
+      .min(0, "İlan fiyatı negatif olamaz.")
+      .max(1_000_000, "İlan fiyatı en fazla 1.000.000 TL olabilir."),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.type === "free" && value.price !== 0) {
+      context.addIssue({
+        code: "custom",
+        message: "Ücretsiz ilanların fiyatı 0 olmalıdır.",
+        path: ["price"],
+      });
+    }
+
+    if (value.type !== "free" && value.price === 0) {
+      context.addIssue({
+        code: "custom",
+        message: "Satılık ve aranıyor ilanlarında fiyat yazmalısın.",
+        path: ["price"],
+      });
+    }
+  });
+
 export const createPostSchema = z
   .object({
     category: postCategorySchema,
@@ -209,6 +238,7 @@ export const createPostSchema = z
       .boolean({ error: "Anonimlik tercihi doğru veya yanlış olmalıdır." })
       .default(false),
     pollOptions: z.array(pollOptionSchema).min(2).max(4).optional(),
+    listing: listingSchema.optional(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -242,6 +272,46 @@ export const createPostSchema = z
         code: "custom",
         message: "Anket seçenekleri birbirinden farklı olmalıdır.",
         path: ["pollOptions"],
+      });
+    }
+
+    if (value.category === "listing" && !value.listing) {
+      context.addIssue({
+        code: "custom",
+        message: "İlan bilgilerini eksiksiz doldurmalısın.",
+        path: ["listing"],
+      });
+    }
+
+    if (value.category !== "listing" && value.listing) {
+      context.addIssue({
+        code: "custom",
+        message: "İlan bilgileri yalnızca ilan gönderilerinde kullanılabilir.",
+        path: ["listing"],
+      });
+    }
+
+    if (value.category === "listing" && value.isAnonymous) {
+      context.addIssue({
+        code: "custom",
+        message: "İlanlar anonim yayımlanamaz.",
+        path: ["isAnonymous"],
+      });
+    }
+
+    if (value.category === "listing" && !value.title.trim()) {
+      context.addIssue({
+        code: "custom",
+        message: "İlan başlığını yazmalısın.",
+        path: ["title"],
+      });
+    }
+
+    if (value.category === "listing" && !value.body.trim()) {
+      context.addIssue({
+        code: "custom",
+        message: "İlan açıklamasını yazmalısın.",
+        path: ["body"],
       });
     }
   });

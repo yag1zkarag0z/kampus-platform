@@ -98,6 +98,7 @@ describe("content schema migration", () => {
        where table_schema = 'public'
          and table_name in (
            'comments',
+           'listings',
            'post_bookmarks',
            'post_likes',
            'poll_options',
@@ -124,6 +125,7 @@ describe("content schema migration", () => {
         [
           "comments_active_post_cursor_idx",
           "comments_parent_id_idx",
+          "listings_type_price_idx",
           "post_bookmarks_user_created_at_idx",
           "post_likes_user_created_at_idx",
           "posts_active_author_feed_cursor_idx",
@@ -135,6 +137,7 @@ describe("content schema migration", () => {
 
     expect(tablesResult.rows).toEqual([
       { table_name: "comments" },
+      { table_name: "listings" },
       { table_name: "poll_options" },
       { table_name: "poll_votes" },
       { table_name: "polls" },
@@ -154,6 +157,7 @@ describe("content schema migration", () => {
     expect(indexResult.rows.map((row) => row.indexname)).toEqual([
       "comments_active_post_cursor_idx",
       "comments_parent_id_idx",
+      "listings_type_price_idx",
       "post_bookmarks_user_created_at_idx",
       "post_likes_user_created_at_idx",
       "posts_active_author_feed_cursor_idx",
@@ -244,6 +248,40 @@ describe("content schema migration", () => {
         ),
       "23503",
     );
+  });
+
+  it("enforces listing price rules and cascades with its post", async () => {
+    const authorId = await insertUser();
+    const postResult = await client.query<{ id: string }>(
+      `insert into posts (author_id, category, title, body)
+       values ($1, 'listing', 'Kitap', 'Temiz durumda')
+       returning id`,
+      [authorId],
+    );
+    const postId = postResult.rows[0]!.id;
+
+    await expectSqlState(
+      () =>
+        client.query(
+          `insert into listings (post_id, type, condition, price)
+           values ($1, 'free', 'used', 10)`,
+          [postId],
+        ),
+      "23514",
+    );
+
+    await client.query(
+      `insert into listings (post_id, type, condition, price)
+       values ($1, 'sale', 'lightly_used', 180)`,
+      [postId],
+    );
+    await client.query("delete from posts where id = $1", [postId]);
+
+    const remaining = await client.query(
+      "select post_id from listings where post_id = $1",
+      [postId],
+    );
+    expect(remaining.rowCount).toBe(0);
   });
 
   it("enforces comment body, timestamps, and foreign keys", async () => {

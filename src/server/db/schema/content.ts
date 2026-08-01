@@ -33,6 +33,18 @@ export const postCategory = pgEnum("post_category", [
   "listing",
 ]);
 
+export const listingType = pgEnum("listing_type", [
+  "sale",
+  "wanted",
+  "free",
+]);
+
+export const listingCondition = pgEnum("listing_condition", [
+  "new",
+  "lightly_used",
+  "used",
+]);
+
 export const posts = pgTable(
   "posts",
   {
@@ -179,6 +191,31 @@ export const postBookmarks = pgTable(
   ],
 );
 
+export const listings = pgTable(
+  "listings",
+  {
+    postId: uuid("post_id")
+      .primaryKey()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    type: listingType("type").notNull(),
+    condition: listingCondition("condition").notNull(),
+    price: integer("price").notNull(),
+    createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("listings_type_price_idx").on(table.type, table.price),
+    check(
+      "listings_price_check",
+      sql`(
+        ${table.type} = 'free' and ${table.price} = 0
+      ) or (
+        ${table.type} <> 'free'
+        and ${table.price} between 1 and 1000000
+      )`,
+    ),
+  ],
+);
+
 export const polls = pgTable("polls", {
   postId: uuid("post_id")
     .primaryKey()
@@ -252,6 +289,7 @@ export type PostLike = typeof postLikes.$inferSelect;
 export type NewPostLike = typeof postLikes.$inferInsert;
 export type PostBookmark = typeof postBookmarks.$inferSelect;
 export type NewPostBookmark = typeof postBookmarks.$inferInsert;
+export type Listing = typeof listings.$inferSelect;
 export type Poll = typeof polls.$inferSelect;
 export type PollOption = typeof pollOptions.$inferSelect;
 export type PollVote = typeof pollVotes.$inferSelect;

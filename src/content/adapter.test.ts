@@ -81,6 +81,25 @@ function createCommentDto(
 }
 
 describe("content DTO adapter", () => {
+  it("maps persisted listing values to campus labels", () => {
+    expect(
+      toCampusPost(
+        createPostDto({
+          category: "listing",
+          listing: {
+            type: "wanted",
+            condition: "lightly_used",
+            price: 750,
+          },
+        }),
+      ).listing,
+    ).toEqual({
+      type: "Aranıyor",
+      condition: "Az kullanılmış",
+      price: 750,
+    });
+  });
+
   it("maps persisted poll options, votes, and viewer selection", () => {
     const optionId = "1f75d83d-5578-45c2-9447-217491362eb8";
     const mapped = toCampusPost(

@@ -833,6 +833,55 @@ describe("CampusDataProvider", () => {
     );
   });
 
+  it("creates a non-anonymous listing through the content API", async () => {
+    const listing = {
+      type: "sale" as const,
+      condition: "lightly_used" as const,
+      price: 180,
+    };
+    contentClientMocks.createContentPost.mockResolvedValue(
+      makePostDetailDto({
+        id: "server-listing-1",
+        category: "listing",
+        title: "Tasarım kitabı",
+        body: "Temiz durumda.",
+        listing,
+      }),
+    );
+    const { result } = renderHook(() => useCampusData(), { wrapper });
+    await waitFor(() => expect(result.current.isHydrated).toBe(true));
+
+    await expect(
+      result.current.createPost({
+        title: "Tasarım kitabı",
+        body: "Temiz durumda.",
+        category: "İlan",
+        isAnonymous: false,
+        listing: {
+          type: "Satılık",
+          condition: "Az kullanılmış",
+          price: 180,
+        },
+      }),
+    ).resolves.toBe("server-listing-1");
+
+    expect(contentClientMocks.createContentPost).toHaveBeenCalledWith({
+      category: "listing",
+      title: "Tasarım kitabı",
+      body: "Temiz durumda.",
+      isAnonymous: false,
+      pollOptions: undefined,
+      listing,
+    });
+    await waitFor(() =>
+      expect(result.current.posts[0].listing).toEqual({
+        type: "Satılık",
+        condition: "Az kullanılmış",
+        price: 180,
+      }),
+    );
+  });
+
   it("optimistically persists likes and bookmarks for members", async () => {
     const { result } = renderHook(() => useCampusData(), { wrapper });
     await waitFor(() => expect(result.current.isHydrated).toBe(true));

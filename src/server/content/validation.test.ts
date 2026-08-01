@@ -33,6 +33,52 @@ function captureInvalidInput(action: () => unknown) {
 }
 
 describe("content validation", () => {
+  it("accepts valid listings and enforces price and identity rules", () => {
+    expect(
+      parseContentInput(createPostSchema, {
+        category: "listing",
+        title: "Tasarım kitabı",
+        body: "Temiz durumda.",
+        listing: {
+          type: "sale",
+          condition: "lightly_used",
+          price: 180,
+        },
+      }),
+    ).toMatchObject({
+      category: "listing",
+      isAnonymous: false,
+      listing: {
+        type: "sale",
+        condition: "lightly_used",
+        price: 180,
+      },
+    });
+
+    for (const invalidListing of [
+      { type: "free", condition: "used", price: 5 },
+      { type: "wanted", condition: "new", price: 0 },
+    ]) {
+      captureInvalidInput(() =>
+        parseContentInput(createPostSchema, {
+          category: "listing",
+          title: "İlan",
+          body: "Açıklama",
+          listing: invalidListing,
+        }),
+      );
+    }
+
+    captureInvalidInput(() =>
+      parseContentInput(createPostSchema, {
+        category: "listing",
+        title: "İlan",
+        body: "Açıklama",
+        isAnonymous: true,
+        listing: { type: "free", condition: "used", price: 0 },
+      }),
+    );
+  });
   it("accepts valid polls and rejects malformed options", () => {
     expect(
       parseContentInput(createPostSchema, {
