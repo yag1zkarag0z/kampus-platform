@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type { CampusGif } from "@/data/campusPosts";
 
@@ -69,14 +69,13 @@ export default function GiphyPicker({ onSelect }: { onSelect: (gif: CampusGif) =
     return () => window.clearTimeout(timer);
   }, [load]);
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const submit = () => {
     void load(query.trim());
   };
 
   return (
     <div className="fixed inset-x-3 bottom-3 z-[70] max-h-[min(78svh,34rem)] min-w-0 overflow-hidden border border-white/12 bg-[#141720] p-3 shadow-[0_24px_70px_rgba(0,0,0,0.55)] sm:absolute sm:inset-x-auto sm:bottom-[calc(100%+0.6rem)] sm:left-0 sm:w-[22rem] sm:max-w-[calc(100vw-2rem)]">
-      <form onSubmit={submit} className="flex gap-2">
+      <div role="search" className="flex gap-2">
         <input
           type="search"
           value={query}
@@ -84,15 +83,25 @@ export default function GiphyPicker({ onSelect }: { onSelect: (gif: CampusGif) =
           maxLength={50}
           placeholder="GIF ara"
           aria-label="GIPHY'de GIF ara"
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              submit();
+            }
+          }}
           className={`min-h-10 min-w-0 flex-1 border border-white/12 bg-white/5 px-3 text-xs text-white placeholder:text-white/40 ${focusRing}`}
         />
-        <button type="submit" className={`min-h-10 bg-white px-3 text-xs font-black text-[#12100e] ${focusRing}`}>Ara</button>
-      </form>
+        <button type="button" onClick={submit} className={`min-h-10 bg-white px-3 text-xs font-black text-[#12100e] ${focusRing}`}>Ara</button>
+      </div>
 
       {message && <p role="status" className="py-8 text-center text-xs font-semibold text-white/55">{message}</p>}
 
       {results.length > 0 && (
-        <div className="mt-3 grid max-h-[min(56svh,18rem)] grid-cols-3 gap-1.5 overflow-y-auto overscroll-contain pr-1">
+        <>
+          <p className="mt-3 text-[10px] font-bold text-white/45">
+            {results.length} GIF · Daha fazlası için aşağı kaydır
+          </p>
+          <div className="mt-2 grid max-h-[min(56svh,18rem)] grid-cols-3 gap-1.5 overflow-y-auto overscroll-contain pr-1">
           {results.map((gif) => (
             <button
               key={gif.id}
@@ -104,7 +113,8 @@ export default function GiphyPicker({ onSelect }: { onSelect: (gif: CampusGif) =
               <Image src={gif.src} alt="" fill sizes="112px" unoptimized className="object-cover" />
             </button>
           ))}
-        </div>
+          </div>
+        </>
       )}
 
       <a href="https://giphy.com/" target="_blank" rel="noreferrer" className={`mt-3 inline-flex text-[10px] font-black uppercase tracking-[0.12em] text-white/55 hover:text-white ${focusRing}`}>
