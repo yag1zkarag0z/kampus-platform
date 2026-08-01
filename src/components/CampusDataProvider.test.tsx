@@ -25,6 +25,8 @@ const contentClientMocks = vi.hoisted(() => ({
   createContentPost: vi.fn(),
   updateContentPost: vi.fn(),
   deleteContentPost: vi.fn(),
+  setContentPostLike: vi.fn(),
+  setContentPostBookmark: vi.fn(),
   createContentComment: vi.fn(),
   updateContentComment: vi.fn(),
   deleteContentComment: vi.fn(),
@@ -59,6 +61,8 @@ vi.mock("@/content/client", () => ({
   createContentPost: contentClientMocks.createContentPost,
   updateContentPost: contentClientMocks.updateContentPost,
   deleteContentPost: contentClientMocks.deleteContentPost,
+  setContentPostLike: contentClientMocks.setContentPostLike,
+  setContentPostBookmark: contentClientMocks.setContentPostBookmark,
   createContentComment: contentClientMocks.createContentComment,
   updateContentComment: contentClientMocks.updateContentComment,
   deleteContentComment: contentClientMocks.deleteContentComment,
@@ -227,11 +231,28 @@ describe("CampusDataProvider", () => {
     contentClientMocks.createContentPost.mockReset();
     contentClientMocks.updateContentPost.mockReset();
     contentClientMocks.deleteContentPost.mockReset();
+    contentClientMocks.setContentPostLike.mockReset();
+    contentClientMocks.setContentPostBookmark.mockReset();
     contentClientMocks.createContentComment.mockReset();
     contentClientMocks.updateContentComment.mockReset();
     contentClientMocks.deleteContentComment.mockReset();
     contentClientMocks.listContentPosts.mockResolvedValue(
       makePostListDto(),
+    );
+    contentClientMocks.setContentPostLike.mockImplementation(
+      async (postId: string, liked: boolean) =>
+        makePostDto({
+          id: postId,
+          likeCount: liked ? 4 : 3,
+          viewerState: { liked },
+        }),
+    );
+    contentClientMocks.setContentPostBookmark.mockImplementation(
+      async (postId: string, bookmarked: boolean) =>
+        makePostDto({
+          id: postId,
+          viewerState: { bookmarked },
+        }),
     );
   });
 
@@ -765,7 +786,7 @@ describe("CampusDataProvider", () => {
     expect(contentClientMocks.createContentPost).not.toHaveBeenCalled();
   });
 
-  it("keeps local likes and bookmarks interactive for members", async () => {
+  it("optimistically persists likes and bookmarks for members", async () => {
     const { result } = renderHook(() => useCampusData(), { wrapper });
     await waitFor(() => expect(result.current.isHydrated).toBe(true));
 
@@ -780,6 +801,16 @@ describe("CampusDataProvider", () => {
       liked: true,
       likes: initialPost.likes + 1,
       bookmarked: true,
+    });
+
+    await waitFor(() => {
+      expect(contentClientMocks.setContentPostLike).toHaveBeenCalledWith(
+        initialPost.id,
+        true,
+      );
+      expect(
+        contentClientMocks.setContentPostBookmark,
+      ).toHaveBeenCalledWith(initialPost.id, true);
     });
   });
 

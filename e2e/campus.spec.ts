@@ -261,7 +261,41 @@ test("member can publish a quick post and open it from the card body", async ({
 
   const card = page.getByRole("article").filter({ hasText: body }).first();
   await expect(card).toBeVisible();
-  await card.getByText(body).click();
+
+  const interactionButtons = card.locator("button[aria-pressed]");
+  const likeButton = interactionButtons.first();
+  const bookmarkButton = interactionButtons.last();
+  const likeResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "PUT" &&
+      response.url().endsWith("/like"),
+  );
+
+  await likeButton.click();
+  expect((await likeResponse).status()).toBe(200);
+  await expect(likeButton).toHaveAttribute("aria-pressed", "true");
+
+  const bookmarkResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "PUT" &&
+      response.url().endsWith("/bookmark"),
+  );
+
+  await bookmarkButton.click();
+  expect((await bookmarkResponse).status()).toBe(200);
+  await expect(bookmarkButton).toHaveAttribute("aria-pressed", "true");
+
+  await page.reload();
+  const persistedCard = page
+    .getByRole("article")
+    .filter({ hasText: body })
+    .first();
+
+  await expect(
+    persistedCard.locator('button[aria-pressed="true"]'),
+  ).toHaveCount(2);
+
+  await persistedCard.getByText(body).click();
 
   await expect(page).toHaveURL(
     /\/gonderi\/[0-9a-f]{8}-[0-9a-f-]{27}$/i,

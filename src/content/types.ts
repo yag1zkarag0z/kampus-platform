@@ -18,8 +18,8 @@ export type ContentViewerStateDto = {
   isAuthor: boolean;
   canEdit: boolean;
   canDelete: boolean;
-  liked: false;
-  bookmarked: false;
+  liked: boolean;
+  bookmarked: boolean;
   selectedPollOptionId: null;
 };
 

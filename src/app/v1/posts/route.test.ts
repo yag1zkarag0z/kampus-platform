@@ -186,37 +186,14 @@ describe("GET /v1/posts", () => {
     });
   });
 
-  it("preserves a service error for the unsupported popular sort", async () => {
-    mockedListContentPosts.mockRejectedValueOnce(
-      new AuthError(
-        "INVALID_REQUEST",
-        "En beğenilen gönderiler henüz kullanılamıyor.",
-        {
-          fieldErrors: {
-            sort: ["Şimdilik en yeni gönderileri görüntüleyebilirsin."],
-          },
-          status: 400,
-        },
-      ),
-    );
-
-    const response = await GET(
-      createGetRequest("?sort=popular"),
-    );
+  it("forwards the popular feed sort", async () => {
+    const response = await GET(createGetRequest("?sort=popular"));
 
     expect(mockedListContentPosts).toHaveBeenCalledWith(memberId, {
       sort: "popular",
       limit: 20,
     });
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toMatchObject({
-      error: {
-        code: "INVALID_REQUEST",
-        fieldErrors: {
-          sort: expect.any(Array),
-        },
-      },
-    });
+    expect(response.status).toBe(200);
   });
 
   it("requires an active member before reading the feed", async () => {

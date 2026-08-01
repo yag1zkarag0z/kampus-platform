@@ -96,7 +96,12 @@ describe("content schema migration", () => {
       `select table_name
        from information_schema.tables
        where table_schema = 'public'
-         and table_name in ('comments', 'posts')
+         and table_name in (
+           'comments',
+           'post_bookmarks',
+           'post_likes',
+           'posts'
+         )
        order by table_name`,
     );
     const enumResult = await client.query<{ enumlabel: string }>(
@@ -116,6 +121,8 @@ describe("content schema migration", () => {
         [
           "comments_active_post_cursor_idx",
           "comments_parent_id_idx",
+          "post_bookmarks_user_created_at_idx",
+          "post_likes_user_created_at_idx",
           "posts_active_author_feed_cursor_idx",
           "posts_active_category_feed_cursor_idx",
           "posts_active_feed_cursor_idx",
@@ -125,6 +132,8 @@ describe("content schema migration", () => {
 
     expect(tablesResult.rows).toEqual([
       { table_name: "comments" },
+      { table_name: "post_bookmarks" },
+      { table_name: "post_likes" },
       { table_name: "posts" },
     ]);
     expect(enumResult.rows.map((row) => row.enumlabel)).toEqual([
@@ -139,6 +148,8 @@ describe("content schema migration", () => {
     expect(indexResult.rows.map((row) => row.indexname)).toEqual([
       "comments_active_post_cursor_idx",
       "comments_parent_id_idx",
+      "post_bookmarks_user_created_at_idx",
+      "post_likes_user_created_at_idx",
       "posts_active_author_feed_cursor_idx",
       "posts_active_category_feed_cursor_idx",
       "posts_active_feed_cursor_idx",

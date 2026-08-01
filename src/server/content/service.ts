@@ -26,6 +26,8 @@ import { AuthError } from "@/server/auth/errors";
 import { getDatabase } from "@/server/db/client";
 import {
   comments,
+  postBookmarks,
+  postLikes,
   posts,
   users,
   type Post,
@@ -48,17 +50,18 @@ export type {
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
-const CURSOR_VERSION = 1;
+const CURSOR_VERSION = 2;
 const COMMENT_CREATION_MINUTE_LIMIT = 20;
 const POST_COMMENT_TOTAL_LIMIT = 500;
 
 type FeedCursor = {
   version: typeof CURSOR_VERSION;
-  sort: "newest";
+  sort: FeedQueryInput["sort"];
   category: FeedQueryInput["category"] | null;
   author: string | null;
   createdAt: Date;
   id: string;
+  likeCount: number | null;
 };
 
 type PostRow = {
@@ -73,6 +76,9 @@ type PostRow = {
   username: string;
   displayName: string;
   commentCount: number;
+  likeCount: number;
+  liked: boolean;
+  bookmarked: boolean;
 };
 
 type CommentRow = {
@@ -160,19 +166,6 @@ function invalidCursorError() {
   );
 }
 
-function unsupportedPopularSortError() {
-  return new AuthError(
-    "INVALID_REQUEST",
-    "En beğenilen gönderiler, beğeni sistemi tamamlandıktan sonra kullanılabilecek.",
-    {
-      fieldErrors: {
-        sort: ["Şimdilik en yeni gönderileri görüntüleyebilirsin."],
-      },
-      status: 400,
-    },
-  );
-}
-
 function unsupportedPostCategoryError() {
   return new AuthError(
     "INVALID_REQUEST",
@@ -211,6 +204,29 @@ async function assertActiveContentMember(
 
   if (!activeUser) {
     throw authenticationRequiredError();
+  }
+}
+
+async function assertActivePostForInteraction(
+  transaction: ContentTransaction,
+  postId: string,
+) {
+  const [activePost] = await transaction
+    .select({ id: posts.id })
+    .from(posts)
+    .innerJoin(users, eq(users.id, posts.authorId))
+    .where(
+      and(
+        eq(posts.id, postId),
+        isNull(posts.deletedAt),
+        isNull(users.deletedAt),
+      ),
+    )
+    .for("share")
+    .limit(1);
+
+  if (!activePost) {
+    throw postNotFoundError();
   }
 }
 
@@ -267,17 +283,18 @@ async function assertCommentCreationAllowed(
 }
 
 function encodeFeedCursor(
-  row: Pick<PostRow, "createdAt" | "id">,
-  query: Pick<FeedQueryInput, "author" | "category">,
+  row: Pick<PostRow, "createdAt" | "id" | "likeCount">,
+  query: Pick<FeedQueryInput, "author" | "category" | "sort">,
 ) {
   return Buffer.from(
     JSON.stringify({
       version: CURSOR_VERSION,
-      sort: "newest",
+      sort: query.sort,
       category: query.category ?? null,
       author: query.author ?? null,
       createdAt: row.createdAt.toISOString(),
       id: row.id,
+      likeCount: query.sort === "popular" ? Number(row.likeCount) : null,
     }),
     "utf8",
   ).toString("base64url");
@@ -285,7 +302,7 @@ function encodeFeedCursor(
 
 function decodeFeedCursor(
   value: string,
-  query: Pick<FeedQueryInput, "author" | "category">,
+  query: Pick<FeedQueryInput, "author" | "category" | "sort">,
 ): FeedCursor {
   try {
     const decoded = JSON.parse(
@@ -298,7 +315,7 @@ function decodeFeedCursor(
       !("version" in decoded) ||
       decoded.version !== CURSOR_VERSION ||
       !("sort" in decoded) ||
-      decoded.sort !== "newest" ||
+      (decoded.sort !== "newest" && decoded.sort !== "popular") ||
       !("category" in decoded) ||
       (decoded.category !== null &&
         typeof decoded.category !== "string") ||
@@ -308,14 +325,22 @@ function decodeFeedCursor(
       typeof decoded.createdAt !== "string" ||
       !("id" in decoded) ||
       typeof decoded.id !== "string" ||
-      !UUID_PATTERN.test(decoded.id)
+      !UUID_PATTERN.test(decoded.id) ||
+      !("likeCount" in decoded) ||
+      (decoded.likeCount !== null &&
+        (typeof decoded.likeCount !== "number" ||
+          !Number.isSafeInteger(decoded.likeCount) ||
+          decoded.likeCount < 0))
     ) {
       throw invalidCursorError();
     }
 
     if (
       decoded.category !== (query.category ?? null) ||
-      decoded.author !== (query.author ?? null)
+      decoded.author !== (query.author ?? null) ||
+      decoded.sort !== query.sort ||
+      (query.sort === "newest" && decoded.likeCount !== null) ||
+      (query.sort === "popular" && decoded.likeCount === null)
     ) {
       throw invalidCursorError();
     }
@@ -331,11 +356,12 @@ function decodeFeedCursor(
 
     return {
       version: CURSOR_VERSION,
-      sort: "newest",
+      sort: decoded.sort,
       category: decoded.category as FeedQueryInput["category"] | null,
       author: decoded.author,
       createdAt,
       id: decoded.id,
+      likeCount: decoded.likeCount,
     };
   } catch (error) {
     if (error instanceof AuthError) {
@@ -400,14 +426,14 @@ function serializePost(
         }),
     createdAt: row.createdAt.toISOString(),
     editedAt: row.editedAt?.toISOString() ?? null,
-    likeCount: 0,
+    likeCount: Number(row.likeCount),
     commentCount: Number(row.commentCount),
     viewerState: {
       isAuthor: row.authorId === viewerId,
       canEdit: row.authorId === viewerId,
       canDelete: row.authorId === viewerId,
-      liked: false,
-      bookmarked: false,
+      liked: row.liked,
+      bookmarked: row.bookmarked,
       selectedPollOptionId: null,
     },
   };
@@ -450,8 +476,26 @@ function serializeComment(
 async function selectPost(
   executor: ContentReadExecutor,
   postId: string,
+  viewerId: string,
 ): Promise<PostRow | null> {
   const commentCount = sql<number>`count(${comments.id})::int`;
+  const likeCount = sql<number>`(
+    select count(*)::int
+    from ${postLikes}
+    where ${postLikes.postId} = ${posts.id}
+  )`;
+  const liked = sql<boolean>`exists (
+    select 1
+    from ${postLikes}
+    where ${postLikes.postId} = ${posts.id}
+      and ${postLikes.userId} = ${viewerId}
+  )`;
+  const bookmarked = sql<boolean>`exists (
+    select 1
+    from ${postBookmarks}
+    where ${postBookmarks.postId} = ${posts.id}
+      and ${postBookmarks.userId} = ${viewerId}
+  )`;
   const [row] = await executor
     .select({
       id: posts.id,
@@ -465,6 +509,9 @@ async function selectPost(
       username: users.username,
       displayName: users.displayName,
       commentCount,
+      likeCount,
+      liked,
+      bookmarked,
     })
     .from(posts)
     .innerJoin(users, eq(users.id, posts.authorId))
@@ -517,14 +564,15 @@ export async function listContentPosts(
   viewerId: string,
   query: FeedQueryInput,
 ) {
-  if (query.sort === "popular") {
-    throw unsupportedPopularSortError();
-  }
-
   const filters: SQL[] = [
     isNull(posts.deletedAt),
     isNull(users.deletedAt),
   ];
+  const likeCount = sql<number>`(
+    select count(*)::int
+    from ${postLikes}
+    where ${postLikes.postId} = ${posts.id}
+  )`;
 
   if (query.category) {
     filters.push(eq(posts.category, query.category));
@@ -539,13 +587,26 @@ export async function listContentPosts(
 
   if (query.cursor) {
     const cursor = decodeFeedCursor(query.cursor, query);
-    const cursorFilter = or(
-      lt(posts.createdAt, cursor.createdAt),
-      and(
-        eq(posts.createdAt, cursor.createdAt),
-        lt(posts.id, cursor.id),
-      ),
-    );
+    const cursorFilter = query.sort === "popular"
+      ? or(
+          lt(likeCount, cursor.likeCount!),
+          and(
+            eq(likeCount, cursor.likeCount!),
+            lt(posts.createdAt, cursor.createdAt),
+          ),
+          and(
+            eq(likeCount, cursor.likeCount!),
+            eq(posts.createdAt, cursor.createdAt),
+            lt(posts.id, cursor.id),
+          ),
+        )
+      : or(
+          lt(posts.createdAt, cursor.createdAt),
+          and(
+            eq(posts.createdAt, cursor.createdAt),
+            lt(posts.id, cursor.id),
+          ),
+        );
 
     if (cursorFilter) {
       filters.push(cursorFilter);
@@ -553,6 +614,18 @@ export async function listContentPosts(
   }
 
   const commentCount = sql<number>`count(${comments.id})::int`;
+  const liked = sql<boolean>`exists (
+    select 1
+    from ${postLikes}
+    where ${postLikes.postId} = ${posts.id}
+      and ${postLikes.userId} = ${viewerId}
+  )`;
+  const bookmarked = sql<boolean>`exists (
+    select 1
+    from ${postBookmarks}
+    where ${postBookmarks.postId} = ${posts.id}
+      and ${postBookmarks.userId} = ${viewerId}
+  )`;
   const rows = await getDatabase()
     .select({
       id: posts.id,
@@ -566,6 +639,9 @@ export async function listContentPosts(
       username: users.username,
       displayName: users.displayName,
       commentCount,
+      likeCount,
+      liked,
+      bookmarked,
     })
     .from(posts)
     .innerJoin(users, eq(users.id, posts.authorId))
@@ -578,7 +654,11 @@ export async function listContentPosts(
     )
     .where(and(...filters))
     .groupBy(posts.id, users.id)
-    .orderBy(desc(posts.createdAt), desc(posts.id))
+    .orderBy(
+      ...(query.sort === "popular"
+        ? [desc(likeCount), desc(posts.createdAt), desc(posts.id)]
+        : [desc(posts.createdAt), desc(posts.id)]),
+    )
     .limit(query.limit + 1);
 
   const hasMore = rows.length > query.limit;
@@ -605,7 +685,7 @@ export async function getContentPost(
 
   return getDatabase().transaction(
     async (transaction) => {
-      const post = await selectPost(transaction, postId);
+      const post = await selectPost(transaction, postId, viewerId);
 
       if (!post) {
         throw postNotFoundError();
@@ -628,6 +708,80 @@ export async function getContentPost(
       accessMode: "read only",
     },
   );
+}
+
+export async function setContentPostLike(
+  viewerId: string,
+  postId: string,
+  liked: boolean,
+): Promise<ContentPostDto> {
+  assertUuid(postId, postNotFoundError);
+
+  return getDatabase().transaction(async (transaction) => {
+    await assertActiveContentMember(transaction, viewerId);
+    await assertActivePostForInteraction(transaction, postId);
+
+    if (liked) {
+      await transaction
+        .insert(postLikes)
+        .values({ postId, userId: viewerId })
+        .onConflictDoNothing();
+    } else {
+      await transaction
+        .delete(postLikes)
+        .where(
+          and(
+            eq(postLikes.postId, postId),
+            eq(postLikes.userId, viewerId),
+          ),
+        );
+    }
+
+    const post = await selectPost(transaction, postId, viewerId);
+
+    if (!post) {
+      throw postNotFoundError();
+    }
+
+    return serializePost(post, viewerId);
+  });
+}
+
+export async function setContentPostBookmark(
+  viewerId: string,
+  postId: string,
+  bookmarked: boolean,
+): Promise<ContentPostDto> {
+  assertUuid(postId, postNotFoundError);
+
+  return getDatabase().transaction(async (transaction) => {
+    await assertActiveContentMember(transaction, viewerId);
+    await assertActivePostForInteraction(transaction, postId);
+
+    if (bookmarked) {
+      await transaction
+        .insert(postBookmarks)
+        .values({ postId, userId: viewerId })
+        .onConflictDoNothing();
+    } else {
+      await transaction
+        .delete(postBookmarks)
+        .where(
+          and(
+            eq(postBookmarks.postId, postId),
+            eq(postBookmarks.userId, viewerId),
+          ),
+        );
+    }
+
+    const post = await selectPost(transaction, postId, viewerId);
+
+    if (!post) {
+      throw postNotFoundError();
+    }
+
+    return serializePost(post, viewerId);
+  });
 }
 
 export async function createContentPost(

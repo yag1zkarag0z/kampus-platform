@@ -9,6 +9,8 @@ import {
   deleteContentPost,
   getContentPost,
   listContentPosts,
+  setContentPostBookmark,
+  setContentPostLike,
   updateContentComment,
   updateContentPost,
 } from "./client";
@@ -110,6 +112,46 @@ describe("content API client", () => {
       {
         method: "DELETE",
       },
+    );
+  });
+
+  it("requests the popular feed when selected", async () => {
+    await listContentPosts({ sort: "popular", limit: 20 });
+
+    expect(mockedRequestApiPayload).toHaveBeenCalledWith(
+      "/v1/posts?sort=popular&limit=20",
+      {
+        method: "GET",
+        cache: "no-store",
+      },
+    );
+  });
+
+  it("uses idempotent methods for likes and bookmarks", async () => {
+    await setContentPostLike(postId, true);
+    await setContentPostLike(postId, false);
+    await setContentPostBookmark(postId, true);
+    await setContentPostBookmark(postId, false);
+
+    expect(mockedRequestApi).toHaveBeenNthCalledWith(
+      1,
+      `/v1/posts/${postId}/like`,
+      { method: "PUT" },
+    );
+    expect(mockedRequestApi).toHaveBeenNthCalledWith(
+      2,
+      `/v1/posts/${postId}/like`,
+      { method: "DELETE" },
+    );
+    expect(mockedRequestApi).toHaveBeenNthCalledWith(
+      3,
+      `/v1/posts/${postId}/bookmark`,
+      { method: "PUT" },
+    );
+    expect(mockedRequestApi).toHaveBeenNthCalledWith(
+      4,
+      `/v1/posts/${postId}/bookmark`,
+      { method: "DELETE" },
     );
   });
 

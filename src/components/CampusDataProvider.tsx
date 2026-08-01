@@ -30,6 +30,8 @@ import {
   deleteContentPost as deleteContentPostRequest,
   getContentPost as getContentPostRequest,
   listContentPosts as listContentPostsRequest,
+  setContentPostBookmark as setContentPostBookmarkRequest,
+  setContentPostLike as setContentPostLikeRequest,
   updateContentComment as updateContentCommentRequest,
   updateContentPost as updateContentPostRequest,
   type CoreContentPostCategory,
@@ -395,6 +397,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const isLoadingMoreRef = useRef(false);
   const feedRequestVersionRef = useRef(0);
+  const interactionVersionsRef = useRef(new Map<string, number>());
   const latestCreatedAtRef = useRef(getLatestCreatedAt(campusPosts));
   const replacePosts = useCallback((nextPosts: CampusPost[]) => {
     postsRef.current = nextPosts;
@@ -642,36 +645,149 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const currentPost = postsRef.current.find(
+      (post) => post.id === postId && !post.isDeleted,
+    );
+
+    if (!currentPost) {
+      return;
+    }
+
+    const previousLiked = currentPost.liked;
+    const previousLikeCount = currentPost.likes;
+    const nextLiked = !previousLiked;
+    const interactionKey = `like:${postId}`;
+    const version =
+      (interactionVersionsRef.current.get(interactionKey) ?? 0) + 1;
+
+    interactionVersionsRef.current.set(interactionKey, version);
     updatePosts((currentPosts) =>
-      currentPosts.map((post) => {
-        if (post.id !== postId || post.isDeleted) {
-          return post;
+      currentPosts.map((post) =>
+        post.id === postId && !post.isDeleted
+          ? {
+              ...post,
+              liked: nextLiked,
+              likes: Math.max(
+                0,
+                post.likes + (nextLiked ? 1 : -1),
+              ),
+            }
+          : post,
+      ),
+    );
+
+    void setContentPostLikeRequest(postId, nextLiked)
+      .then((post) => {
+        if (
+          interactionVersionsRef.current.get(interactionKey) !== version
+        ) {
+          return;
         }
 
-        const liked = !post.liked;
+        updatePosts((currentPosts) =>
+          currentPosts.map((currentPost) =>
+            currentPost.id === postId
+              ? {
+                  ...currentPost,
+                  liked: post.viewerState.liked,
+                  likes: post.likeCount,
+                }
+              : currentPost,
+          ),
+        );
+      })
+      .catch((error: unknown) => {
+        if (
+          interactionVersionsRef.current.get(interactionKey) !== version
+        ) {
+          return;
+        }
 
-        return {
-          ...post,
-          liked,
-          likes: Math.max(0, post.likes + (liked ? 1 : -1)),
-        };
-      }),
-    );
-  }, [sessionMode, updatePosts]);
+        updatePosts((currentPosts) =>
+          currentPosts.map((post) =>
+            post.id === postId
+              ? {
+                  ...post,
+                  liked: previousLiked,
+                  likes: previousLikeCount,
+                }
+              : post,
+          ),
+        );
+
+        if (error instanceof AuthClientError && error.status === 401) {
+          void retrySession();
+        }
+      });
+  }, [retrySession, sessionMode, updatePosts]);
 
   const toggleBookmark = useCallback((postId: string) => {
     if (sessionMode !== "member") {
       return;
     }
 
+    const currentPost = postsRef.current.find(
+      (post) => post.id === postId && !post.isDeleted,
+    );
+
+    if (!currentPost) {
+      return;
+    }
+
+    const previousBookmarked = currentPost.bookmarked;
+    const nextBookmarked = !previousBookmarked;
+    const interactionKey = `bookmark:${postId}`;
+    const version =
+      (interactionVersionsRef.current.get(interactionKey) ?? 0) + 1;
+
+    interactionVersionsRef.current.set(interactionKey, version);
     updatePosts((currentPosts) =>
-        currentPosts.map((post) =>
+      currentPosts.map((post) =>
         post.id === postId && !post.isDeleted
-          ? { ...post, bookmarked: !post.bookmarked }
+          ? { ...post, bookmarked: nextBookmarked }
           : post,
       ),
     );
-  }, [sessionMode, updatePosts]);
+
+    void setContentPostBookmarkRequest(postId, nextBookmarked)
+      .then((post) => {
+        if (
+          interactionVersionsRef.current.get(interactionKey) !== version
+        ) {
+          return;
+        }
+
+        updatePosts((currentPosts) =>
+          currentPosts.map((currentPost) =>
+            currentPost.id === postId
+              ? {
+                  ...currentPost,
+                  bookmarked: post.viewerState.bookmarked,
+                }
+              : currentPost,
+          ),
+        );
+      })
+      .catch((error: unknown) => {
+        if (
+          interactionVersionsRef.current.get(interactionKey) !== version
+        ) {
+          return;
+        }
+
+        updatePosts((currentPosts) =>
+          currentPosts.map((post) =>
+            post.id === postId
+              ? { ...post, bookmarked: previousBookmarked }
+              : post,
+          ),
+        );
+
+        if (error instanceof AuthClientError && error.status === 401) {
+          void retrySession();
+        }
+      });
+  }, [retrySession, sessionMode, updatePosts]);
 
   const voteInPoll = useCallback(
     (postId: string, optionId: string) => {

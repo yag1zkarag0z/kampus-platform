@@ -10,6 +10,8 @@ import {
   deleteContentPost,
   getContentPost,
   listContentPosts,
+  setContentPostBookmark,
+  setContentPostLike,
   updateContentComment,
   updateContentPost,
 } from "@/server/content/service";
@@ -119,6 +121,156 @@ afterAll(async () => {
 });
 
 describe("content service with PostgreSQL", () => {
+  it("persists idempotent per-viewer likes and bookmarks", async () => {
+    const owner = await insertUser("Engagement Owner");
+    const member = await insertUser("Engagement Member");
+    const outsider = await insertUser("Engagement Outsider");
+    const created = await createContentPost(owner.id, {
+      category: "chat",
+      title: "Engagement post",
+      body: "",
+      isAnonymous: false,
+    });
+
+    const firstLike = await setContentPostLike(
+      member.id,
+      created.id,
+      true,
+    );
+    const repeatedLike = await setContentPostLike(
+      member.id,
+      created.id,
+      true,
+    );
+    const firstBookmark = await setContentPostBookmark(
+      member.id,
+      created.id,
+      true,
+    );
+    const repeatedBookmark = await setContentPostBookmark(
+      member.id,
+      created.id,
+      true,
+    );
+
+    expect(firstLike).toMatchObject({
+      likeCount: 1,
+      viewerState: { liked: true },
+    });
+    expect(repeatedLike).toMatchObject({
+      likeCount: 1,
+      viewerState: { liked: true },
+    });
+    expect(firstBookmark.viewerState.bookmarked).toBe(true);
+    expect(repeatedBookmark.viewerState.bookmarked).toBe(true);
+
+    const outsiderView = await getContentPost(outsider.id, created.id);
+
+    expect(outsiderView).toMatchObject({
+      likeCount: 1,
+      viewerState: {
+        liked: false,
+        bookmarked: false,
+      },
+    });
+
+    const removedLike = await setContentPostLike(
+      member.id,
+      created.id,
+      false,
+    );
+    const repeatedLikeRemoval = await setContentPostLike(
+      member.id,
+      created.id,
+      false,
+    );
+    const removedBookmark = await setContentPostBookmark(
+      member.id,
+      created.id,
+      false,
+    );
+
+    expect(removedLike).toMatchObject({
+      likeCount: 0,
+      viewerState: { liked: false },
+    });
+    expect(repeatedLikeRemoval.likeCount).toBe(0);
+    expect(removedBookmark.viewerState.bookmarked).toBe(false);
+  });
+
+  it("orders and paginates the popular feed by real like counts", async () => {
+    const owner = await insertUser("Popular Owner");
+    const viewer = await insertUser("Popular Viewer");
+    const firstLiker = await insertUser("Popular Liker One");
+    const secondLiker = await insertUser("Popular Liker Two");
+    const mostLiked = await createContentPost(owner.id, {
+      category: "question",
+      title: "Most liked",
+      body: "",
+      isAnonymous: false,
+    });
+    const likedOnce = await createContentPost(owner.id, {
+      category: "question",
+      title: "Liked once",
+      body: "",
+      isAnonymous: false,
+    });
+    const notLiked = await createContentPost(owner.id, {
+      category: "question",
+      title: "Not liked",
+      body: "",
+      isAnonymous: false,
+    });
+
+    await setContentPostLike(firstLiker.id, mostLiked.id, true);
+    await setContentPostLike(secondLiker.id, mostLiked.id, true);
+    await setContentPostLike(firstLiker.id, likedOnce.id, true);
+
+    const query: FeedQueryInput = {
+      author: owner.username,
+      category: "question",
+      limit: 2,
+      sort: "popular",
+    };
+    const firstPage = await listContentPosts(viewer.id, query);
+
+    expect(firstPage.data.map((post) => [post.id, post.likeCount])).toEqual([
+      [mostLiked.id, 2],
+      [likedOnce.id, 1],
+    ]);
+    expect(firstPage.page).toMatchObject({
+      hasMore: true,
+      nextCursor: expect.any(String),
+    });
+
+    const cursor = firstPage.page.nextCursor;
+
+    if (!cursor) {
+      throw new Error("Expected a popular feed cursor.");
+    }
+
+    const secondPage = await listContentPosts(viewer.id, {
+      ...query,
+      cursor,
+    });
+
+    expect(secondPage.data.map((post) => post.id)).toEqual([notLiked.id]);
+    expect(secondPage.page).toEqual({
+      hasMore: false,
+      nextCursor: null,
+    });
+    await expectAuthError(
+      () =>
+        listContentPosts(viewer.id, {
+          ...query,
+          sort: "newest",
+          cursor,
+        }),
+      "INVALID_REQUEST",
+      400,
+    );
+  });
+
   it("creates, lists, reads, updates, and soft-deletes a post", async () => {
     const owner = await insertUser("Post Owner");
     const outsider = await insertUser("Post Outsider");

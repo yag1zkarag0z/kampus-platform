@@ -6,6 +6,7 @@ import {
   index,
   pgEnum,
   pgTable,
+  primaryKey,
   timestamp,
   unique,
   uuid,
@@ -131,7 +132,57 @@ export const comments = pgTable(
   ],
 );
 
+export const postLikes = pgTable(
+  "post_likes",
+  {
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "post_likes_pk",
+      columns: [table.postId, table.userId],
+    }),
+    index("post_likes_user_created_at_idx").on(
+      table.userId,
+      table.createdAt.desc(),
+    ),
+  ],
+);
+
+export const postBookmarks = pgTable(
+  "post_bookmarks",
+  {
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "post_bookmarks_pk",
+      columns: [table.postId, table.userId],
+    }),
+    index("post_bookmarks_user_created_at_idx").on(
+      table.userId,
+      table.createdAt.desc(),
+    ),
+  ],
+);
+
 export type Post = typeof posts.$inferSelect;
 export type NewPost = typeof posts.$inferInsert;
 export type Comment = typeof comments.$inferSelect;
 export type NewComment = typeof comments.$inferInsert;
+export type PostLike = typeof postLikes.$inferSelect;
+export type NewPostLike = typeof postLikes.$inferInsert;
+export type PostBookmark = typeof postBookmarks.$inferSelect;
+export type NewPostBookmark = typeof postBookmarks.$inferInsert;

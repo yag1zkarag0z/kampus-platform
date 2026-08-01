@@ -7,6 +7,7 @@ import type {
   ContentPostCategory,
   ContentPostDetailDto,
   ContentPostListDto,
+  ContentPostDto,
 } from "./types";
 
 export type CoreContentPostCategory = Exclude<
@@ -19,14 +20,16 @@ export function listContentPosts({
   author,
   cursor,
   limit = 50,
+  sort = "newest",
 }: {
   category?: CoreContentPostCategory;
   author?: string;
   cursor?: string;
   limit?: number;
+  sort?: "newest" | "popular";
 } = {}) {
   const searchParams = new URLSearchParams({
-    sort: "newest",
+    sort,
     limit: String(limit),
   });
 
@@ -87,6 +90,24 @@ export function deleteContentPost(postId: string) {
   return requestApi<void>(`/v1/posts/${postId}`, {
     method: "DELETE",
   });
+}
+
+export function setContentPostLike(postId: string, liked: boolean) {
+  return requestApi<ContentPostDto>(`/v1/posts/${postId}/like`, {
+    method: liked ? "PUT" : "DELETE",
+  });
+}
+
+export function setContentPostBookmark(
+  postId: string,
+  bookmarked: boolean,
+) {
+  return requestApi<ContentPostDto>(
+    `/v1/posts/${postId}/bookmark`,
+    {
+      method: bookmarked ? "PUT" : "DELETE",
+    },
+  );
 }
 
 export function createContentComment(

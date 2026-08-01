@@ -28,6 +28,8 @@ anlamına gelmez.
   verememesini PostgreSQL seviyesinde doğrulayan bütünlük kuralları
 - Anonim gönderi ve yorumlarda `author_id` değerini standart API yanıtından
   gizleme; anonim gönderileri yazar filtresine dahil etmeme
+- Kullanıcı başına idempotent beğeni ve kaydetme işlemleri; gerçek beğeni
+  sayaçları ve beğeni sayısına göre cursor tabanlı popüler akış
 
 Kalıcı gönderi oluşturma şu temel kategorilerle sınırlıdır:
 `chat | confession | question | event | lost_found`.
@@ -40,7 +42,6 @@ akışı misafire açılmaz.
 
 Henüz kalıcı backend'e taşınmayan kapsam:
 
-- Beğeni, kaydetme ve bunlara bağlı “en beğenilenler” sıralaması
 - Anket, anket oyu ve ilan ayrıntıları
 - Gönderi görseli, avatar yükleme ve object storage
 - Takip, engelleme, bildirim ve şikâyet akışları
@@ -293,8 +294,8 @@ Bu tablo append-only olmalıdır.
 
 Bu bölüm hedef endpoint setini gösterir. Gönderi/yorum grubunda şu anda
 `GET/POST /v1/posts`, `GET/PATCH/DELETE /v1/posts/:id`,
-`POST /v1/posts/:id/comments` ve `PATCH/DELETE /v1/comments/:id`
-uygulanmıştır. Aynı gruptaki like, bookmark, poll ve bookmark-listesi
+`POST /v1/posts/:id/comments`, `PATCH/DELETE /v1/comments/:id` ve idempotent
+like/bookmark endpoint'leri uygulanmıştır. Poll, vote ve bookmark-listesi
 endpoint'leri ile sonraki grupların sosyal/moderasyon endpoint'leri planlıdır.
 
 ### Authentication
@@ -434,10 +435,11 @@ hesabını yönetemez.
 2. Tamamlandı: Auth, OTP ve session
 3. Tamamlandı: Profil ve ayarlar (dosya yükleme hariç)
 4. Tamamlandı: Temel gönderi/yorum CRUD ve üye frontend entegrasyonu
-5. Sırada: Like, bookmark, poll ve ilan
-6. Planlandı: Follow, block ve report
-7. Planlandı: Notifications
-8. Planlandı: Admin/moderation
-9. Planlandı: Upload/object storage
-10. Devam ediyor: Kalan frontend provider'larını API client ile değiştirme
-11. Devam ediyor: Entegrasyon ve E2E testlerini gerçek backend'e geçirme
+5. Tamamlandı: Like, bookmark ve popüler gönderi sıralaması
+6. Sırada: Poll, vote ve ilan
+7. Planlandı: Follow, block ve report
+8. Planlandı: Notifications
+9. Planlandı: Admin/moderation
+10. Planlandı: Upload/object storage
+11. Devam ediyor: Kalan frontend provider'larını API client ile değiştirme
+12. Devam ediyor: Entegrasyon ve E2E testlerini gerçek backend'e geçirme
