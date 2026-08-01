@@ -9,6 +9,7 @@ import {
   desc,
   eq,
   gte,
+  inArray,
   isNull,
   lt,
   or,
@@ -19,6 +20,7 @@ import {
 import type {
   ContentAuthorDto,
   ContentCommentDto,
+  ContentPollDto,
   ContentPostDetailDto,
   ContentPostDto,
 } from "@/content/types";
@@ -28,6 +30,9 @@ import {
   comments,
   postBookmarks,
   postLikes,
+  pollOptions,
+  polls,
+  pollVotes,
   posts,
   users,
   type Post,
@@ -94,6 +99,11 @@ type CommentRow = {
   username: string;
   displayName: string;
   authorDeletedAt: Date | null;
+};
+
+type PollView = {
+  poll: ContentPollDto;
+  selectedOptionId: string | null;
 };
 
 type ContentDatabase = ReturnType<typeof getDatabase>;
@@ -169,10 +179,10 @@ function invalidCursorError() {
 function unsupportedPostCategoryError() {
   return new AuthError(
     "INVALID_REQUEST",
-    "Anket ve ilan gönderileri kendi veri yapıları tamamlandıktan sonra paylaşılabilecek.",
+    "İlan gönderileri kendi veri yapısı tamamlandıktan sonra paylaşılabilecek.",
     {
       fieldErrors: {
-        category: ["Şimdilik sohbet, itiraf, soru, etkinlik veya kayıp eşya seç."],
+        category: ["İlan dışında bir gönderi kategorisi seç."],
       },
       status: 400,
     },
@@ -410,6 +420,7 @@ function visibleAuthor({
 function serializePost(
   row: PostRow,
   viewerId: string,
+  pollView?: PollView,
 ): ContentPostDto {
   return {
     id: row.id,
@@ -428,15 +439,80 @@ function serializePost(
     editedAt: row.editedAt?.toISOString() ?? null,
     likeCount: Number(row.likeCount),
     commentCount: Number(row.commentCount),
+    poll: pollView?.poll ?? null,
     viewerState: {
       isAuthor: row.authorId === viewerId,
       canEdit: row.authorId === viewerId,
       canDelete: row.authorId === viewerId,
       liked: row.liked,
       bookmarked: row.bookmarked,
-      selectedPollOptionId: null,
+      selectedPollOptionId: pollView?.selectedOptionId ?? null,
     },
   };
+}
+
+async function selectPostPolls(
+  executor: ContentReadExecutor,
+  postIds: string[],
+  viewerId: string,
+) {
+  const result = new Map<string, PollView>();
+
+  if (postIds.length === 0) {
+    return result;
+  }
+
+  const voteCount = sql<number>`(
+    select count(*)::int
+    from ${pollVotes}
+    where ${pollVotes.optionId} = ${pollOptions.id}
+  )`;
+  const selected = sql<boolean>`exists (
+    select 1
+    from ${pollVotes}
+    where ${pollVotes.pollId} = ${pollOptions.pollId}
+      and ${pollVotes.userId} = ${viewerId}
+      and ${pollVotes.optionId} = ${pollOptions.id}
+  )`;
+  const rows = await executor
+    .select({
+      pollId: polls.postId,
+      optionId: pollOptions.id,
+      text: pollOptions.text,
+      position: pollOptions.position,
+      voteCount,
+      selected,
+    })
+    .from(polls)
+    .innerJoin(pollOptions, eq(pollOptions.pollId, polls.postId))
+    .where(inArray(polls.postId, postIds))
+    .orderBy(asc(polls.postId), asc(pollOptions.position));
+
+  for (const row of rows) {
+    let pollView = result.get(row.pollId);
+
+    if (!pollView) {
+      pollView = {
+        poll: { id: row.pollId, totalVotes: 0, options: [] },
+        selectedOptionId: null,
+      };
+      result.set(row.pollId, pollView);
+    }
+
+    const optionVotes = Number(row.voteCount);
+    pollView.poll.options.push({
+      id: row.optionId,
+      text: row.text,
+      voteCount: optionVotes,
+    });
+    pollView.poll.totalVotes += optionVotes;
+
+    if (row.selected) {
+      pollView.selectedOptionId = row.optionId;
+    }
+  }
+
+  return result;
 }
 
 function serializeComment(
@@ -626,7 +702,8 @@ export async function listContentPosts(
     where ${postBookmarks.postId} = ${posts.id}
       and ${postBookmarks.userId} = ${viewerId}
   )`;
-  const rows = await getDatabase()
+  const database = getDatabase();
+  const rows = await database
     .select({
       id: posts.id,
       authorId: posts.authorId,
@@ -664,9 +741,16 @@ export async function listContentPosts(
   const hasMore = rows.length > query.limit;
   const visibleRows = hasMore ? rows.slice(0, query.limit) : rows;
   const lastVisibleRow = visibleRows.at(-1);
+  const pollViews = await selectPostPolls(
+    database,
+    visibleRows.map((row) => row.id),
+    viewerId,
+  );
 
   return {
-    data: visibleRows.map((row) => serializePost(row, viewerId)),
+    data: visibleRows.map((row) =>
+      serializePost(row, viewerId, pollViews.get(row.id)),
+    ),
     page: {
       nextCursor:
         hasMore && lastVisibleRow
@@ -695,9 +779,14 @@ export async function getContentPost(
         transaction,
         postId,
       );
+      const pollViews = await selectPostPolls(
+        transaction,
+        [postId],
+        viewerId,
+      );
 
       return {
-        ...serializePost(post, viewerId),
+        ...serializePost(post, viewerId, pollViews.get(postId)),
         comments: commentRows.map((comment) =>
           serializeComment(comment, viewerId),
         ),
@@ -743,7 +832,12 @@ export async function setContentPostLike(
       throw postNotFoundError();
     }
 
-    return serializePost(post, viewerId);
+    const pollViews = await selectPostPolls(
+      transaction,
+      [postId],
+      viewerId,
+    );
+    return serializePost(post, viewerId, pollViews.get(postId));
   });
 }
 
@@ -780,7 +874,12 @@ export async function setContentPostBookmark(
       throw postNotFoundError();
     }
 
-    return serializePost(post, viewerId);
+    const pollViews = await selectPostPolls(
+      transaction,
+      [postId],
+      viewerId,
+    );
+    return serializePost(post, viewerId, pollViews.get(postId));
   });
 }
 
@@ -788,7 +887,7 @@ export async function createContentPost(
   viewerId: string,
   input: CreatePostInput,
 ) {
-  if (input.category === "poll" || input.category === "listing") {
+  if (input.category === "listing") {
     throw unsupportedPostCategoryError();
   }
 
@@ -807,6 +906,17 @@ export async function createContentPost(
         })
         .returning({ id: posts.id });
 
+      if (inserted && input.category === "poll" && input.pollOptions) {
+        await transaction.insert(polls).values({ postId: inserted.id });
+        await transaction.insert(pollOptions).values(
+          input.pollOptions.map((text, position) => ({
+            pollId: inserted.id,
+            text,
+            position,
+          })),
+        );
+      }
+
       return inserted;
     },
   );
@@ -820,6 +930,63 @@ export async function createContentPost(
   }
 
   return getContentPost(viewerId, created.id);
+}
+
+export async function voteInContentPoll(
+  viewerId: string,
+  pollId: string,
+  optionId: string,
+): Promise<ContentPostDto> {
+  assertUuid(pollId, postNotFoundError);
+  assertUuid(optionId, postNotFoundError);
+
+  return getDatabase().transaction(async (transaction) => {
+    await assertActiveContentMember(transaction, viewerId);
+    await assertActivePostForInteraction(transaction, pollId);
+
+    const [option] = await transaction
+      .select({ id: pollOptions.id })
+      .from(pollOptions)
+      .innerJoin(polls, eq(polls.postId, pollOptions.pollId))
+      .where(
+        and(
+          eq(pollOptions.id, optionId),
+          eq(pollOptions.pollId, pollId),
+        ),
+      )
+      .for("share")
+      .limit(1);
+
+    if (!option) {
+      throw postNotFoundError();
+    }
+
+    await transaction
+      .insert(pollVotes)
+      .values({
+        pollId,
+        userId: viewerId,
+        optionId,
+      })
+      .onConflictDoUpdate({
+        target: [pollVotes.pollId, pollVotes.userId],
+        set: { optionId, updatedAt: new Date() },
+      });
+
+    const post = await selectPost(transaction, pollId, viewerId);
+
+    if (!post) {
+      throw postNotFoundError();
+    }
+
+    const pollViews = await selectPostPolls(
+      transaction,
+      [pollId],
+      viewerId,
+    );
+
+    return serializePost(post, viewerId, pollViews.get(pollId));
+  });
 }
 
 export async function updateContentPost(

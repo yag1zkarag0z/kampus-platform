@@ -270,9 +270,8 @@ describe("POST /v1/posts", () => {
     expect(mockedCreateContentPost).not.toHaveBeenCalled();
   });
 
-  it.each(["poll", "listing"] as const)(
-    "returns the service error for the unsupported %s category",
-    async (category) => {
+  it("returns the service error for the unsupported listing category", async () => {
+      const category = "listing" as const;
       mockedCreateContentPost.mockRejectedValueOnce(
         new AuthError(
           "INVALID_REQUEST",
@@ -312,8 +311,37 @@ describe("POST /v1/posts", () => {
           },
         },
       });
-    },
-  );
+    });
+
+  it("passes valid poll options to the service", async () => {
+    const pollPost = {
+      ...post,
+      category: "poll" as const,
+      poll: {
+        id: post.id,
+        totalVotes: 0,
+        options: [],
+      },
+    };
+    mockedCreateContentPost.mockResolvedValueOnce(pollPost);
+
+    const response = await POST(
+      createPostRequest({
+        category: "poll",
+        title: "Seç",
+        pollOptions: ["Bir", "İki"],
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(mockedCreateContentPost).toHaveBeenCalledWith(memberId, {
+      category: "poll",
+      title: "Seç",
+      body: "",
+      isAnonymous: false,
+      pollOptions: ["Bir", "İki"],
+    });
+  });
 
   it("rejects a cross-origin request before authorization", async () => {
     const response = await POST(

@@ -20,7 +20,19 @@ export type ContentViewerStateDto = {
   canDelete: boolean;
   liked: boolean;
   bookmarked: boolean;
-  selectedPollOptionId: null;
+  selectedPollOptionId: string | null;
+};
+
+export type ContentPollOptionDto = {
+  id: string;
+  text: string;
+  voteCount: number;
+};
+
+export type ContentPollDto = {
+  id: string;
+  totalVotes: number;
+  options: ContentPollOptionDto[];
 };
 
 export type ContentPostDto = {
@@ -34,6 +46,7 @@ export type ContentPostDto = {
   editedAt: string | null;
   likeCount: number;
   commentCount: number;
+  poll?: ContentPollDto | null;
   viewerState: ContentViewerStateDto;
 };
 

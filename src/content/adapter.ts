@@ -149,6 +149,17 @@ export function toCampusPost(
     comments,
     commentCount: dto.commentCount,
     bookmarked: dto.viewerState.bookmarked,
+    poll: dto.poll
+      ? {
+          options: dto.poll.options.map((option) => ({
+            id: option.id,
+            text: option.text,
+            votes: option.voteCount,
+          })),
+          selectedOptionId:
+            dto.viewerState.selectedPollOptionId ?? undefined,
+        }
+      : undefined,
     edited: dto.editedAt !== null,
   };
 }

@@ -194,6 +194,12 @@ const commentBodySchema = z
     message: URL_NOT_ALLOWED_MESSAGE,
   });
 
+const pollOptionSchema = z
+  .string({ error: "Anket seçeneği metin olmalıdır." })
+  .trim()
+  .min(1, "Anket seçeneği boş olamaz.")
+  .max(60, "Anket seçeneği en fazla 60 karakter olabilir.");
+
 export const createPostSchema = z
   .object({
     category: postCategorySchema,
@@ -202,11 +208,49 @@ export const createPostSchema = z
     isAnonymous: z
       .boolean({ error: "Anonimlik tercihi doğru veya yanlış olmalıdır." })
       .default(false),
+    pollOptions: z.array(pollOptionSchema).min(2).max(4).optional(),
   })
   .strict()
   .superRefine((value, context) => {
     addPostContentIssues(context, value);
+
+    if (value.category === "poll" && !value.pollOptions) {
+      context.addIssue({
+        code: "custom",
+        message: "Anket için en az iki seçenek yazmalısın.",
+        path: ["pollOptions"],
+      });
+    }
+
+    if (value.category !== "poll" && value.pollOptions) {
+      context.addIssue({
+        code: "custom",
+        message: "Anket seçenekleri yalnızca anket gönderilerinde kullanılabilir.",
+        path: ["pollOptions"],
+      });
+    }
+
+    if (
+      value.pollOptions &&
+      new Set(
+        value.pollOptions.map((option) =>
+          option.toLocaleLowerCase("tr-TR"),
+        ),
+      ).size !== value.pollOptions.length
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Anket seçenekleri birbirinden farklı olmalıdır.",
+        path: ["pollOptions"],
+      });
+    }
   });
+
+export const votePollSchema = z
+  .object({
+    optionId: z.uuid("Anket seçeneği geçersiz."),
+  })
+  .strict();
 
 export const updatePostSchema = z
   .object({
@@ -295,6 +339,7 @@ export type UpdatePostInput = z.infer<typeof updatePostSchema>;
 export type CreateCommentInput = z.infer<typeof createCommentSchema>;
 export type UpdateCommentInput = z.infer<typeof updateCommentSchema>;
 export type FeedQueryInput = z.infer<typeof feedQuerySchema>;
+export type VotePollInput = z.infer<typeof votePollSchema>;
 
 export function parseContentInput<TSchema extends z.ZodType>(
   schema: TSchema,

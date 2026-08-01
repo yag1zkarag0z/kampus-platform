@@ -11,6 +11,7 @@ import {
   updateCommentSchema,
   updatePostSchema,
   validateFinalPostContent,
+  votePollSchema,
 } from "./validation";
 
 function captureInvalidInput(action: () => unknown) {
@@ -32,6 +33,38 @@ function captureInvalidInput(action: () => unknown) {
 }
 
 describe("content validation", () => {
+  it("accepts valid polls and rejects malformed options", () => {
+    expect(
+      parseContentInput(createPostSchema, {
+        category: "poll",
+        title: "Bugün nerede çalışalım?",
+        pollOptions: [" Kütüphane ", " Kampüs "],
+      }),
+    ).toMatchObject({
+      category: "poll",
+      pollOptions: ["Kütüphane", "Kampüs"],
+    });
+
+    captureInvalidInput(() =>
+      parseContentInput(createPostSchema, {
+        category: "poll",
+        title: "Seç",
+        pollOptions: ["Aynı", "aynı"],
+      }),
+    );
+    captureInvalidInput(() =>
+      parseContentInput(createPostSchema, {
+        category: "chat",
+        title: "Seç",
+        pollOptions: ["Bir", "İki"],
+      }),
+    );
+
+    const optionId = "7bf0c452-64b0-4fa6-9604-521732e84ac0";
+    expect(parseContentInput(votePollSchema, { optionId })).toEqual({
+      optionId,
+    });
+  });
   it("normalizes a valid post and supplies safe defaults", () => {
     expect(
       parseContentInput(createPostSchema, {

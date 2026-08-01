@@ -27,6 +27,7 @@ const contentClientMocks = vi.hoisted(() => ({
   deleteContentPost: vi.fn(),
   setContentPostLike: vi.fn(),
   setContentPostBookmark: vi.fn(),
+  voteInContentPoll: vi.fn(),
   createContentComment: vi.fn(),
   updateContentComment: vi.fn(),
   deleteContentComment: vi.fn(),
@@ -63,6 +64,7 @@ vi.mock("@/content/client", () => ({
   deleteContentPost: contentClientMocks.deleteContentPost,
   setContentPostLike: contentClientMocks.setContentPostLike,
   setContentPostBookmark: contentClientMocks.setContentPostBookmark,
+  voteInContentPoll: contentClientMocks.voteInContentPoll,
   createContentComment: contentClientMocks.createContentComment,
   updateContentComment: contentClientMocks.updateContentComment,
   deleteContentComment: contentClientMocks.deleteContentComment,
@@ -233,6 +235,7 @@ describe("CampusDataProvider", () => {
     contentClientMocks.deleteContentPost.mockReset();
     contentClientMocks.setContentPostLike.mockReset();
     contentClientMocks.setContentPostBookmark.mockReset();
+    contentClientMocks.voteInContentPoll.mockReset();
     contentClientMocks.createContentComment.mockReset();
     contentClientMocks.updateContentComment.mockReset();
     contentClientMocks.deleteContentComment.mockReset();
@@ -761,7 +764,7 @@ describe("CampusDataProvider", () => {
     expect(dataState.account.retrySession).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects invalid and unsupported post content before calling the API", async () => {
+  it("rejects invalid post content before calling the API", async () => {
     const { result } = renderHook(() => useCampusData(), { wrapper });
     await waitFor(() => expect(result.current.isHydrated).toBe(true));
 
@@ -778,12 +781,56 @@ describe("CampusDataProvider", () => {
         body: "Poll",
         category: "Anket",
         isAnonymous: false,
-        pollOptions: ["First", "Second"],
+        pollOptions: ["First", ""],
       }),
-    ).rejects.toThrow(
-      "Poll, listing and image persistence is not available yet.",
-    );
+    ).rejects.toThrow("Poll content is invalid.");
     expect(contentClientMocks.createContentPost).not.toHaveBeenCalled();
+  });
+
+  it("creates a poll through the content API", async () => {
+    const poll = {
+      id: "server-poll-1",
+      totalVotes: 0,
+      options: [
+        { id: "option-1", text: "First", voteCount: 0 },
+        { id: "option-2", text: "Second", voteCount: 0 },
+      ],
+    };
+    contentClientMocks.createContentPost.mockResolvedValue(
+      makePostDetailDto({
+        id: poll.id,
+        category: "poll",
+        title: "Choose",
+        body: "Poll",
+        poll,
+      }),
+    );
+    const { result } = renderHook(() => useCampusData(), { wrapper });
+    await waitFor(() => expect(result.current.isHydrated).toBe(true));
+
+    await expect(
+      result.current.createPost({
+        title: "Choose",
+        body: "Poll",
+        category: "Anket",
+        isAnonymous: false,
+        pollOptions: [" First ", " Second "],
+      }),
+    ).resolves.toBe(poll.id);
+
+    expect(contentClientMocks.createContentPost).toHaveBeenCalledWith({
+      category: "poll",
+      title: "Choose",
+      body: "Poll",
+      isAnonymous: false,
+      pollOptions: ["First", "Second"],
+    });
+    await waitFor(() =>
+      expect(result.current.posts[0].poll?.options).toEqual([
+        { id: "option-1", text: "First", votes: 0 },
+        { id: "option-2", text: "Second", votes: 0 },
+      ]),
+    );
   });
 
   it("optimistically persists likes and bookmarks for members", async () => {

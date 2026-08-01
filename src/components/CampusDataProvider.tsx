@@ -32,6 +32,7 @@ import {
   listContentPosts as listContentPostsRequest,
   setContentPostBookmark as setContentPostBookmarkRequest,
   setContentPostLike as setContentPostLikeRequest,
+  voteInContentPoll as voteInContentPollRequest,
   updateContentComment as updateContentCommentRequest,
   updateContentPost as updateContentPostRequest,
   type CoreContentPostCategory,
@@ -602,21 +603,28 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         throw new Error("Post content is invalid.");
       }
 
-      if (
-        input.image ||
-        input.pollOptions ||
-        input.listing ||
-        input.category === "Anket" ||
-        input.category === "İlan"
-      ) {
+      if (input.image || input.listing || input.category === "İlan") {
         throw new Error(
-          "Poll, listing and image persistence is not available yet.",
+          "Listing and image persistence is not available yet.",
         );
+      }
+
+      const pollOptions = input.pollOptions?.map((option) => option.trim());
+
+      if (
+        (input.category === "Anket" &&
+          (!pollOptions ||
+            pollOptions.length < 2 ||
+            pollOptions.length > 4 ||
+            pollOptions.some((option) => !option))) ||
+        (input.category !== "Anket" && pollOptions)
+      ) {
+        throw new Error("Poll content is invalid.");
       }
 
       const category = toContentCategory(input.category);
 
-      if (category === "poll" || category === "listing") {
+      if (category === "listing") {
         throw new Error("This post category is not available yet.");
       }
 
@@ -626,6 +634,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         title,
         body,
         isAnonymous: input.isAnonymous,
+        pollOptions,
       });
       const post = toCampusPost(created);
 
@@ -795,6 +804,27 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      const currentPost = postsRef.current.find(
+        (post) => post.id === postId && !post.isDeleted,
+      );
+
+      if (
+        !currentPost?.poll ||
+        currentPost.poll.selectedOptionId === optionId ||
+        !currentPost.poll.options.some((option) => option.id === optionId)
+      ) {
+        return;
+      }
+
+      const previousPoll = {
+        ...currentPost.poll,
+        options: currentPost.poll.options.map((option) => ({ ...option })),
+      };
+      const interactionKey = `poll:${postId}`;
+      const version =
+        (interactionVersionsRef.current.get(interactionKey) ?? 0) + 1;
+
+      interactionVersionsRef.current.set(interactionKey, version);
       updatePosts((currentPosts) =>
         currentPosts.map((post) => {
           if (
@@ -826,8 +856,44 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
           };
         }),
       );
+
+      void voteInContentPollRequest(postId, optionId)
+        .then((post) => {
+          if (
+            interactionVersionsRef.current.get(interactionKey) !== version
+          ) {
+            return;
+          }
+
+          const persistedPoll = toCampusPost(post).poll;
+
+          updatePosts((currentPosts) =>
+            currentPosts.map((currentPost) =>
+              currentPost.id === postId && persistedPoll
+                ? { ...currentPost, poll: persistedPoll }
+                : currentPost,
+            ),
+          );
+        })
+        .catch((error: unknown) => {
+          if (
+            interactionVersionsRef.current.get(interactionKey) !== version
+          ) {
+            return;
+          }
+
+          updatePosts((currentPosts) =>
+            currentPosts.map((post) =>
+              post.id === postId ? { ...post, poll: previousPoll } : post,
+            ),
+          );
+
+          if (error instanceof AuthClientError && error.status === 401) {
+            void retrySession();
+          }
+        });
     },
-    [sessionMode, updatePosts],
+    [retrySession, sessionMode, updatePosts],
   );
 
   const addComment = useCallback(

@@ -71,6 +71,13 @@
       "when": 1785592316459,
       "tag": "0009_jazzy_namorita",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785594109063,
+      "tag": "0010_adorable_tombstone",
+      "breakpoints": true
     }
   ]
 }

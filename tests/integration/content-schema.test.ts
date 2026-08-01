@@ -100,6 +100,9 @@ describe("content schema migration", () => {
            'comments',
            'post_bookmarks',
            'post_likes',
+           'poll_options',
+           'poll_votes',
+           'polls',
            'posts'
          )
        order by table_name`,
@@ -132,6 +135,9 @@ describe("content schema migration", () => {
 
     expect(tablesResult.rows).toEqual([
       { table_name: "comments" },
+      { table_name: "poll_options" },
+      { table_name: "poll_votes" },
+      { table_name: "polls" },
       { table_name: "post_bookmarks" },
       { table_name: "post_likes" },
       { table_name: "posts" },

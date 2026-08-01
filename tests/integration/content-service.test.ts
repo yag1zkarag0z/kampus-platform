@@ -14,6 +14,7 @@ import {
   setContentPostLike,
   updateContentComment,
   updateContentPost,
+  voteInContentPoll,
 } from "@/server/content/service";
 import type { FeedQueryInput } from "@/server/content/validation";
 import {
@@ -121,6 +122,56 @@ afterAll(async () => {
 });
 
 describe("content service with PostgreSQL", () => {
+  it("creates polls and keeps one movable vote per member", async () => {
+    const owner = await insertUser("Poll Owner");
+    const voter = await insertUser("Poll Voter");
+    const created = await createContentPost(owner.id, {
+      category: "poll",
+      title: "Nerede çalışalım?",
+      body: "",
+      isAnonymous: false,
+      pollOptions: ["Kütüphane", "Kampüs"],
+    });
+
+    expect(created.poll).toMatchObject({
+      id: created.id,
+      totalVotes: 0,
+      options: [
+        { text: "Kütüphane", voteCount: 0 },
+        { text: "Kampüs", voteCount: 0 },
+      ],
+    });
+
+    const firstOption = created.poll!.options[0]!;
+    const secondOption = created.poll!.options[1]!;
+    const firstVote = await voteInContentPoll(
+      voter.id,
+      created.id,
+      firstOption.id,
+    );
+    const movedVote = await voteInContentPoll(
+      voter.id,
+      created.id,
+      secondOption.id,
+    );
+
+    expect(firstVote.poll?.totalVotes).toBe(1);
+    expect(firstVote.viewerState.selectedPollOptionId).toBe(firstOption.id);
+    expect(movedVote.poll).toMatchObject({
+      totalVotes: 1,
+      options: [
+        { id: firstOption.id, voteCount: 0 },
+        { id: secondOption.id, voteCount: 1 },
+      ],
+    });
+    expect(movedVote.viewerState.selectedPollOptionId).toBe(secondOption.id);
+
+    const feed = await listContentPosts(voter.id, newestFeed());
+    expect(feed.data.find((post) => post.id === created.id)?.poll).toEqual(
+      movedVote.poll,
+    );
+  });
+
   it("persists idempotent per-viewer likes and bookmarks", async () => {
     const owner = await insertUser("Engagement Owner");
     const member = await insertUser("Engagement Member");

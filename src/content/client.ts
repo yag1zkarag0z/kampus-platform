@@ -12,7 +12,7 @@ import type {
 
 export type CoreContentPostCategory = Exclude<
   ContentPostCategory,
-  "listing" | "poll"
+  "listing"
 >;
 
 export function listContentPosts({
@@ -66,10 +66,18 @@ export function createContentPost(input: {
   title: string;
   body: string;
   isAnonymous: boolean;
+  pollOptions?: string[];
 }) {
   return requestApi<ContentPostDetailDto>("/v1/posts", {
     method: "POST",
     body: JSON.stringify(input),
+  });
+}
+
+export function voteInContentPoll(pollId: string, optionId: string) {
+  return requestApi<ContentPostDto>(`/v1/polls/${pollId}/vote`, {
+    method: "PUT",
+    body: JSON.stringify({ optionId }),
   });
 }
 

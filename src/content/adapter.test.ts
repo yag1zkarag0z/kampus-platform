@@ -81,6 +81,35 @@ function createCommentDto(
 }
 
 describe("content DTO adapter", () => {
+  it("maps persisted poll options, votes, and viewer selection", () => {
+    const optionId = "1f75d83d-5578-45c2-9447-217491362eb8";
+    const mapped = toCampusPost(
+      createPostDto({
+        category: "poll",
+        poll: {
+          id: postId,
+          totalVotes: 3,
+          options: [
+            { id: optionId, text: "Kütüphane", voteCount: 3 },
+          ],
+        },
+        viewerState: {
+          isAuthor: false,
+          canEdit: false,
+          canDelete: false,
+          liked: false,
+          bookmarked: false,
+          selectedPollOptionId: optionId,
+        },
+      }),
+    );
+
+    expect(mapped.poll).toEqual({
+      selectedOptionId: optionId,
+      options: [{ id: optionId, text: "Kütüphane", votes: 3 }],
+    });
+  });
+
   it.each(
     [
       ["Sohbet", "chat"],

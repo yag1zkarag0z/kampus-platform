@@ -390,9 +390,9 @@ export default function CreateCampusPost() {
       return;
     }
 
-    if (isPollEnabled || isListing || imagePreview) {
+    if (isListing || imagePreview) {
       setStatusMessage(
-        "Anket, ilan ve görsel yükleme altyapısı sıradaki backend aşamasında açılacak.",
+        "İlan ve görsel yükleme altyapısı sıradaki backend aşamasında açılacak.",
       );
       setStatusTone("error");
       return;
@@ -414,6 +414,7 @@ export default function CreateCampusPost() {
         body: normalizedBody,
         category,
         isAnonymous,
+        pollOptions: isPollEnabled ? normalizedPollOptions : undefined,
       });
 
       setStatusMessage(

@@ -4,6 +4,7 @@ import {
   check,
   foreignKey,
   index,
+  integer,
   pgEnum,
   pgTable,
   primaryKey,
@@ -178,6 +179,71 @@ export const postBookmarks = pgTable(
   ],
 );
 
+export const polls = pgTable("polls", {
+  postId: uuid("post_id")
+    .primaryKey()
+    .references(() => posts.id, { onDelete: "cascade" }),
+  createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
+});
+
+export const pollOptions = pgTable(
+  "poll_options",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    pollId: uuid("poll_id")
+      .notNull()
+      .references(() => polls.postId, { onDelete: "cascade" }),
+    text: varchar("text", { length: 60 }).notNull(),
+    position: integer("position").notNull(),
+  },
+  (table) => [
+    unique("poll_options_id_poll_id_unique").on(table.id, table.pollId),
+    unique("poll_options_poll_position_unique").on(
+      table.pollId,
+      table.position,
+    ),
+    check(
+      "poll_options_text_not_blank_check",
+      sql`char_length(btrim(${table.text})) > 0`,
+    ),
+    check(
+      "poll_options_position_check",
+      sql`${table.position} >= 0 and ${table.position} < 4`,
+    ),
+  ],
+);
+
+export const pollVotes = pgTable(
+  "poll_votes",
+  {
+    pollId: uuid("poll_id")
+      .notNull()
+      .references(() => polls.postId, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    optionId: uuid("option_id").notNull(),
+    createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
+    updatedAt: timestampWithTimezone("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "poll_votes_pk",
+      columns: [table.pollId, table.userId],
+    }),
+    foreignKey({
+      name: "poll_votes_option_poll_options_id_poll_fk",
+      columns: [table.optionId, table.pollId],
+      foreignColumns: [pollOptions.id, pollOptions.pollId],
+    }).onDelete("cascade"),
+    index("poll_votes_option_id_idx").on(table.optionId),
+    index("poll_votes_user_updated_at_idx").on(
+      table.userId,
+      table.updatedAt.desc(),
+    ),
+  ],
+);
+
 export type Post = typeof posts.$inferSelect;
 export type NewPost = typeof posts.$inferInsert;
 export type Comment = typeof comments.$inferSelect;
@@ -186,3 +252,6 @@ export type PostLike = typeof postLikes.$inferSelect;
 export type NewPostLike = typeof postLikes.$inferInsert;
 export type PostBookmark = typeof postBookmarks.$inferSelect;
 export type NewPostBookmark = typeof postBookmarks.$inferInsert;
+export type Poll = typeof polls.$inferSelect;
+export type PollOption = typeof pollOptions.$inferSelect;
+export type PollVote = typeof pollVotes.$inferSelect;
