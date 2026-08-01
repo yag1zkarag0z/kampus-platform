@@ -216,6 +216,58 @@ export const listings = pgTable(
   ],
 );
 
+export const mediaAssets = pgTable(
+  "media_assets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    storageKey: varchar("storage_key", { length: 255 }).notNull().unique(),
+    mimeType: varchar("mime_type", { length: 32 }).notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+    checksum: varchar("checksum", { length: 64 }).notNull(),
+    createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("media_assets_owner_created_at_idx").on(
+      table.ownerId,
+      table.createdAt.desc(),
+    ),
+    check(
+      "media_assets_image_metadata_check",
+      sql`${table.mimeType} = 'image/webp'
+        and ${table.sizeBytes} between 1 and 1048576
+        and ${table.width} between 1 and 4096
+        and ${table.height} between 1 and 4096
+        and ${table.checksum} ~ '^[0-9a-f]{64}$'`,
+    ),
+  ],
+);
+
+export const postImages = pgTable(
+  "post_images",
+  {
+    postId: uuid("post_id")
+      .primaryKey()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    assetId: uuid("asset_id")
+      .notNull()
+      .unique()
+      .references(() => mediaAssets.id, { onDelete: "restrict" }),
+    alt: varchar("alt", { length: 160 }).notNull(),
+    createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    check(
+      "post_images_alt_not_blank_check",
+      sql`char_length(btrim(${table.alt})) > 0`,
+    ),
+  ],
+);
+
 export const polls = pgTable("polls", {
   postId: uuid("post_id")
     .primaryKey()
@@ -290,6 +342,8 @@ export type NewPostLike = typeof postLikes.$inferInsert;
 export type PostBookmark = typeof postBookmarks.$inferSelect;
 export type NewPostBookmark = typeof postBookmarks.$inferInsert;
 export type Listing = typeof listings.$inferSelect;
+export type MediaAsset = typeof mediaAssets.$inferSelect;
+export type PostImage = typeof postImages.$inferSelect;
 export type Poll = typeof polls.$inferSelect;
 export type PollOption = typeof pollOptions.$inferSelect;
 export type PollVote = typeof pollVotes.$inferSelect;

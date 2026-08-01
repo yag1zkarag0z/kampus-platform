@@ -88,7 +88,7 @@ export type CreateCampusPostInput = {
   body: string;
   category: CampusPostCategory;
   isAnonymous: boolean;
-  image?: CampusPostImage;
+  imageId?: string;
   pollOptions?: string[];
   listing?: CampusPostListing;
 };
@@ -615,10 +615,6 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         throw new Error("Post content is invalid.");
       }
 
-      if (input.image) {
-        throw new Error("Image persistence is not available yet.");
-      }
-
       const pollOptions = input.pollOptions?.map((option) => option.trim());
 
       if (
@@ -657,6 +653,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         title,
         body,
         isAnonymous: input.isAnonymous,
+        imageId: input.imageId,
         pollOptions,
         listing: input.listing
           ? {

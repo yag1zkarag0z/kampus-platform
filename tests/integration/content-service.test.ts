@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { Pool } from "pg";
+import sharp from "sharp";
 
 import {
   createContentComment,
@@ -16,6 +17,10 @@ import {
   updateContentPost,
   voteInContentPoll,
 } from "@/server/content/service";
+import {
+  getVisibleContentImage,
+  uploadContentImage,
+} from "@/server/media/service";
 import type { FeedQueryInput } from "@/server/content/validation";
 import {
   AuthError,
@@ -122,6 +127,64 @@ afterAll(async () => {
 });
 
 describe("content service with PostgreSQL", () => {
+  it("persists a validated image, links it once, and removes it with its post", async () => {
+    const owner = await insertUser("Image Owner");
+    const source = await sharp({
+      create: {
+        width: 48,
+        height: 32,
+        channels: 3,
+        background: "#d26f45",
+      },
+    })
+      .png()
+      .toBuffer();
+    const uploaded = await uploadContentImage(
+      owner.id,
+      new File([source], "campus.png", { type: "image/png" }),
+    );
+
+    const created = await createContentPost(owner.id, {
+      category: "chat",
+      title: "Kampüsten bir kare",
+      body: "Bugünkü kampüs manzarası.",
+      isAnonymous: false,
+      imageId: uploaded.id,
+    });
+
+    expect(created.image).toEqual({
+      id: uploaded.id,
+      src: `/v1/media/${uploaded.id}`,
+      width: 48,
+      height: 32,
+      alt: "Kampüsten bir kare görseli",
+    });
+    await expect(getVisibleContentImage(uploaded.id)).resolves.toMatchObject({
+      contentType: "image/webp",
+      body: expect.any(Buffer),
+    });
+
+    await expectAuthError(
+      () =>
+        createContentPost(owner.id, {
+          category: "chat",
+          title: "İkinci gönderi",
+          body: "Aynı görsel tekrar kullanılamaz.",
+          isAnonymous: false,
+          imageId: uploaded.id,
+        }),
+      "INVALID_REQUEST",
+      400,
+    );
+
+    await deleteContentPost(owner.id, created.id);
+    await expectAuthError(
+      () => getVisibleContentImage(uploaded.id),
+      "MEDIA_NOT_FOUND",
+      404,
+    );
+  });
+
   it("creates listings and returns their market details in feed and detail", async () => {
     const owner = await insertUser("Listing Owner");
     const viewer = await insertUser("Listing Viewer");

@@ -51,6 +51,7 @@ export default function CampusPostImage({
           alt={image.alt}
           width={image.width}
           height={image.height}
+          unoptimized={image.src.startsWith("/v1/media/")}
           sizes={
             variant === "compact"
               ? "(max-width: 768px) 100vw, 560px"

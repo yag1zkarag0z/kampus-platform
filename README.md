@@ -114,8 +114,9 @@ Misafir oturumu `/v1/posts` üye akışına erişmez. Misafirler yalnızca uygul
 birlikte gelen, salt okunur 20 seçilmiş KAMPÜS gönderisini görür; gerçek üye
 gönderileri bu görünümle paylaşılmaz.
 
-Beğeni, kaydetme, takip/engelleme, bildirim, şikâyet ve moderasyon akışları henüz
-PostgreSQL'e bağlı değildir. Anket, ilan ve üye gönderilerine görsel ekleme de
-ilgili tablolar ile object storage tamamlanana kadar devre dışıdır; bu işlemler
-kalıcıymış gibi kabul edilmez. Bu nedenle “en beğenilenler” sıralaması da beğeni
-backend'i tamamlanana kadar kullanılamaz.
+Üye gönderilerine JPEG, PNG veya WebP kaynaklarından tek bir görsel eklenebilir.
+Tarayıcı görseli küçültür; sunucu dosyayı yeniden doğrulayıp WebP olarak kodlar.
+Geliştirmede dosyalar `.data/media` altında, üretimde ise özel bir S3 bucket'ında
+tutulur. S3 kullanmak için `MEDIA_STORAGE_DRIVER=s3`, `AWS_REGION` ve
+`AWS_S3_BUCKET` değerlerini ayarlayın. AWS erişim bilgileri standart ortam
+değişkeni veya çalışma zamanı rolü zincirinden okunur; repoya anahtar yazılmaz.

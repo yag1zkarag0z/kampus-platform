@@ -6,6 +6,7 @@ import type {
   ContentCommentDto,
   ContentPostCategory,
   ContentListingDto,
+  ContentImageUploadDto,
   ContentPostDetailDto,
   ContentPostListDto,
   ContentPostDto,
@@ -66,10 +67,27 @@ export function createContentPost(input: {
   isAnonymous: boolean;
   pollOptions?: string[];
   listing?: ContentListingDto;
+  imageId?: string;
 }) {
   return requestApi<ContentPostDetailDto>("/v1/posts", {
     method: "POST",
     body: JSON.stringify(input),
+  });
+}
+
+export function uploadContentImage(image: Blob) {
+  const formData = new FormData();
+  formData.set("image", image, "campus-image.webp");
+
+  return requestApi<ContentImageUploadDto>("/v1/media", {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export function deleteUnattachedContentImage(imageId: string) {
+  return requestApi<void>(`/v1/media/${imageId}`, {
+    method: "DELETE",
   });
 }
 

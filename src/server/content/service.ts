@@ -20,6 +20,7 @@ import {
 import type {
   ContentAuthorDto,
   ContentCommentDto,
+  ContentImageDto,
   ContentListingDto,
   ContentPollDto,
   ContentPostDetailDto,
@@ -27,14 +28,17 @@ import type {
 } from "@/content/types";
 import { AuthError } from "@/server/auth/errors";
 import { getDatabase } from "@/server/db/client";
+import { getMediaStorage } from "@/server/media/storage";
 import {
   comments,
   listings,
+  mediaAssets,
   postBookmarks,
   postLikes,
   pollOptions,
   polls,
   pollVotes,
+  postImages,
   posts,
   users,
   type Post,
@@ -411,6 +415,7 @@ function serializePost(
   viewerId: string,
   pollView?: PollView,
   listing?: ContentListingDto,
+  image?: ContentImageDto,
 ): ContentPostDto {
   return {
     id: row.id,
@@ -431,6 +436,7 @@ function serializePost(
     commentCount: Number(row.commentCount),
     poll: pollView?.poll ?? null,
     listing: listing ?? null,
+    image: image ?? null,
     viewerState: {
       isAuthor: row.authorId === viewerId,
       canEdit: row.authorId === viewerId,
@@ -440,6 +446,39 @@ function serializePost(
       selectedPollOptionId: pollView?.selectedOptionId ?? null,
     },
   };
+}
+
+async function selectPostImages(
+  executor: ContentReadExecutor,
+  postIds: string[],
+) {
+  const result = new Map<string, ContentImageDto>();
+
+  if (postIds.length === 0) return result;
+
+  const rows = await executor
+    .select({
+      postId: postImages.postId,
+      assetId: postImages.assetId,
+      alt: postImages.alt,
+      width: mediaAssets.width,
+      height: mediaAssets.height,
+    })
+    .from(postImages)
+    .innerJoin(mediaAssets, eq(mediaAssets.id, postImages.assetId))
+    .where(inArray(postImages.postId, postIds));
+
+  for (const row of rows) {
+    result.set(row.postId, {
+      id: row.assetId,
+      src: `/v1/media/${row.assetId}`,
+      width: row.width,
+      height: row.height,
+      alt: row.alt,
+    });
+  }
+
+  return result;
 }
 
 async function selectPostListings(
@@ -764,9 +803,10 @@ export async function listContentPosts(
   const visibleRows = hasMore ? rows.slice(0, query.limit) : rows;
   const lastVisibleRow = visibleRows.at(-1);
   const visiblePostIds = visibleRows.map((row) => row.id);
-  const [pollViews, listingViews] = await Promise.all([
+  const [pollViews, listingViews, imageViews] = await Promise.all([
     selectPostPolls(database, visiblePostIds, viewerId),
     selectPostListings(database, visiblePostIds),
+    selectPostImages(database, visiblePostIds),
   ]);
 
   return {
@@ -776,6 +816,7 @@ export async function listContentPosts(
         viewerId,
         pollViews.get(row.id),
         listingViews.get(row.id),
+        imageViews.get(row.id),
       ),
     ),
     page: {
@@ -806,9 +847,10 @@ export async function getContentPost(
         transaction,
         postId,
       );
-      const [pollViews, listingViews] = await Promise.all([
+      const [pollViews, listingViews, imageViews] = await Promise.all([
         selectPostPolls(transaction, [postId], viewerId),
         selectPostListings(transaction, [postId]),
+        selectPostImages(transaction, [postId]),
       ]);
 
       return {
@@ -817,6 +859,7 @@ export async function getContentPost(
           viewerId,
           pollViews.get(postId),
           listingViews.get(postId),
+          imageViews.get(postId),
         ),
         comments: commentRows.map((comment) =>
           serializeComment(comment, viewerId),
@@ -863,15 +906,17 @@ export async function setContentPostLike(
       throw postNotFoundError();
     }
 
-    const [pollViews, listingViews] = await Promise.all([
+    const [pollViews, listingViews, imageViews] = await Promise.all([
       selectPostPolls(transaction, [postId], viewerId),
       selectPostListings(transaction, [postId]),
+      selectPostImages(transaction, [postId]),
     ]);
     return serializePost(
       post,
       viewerId,
       pollViews.get(postId),
       listingViews.get(postId),
+      imageViews.get(postId),
     );
   });
 }
@@ -909,15 +954,17 @@ export async function setContentPostBookmark(
       throw postNotFoundError();
     }
 
-    const [pollViews, listingViews] = await Promise.all([
+    const [pollViews, listingViews, imageViews] = await Promise.all([
       selectPostPolls(transaction, [postId], viewerId),
       selectPostListings(transaction, [postId]),
+      selectPostImages(transaction, [postId]),
     ]);
     return serializePost(
       post,
       viewerId,
       pollViews.get(postId),
       listingViews.get(postId),
+      imageViews.get(postId),
     );
   });
 }
@@ -929,6 +976,39 @@ export async function createContentPost(
   const created = await getDatabase().transaction(
     async (transaction) => {
       await assertActiveContentMember(transaction, viewerId);
+
+      if (input.imageId) {
+        const [ownedImage] = await transaction
+          .select({ id: mediaAssets.id })
+          .from(mediaAssets)
+          .where(
+            and(
+              eq(mediaAssets.id, input.imageId),
+              eq(mediaAssets.ownerId, viewerId),
+            ),
+          )
+          .for("update")
+          .limit(1);
+
+        const [existingLink] = await transaction
+          .select({ postId: postImages.postId })
+          .from(postImages)
+          .where(eq(postImages.assetId, input.imageId))
+          .limit(1);
+
+        if (!ownedImage || existingLink) {
+          throw new AuthError(
+            "INVALID_REQUEST",
+            "Bu görsel gönderiye eklenemiyor. Lütfen yeniden yükle.",
+            {
+              fieldErrors: {
+                imageId: ["Görsel bulunamadı veya başka bir gönderide kullanılıyor."],
+              },
+              status: 400,
+            },
+          );
+        }
+      }
 
       const [inserted] = await transaction
         .insert(posts)
@@ -958,6 +1038,18 @@ export async function createContentPost(
           type: input.listing.type,
           condition: input.listing.condition,
           price: input.listing.price,
+        });
+      }
+
+      if (inserted && input.imageId) {
+        const alt = input.title
+          ? `${input.title} görseli`.slice(0, 160)
+          : "Kampüs gönderisi görseli";
+
+        await transaction.insert(postImages).values({
+          postId: inserted.id,
+          assetId: input.imageId,
+          alt,
         });
       }
 
@@ -1023,13 +1115,18 @@ export async function voteInContentPoll(
       throw postNotFoundError();
     }
 
-    const pollViews = await selectPostPolls(
-      transaction,
-      [pollId],
-      viewerId,
-    );
+    const [pollViews, imageViews] = await Promise.all([
+      selectPostPolls(transaction, [pollId], viewerId),
+      selectPostImages(transaction, [pollId]),
+    ]);
 
-    return serializePost(post, viewerId, pollViews.get(pollId));
+    return serializePost(
+      post,
+      viewerId,
+      pollViews.get(pollId),
+      undefined,
+      imageViews.get(pollId),
+    );
   });
 }
 
@@ -1111,40 +1208,70 @@ export async function deleteContentPost(
   assertUuid(postId, postNotFoundError);
   const deletedAt = new Date();
 
-  await getDatabase().transaction(async (transaction) => {
-    await assertActiveContentMember(transaction, viewerId);
+  const deletedImageStorageKey = await getDatabase().transaction(
+    async (transaction) => {
+      await assertActiveContentMember(transaction, viewerId);
 
-    const [current] = await transaction
-      .select({
-        id: posts.id,
-        authorId: posts.authorId,
-      })
-      .from(posts)
-      .where(
-        and(eq(posts.id, postId), isNull(posts.deletedAt)),
-      )
-      .for("update")
-      .limit(1);
+      const [current] = await transaction
+        .select({
+          id: posts.id,
+          authorId: posts.authorId,
+        })
+        .from(posts)
+        .where(
+          and(eq(posts.id, postId), isNull(posts.deletedAt)),
+        )
+        .for("update")
+        .limit(1);
 
-    if (!current) {
-      throw postNotFoundError();
-    }
+      if (!current) {
+        throw postNotFoundError();
+      }
 
-    if (current.authorId !== viewerId) {
-      throw contentForbiddenError();
-    }
+      if (current.authorId !== viewerId) {
+        throw contentForbiddenError();
+      }
 
-    await transaction
-      .update(posts)
-      .set({ deletedAt })
-      .where(
-        and(
-          eq(posts.id, postId),
-          eq(posts.authorId, viewerId),
-          isNull(posts.deletedAt),
-        ),
-      );
-  });
+      const [attachedImage] = await transaction
+        .select({
+          assetId: postImages.assetId,
+          storageKey: mediaAssets.storageKey,
+        })
+        .from(postImages)
+        .innerJoin(mediaAssets, eq(mediaAssets.id, postImages.assetId))
+        .where(eq(postImages.postId, postId))
+        .for("update")
+        .limit(1);
+
+      if (attachedImage) {
+        await transaction
+          .delete(postImages)
+          .where(eq(postImages.postId, postId));
+        await transaction
+          .delete(mediaAssets)
+          .where(eq(mediaAssets.id, attachedImage.assetId));
+      }
+
+      await transaction
+        .update(posts)
+        .set({ deletedAt })
+        .where(
+          and(
+            eq(posts.id, postId),
+            eq(posts.authorId, viewerId),
+            isNull(posts.deletedAt),
+          ),
+        );
+
+      return attachedImage?.storageKey;
+    },
+  );
+
+  if (deletedImageStorageKey) {
+    await getMediaStorage()
+      .delete(deletedImageStorageKey)
+      .catch(() => undefined);
+  }
 
   return {
     id: postId,

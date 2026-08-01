@@ -9,6 +9,7 @@ import {
   deleteContentPost,
   getContentPost,
   listContentPosts,
+  uploadContentImage,
   setContentPostBookmark,
   setContentPostLike,
   updateContentComment,
@@ -87,6 +88,20 @@ describe("content API client", () => {
       method: "POST",
       body: JSON.stringify(input),
     });
+  });
+
+  it("uploads a post image as multipart form data", async () => {
+    const image = new Blob([new Uint8Array([1, 2, 3])], {
+      type: "image/webp",
+    });
+
+    await uploadContentImage(image);
+
+    const [, init] = mockedRequestApi.mock.calls[0]!;
+    expect(mockedRequestApi.mock.calls[0]![0]).toBe("/v1/media");
+    expect(init).toMatchObject({ method: "POST" });
+    expect(init?.body).toBeInstanceOf(FormData);
+    expect((init?.body as FormData).get("image")).toBeInstanceOf(File);
   });
 
   it("updates and deletes a post at its resource path", async () => {

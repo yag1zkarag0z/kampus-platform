@@ -239,6 +239,7 @@ export const createPostSchema = z
       .default(false),
     pollOptions: z.array(pollOptionSchema).min(2).max(4).optional(),
     listing: listingSchema.optional(),
+    imageId: z.uuid("Görsel kimliği geçersiz.").optional(),
   })
   .strict()
   .superRefine((value, context) => {

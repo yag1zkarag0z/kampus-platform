@@ -33,6 +33,26 @@ function captureInvalidInput(action: () => unknown) {
 }
 
 describe("content validation", () => {
+  it("accepts one valid uploaded image id and rejects malformed ids", () => {
+    const imageId = "d9955ee1-2c9c-49fe-9d45-6a94fe89b880";
+
+    expect(
+      parseContentInput(createPostSchema, {
+        category: "chat",
+        body: "Kampüsten bir kare",
+        imageId,
+      }),
+    ).toMatchObject({ imageId });
+
+    captureInvalidInput(() =>
+      parseContentInput(createPostSchema, {
+        category: "chat",
+        body: "Kampüsten bir kare",
+        imageId: "not-an-id",
+      }),
+    );
+  });
+
   it("accepts valid listings and enforces price and identity rules", () => {
     expect(
       parseContentInput(createPostSchema, {

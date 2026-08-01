@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { resolve } from "node:path";
 
 import { waitForOtpEmail } from "./helpers/mailpit";
 import {
@@ -352,6 +353,46 @@ test("member can publish a priced campus listing", async ({ page }) => {
 
   await page.reload();
   await expect(page.getByText("180 TL", { exact: true })).toBeVisible();
+});
+
+test("member can upload and persist a post image", async ({ page }) => {
+  await seedMemberSession(page);
+  const title = `E2E görselli gönderi ${Date.now()}`;
+
+  await page.goto("/konu-olustur");
+  await page.getByLabel("Başlık").fill(title);
+  await page
+    .locator("#campus-post-body")
+    .fill("Sunucuda doğrulanan kalıcı kampüs görseli.");
+  await page.locator("#campus-post-image").setInputFiles(
+    resolve("public/images/campus-feed/campus-courtyard.jpg"),
+  );
+  await expect(
+    page.getByAltText("Seçilen gönderi fotoğrafının önizlemesi"),
+  ).toBeVisible();
+
+  const uploadResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.url().endsWith("/v1/media"),
+  );
+  const createResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.url().endsWith("/v1/posts"),
+  );
+
+  await page.getByRole("button", { name: "Konuyu yayımla" }).click();
+
+  expect((await uploadResponse).status()).toBe(201);
+  expect((await createResponse).status()).toBe(201);
+  await expect(page).toHaveURL(
+    /\/gonderi\/[0-9a-f]{8}-[0-9a-f-]{27}$/i,
+  );
+  await expect(page.getByAltText(`${title} görseli`)).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByAltText(`${title} görseli`)).toBeVisible();
 });
 
 test("responsive application navigation reaches explore", async ({

@@ -99,7 +99,9 @@ describe("content schema migration", () => {
          and table_name in (
            'comments',
            'listings',
+           'media_assets',
            'post_bookmarks',
+           'post_images',
            'post_likes',
            'poll_options',
            'poll_votes',
@@ -126,6 +128,7 @@ describe("content schema migration", () => {
           "comments_active_post_cursor_idx",
           "comments_parent_id_idx",
           "listings_type_price_idx",
+          "media_assets_owner_created_at_idx",
           "post_bookmarks_user_created_at_idx",
           "post_likes_user_created_at_idx",
           "posts_active_author_feed_cursor_idx",
@@ -138,10 +141,12 @@ describe("content schema migration", () => {
     expect(tablesResult.rows).toEqual([
       { table_name: "comments" },
       { table_name: "listings" },
+      { table_name: "media_assets" },
       { table_name: "poll_options" },
       { table_name: "poll_votes" },
       { table_name: "polls" },
       { table_name: "post_bookmarks" },
+      { table_name: "post_images" },
       { table_name: "post_likes" },
       { table_name: "posts" },
     ]);
@@ -158,6 +163,7 @@ describe("content schema migration", () => {
       "comments_active_post_cursor_idx",
       "comments_parent_id_idx",
       "listings_type_price_idx",
+      "media_assets_owner_created_at_idx",
       "post_bookmarks_user_created_at_idx",
       "post_likes_user_created_at_idx",
       "posts_active_author_feed_cursor_idx",

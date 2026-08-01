@@ -16,6 +16,9 @@
 /test-results
 /blob-report
 
+# local uploaded media
+/.data/
+
 # next.js
 /.next/
 /.next-e2e/

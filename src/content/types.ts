@@ -44,6 +44,16 @@ export type ContentListingDto = {
   price: number;
 };
 
+export type ContentImageDto = {
+  id: string;
+  src: string;
+  width: number;
+  height: number;
+  alt: string;
+};
+
+export type ContentImageUploadDto = Omit<ContentImageDto, "alt">;
+
 export type ContentPostDto = {
   id: string;
   category: ContentPostCategory;
@@ -57,6 +67,7 @@ export type ContentPostDto = {
   commentCount: number;
   poll?: ContentPollDto | null;
   listing?: ContentListingDto | null;
+  image?: ContentImageDto | null;
   viewerState: ContentViewerStateDto;
 };
 

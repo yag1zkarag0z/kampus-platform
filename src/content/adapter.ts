@@ -187,6 +187,14 @@ export function toCampusPost(
           price: dto.listing.price,
         }
       : undefined,
+    image: dto.image
+      ? {
+          src: dto.image.src,
+          width: dto.image.width,
+          height: dto.image.height,
+          alt: dto.image.alt,
+        }
+      : undefined,
     edited: dto.editedAt !== null,
   };
 }

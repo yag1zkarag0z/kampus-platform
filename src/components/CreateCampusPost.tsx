@@ -13,6 +13,10 @@ import {
 
 import { useCampusData } from "@/components/CampusDataProvider";
 import {
+  deleteUnattachedContentImage,
+  uploadContentImage,
+} from "@/content/client";
+import {
   CAMPUS_POST_BODY_MAX_LENGTH,
   CAMPUS_POST_TITLE_MAX_LENGTH,
 } from "@/data/campusContentRules";
@@ -390,14 +394,6 @@ export default function CreateCampusPost() {
       return;
     }
 
-    if (imagePreview) {
-      setStatusMessage(
-        "Görsel yükleme altyapısı sıradaki backend aşamasında açılacak.",
-      );
-      setStatusTone("error");
-      return;
-    }
-
     setPollError("");
     setListingError("");
     setTitleError("");
@@ -408,12 +404,32 @@ export default function CreateCampusPost() {
     setStatusTone("neutral");
     setIsSubmitting(true);
 
+    let uploadedImageId: string | undefined;
+
     try {
+      if (imagePreview) {
+        setStatusMessage("Görsel güvenli biçimde yükleniyor…");
+        const imageResponse = await fetch(imagePreview.src);
+
+        if (!imageResponse.ok) {
+          throw new Error("Image preview could not be read.");
+        }
+
+        const uploadedImage = await uploadContentImage(
+          await imageResponse.blob(),
+        );
+        uploadedImageId = uploadedImage.id;
+        setStatusMessage(
+          isListing ? "İlan yayımlanıyor…" : "Konu yayımlanıyor…",
+        );
+      }
+
       const postId = await createPost({
         title: normalizedTitle,
         body: normalizedBody,
         category,
         isAnonymous,
+        imageId: uploadedImageId,
         pollOptions: isPollEnabled ? normalizedPollOptions : undefined,
         listing: isListing
           ? {
@@ -432,6 +448,12 @@ export default function CreateCampusPost() {
       setStatusTone("success");
       router.push(`/gonderi/${postId}`);
     } catch {
+      if (uploadedImageId) {
+        await deleteUnattachedContentImage(uploadedImageId).catch(
+          () => undefined,
+        );
+      }
+
       setIsSubmitting(false);
       setStatusMessage(
         isListing

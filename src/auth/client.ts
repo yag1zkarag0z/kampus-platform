@@ -113,7 +113,9 @@ async function requestApiResponse(
     ...init,
     credentials: "same-origin",
     headers: {
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      ...(init?.body && !(init.body instanceof FormData)
+        ? { "Content-Type": "application/json" }
+        : {}),
       ...init?.headers,
     },
   });

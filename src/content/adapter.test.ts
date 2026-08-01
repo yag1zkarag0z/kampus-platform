@@ -81,6 +81,23 @@ function createCommentDto(
 }
 
 describe("content DTO adapter", () => {
+  it("maps a persisted image into the campus post model", () => {
+    const image = {
+      id: "d9955ee1-2c9c-49fe-9d45-6a94fe89b880",
+      src: "/v1/media/d9955ee1-2c9c-49fe-9d45-6a94fe89b880",
+      width: 1280,
+      height: 720,
+      alt: "Kampüs manzarası",
+    };
+
+    expect(toCampusPost(createPostDto({ image })).image).toEqual({
+      src: image.src,
+      width: 1280,
+      height: 720,
+      alt: "Kampüs manzarası",
+    });
+  });
+
   it("maps persisted listing values to campus labels", () => {
     expect(
       toCampusPost(
