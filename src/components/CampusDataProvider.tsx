@@ -17,6 +17,7 @@ import {
   isAnonymousCampusAuthor,
   LOCAL_ACCOUNT_OWNER_ID,
   type CampusPost,
+  type CampusGif,
   type CampusPostCategory,
   type CampusPostImage,
   type CampusPostListing,
@@ -89,6 +90,7 @@ export type CreateCampusPostInput = {
   category: CampusPostCategory;
   isAnonymous: boolean;
   imageId?: string;
+  gif?: CampusGif;
   pollOptions?: string[];
   listing?: CampusPostListing;
 };
@@ -97,6 +99,7 @@ export type AddCampusCommentInput = {
   body: string;
   isAnonymous: boolean;
   parentId?: string;
+  gif?: CampusGif;
 };
 
 export type UpdateCampusPostInput = {
@@ -654,6 +657,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         body,
         isAnonymous: input.isAnonymous,
         imageId: input.imageId,
+        gifId: input.gif?.id,
         pollOptions,
         listing: input.listing
           ? {
@@ -940,6 +944,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         body,
         isAnonymous: input.isAnonymous,
         parentId: input.parentId,
+        gifId: input.gif?.id,
       });
       const comment = toCampusComment(created);
 

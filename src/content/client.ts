@@ -68,6 +68,7 @@ export function createContentPost(input: {
   pollOptions?: string[];
   listing?: ContentListingDto;
   imageId?: string;
+  gifId?: string;
 }) {
   return requestApi<ContentPostDetailDto>("/v1/posts", {
     method: "POST",
@@ -141,6 +142,7 @@ export function createContentComment(
     body: string;
     isAnonymous: boolean;
     parentId?: string;
+    gifId?: string;
   },
 ) {
   return requestApi<ContentCommentDto>(

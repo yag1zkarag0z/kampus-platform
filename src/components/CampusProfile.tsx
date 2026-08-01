@@ -15,6 +15,7 @@ import CampusListingMeta from "@/components/CampusListingMeta";
 import CampusPoll from "@/components/CampusPoll";
 import CampusPostCardSurface from "@/components/CampusPostCardSurface";
 import CampusPostImage from "@/components/CampusPostImage";
+import CampusGif from "@/components/CampusGif";
 import {
   getCampusPostCommentCount,
   isAnonymousCampusAuthor,
@@ -364,6 +365,7 @@ export default function CampusProfile() {
                           variant="compact"
                         />
                       )}
+                      {post.gif && <CampusGif gif={post.gif} compact />}
                       {post.poll && (
                         <CampusPoll
                           postId={post.id}

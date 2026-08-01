@@ -142,6 +142,15 @@ export function toCampusComment(
     isDeleted: dto.isDeleted,
     body: dto.body ?? "",
     time: formatCampusRelativeTime(dto.createdAt),
+    gif: dto.gif
+      ? {
+          id: dto.gif.id,
+          src: dto.gif.src,
+          width: dto.gif.width,
+          height: dto.gif.height,
+          alt: dto.gif.alt,
+        }
+      : undefined,
   };
 }
 
@@ -193,6 +202,15 @@ export function toCampusPost(
           width: dto.image.width,
           height: dto.image.height,
           alt: dto.image.alt,
+        }
+      : undefined,
+    gif: dto.gif
+      ? {
+          id: dto.gif.id,
+          src: dto.gif.src,
+          width: dto.gif.width,
+          height: dto.gif.height,
+          alt: dto.gif.alt,
         }
       : undefined,
     edited: dto.editedAt !== null,

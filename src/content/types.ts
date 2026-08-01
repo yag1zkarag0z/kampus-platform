@@ -54,6 +54,14 @@ export type ContentImageDto = {
 
 export type ContentImageUploadDto = Omit<ContentImageDto, "alt">;
 
+export type ContentGifDto = {
+  id: string;
+  src: string;
+  width: number;
+  height: number;
+  alt: string;
+};
+
 export type ContentPostDto = {
   id: string;
   category: ContentPostCategory;
@@ -68,6 +76,7 @@ export type ContentPostDto = {
   poll?: ContentPollDto | null;
   listing?: ContentListingDto | null;
   image?: ContentImageDto | null;
+  gif?: ContentGifDto | null;
   viewerState: ContentViewerStateDto;
 };
 
@@ -81,6 +90,7 @@ export type ContentCommentDto = {
   author: ContentAuthorDto;
   createdAt: string;
   editedAt: string | null;
+  gif?: ContentGifDto | null;
   viewerState: {
     isAuthor: boolean;
     canEdit: boolean;

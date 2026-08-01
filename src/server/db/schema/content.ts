@@ -56,6 +56,11 @@ export const posts = pgTable(
     isAnonymous: boolean("is_anonymous").default(false).notNull(),
     title: varchar("title", { length: 100 }).default("").notNull(),
     body: varchar("body", { length: 500 }).default("").notNull(),
+    gifId: varchar("gif_id", { length: 80 }),
+    gifUrl: varchar("gif_url", { length: 2048 }),
+    gifWidth: integer("gif_width"),
+    gifHeight: integer("gif_height"),
+    gifAlt: varchar("gif_alt", { length: 160 }),
     createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
     editedAt: timestampWithTimezone("edited_at"),
     deletedAt: timestampWithTimezone("deleted_at"),
@@ -74,6 +79,19 @@ export const posts = pgTable(
       "posts_content_not_blank_check",
       sql`char_length(btrim(${table.title})) > 0
         or char_length(btrim(${table.body})) > 0`,
+    ),
+    check(
+      "posts_gif_metadata_check",
+      sql`(${table.gifId} is null
+          and ${table.gifUrl} is null
+          and ${table.gifWidth} is null
+          and ${table.gifHeight} is null
+          and ${table.gifAlt} is null)
+        or (${table.gifId} is not null
+          and ${table.gifUrl} like 'https://%'
+          and ${table.gifWidth} between 1 and 4096
+          and ${table.gifHeight} between 1 and 4096
+          and char_length(btrim(${table.gifAlt})) > 0)`,
     ),
     check(
       "posts_edited_at_order_check",
@@ -101,6 +119,11 @@ export const comments = pgTable(
     parentId: uuid("parent_id"),
     isAnonymous: boolean("is_anonymous").default(false).notNull(),
     body: varchar("body", { length: 500 }).notNull(),
+    gifId: varchar("gif_id", { length: 80 }),
+    gifUrl: varchar("gif_url", { length: 2048 }),
+    gifWidth: integer("gif_width"),
+    gifHeight: integer("gif_height"),
+    gifAlt: varchar("gif_alt", { length: 160 }),
     createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
     editedAt: timestampWithTimezone("edited_at"),
     deletedAt: timestampWithTimezone("deleted_at"),
@@ -127,6 +150,19 @@ export const comments = pgTable(
     check(
       "comments_body_not_blank_check",
       sql`char_length(btrim(${table.body})) > 0`,
+    ),
+    check(
+      "comments_gif_metadata_check",
+      sql`(${table.gifId} is null
+          and ${table.gifUrl} is null
+          and ${table.gifWidth} is null
+          and ${table.gifHeight} is null
+          and ${table.gifAlt} is null)
+        or (${table.gifId} is not null
+          and ${table.gifUrl} like 'https://%'
+          and ${table.gifWidth} between 1 and 4096
+          and ${table.gifHeight} between 1 and 4096
+          and char_length(btrim(${table.gifAlt})) > 0)`,
     ),
     check(
       "comments_parent_not_self_check",

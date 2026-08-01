@@ -12,6 +12,8 @@ import {
 } from "react";
 
 import { useCampusData } from "@/components/CampusDataProvider";
+import CampusGif from "@/components/CampusGif";
+import GiphyPicker from "@/components/GiphyPicker";
 import {
   deleteUnattachedContentImage,
   uploadContentImage,
@@ -24,6 +26,7 @@ import type {
   CampusListingCondition,
   CampusListingType,
   CampusPostCategory,
+  CampusGif as CampusGifData,
   CampusPostImage,
 } from "@/data/campusPosts";
 
@@ -173,6 +176,8 @@ export default function CreateCampusPost() {
     useState<CampusPostCategory>("Sohbet");
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [selectedGif, setSelectedGif] = useState<CampusGifData | undefined>();
+  const [isGifPickerOpen, setIsGifPickerOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState<
     Omit<CampusPostImage, "alt"> | undefined
   >();
@@ -263,6 +268,7 @@ export default function CreateCampusPost() {
 
     try {
       setImagePreview(await createPostImage(file));
+      setSelectedGif(undefined);
     } catch {
       setImageError(
         "Fotoğraf işlenemedi. Daha küçük veya farklı bir görsel deneyebilirsin.",
@@ -430,6 +436,7 @@ export default function CreateCampusPost() {
         category,
         isAnonymous,
         imageId: uploadedImageId,
+        gif: selectedGif,
         pollOptions: isPollEnabled ? normalizedPollOptions : undefined,
         listing: isListing
           ? {
@@ -879,6 +886,39 @@ export default function CreateCampusPost() {
                 )}
               </div>
             </div>
+          </div>
+
+          <div className="mt-7 border-t border-white/10 pt-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-black">GIF <span className="font-medium text-white/55">(isteğe bağlı)</span></p>
+                <p className="mt-1 text-[11px] text-white/55">GIPHY&apos;den bir tepki GIF&apos;i seç.</p>
+              </div>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsGifPickerOpen((value) => !value)}
+                  aria-expanded={isGifPickerOpen}
+                  className={`inline-flex min-h-11 items-center border border-white/12 px-4 text-xs font-black text-[#ff7a45] hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+                >
+                  GIF seç
+                </button>
+                {isGifPickerOpen && (
+                  <GiphyPicker onSelect={(gif) => { setSelectedGif(gif); removeImage(); setIsGifPickerOpen(false); }} />
+                )}
+              </div>
+            </div>
+            {selectedGif && (
+              <div className="relative">
+                <CampusGif gif={selectedGif} compact />
+                <button
+                  type="button"
+                  onClick={() => setSelectedGif(undefined)}
+                  aria-label="Seçilen GIF'i kaldır"
+                  className={`absolute top-2 right-2 grid size-9 place-items-center rounded-full bg-black/75 text-white hover:bg-black ${focusRing}`}
+                >×</button>
+              </div>
+            )}
           </div>
 
           <div className="mt-7 border-t border-white/10 pt-5">

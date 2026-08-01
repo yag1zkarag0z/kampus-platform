@@ -22,10 +22,13 @@ import CampusPoll from "@/components/CampusPoll";
 import CampusPostActions from "@/components/CampusPostActions";
 import CampusPostCardSurface from "@/components/CampusPostCardSurface";
 import CampusPostImage from "@/components/CampusPostImage";
+import CampusGif from "@/components/CampusGif";
+import GiphyPicker from "@/components/GiphyPicker";
 import {
   getCampusPostCommentCount,
   isAnonymousCampusAuthor,
   LOCAL_ACCOUNT_OWNER_ID,
+  type CampusGif as CampusGifData,
 } from "@/data/campusPosts";
 import { useFeedback } from "@/components/FeedbackProvider";
 
@@ -71,6 +74,8 @@ export default function CampusFeed() {
   const [quickPostBody, setQuickPostBody] = useState("");
   const [quickPostMessage, setQuickPostMessage] = useState("");
   const [isQuickPostSubmitting, setIsQuickPostSubmitting] = useState(false);
+  const [quickPostGif, setQuickPostGif] = useState<CampusGifData | undefined>();
+  const [isGifPickerOpen, setIsGifPickerOpen] = useState(false);
 
   useEffect(() => {
     const closeCategoryMenu = (event: PointerEvent) => {
@@ -163,8 +168,11 @@ export default function CampusFeed() {
         body,
         category: "Sohbet",
         isAnonymous: false,
+        gif: quickPostGif,
       });
       setQuickPostBody("");
+      setQuickPostGif(undefined);
+      setIsGifPickerOpen(false);
       setQuickPostMessage("");
       showToast({
         message: "Gönderin akışta paylaşıldı.",
@@ -381,9 +389,23 @@ export default function CampusFeed() {
             aria-label="Gönderi metni"
             className={`max-h-36 min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2.5 text-[15px] font-semibold leading-6 text-white placeholder:text-white/45 sm:text-base ${focusRing}`}
           />
-        </div>
+	        </div>
 
-        <div className="mt-3 flex min-w-0 items-center justify-between gap-2 pl-11 sm:pl-[3.25rem]">
+	        {quickPostGif && (
+	          <div className="relative ml-11 sm:ml-[3.25rem]">
+	            <CampusGif gif={quickPostGif} compact />
+	            <button
+	              type="button"
+	              onClick={() => setQuickPostGif(undefined)}
+	              aria-label="Seçilen GIF'i kaldır"
+	              className={`absolute top-2 right-2 grid size-9 place-items-center rounded-full bg-black/75 text-sm font-black text-white hover:bg-black ${focusRing}`}
+	            >
+	              ×
+	            </button>
+	          </div>
+	        )}
+
+	        <div className="mt-3 flex min-w-0 items-center justify-between gap-2 pl-11 sm:pl-[3.25rem]">
           <div
             role="group"
             aria-label="Gönderi araçları"
@@ -395,6 +417,24 @@ export default function CampusFeed() {
               label="Emoji ekle"
               className="hidden min-[360px]:grid"
             />
+	        <div className="relative">
+	          <button
+	            type="button"
+	            onClick={() => setIsGifPickerOpen((value) => !value)}
+	            aria-expanded={isGifPickerOpen}
+	            className={`grid size-11 shrink-0 place-items-center text-[10px] font-black text-[#ff7a45]/80 hover:bg-[#ff7a45]/8 hover:text-[#ff7a45] ${focusRing}`}
+	          >
+	            GIF
+	          </button>
+	          {isGifPickerOpen && (
+	            <GiphyPicker
+	              onSelect={(gif) => {
+	                setQuickPostGif(gif);
+	                setIsGifPickerOpen(false);
+	              }}
+	            />
+	          )}
+	        </div>
             <ComposerAction symbol="☷" label="Anket oluştur" />
             <ComposerAction
               symbol="₺"
@@ -542,6 +582,7 @@ export default function CampusFeed() {
                     )}
 
                     {post.image && <CampusPostImage image={post.image} />}
+                    {post.gif && <CampusGif gif={post.gif} />}
                     {post.poll && (
                       <CampusPoll postId={post.id} poll={post.poll} />
                     )}

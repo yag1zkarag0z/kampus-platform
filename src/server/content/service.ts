@@ -20,6 +20,7 @@ import {
 import type {
   ContentAuthorDto,
   ContentCommentDto,
+  ContentGifDto,
   ContentImageDto,
   ContentListingDto,
   ContentPollDto,
@@ -29,6 +30,7 @@ import type {
 import { AuthError } from "@/server/auth/errors";
 import { getDatabase } from "@/server/db/client";
 import { getMediaStorage } from "@/server/media/storage";
+import { resolveGiphyGif } from "@/server/giphy/client";
 import {
   comments,
   listings,
@@ -82,6 +84,11 @@ type PostRow = {
   isAnonymous: boolean;
   title: string;
   body: string;
+  gifId: string | null;
+  gifUrl: string | null;
+  gifWidth: number | null;
+  gifHeight: number | null;
+  gifAlt: string | null;
   createdAt: Date;
   editedAt: Date | null;
   username: string;
@@ -99,6 +106,11 @@ type CommentRow = {
   parentId: string | null;
   isAnonymous: boolean;
   body: string;
+  gifId: string | null;
+  gifUrl: string | null;
+  gifWidth: number | null;
+  gifHeight: number | null;
+  gifAlt: string | null;
   createdAt: Date;
   editedAt: Date | null;
   deletedAt: Date | null;
@@ -111,6 +123,26 @@ type PollView = {
   poll: ContentPollDto;
   selectedOptionId: string | null;
 };
+
+function gifFromRow(row: {
+  gifId: string | null;
+  gifUrl: string | null;
+  gifWidth: number | null;
+  gifHeight: number | null;
+  gifAlt: string | null;
+}): ContentGifDto | null {
+  if (!row.gifId || !row.gifUrl || !row.gifWidth || !row.gifHeight || !row.gifAlt) {
+    return null;
+  }
+
+  return {
+    id: row.gifId,
+    src: row.gifUrl,
+    width: row.gifWidth,
+    height: row.gifHeight,
+    alt: row.gifAlt,
+  };
+}
 
 type ContentDatabase = ReturnType<typeof getDatabase>;
 type ContentTransaction = Parameters<
@@ -437,6 +469,7 @@ function serializePost(
     poll: pollView?.poll ?? null,
     listing: listing ?? null,
     image: image ?? null,
+    gif: gifFromRow(row),
     viewerState: {
       isAuthor: row.authorId === viewerId,
       canEdit: row.authorId === viewerId,
@@ -602,6 +635,7 @@ function serializeComment(
           }),
     createdAt: row.createdAt.toISOString(),
     editedAt: row.editedAt?.toISOString() ?? null,
+    gif: isDeleted ? null : gifFromRow(row),
     viewerState: {
       isAuthor,
       canEdit: isAuthor && !isDeleted,
@@ -641,6 +675,11 @@ async function selectPost(
       isAnonymous: posts.isAnonymous,
       title: posts.title,
       body: posts.body,
+      gifId: posts.gifId,
+      gifUrl: posts.gifUrl,
+      gifWidth: posts.gifWidth,
+      gifHeight: posts.gifHeight,
+      gifAlt: posts.gifAlt,
       createdAt: posts.createdAt,
       editedAt: posts.editedAt,
       username: users.username,
@@ -684,6 +723,11 @@ async function selectPostComments(
       parentId: comments.parentId,
       isAnonymous: comments.isAnonymous,
       body: comments.body,
+      gifId: comments.gifId,
+      gifUrl: comments.gifUrl,
+      gifWidth: comments.gifWidth,
+      gifHeight: comments.gifHeight,
+      gifAlt: comments.gifAlt,
       createdAt: comments.createdAt,
       editedAt: comments.editedAt,
       deletedAt: comments.deletedAt,
@@ -772,6 +816,11 @@ export async function listContentPosts(
       isAnonymous: posts.isAnonymous,
       title: posts.title,
       body: posts.body,
+      gifId: posts.gifId,
+      gifUrl: posts.gifUrl,
+      gifWidth: posts.gifWidth,
+      gifHeight: posts.gifHeight,
+      gifAlt: posts.gifAlt,
       createdAt: posts.createdAt,
       editedAt: posts.editedAt,
       username: users.username,
@@ -973,6 +1022,7 @@ export async function createContentPost(
   viewerId: string,
   input: CreatePostInput,
 ) {
+  const gif = input.gifId ? await resolveGiphyGif(input.gifId) : null;
   const created = await getDatabase().transaction(
     async (transaction) => {
       await assertActiveContentMember(transaction, viewerId);
@@ -1018,6 +1068,11 @@ export async function createContentPost(
           isAnonymous: input.isAnonymous,
           title: input.title,
           body: input.body,
+          gifId: gif?.id,
+          gifUrl: gif?.src,
+          gifWidth: gif?.width,
+          gifHeight: gif?.height,
+          gifAlt: gif?.alt,
         })
         .returning({ id: posts.id });
 
@@ -1290,6 +1345,11 @@ async function selectComment(
       parentId: comments.parentId,
       isAnonymous: comments.isAnonymous,
       body: comments.body,
+      gifId: comments.gifId,
+      gifUrl: comments.gifUrl,
+      gifWidth: comments.gifWidth,
+      gifHeight: comments.gifHeight,
+      gifAlt: comments.gifAlt,
       createdAt: comments.createdAt,
       editedAt: comments.editedAt,
       deletedAt: comments.deletedAt,
@@ -1311,6 +1371,7 @@ export async function createContentComment(
   input: CreateCommentInput,
 ) {
   assertUuid(postId, postNotFoundError);
+  const gif = input.gifId ? await resolveGiphyGif(input.gifId) : null;
   let parentId = input.parentId;
 
   const createdId = await getDatabase().transaction(
@@ -1384,6 +1445,11 @@ export async function createContentComment(
           parentId,
           isAnonymous: input.isAnonymous,
           body: input.body,
+          gifId: gif?.id,
+          gifUrl: gif?.src,
+          gifWidth: gif?.width,
+          gifHeight: gif?.height,
+          gifAlt: gif?.alt,
           createdAt,
         })
         .returning({ id: comments.id });

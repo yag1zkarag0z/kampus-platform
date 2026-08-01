@@ -20,9 +20,18 @@ export type CampusComment = {
   isDeleted?: boolean;
   body: string;
   time: string;
+  gif?: CampusGif;
 };
 
 export type CampusPostImage = {
+  src: string;
+  width: number;
+  height: number;
+  alt: string;
+};
+
+export type CampusGif = {
+  id: string;
   src: string;
   width: number;
   height: number;
@@ -63,6 +72,7 @@ export type CampusPost = {
   title: string;
   body: string;
   image?: CampusPostImage;
+  gif?: CampusGif;
   poll?: CampusPostPoll;
   listing?: CampusPostListing;
   time: string;
@@ -241,6 +251,13 @@ export const guestCampusPosts: CampusPost[] = [
     time: "1 sa",
     createdAt: 195,
     likes: 128,
+    gif: {
+      id: "26ufdipQqU2lhNA4g",
+      src: "https://media.giphy.com/media/26ufdipQqU2lhNA4g/giphy.gif",
+      width: 480,
+      height: 270,
+      alt: "Şaşkınlık ve mutluluk tepki GIF'i",
+    },
   }),
   createOfficialCampusPost({
     id: "coding-workshop",
@@ -320,6 +337,13 @@ export const guestCampusPosts: CampusPost[] = [
         authorId: "deniz-ari",
         body: "@sen geçen hafta bu hocanın kaynaklarını bulmuştun, değil mi?",
         time: "18 dk",
+        gif: {
+          id: "l0MYt5jPR6QX5pnqM",
+          src: "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif",
+          width: 480,
+          height: 270,
+          alt: "Eğlenceli tepki GIF'i",
+        },
       },
     ],
   }),

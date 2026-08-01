@@ -194,6 +194,13 @@ const commentBodySchema = z
     message: URL_NOT_ALLOWED_MESSAGE,
   });
 
+const gifIdSchema = z
+  .string({ error: "GIF kimliği geçersiz." })
+  .trim()
+  .min(1, "GIF kimliği boş olamaz.")
+  .max(80, "GIF kimliği çok uzun.")
+  .regex(/^[A-Za-z0-9_-]+$/u, "GIF kimliği geçersiz.");
+
 const pollOptionSchema = z
   .string({ error: "Anket seçeneği metin olmalıdır." })
   .trim()
@@ -240,10 +247,19 @@ export const createPostSchema = z
     pollOptions: z.array(pollOptionSchema).min(2).max(4).optional(),
     listing: listingSchema.optional(),
     imageId: z.uuid("Görsel kimliği geçersiz.").optional(),
+    gifId: gifIdSchema.optional(),
   })
   .strict()
   .superRefine((value, context) => {
     addPostContentIssues(context, value);
+
+    if (value.imageId && value.gifId) {
+      context.addIssue({
+        code: "custom",
+        message: "Aynı gönderiye hem fotoğraf hem GIF ekleyemezsin.",
+        path: ["gifId"],
+      });
+    }
 
     if (value.category === "poll" && !value.pollOptions) {
       context.addIssue({
@@ -347,6 +363,7 @@ export const createCommentSchema = z
     parentId: z
       .uuid("Yanıtlanan yorum kimliği geçersiz.")
       .optional(),
+    gifId: gifIdSchema.optional(),
   })
   .strict();
 

@@ -17,11 +17,14 @@ import CampusListingMeta from "@/components/CampusListingMeta";
 import CampusPoll from "@/components/CampusPoll";
 import CampusPostActions from "@/components/CampusPostActions";
 import CampusPostImage from "@/components/CampusPostImage";
+import CampusGif from "@/components/CampusGif";
+import GiphyPicker from "@/components/GiphyPicker";
 import { useFeedback } from "@/components/FeedbackProvider";
 import {
   isAnonymousCampusAuthor,
   isSameVisibleCampusAuthor,
   LOCAL_ACCOUNT_OWNER_ID,
+  type CampusGif as CampusGifData,
 } from "@/data/campusPosts";
 
 const quickEmojis = [
@@ -60,6 +63,8 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
   const [commentDraft, setCommentDraft] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [selectedGif, setSelectedGif] = useState<CampusGifData | undefined>();
+  const [isGifPickerOpen, setIsGifPickerOpen] = useState(false);
   const [formMessage, setFormMessage] = useState("");
   const [isCommentSubmitting, setIsCommentSubmitting] =
     useState(false);
@@ -194,8 +199,11 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
         body,
         isAnonymous,
         parentId: replyTarget?.id,
+        gif: selectedGif,
       });
       setCommentDraft("");
+      setSelectedGif(undefined);
+      setIsGifPickerOpen(false);
       setReplyTargetId(null);
       setIsEmojiPickerOpen(false);
       setFormMessage("");
@@ -338,6 +346,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
             {post.image && (
               <CampusPostImage image={post.image} variant="detail" />
             )}
+            {post.gif && <CampusGif gif={post.gif} />}
             {post.poll && (
               <CampusPoll postId={post.id} poll={post.poll} />
             )}
@@ -514,6 +523,20 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
             className={`mt-3 min-h-28 w-full resize-y border border-white/12 bg-white/[0.02] px-3.5 py-3 text-sm leading-6 placeholder:text-white/45 ${focusRing}`}
           />
 
+          {selectedGif && (
+            <div className="relative">
+              <CampusGif gif={selectedGif} compact />
+              <button
+                type="button"
+                onClick={() => setSelectedGif(undefined)}
+                aria-label="Seçilen GIF'i kaldır"
+                className={`absolute top-2 right-2 grid size-9 place-items-center rounded-full bg-black/75 text-sm font-black text-white hover:bg-black ${focusRing}`}
+              >
+                ×
+              </button>
+            </div>
+          )}
+
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 border border-white/12 px-3 text-xs font-bold">
@@ -541,6 +564,19 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
 
                 {isEmojiPickerOpen && (
                   <EmojiPicker onSelect={appendEmoji} />
+                )}
+              </div>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsGifPickerOpen((value) => !value)}
+                  aria-expanded={isGifPickerOpen}
+                  className={`grid size-11 place-items-center border border-white/12 text-[10px] font-black text-[#ff7a45] transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+                >
+                  GIF
+                </button>
+                {isGifPickerOpen && (
+                  <GiphyPicker onSelect={(gif) => { setSelectedGif(gif); setIsGifPickerOpen(false); }} />
                 )}
               </div>
             </div>
@@ -679,6 +715,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                         <p className="mt-2 max-w-[78ch] whitespace-pre-wrap break-words text-sm leading-6 text-white/78 sm:text-[15px] sm:leading-7">
                           {comment.body}
                         </p>
+                        {comment.gif && <CampusGif gif={comment.gif} compact />}
                         <CampusCommentActions
                           postId={post.id}
                           comment={comment}
