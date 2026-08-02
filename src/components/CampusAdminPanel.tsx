@@ -5,10 +5,7 @@ import { useMemo, useState } from "react";
 
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
-import { useCampusData } from "@/components/CampusDataProvider";
 import {
-  type CampusContentReport,
-  type CampusModerationHistoryAction,
   type CampusModerationResolution,
   type CampusReportReason,
   useCampusModeration,
@@ -17,24 +14,15 @@ import { useFeedback } from "@/components/FeedbackProvider";
 import {
   campusAdminRoleLabels,
   type CampusAdminRole,
-  type CampusManagedUser,
 } from "@/data/campusAdmin";
-import {
-  campusPosts,
-  type CampusComment,
-  type CampusPost,
-} from "@/data/campusPosts";
+import type {
+  ManagedUserDto,
+  ModerationHistoryEntryDto,
+  ReportSummaryDto,
+} from "@/moderation/client";
 
 type AdminView = "overview" | "reports" | "users" | "history";
 type ReportFilter = "pending" | "resolved" | "all";
-type TargetContext = {
-  post?: CampusPost;
-  comment?: CampusComment;
-  title: string;
-  excerpt: string;
-  author: string;
-  authorId?: string;
-};
 
 const focusRing =
   "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
@@ -55,21 +43,23 @@ const reportFilters: { id: ReportFilter; label: string }[] = [
 const reasonLabels: Record<CampusReportReason, string> = {
   spam: "Spam veya reklam",
   harassment: "Taciz veya zorbalık",
-  "personal-information": "Kişisel bilgi",
+  personal_information: "Kişisel bilgi",
   misleading: "Yanıltıcı içerik",
   other: "Diğer",
 };
 
 const resolutionLabels: Record<CampusModerationResolution, string> = {
   dismissed: "İhlal bulunmadı",
-  "content-removed": "İçerik kaldırıldı",
-  "user-suspended": "Kullanıcı askıya alındı",
+  content_removed: "İçerik kaldırıldı",
+  user_suspended: "Kullanıcı askıya alındı",
 };
 
-const historyLabels: Record<CampusModerationHistoryAction, string> = {
-  ...resolutionLabels,
-  "user-restored": "Kullanıcı yeniden etkinleştirildi",
-  "role-changed": "Kullanıcı rolü değiştirildi",
+const historyLabels: Record<ModerationHistoryEntryDto["action"], string> = {
+  report_dismissed: "Şikâyet reddedildi",
+  content_removed: "İçerik kaldırıldı",
+  user_suspended: "Kullanıcı askıya alındı",
+  user_restored: "Kullanıcı yeniden etkinleştirildi",
+  role_changed: "Kullanıcı rolü değiştirildi",
 };
 
 const dateFormatter = new Intl.DateTimeFormat("tr-TR", {
@@ -77,79 +67,24 @@ const dateFormatter = new Intl.DateTimeFormat("tr-TR", {
   timeStyle: "short",
 });
 
-function formatDate(value: number) {
+function formatDate(value: string) {
   return dateFormatter.format(new Date(value));
-}
-
-function getReportTarget(
-  report: CampusContentReport,
-  posts: CampusPost[],
-): TargetContext {
-  const post = posts.find((item) => item.id === report.postId);
-
-  if (!post) {
-    return {
-      title:
-        report.targetType === "comment"
-          ? "Yorum artık bulunamıyor"
-          : "Gönderi artık bulunamıyor",
-      excerpt:
-        "İçerik silinmiş veya bu cihazdaki kayıtlarla eşleşmiyor.",
-      author: "Bilinmeyen kullanıcı",
-    };
-  }
-
-  if (report.targetType === "comment") {
-    const comment = post.comments.find(
-      (item) => item.id === report.targetId,
-    );
-
-    if (!comment) {
-      return {
-        post,
-        title: `“${post.title || "Başlıksız gönderi"}” içindeki yorum`,
-        excerpt: "Yorum artık bu gönderide bulunmuyor.",
-        author: "Bilinmeyen kullanıcı",
-      };
-    }
-
-    return {
-      post,
-      comment,
-      title: `“${post.title || "Başlıksız gönderi"}” içindeki yorum`,
-      excerpt: comment.body,
-      author: comment.author,
-      authorId: comment.authorId,
-    };
-  }
-
-  return {
-    post,
-    title: post.title || "Başlıksız gönderi",
-    excerpt: post.body,
-    author: post.author,
-    authorId: post.authorId,
-  };
 }
 
 export default function CampusAdminPanel() {
   const {
+    accountId,
+    profile,
     isHydrated: isAccountHydrated,
     sessionMode,
     role,
   } = useCampusAccount();
   const {
-    posts,
-    isHydrated: isDataHydrated,
-    moderateDeletePost,
-    moderateDeleteComment,
-  } = useCampusData();
-  const {
     reports,
     pendingReportCount,
     managedUsers,
     moderationHistory,
-    isHydrated: isModerationHydrated,
+    isModerationHydrated,
     resolveReport,
     setUserRole,
     suspendUser,
@@ -163,15 +98,7 @@ export default function CampusAdminPanel() {
   const [selectedReportId, setSelectedReportId] = useState<string>();
   const [userQuery, setUserQuery] = useState("");
 
-  const isHydrated =
-    isAccountHydrated && isDataHydrated && isModerationHydrated;
-  const allPosts = useMemo(() => {
-    const postMap = new Map(
-      campusPosts.map((post) => [post.id, post]),
-    );
-    posts.forEach((post) => postMap.set(post.id, post));
-    return Array.from(postMap.values());
-  }, [posts]);
+  const isHydrated = isAccountHydrated && isModerationHydrated;
   const sortedReports = useMemo(
     () =>
       [...reports].sort((first, second) => {
@@ -179,7 +106,10 @@ export default function CampusAdminPanel() {
           return first.status === "pending" ? -1 : 1;
         }
 
-        return second.reportedAt - first.reportedAt;
+        return (
+          new Date(second.createdAt).getTime() -
+          new Date(first.createdAt).getTime()
+        );
       }),
     [reports],
   );
@@ -194,9 +124,6 @@ export default function CampusAdminPanel() {
   const selectedReport =
     filteredReports.find((report) => report.id === selectedReportId) ??
     filteredReports[0];
-  const selectedTarget = selectedReport
-    ? getReportTarget(selectedReport, allPosts)
-    : undefined;
   const resolvedCount = reports.length - pendingReportCount;
   const suspendedCount = managedUsers.filter(
     (user) => user.status === "suspended",
@@ -215,7 +142,7 @@ export default function CampusAdminPanel() {
 
     return managedUsers.filter((user) =>
       [
-        user.author,
+        user.username,
         user.displayName,
         user.department,
         campusAdminRoleLabels[user.role],
@@ -258,22 +185,21 @@ export default function CampusAdminPanel() {
   }
 
   const handleReportAction = async (
-    report: CampusContentReport,
+    report: ReportSummaryDto,
     resolution: CampusModerationResolution,
   ) => {
-    const target = getReportTarget(report, allPosts);
     const isDangerous = resolution !== "dismissed";
     const descriptions: Record<CampusModerationResolution, string> = {
       dismissed:
         "Şikâyet çözüldü olarak işaretlenecek ve içerik yayında kalacak.",
-      "content-removed":
-        "İçerik moderasyon kaydında kaldırılmış olarak işaretlenecek.",
-      "user-suspended": target.authorId
-        ? `${target.author} askıya alınacak ve şikâyet çözülecek.`
+      content_removed:
+        "İçerik kaldırılacak ve şikâyet çözülecek.",
+      user_suspended: report.target.authorId
+        ? `${report.target.author ? `@${report.target.author.username}` : "Kullanıcı"} askıya alınacak ve şikâyet çözülecek.`
         : "Bu içeriğin hesap sahibi belirlenemediği için kullanıcı askıya alınamaz.",
     };
 
-    if (resolution === "user-suspended" && !target.authorId) {
+    if (resolution === "user_suspended" && !report.target.authorId) {
       showToast({
         message: "Anonim veya kimliği belirlenemeyen hesap askıya alınamaz.",
         tone: "error",
@@ -287,7 +213,7 @@ export default function CampusAdminPanel() {
       confirmLabel:
         resolution === "dismissed"
           ? "Şikâyeti kapat"
-          : resolution === "content-removed"
+          : resolution === "content_removed"
             ? "İçeriği kaldır"
             : "Kullanıcıyı askıya al",
       tone: isDangerous ? "danger" : "default",
@@ -297,49 +223,40 @@ export default function CampusAdminPanel() {
       return;
     }
 
-    const wasResolved = resolveReport(report.id, resolution, {
-      authorId: target.authorId,
-      author: target.author,
-      note:
-        resolution === "dismissed"
-          ? "Topluluk kuralları ihlali bulunmadı."
-          : undefined,
-    });
-    const wasContentRemoved =
-      resolution !== "content-removed"
-        ? true
-        : report.targetType === "comment"
-          ? moderateDeleteComment(report.postId, report.targetId)
-          : moderateDeletePost(report.postId);
+    const wasResolved = await resolveReport(
+      report.id,
+      resolution,
+      resolution === "dismissed"
+        ? "Topluluk kuralları ihlali bulunmadı."
+        : undefined,
+    );
 
     showToast({
       message: wasResolved
-        ? resolution === "content-removed" && !wasContentRemoved
-          ? "Şikâyet kapatıldı; içerik daha önce kaldırılmış."
-          : `${resolutionLabels[resolution]}.`
-        : "Şikâyet daha önce işleme alınmış.",
-      tone: wasResolved ? "success" : "info",
+        ? `${resolutionLabels[resolution]}.`
+        : "Şikâyet çözülemedi. Lütfen yeniden dene.",
+      tone: wasResolved ? "success" : "error",
     });
   };
 
-  const handleRoleChange = (
-    user: CampusManagedUser,
-    role: CampusAdminRole,
+  const handleRoleChange = async (
+    user: ManagedUserDto,
+    nextRole: CampusAdminRole,
   ) => {
-    const wasUpdated = setUserRole(user.authorId, role);
+    const wasUpdated = await setUserRole(user.id, nextRole);
     showToast({
       message: wasUpdated
-        ? `${user.author} artık ${campusAdminRoleLabels[role].toLocaleLowerCase("tr-TR")}.`
+        ? `@${user.username} artık ${campusAdminRoleLabels[nextRole].toLocaleLowerCase("tr-TR")}.`
         : "Rol değiştirilemedi.",
-      tone: wasUpdated ? "success" : "info",
+      tone: wasUpdated ? "success" : "error",
     });
   };
 
-  const handleSuspendUser = async (user: CampusManagedUser) => {
+  const handleSuspendUser = async (user: ManagedUserDto) => {
     const confirmed = await confirmAction({
-      title: `${user.author} askıya alınsın mı?`,
+      title: `@${user.username} askıya alınsın mı?`,
       description:
-        "Hesap yönetim görünümünde askıya alınmış olarak işaretlenecek. Bu işlem daha sonra geri alınabilir.",
+        "Hesap askıya alınacak, mevcut oturumu bir sonraki istekte otomatik sonlanacak. Bu işlem daha sonra geri alınabilir.",
       confirmLabel: "Askıya al",
       tone: "danger",
     });
@@ -348,18 +265,21 @@ export default function CampusAdminPanel() {
       return;
     }
 
-    const wasSuspended = suspendUser(user.authorId);
+    const wasSuspended = await suspendUser(
+      user.id,
+      "Kullanıcı yönetiminden askıya alındı.",
+    );
     showToast({
       message: wasSuspended
-        ? `${user.author} askıya alındı.`
+        ? `@${user.username} askıya alındı.`
         : "Kullanıcı askıya alınamadı.",
       tone: wasSuspended ? "success" : "error",
     });
   };
 
-  const handleRestoreUser = async (user: CampusManagedUser) => {
+  const handleRestoreUser = async (user: ManagedUserDto) => {
     const confirmed = await confirmAction({
-      title: `${user.author} yeniden etkinleştirilsin mi?`,
+      title: `@${user.username} yeniden etkinleştirilsin mi?`,
       description:
         "Kullanıcının hesap durumu yeniden aktif olarak işaretlenecek.",
       confirmLabel: "Etkinleştir",
@@ -369,10 +289,10 @@ export default function CampusAdminPanel() {
       return;
     }
 
-    const wasRestored = restoreUser(user.authorId);
+    const wasRestored = await restoreUser(user.id);
     showToast({
       message: wasRestored
-        ? `${user.author} yeniden etkinleştirildi.`
+        ? `@${user.username} yeniden etkinleştirildi.`
         : "Hesap durumu değiştirilemedi.",
       tone: wasRestored ? "success" : "error",
     });
@@ -404,14 +324,15 @@ export default function CampusAdminPanel() {
           </div>
           <div className="flex items-center gap-3 border-l-2 border-[#ff7a45]/35 pl-3">
             <div className="text-right">
-              <p className="text-xs font-black">Yağız Karagöz</p>
+              <p className="text-xs font-black">{profile.displayName}</p>
               <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-white/55">
-                Yönetici
+                {campusAdminRoleLabels[role]}
               </p>
             </div>
             <CampusAuthorAvatar
-              author="@yagizkaragoz"
-              authorId="local-current-account"
+              author={`@${profile.username}`}
+              authorId={accountId ?? undefined}
+              avatarUrl={profile.avatarUrl}
               size="md"
             />
           </div>
@@ -512,39 +433,36 @@ export default function CampusAdminPanel() {
                   {sortedReports
                     .filter((report) => report.status === "pending")
                     .slice(0, 4)
-                    .map((report) => {
-                      const target = getReportTarget(report, allPosts);
-
-                      return (
-                        <li key={report.id}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedReportId(report.id);
-                              setReportFilter("pending");
-                              setActiveView("reports");
-                            }}
-                            className={`flex min-h-20 w-full cursor-pointer items-center gap-3 px-1 py-3 text-left transition-colors hover:bg-white/4 ${focusRing}`}
-                          >
-                            <TargetTypeBadge
-                              type={report.targetType}
-                            />
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate text-sm font-black">
-                                {target.title}
-                              </span>
-                              <span className="mt-1 block truncate text-xs text-white/55">
-                                {reasonLabels[report.reason]} ·{" "}
-                                {target.author}
-                              </span>
+                    .map((report) => (
+                      <li key={report.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedReportId(report.id);
+                            setReportFilter("pending");
+                            setActiveView("reports");
+                          }}
+                          className={`flex min-h-20 w-full cursor-pointer items-center gap-3 px-1 py-3 text-left transition-colors hover:bg-white/4 ${focusRing}`}
+                        >
+                          <TargetTypeBadge type={report.targetType} />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-black">
+                              {report.target.excerpt ||
+                                "İçerik artık mevcut değil"}
                             </span>
-                            <span className="hidden font-mono text-[9px] text-white/55 sm:block">
-                              {formatDate(report.reportedAt)}
+                            <span className="mt-1 block truncate text-xs text-white/55">
+                              {reasonLabels[report.reason]}
+                              {report.target.author
+                                ? ` · @${report.target.author.username}`
+                                : ""}
                             </span>
-                          </button>
-                        </li>
-                      );
-                    })}
+                          </span>
+                          <span className="hidden font-mono text-[9px] text-white/55 sm:block">
+                            {formatDate(report.createdAt)}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
                 </ul>
               ) : (
                 <AdminEmptyState
@@ -558,22 +476,22 @@ export default function CampusAdminPanel() {
               <AdminCard
                 eyebrow="Ekip"
                 title="Yetki dağılımı"
-                description="Yerel yönetim görünümündeki roller."
+                description="Kayıtlı yönetim ve moderatör rolleri."
               >
                 <dl className="grid gap-3">
                   {(["admin", "moderator", "member"] as const).map(
-                    (role) => (
+                    (roleOption) => (
                       <div
-                        key={role}
+                        key={roleOption}
                         className="flex items-center justify-between border-b border-white/7 pb-3 last:border-0 last:pb-0"
                       >
                         <dt className="text-xs font-bold text-white/55">
-                          {campusAdminRoleLabels[role]}
+                          {campusAdminRoleLabels[roleOption]}
                         </dt>
                         <dd className="font-mono text-sm font-black">
                           {
                             managedUsers.filter(
-                              (user) => user.role === role,
+                              (user) => user.role === roleOption,
                             ).length
                           }
                         </dd>
@@ -592,7 +510,7 @@ export default function CampusAdminPanel() {
                 }
                 description={
                   moderationHistory[0]
-                    ? `${moderationHistory[0].moderator} · ${formatDate(
+                    ? `@${moderationHistory[0].actor.username} · ${formatDate(
                         moderationHistory[0].createdAt,
                       )}`
                     : "İlk moderasyon kararın burada özetlenecek."
@@ -659,12 +577,11 @@ export default function CampusAdminPanel() {
             </div>
           </div>
 
-          {filteredReports.length > 0 && selectedReport && selectedTarget ? (
+          {filteredReports.length > 0 && selectedReport ? (
             <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(15rem,0.76fr)_minmax(0,1.24fr)]">
               <div className="border border-white/9 bg-[#141720]">
                 <ul className="divide-y divide-white/8">
                   {filteredReports.map((report) => {
-                    const target = getReportTarget(report, allPosts);
                     const isSelected = report.id === selectedReport.id;
 
                     return (
@@ -688,10 +605,11 @@ export default function CampusAdminPanel() {
                               <ReportStatusBadge report={report} compact />
                             </span>
                             <span className="mt-1.5 block truncate text-xs text-white/55">
-                              {target.title}
+                              {report.target.excerpt ||
+                                "İçerik artık mevcut değil"}
                             </span>
                             <span className="mt-2 block font-mono text-[9px] text-white/45">
-                              {formatDate(report.reportedAt)}
+                              {formatDate(report.createdAt)}
                             </span>
                           </span>
                         </button>
@@ -715,17 +633,15 @@ export default function CampusAdminPanel() {
                       {reasonLabels[selectedReport.reason]}
                     </h3>
                     <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.1em] text-white/55">
-                      Bildirim · {formatDate(selectedReport.reportedAt)}
+                      Bildirim · {formatDate(selectedReport.createdAt)}
                     </p>
                   </div>
-                  {selectedTarget.post && (
-                    <Link
-                      href={`/gonderi/${selectedTarget.post.id}`}
-                      className={`inline-flex min-h-11 items-center justify-center border border-white/12 px-3 text-xs font-black transition-colors hover:bg-white/6 ${focusRing}`}
-                    >
-                      İçeriğe git
-                    </Link>
-                  )}
+                  <Link
+                    href={`/gonderi/${selectedReport.postId}`}
+                    className={`inline-flex min-h-11 items-center justify-center border border-white/12 px-3 text-xs font-black transition-colors hover:bg-white/6 ${focusRing}`}
+                  >
+                    İçeriğe git
+                  </Link>
                 </div>
 
                 <div className="mt-5 grid gap-4">
@@ -746,13 +662,20 @@ export default function CampusAdminPanel() {
                     <div className="mt-2 border border-white/9 bg-[#17191c]/72 p-4">
                       <div className="flex items-center gap-2">
                         <CampusAuthorAvatar
-                          author={selectedTarget.author}
-                          authorId={selectedTarget.authorId}
+                          author={
+                            selectedReport.target.author
+                              ? `@${selectedReport.target.author.username}`
+                              : "Bilinmeyen kullanıcı"
+                          }
+                          authorId={selectedReport.target.authorId || undefined}
+                          avatarUrl={undefined}
                           size="sm"
                         />
                         <div className="min-w-0">
                           <p className="truncate text-xs font-black">
-                            {selectedTarget.author}
+                            {selectedReport.target.author
+                              ? selectedReport.target.author.displayName
+                              : "Bilinmeyen kullanıcı"}
                           </p>
                           <p className="mt-0.5 text-[10px] text-white/55">
                             {selectedReport.targetType === "post"
@@ -761,11 +684,9 @@ export default function CampusAdminPanel() {
                           </p>
                         </div>
                       </div>
-                      <h4 className="mt-3 text-sm font-black">
-                        {selectedTarget.title}
-                      </h4>
-                      <p className="mt-1.5 line-clamp-5 whitespace-pre-wrap break-words text-xs leading-5 text-white/55">
-                        {selectedTarget.excerpt}
+                      <p className="mt-3 line-clamp-5 whitespace-pre-wrap break-words text-xs leading-5 text-white/55">
+                        {selectedReport.target.excerpt ||
+                          "İçerik artık mevcut değil."}
                       </p>
                     </div>
                   </div>
@@ -787,7 +708,7 @@ export default function CampusAdminPanel() {
                       onClick={() =>
                         handleReportAction(
                           selectedReport,
-                          "content-removed",
+                          "content_removed",
                         )
                       }
                       className={`min-h-11 border border-[#ffb199]/38 px-3 text-xs font-black text-[#ffb199] transition-colors hover:bg-[#ffb199]/9 ${focusRing}`}
@@ -796,11 +717,11 @@ export default function CampusAdminPanel() {
                     </button>
                     <button
                       type="button"
-                      disabled={!selectedTarget.authorId}
+                      disabled={!selectedReport.target.authorId}
                       onClick={() =>
                         handleReportAction(
                           selectedReport,
-                          "user-suspended",
+                          "user_suspended",
                         )
                       }
                       className={`min-h-11 bg-[#ffb199] px-3 text-xs font-black text-[#0a0d16] transition-colors hover:bg-[#ffb199]/85 disabled:cursor-not-allowed disabled:bg-[#ffb199]/25 disabled:text-white/38 ${focusRing}`}
@@ -867,18 +788,18 @@ export default function CampusAdminPanel() {
           {filteredUsers.length > 0 ? (
             <ul className="grid gap-3">
               {filteredUsers.map((user) => {
-                const isCurrentAdmin =
-                  user.authorId === "local-current-account";
+                const isCurrentAdmin = user.id === accountId;
 
                 return (
                   <li
-                    key={user.authorId}
+                    key={user.id}
                     className="grid min-w-0 gap-4 border border-white/9 bg-white/[0.018] p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <CampusAuthorAvatar
-                        author={user.author}
-                        authorId={user.authorId}
+                        author={`@${user.username}`}
+                        authorId={user.id}
+                        avatarUrl={user.avatarUrl}
                         size="md"
                       />
                       <div className="min-w-0">
@@ -889,7 +810,7 @@ export default function CampusAdminPanel() {
                           <AccountStatusBadge status={user.status} />
                         </div>
                         <p className="mt-0.5 truncate text-xs text-white/55">
-                          {user.author} · {user.department}
+                          @{user.username} · {user.department}
                         </p>
                         <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.08em] text-white/45">
                           Katılım · {user.joinedLabel}
@@ -900,7 +821,7 @@ export default function CampusAdminPanel() {
                     <div className="grid gap-2 min-[420px]:grid-cols-2 sm:grid-cols-[9rem_8rem]">
                       <label>
                         <span className="sr-only">
-                          {user.author} için rol seç
+                          @{user.username} için rol seç
                         </span>
                         <select
                           value={user.role}
@@ -913,7 +834,7 @@ export default function CampusAdminPanel() {
                               : "Rol değişikliği yalnızca yöneticilere açıktır"
                           }
                           onChange={(event) =>
-                            handleRoleChange(
+                            void handleRoleChange(
                               user,
                               event.target.value as CampusAdminRole,
                             )
@@ -926,9 +847,9 @@ export default function CampusAdminPanel() {
                               "moderator",
                               "admin",
                             ] as const
-                          ).map((role) => (
-                            <option key={role} value={role}>
-                              {campusAdminRoleLabels[role]}
+                          ).map((roleOption) => (
+                            <option key={roleOption} value={roleOption}>
+                              {campusAdminRoleLabels[roleOption]}
                             </option>
                           ))}
                         </select>
@@ -940,7 +861,7 @@ export default function CampusAdminPanel() {
                       ) : user.status === "active" ? (
                         <button
                           type="button"
-                          onClick={() => handleSuspendUser(user)}
+                          onClick={() => void handleSuspendUser(user)}
                           className={`min-h-11 border border-[#ffb199]/35 px-3 text-xs font-black text-[#ffb199] transition-colors hover:bg-[#ffb199]/8 ${focusRing}`}
                         >
                           Askıya al
@@ -948,7 +869,7 @@ export default function CampusAdminPanel() {
                       ) : (
                         <button
                           type="button"
-                          onClick={() => handleRestoreUser(user)}
+                          onClick={() => void handleRestoreUser(user)}
                           className={`min-h-11 border border-[#8fba9b]/32 px-3 text-xs font-black text-[#b5d8bd] transition-colors hover:bg-[#8fba9b]/8 ${focusRing}`}
                         >
                           Etkinleştir
@@ -994,11 +915,11 @@ export default function CampusAdminPanel() {
                     <span
                       aria-hidden="true"
                       className={`size-2.5 rounded-full ${
-                        entry.action === "content-removed" ||
-                        entry.action === "user-suspended"
+                        entry.action === "content_removed" ||
+                        entry.action === "user_suspended"
                           ? "bg-[#ffb199]"
-                          : entry.action === "dismissed" ||
-                              entry.action === "user-restored"
+                          : entry.action === "report_dismissed" ||
+                              entry.action === "user_restored"
                             ? "bg-[#8fba9b]"
                             : "bg-[#ff7a45]"
                       }`}
@@ -1011,18 +932,14 @@ export default function CampusAdminPanel() {
                           {historyLabels[entry.action]}
                         </h3>
                         <p className="mt-1 text-xs text-white/55">
-                          {entry.author
-                            ? `${entry.author} · `
+                          {entry.target
+                            ? `@${entry.target.username} · `
                             : ""}
-                          {entry.targetType
-                            ? entry.targetType === "post"
-                              ? "Gönderi"
-                              : "Yorum"
-                            : "Hesap işlemi"}
+                          {entry.postId ? "İçerik işlemi" : "Hesap işlemi"}
                         </p>
                       </div>
                       <time
-                        dateTime={new Date(entry.createdAt).toISOString()}
+                        dateTime={entry.createdAt}
                         className="font-mono text-[9px] text-white/55"
                       >
                         {formatDate(entry.createdAt)}
@@ -1034,7 +951,7 @@ export default function CampusAdminPanel() {
                       </p>
                     )}
                     <p className="mt-3 font-mono text-[9px] uppercase tracking-[0.08em] text-white/45">
-                      İşlemi yapan · {entry.moderator}
+                      İşlemi yapan · @{entry.actor.username}
                     </p>
                   </article>
                 </li>
@@ -1122,7 +1039,7 @@ function AdminCard({
 function TargetTypeBadge({
   type,
 }: {
-  type: CampusContentReport["targetType"];
+  type: ReportSummaryDto["targetType"];
 }) {
   return (
     <span
@@ -1141,7 +1058,7 @@ function ReportStatusBadge({
   report,
   compact = false,
 }: {
-  report: CampusContentReport;
+  report: ReportSummaryDto;
   compact?: boolean;
 }) {
   return (
@@ -1162,7 +1079,7 @@ function ReportStatusBadge({
 function AccountStatusBadge({
   status,
 }: {
-  status: CampusManagedUser["status"];
+  status: ManagedUserDto["status"];
 }) {
   return (
     <span

@@ -18,6 +18,14 @@ function authenticationRequiredError() {
   );
 }
 
+function authorizationRequiredError() {
+  return new AuthError(
+    "AUTHORIZATION_REQUIRED",
+    "Bu işlem için yetkin yok.",
+    { status: 403 },
+  );
+}
+
 async function resolveActiveMemberCookie(
   cookieValue: string | undefined,
 ): Promise<MemberSessionState> {
@@ -48,4 +56,24 @@ export async function requireActiveMember(request: NextRequest) {
 
 export function refreshActiveMemberSession(cookieValue: string) {
   return resolveActiveMemberCookie(cookieValue);
+}
+
+export async function requireActiveModerator(request: NextRequest) {
+  const member = await requireActiveMember(request);
+
+  if (member.state.user.role === "member") {
+    throw authorizationRequiredError();
+  }
+
+  return member;
+}
+
+export async function requireActiveAdmin(request: NextRequest) {
+  const member = await requireActiveMember(request);
+
+  if (member.state.user.role !== "admin") {
+    throw authorizationRequiredError();
+  }
+
+  return member;
 }

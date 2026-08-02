@@ -750,6 +750,7 @@ export async function listContentPosts(
   const filters: SQL[] = [
     isNull(posts.deletedAt),
     isNull(users.deletedAt),
+    eq(users.status, "active"),
     notExists(
       getDatabase()
         .select({ blockedId: blocks.blockedId })

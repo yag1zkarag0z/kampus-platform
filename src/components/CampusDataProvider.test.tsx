@@ -36,7 +36,7 @@ const contentClientMocks = vi.hoisted(() => ({
 const dataState = vi.hoisted(() => ({
   blockedAuthorIds: new Set<string>(),
   managedUsers: [] as Array<{
-    authorId: string;
+    id: string;
     status: "active" | "suspended";
   }>,
   account: {
@@ -262,7 +262,7 @@ describe("CampusDataProvider", () => {
   it("hydrates member posts from the API and applies moderation visibility", async () => {
     dataState.blockedAuthorIds.add("blocked-author");
     dataState.managedUsers.push({
-      authorId: "suspended-author",
+      id: "suspended-author",
       status: "suspended",
     });
     contentClientMocks.listContentPosts.mockResolvedValue(makePostListDto([

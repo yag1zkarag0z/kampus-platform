@@ -38,7 +38,7 @@ const reportReasons: {
     description: "Bir kişiyi hedef alan hakaret, tehdit ya da baskı.",
   },
   {
-    id: "personal-information",
+    id: "personal_information",
     label: "Kişisel bilgi",
     description: "İzinsiz telefon, adres, fotoğraf veya kimlik bilgisi.",
   },
@@ -225,9 +225,9 @@ export default function CampusPostActions({
     setIsMenuOpen((currentValue) => !currentValue);
   };
 
-  const submitReport = (event: FormEvent<HTMLFormElement>) => {
+  const submitReport = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const wasAdded = reportPost(post.id, reportReason, reportDetail);
+    const wasAdded = await reportPost(post.id, reportReason, reportDetail);
 
     setIsReportDialogOpen(false);
     setReportDetail("");

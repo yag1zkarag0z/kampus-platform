@@ -12,7 +12,7 @@ import { useCampusModeration } from "@/components/CampusModerationProvider";
 import CampusPostCardSurface from "@/components/CampusPostCardSurface";
 import {
   campusAdminRoleLabels,
-  type CampusManagedUser,
+  type CampusAdminRole,
 } from "@/data/campusAdmin";
 import {
   CAMPUS_OFFICIAL_AUTHOR_ID,
@@ -108,7 +108,7 @@ export default function CampusMemberProfile({
     () =>
       managedUsers.find(
         (user) =>
-          normalizeCampusProfileUsername(user.author) === username,
+          normalizeCampusProfileUsername(user.username) === username,
       ),
     [managedUsers, username],
   );
@@ -150,7 +150,7 @@ export default function CampusMemberProfile({
       ? LOCAL_ACCOUNT_OWNER_ID
       : isOfficial
         ? CAMPUS_OFFICIAL_AUTHOR_ID
-        : managedUser?.authorId ??
+        : managedUser?.id ??
           blockedUser?.authorId ??
           firstVisibleReference?.authorId;
   const isBlocked = Boolean(
@@ -218,7 +218,7 @@ export default function CampusMemberProfile({
       ? `@${profile.username}`
       : isOfficial
         ? "KAMPÜS"
-        : managedUser?.author ??
+        : (managedUser && `@${managedUser.username}`) ??
           blockedUser?.author ??
           firstVisibleReference?.author ??
           `@${username}`;
@@ -332,7 +332,7 @@ export default function CampusMemberProfile({
                     </h2>
                     {managedUser?.role &&
                       managedUser.role !== "member" && (
-                        <RoleBadge user={managedUser} />
+                        <RoleBadge role={managedUser.role} />
                       )}
                   </div>
                   <p className="mt-1 break-all text-sm font-bold text-white/55">
@@ -595,10 +595,10 @@ function ProfileStat({
   );
 }
 
-function RoleBadge({ user }: { user: CampusManagedUser }) {
+function RoleBadge({ role }: { role: CampusAdminRole }) {
   return (
     <span className="bg-[#ff7a45]/12 px-2 py-1 font-mono text-[8px] font-black uppercase tracking-[0.09em] text-[#ff7a45]">
-      {campusAdminRoleLabels[user.role]}
+      {campusAdminRoleLabels[role]}
     </span>
   );
 }

@@ -127,6 +127,13 @@
       "when": 1785673140750,
       "tag": "0017_clumsy_nextwave",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1785704667945,
+      "tag": "0018_colorful_junta",
+      "breakpoints": true
     }
   ]
 }

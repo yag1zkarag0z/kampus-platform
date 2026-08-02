@@ -1440,7 +1440,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
     const suspendedAuthorIds = new Set(
       managedUsers
         .filter((user) => user.status === "suspended")
-        .map((user) => user.authorId),
+        .map((user) => user.id),
     );
 
     return sourcePosts

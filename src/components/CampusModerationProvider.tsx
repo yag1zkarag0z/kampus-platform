@@ -12,37 +12,28 @@ import {
 
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import {
-  seedCampusManagedUsers,
-  type CampusAdminRole,
-  type CampusManagedUser,
-} from "@/data/campusAdmin";
-import {
   blockMember,
   getMyBlockedUsers,
+  getManagedUsers,
+  getModerationHistory,
+  getModerationReports,
+  resolveModerationReport,
+  submitReport,
   unblockMember,
+  updateUserRole,
+  updateUserStatus,
+  type ManagedUserDto,
+  type ModerationHistoryEntryDto,
+  type ReportReasonDto,
+  type ReportResolutionDto,
+  type ReportSummaryDto,
 } from "@/moderation/client";
 
 const STORAGE_KEY = "kampus-moderation-v1";
-const MAX_REPORT_DETAIL_LENGTH = 300;
-const MAX_HISTORY_NOTE_LENGTH = 240;
 
-export type CampusReportReason =
-  | "spam"
-  | "harassment"
-  | "personal-information"
-  | "misleading"
-  | "other";
-
+export type CampusReportReason = ReportReasonDto;
+export type CampusModerationResolution = ReportResolutionDto;
 export type CampusModerationTargetType = "post" | "comment";
-export type CampusReportStatus = "pending" | "resolved";
-export type CampusModerationResolution =
-  | "dismissed"
-  | "content-removed"
-  | "user-suspended";
-export type CampusModerationHistoryAction =
-  | CampusModerationResolution
-  | "user-restored"
-  | "role-changed";
 
 export type BlockedCampusUser = {
   authorId: string;
@@ -50,76 +41,43 @@ export type BlockedCampusUser = {
   avatarUrl?: string | null;
 };
 
-export type CampusContentReport = {
-  id: string;
-  targetType: CampusModerationTargetType;
-  targetId: string;
-  postId: string;
-  reason: CampusReportReason;
-  detail: string;
-  reportedAt: number;
-  status: CampusReportStatus;
-  resolvedAt?: number;
-  resolution?: CampusModerationResolution;
-  resolutionNote?: string;
-};
-
-export type CampusModerationHistoryEntry = {
-  id: string;
-  action: CampusModerationHistoryAction;
-  createdAt: number;
-  moderator: string;
-  reportId?: string;
-  targetType?: CampusModerationTargetType;
-  targetId?: string;
-  postId?: string;
-  authorId?: string;
-  author?: string;
-  note?: string;
-};
-
-export type ResolveCampusReportOptions = {
-  note?: string;
-  authorId?: string;
-  author?: string;
-};
-
 type StoredModerationState = {
   blockedUsers: BlockedCampusUser[];
-  reports: CampusContentReport[];
-  managedUsers: CampusManagedUser[];
-  moderationHistory: CampusModerationHistoryEntry[];
 };
 
 type CampusModerationContextValue = {
   blockedUsers: BlockedCampusUser[];
   blockedAuthorIds: ReadonlySet<string>;
-  reports: CampusContentReport[];
+  reports: ReportSummaryDto[];
   pendingReportCount: number;
-  managedUsers: CampusManagedUser[];
-  moderationHistory: CampusModerationHistoryEntry[];
+  managedUsers: ManagedUserDto[];
+  moderationHistory: ModerationHistoryEntryDto[];
   isHydrated: boolean;
+  isModerationHydrated: boolean;
   hasReportedPost: (postId: string) => boolean;
   hasReportedComment: (commentId: string) => boolean;
   reportPost: (
     postId: string,
     reason: CampusReportReason,
     detail?: string,
-  ) => boolean;
+  ) => Promise<boolean>;
   reportComment: (
     commentId: string,
     postId: string,
     reason: CampusReportReason,
     detail?: string,
-  ) => boolean;
+  ) => Promise<boolean>;
   resolveReport: (
     reportId: string,
     resolution: CampusModerationResolution,
-    options?: ResolveCampusReportOptions,
-  ) => boolean;
-  setUserRole: (authorId: string, role: CampusAdminRole) => boolean;
-  suspendUser: (authorId: string) => boolean;
-  restoreUser: (authorId: string) => boolean;
+    note?: string,
+  ) => Promise<boolean>;
+  setUserRole: (
+    userId: string,
+    role: "member" | "moderator" | "admin",
+  ) => Promise<boolean>;
+  suspendUser: (userId: string, note?: string) => Promise<boolean>;
+  restoreUser: (userId: string, note?: string) => Promise<boolean>;
   blockUser: (authorId: string, author: string) => Promise<boolean>;
   unblockUser: (authorId: string) => Promise<boolean>;
   resetModeration: () => void;
@@ -130,71 +88,11 @@ const CampusModerationContext = createContext<
 >(undefined);
 
 function getInitialState(): StoredModerationState {
-  return {
-    blockedUsers: [],
-    reports: [],
-    managedUsers: seedCampusManagedUsers.map((user) => ({ ...user })),
-    moderationHistory: [],
-  };
+  return { blockedUsers: [] };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
-}
-
-function isReportReason(value: unknown): value is CampusReportReason {
-  return (
-    value === "spam" ||
-    value === "harassment" ||
-    value === "personal-information" ||
-    value === "misleading" ||
-    value === "other"
-  );
-}
-
-function isTargetType(
-  value: unknown,
-): value is CampusModerationTargetType {
-  return value === "post" || value === "comment";
-}
-
-function isResolution(
-  value: unknown,
-): value is CampusModerationResolution {
-  return (
-    value === "dismissed" ||
-    value === "content-removed" ||
-    value === "user-suspended"
-  );
-}
-
-function isHistoryAction(
-  value: unknown,
-): value is CampusModerationHistoryAction {
-  return (
-    isResolution(value) ||
-    value === "user-restored" ||
-    value === "role-changed"
-  );
-}
-
-function isAdminRole(value: unknown): value is CampusAdminRole {
-  return value === "admin" || value === "moderator" || value === "member";
-}
-
-function isAccountStatus(
-  value: unknown,
-): value is CampusManagedUser["status"] {
-  return value === "active" || value === "suspended";
-}
-
-function readOptionalString(
-  value: unknown,
-  maximumLength: number,
-) {
-  return typeof value === "string"
-    ? value.trim().slice(0, maximumLength)
-    : undefined;
 }
 
 function normalizeBlockedUser(value: unknown) {
@@ -214,207 +112,18 @@ function normalizeBlockedUser(value: unknown) {
   } satisfies BlockedCampusUser;
 }
 
-function normalizeReport(
-  value: unknown,
-  index: number,
-): CampusContentReport | null {
-  if (
-    !isRecord(value) ||
-    typeof value.postId !== "string" ||
-    !value.postId.trim() ||
-    !isReportReason(value.reason) ||
-    typeof value.reportedAt !== "number" ||
-    !Number.isFinite(value.reportedAt)
-  ) {
-    return null;
-  }
-
-  const targetType = isTargetType(value.targetType)
-    ? value.targetType
-    : "post";
-  const legacyTargetId =
-    targetType === "post" ? value.postId : undefined;
-  const targetId =
-    typeof value.targetId === "string" && value.targetId.trim()
-      ? value.targetId.trim()
-      : legacyTargetId;
-
-  if (!targetId) {
-    return null;
-  }
-
-  const resolution = isResolution(value.resolution)
-    ? value.resolution
-    : undefined;
-  const status: CampusReportStatus =
-    value.status === "resolved" && resolution ? "resolved" : "pending";
-  const reportedAt = value.reportedAt;
-  const storedId =
-    typeof value.id === "string" && value.id.trim()
-      ? value.id.trim()
-      : `legacy-${targetType}-${targetId}-${reportedAt}-${index}`;
-
-  return {
-    id: storedId.slice(0, 180),
-    targetType,
-    targetId: targetId.slice(0, 140),
-    postId: value.postId.trim().slice(0, 140),
-    reason: value.reason,
-    detail:
-      typeof value.detail === "string"
-        ? value.detail.trim().slice(0, MAX_REPORT_DETAIL_LENGTH)
-        : "",
-    reportedAt,
-    status,
-    resolvedAt:
-      status === "resolved" &&
-      typeof value.resolvedAt === "number" &&
-      Number.isFinite(value.resolvedAt)
-        ? value.resolvedAt
-        : undefined,
-    resolution: status === "resolved" ? resolution : undefined,
-    resolutionNote:
-      status === "resolved"
-        ? readOptionalString(value.resolutionNote, MAX_HISTORY_NOTE_LENGTH)
-        : undefined,
-  };
-}
-
-function normalizeManagedUser(value: unknown): CampusManagedUser | null {
-  if (
-    !isRecord(value) ||
-    typeof value.authorId !== "string" ||
-    !value.authorId.trim() ||
-    typeof value.author !== "string" ||
-    !value.author.trim() ||
-    typeof value.displayName !== "string" ||
-    !value.displayName.trim() ||
-    typeof value.department !== "string" ||
-    typeof value.joinedLabel !== "string" ||
-    !isAdminRole(value.role) ||
-    !isAccountStatus(value.status)
-  ) {
-    return null;
-  }
-
-  return {
-    authorId: value.authorId.trim().slice(0, 100),
-    author: value.author.trim().slice(0, 80),
-    displayName: value.displayName.trim().slice(0, 80),
-    department: value.department.trim().slice(0, 100),
-    joinedLabel: value.joinedLabel.trim().slice(0, 60),
-    role: value.role,
-    status: value.status,
-    suspendedAt:
-      typeof value.suspendedAt === "number" &&
-      Number.isFinite(value.suspendedAt)
-        ? value.suspendedAt
-        : undefined,
-  };
-}
-
-function normalizeHistoryEntry(
-  value: unknown,
-): CampusModerationHistoryEntry | null {
-  if (
-    !isRecord(value) ||
-    typeof value.id !== "string" ||
-    !value.id.trim() ||
-    !isHistoryAction(value.action) ||
-    typeof value.createdAt !== "number" ||
-    !Number.isFinite(value.createdAt) ||
-    typeof value.moderator !== "string" ||
-    !value.moderator.trim()
-  ) {
-    return null;
-  }
-
-  return {
-    id: value.id.trim().slice(0, 180),
-    action: value.action,
-    createdAt: value.createdAt,
-    moderator: value.moderator.trim().slice(0, 80),
-    reportId: readOptionalString(value.reportId, 180),
-    targetType: isTargetType(value.targetType)
-      ? value.targetType
-      : undefined,
-    targetId: readOptionalString(value.targetId, 140),
-    postId: readOptionalString(value.postId, 140),
-    authorId: readOptionalString(value.authorId, 100),
-    author: readOptionalString(value.author, 80),
-    note: readOptionalString(value.note, MAX_HISTORY_NOTE_LENGTH),
-  };
-}
-
 function normalizeStoredModerationState(
   value: unknown,
 ): StoredModerationState | null {
-  if (
-    !isRecord(value) ||
-    !Array.isArray(value.blockedUsers) ||
-    !Array.isArray(value.reports)
-  ) {
+  if (!isRecord(value) || !Array.isArray(value.blockedUsers)) {
     return null;
   }
 
   const blockedUsers = value.blockedUsers
     .map(normalizeBlockedUser)
     .filter((user): user is BlockedCampusUser => user !== null);
-  const reports = value.reports
-    .map(normalizeReport)
-    .filter((report): report is CampusContentReport => report !== null);
-  const storedUsers = Array.isArray(value.managedUsers)
-    ? value.managedUsers
-        .map(normalizeManagedUser)
-        .filter((user): user is CampusManagedUser => user !== null)
-    : [];
-  const storedUsersById = new Map(
-    storedUsers.map((user) => [user.authorId, user]),
-  );
-  const seededIds = new Set(
-    seedCampusManagedUsers.map((user) => user.authorId),
-  );
-  const managedUsers = [
-    ...seedCampusManagedUsers.map((user) => ({
-      ...user,
-      ...storedUsersById.get(user.authorId),
-    })),
-    ...storedUsers.filter((user) => !seededIds.has(user.authorId)),
-  ];
-  const moderationHistory = Array.isArray(value.moderationHistory)
-    ? value.moderationHistory
-        .map(normalizeHistoryEntry)
-        .filter(
-          (entry): entry is CampusModerationHistoryEntry =>
-            entry !== null,
-        )
-    : [];
 
-  return {
-    blockedUsers,
-    reports,
-    managedUsers,
-    moderationHistory,
-  };
-}
-
-function createId(prefix: string) {
-  return `${prefix}-${globalThis.crypto.randomUUID()}`;
-}
-
-function createManagedUser(
-  authorId: string,
-  author: string,
-): CampusManagedUser {
-  return {
-    authorId,
-    author,
-    displayName: author.replace(/^@/, "") || "Kullanıcı",
-    department: "Bölüm bilgisi yok",
-    joinedLabel: "Yerel hesap",
-    role: "member",
-    status: "active",
-  };
+  return { blockedUsers };
 }
 
 export function CampusModerationProvider({
@@ -431,6 +140,19 @@ export function CampusModerationProvider({
   >([]);
   const [isRemoteBlockedHydrated, setIsRemoteBlockedHydrated] =
     useState(false);
+  const [remoteReports, setRemoteReports] = useState<ReportSummaryDto[]>(
+    [],
+  );
+  const [remoteManagedUsers, setRemoteManagedUsers] = useState<
+    ManagedUserDto[]
+  >([]);
+  const [remoteModerationHistory, setRemoteModerationHistory] = useState<
+    ModerationHistoryEntryDto[]
+  >([]);
+  const [isModerationHydrated, setIsModerationHydrated] = useState(true);
+  const [reportedTargetIds, setReportedTargetIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   useEffect(() => {
     let isCancelled = false;
@@ -528,330 +250,227 @@ export function CampusModerationProvider({
     };
   }, [accountId, sessionMode]);
 
-  const reportContent = useCallback(
-    (
-      targetType: CampusModerationTargetType,
-      targetId: string,
-      postId: string,
-      reason: CampusReportReason,
-      detail = "",
-    ) => {
-      if (
-        sessionMode !== "member" ||
-        !targetId.trim() ||
-        !postId.trim()
-      ) {
-        return false;
-      }
+  const fetchModerationData = useCallback(async () => {
+    const [reportsData, usersData, historyData] = await Promise.all([
+      getModerationReports(),
+      getManagedUsers(),
+      getModerationHistory(),
+    ]);
 
-      if (
-        state.reports.some(
-          (report) =>
-            report.targetType === targetType &&
-            report.targetId === targetId,
-        )
-      ) {
-        return false;
-      }
+    return { reportsData, usersData, historyData };
+  }, []);
 
-      const report: CampusContentReport = {
-        id: createId("report"),
-        targetType,
-        targetId: targetId.trim(),
-        postId: postId.trim(),
-        reason,
-        detail: detail.trim().slice(0, MAX_REPORT_DETAIL_LENGTH),
-        reportedAt: Date.now(),
-        status: "pending",
-      };
+  const applyModerationData = useCallback(
+    (data: Awaited<ReturnType<typeof fetchModerationData>>) => {
+      setRemoteReports(data.reportsData);
+      setRemoteManagedUsers(data.usersData);
+      setRemoteModerationHistory(data.historyData);
+    },
+    [],
+  );
 
-      setState((currentState) => {
-        if (
-          currentState.reports.some(
-            (currentReport) =>
-              currentReport.targetType === targetType &&
-              currentReport.targetId === targetId,
-          )
-        ) {
-          return currentState;
+  const loadModerationData = useCallback(async () => {
+    const data = await fetchModerationData();
+    applyModerationData(data);
+  }, [applyModerationData, fetchModerationData]);
+
+  useEffect(() => {
+    let isCancelled = false;
+    const canModerate = sessionMode === "member" && accountRole !== "member";
+
+    if (!canModerate) {
+      queueMicrotask(() => {
+        if (isCancelled) {
+          return;
         }
 
-        return {
-          ...currentState,
-          reports: [...currentState.reports, report],
-        };
+        setRemoteReports([]);
+        setRemoteManagedUsers([]);
+        setRemoteModerationHistory([]);
+        setIsModerationHydrated(true);
       });
 
-      return true;
-    },
-    [sessionMode, state.reports],
+      return () => {
+        isCancelled = true;
+      };
+    }
+
+    queueMicrotask(() => {
+      if (!isCancelled) {
+        setIsModerationHydrated(false);
+      }
+    });
+
+    fetchModerationData()
+      .then((data) => {
+        if (!isCancelled) {
+          applyModerationData(data);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!isCancelled) {
+          setIsModerationHydrated(true);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    accountId,
+    accountRole,
+    applyModerationData,
+    fetchModerationData,
+    sessionMode,
+  ]);
+
+  const hasReportedPost = useCallback(
+    (postId: string) => reportedTargetIds.has(postId),
+    [reportedTargetIds],
+  );
+  const hasReportedComment = useCallback(
+    (commentId: string) => reportedTargetIds.has(commentId),
+    [reportedTargetIds],
   );
 
   const reportPost = useCallback(
-    (
+    async (
       postId: string,
       reason: CampusReportReason,
       detail = "",
-    ) => reportContent("post", postId, postId, reason, detail),
-    [reportContent],
+    ) => {
+      if (sessionMode !== "member") {
+        return false;
+      }
+
+      try {
+        const result = await submitReport({
+          targetType: "post",
+          targetId: postId,
+          reason,
+          detail,
+        });
+
+        if (result.created) {
+          setReportedTargetIds((current) => new Set(current).add(postId));
+        }
+
+        return result.created;
+      } catch {
+        return false;
+      }
+    },
+    [sessionMode],
   );
 
   const reportComment = useCallback(
-    (
+    async (
       commentId: string,
-      postId: string,
+      _postId: string,
       reason: CampusReportReason,
       detail = "",
-    ) => reportContent("comment", commentId, postId, reason, detail),
-    [reportContent],
+    ) => {
+      if (sessionMode !== "member") {
+        return false;
+      }
+
+      try {
+        const result = await submitReport({
+          targetType: "comment",
+          targetId: commentId,
+          reason,
+          detail,
+        });
+
+        if (result.created) {
+          setReportedTargetIds((current) =>
+            new Set(current).add(commentId),
+          );
+        }
+
+        return result.created;
+      } catch {
+        return false;
+      }
+    },
+    [sessionMode],
   );
 
   const resolveReport = useCallback(
-    (
+    async (
       reportId: string,
       resolution: CampusModerationResolution,
-      options: ResolveCampusReportOptions = {},
+      note?: string,
     ) => {
-      if (
-        sessionMode !== "member" ||
-        accountRole === "member"
-      ) {
+      if (sessionMode !== "member" || accountRole === "member") {
         return false;
       }
 
-      const report = state.reports.find(
-        (item) => item.id === reportId && item.status === "pending",
-      );
-
-      if (!report) {
+      try {
+        await resolveModerationReport(reportId, { resolution, note });
+      } catch {
         return false;
       }
 
-      const resolvedAt = Date.now();
-      const note = options.note
-        ?.trim()
-        .slice(0, MAX_HISTORY_NOTE_LENGTH);
-
-      setState((currentState) => {
-        const currentReport = currentState.reports.find(
-          (item) => item.id === reportId && item.status === "pending",
-        );
-
-        if (!currentReport) {
-          return currentState;
-        }
-
-        const managedUsers =
-          resolution === "user-suspended" && options.authorId
-            ? currentState.managedUsers.some(
-                (user) => user.authorId === options.authorId,
-              )
-              ? currentState.managedUsers.map((user) =>
-                  user.authorId === options.authorId
-                    ? {
-                        ...user,
-                        status: "suspended" as const,
-                        suspendedAt: resolvedAt,
-                      }
-                    : user,
-                )
-              : [
-                  ...currentState.managedUsers,
-                  {
-                    ...createManagedUser(
-                      options.authorId,
-                      options.author ?? "@kullanici",
-                    ),
-                    status: "suspended" as const,
-                    suspendedAt: resolvedAt,
-                  },
-                ]
-            : currentState.managedUsers;
-        const historyItem: CampusModerationHistoryEntry = {
-          id: createId("moderation"),
-          action: resolution,
-          createdAt: resolvedAt,
-          moderator: "@yagizkaragoz",
-          reportId,
-          targetType: currentReport.targetType,
-          targetId: currentReport.targetId,
-          postId: currentReport.postId,
-          authorId: options.authorId,
-          author: options.author,
-          note,
-        };
-
-        return {
-          ...currentState,
-          reports: currentState.reports.map((item) =>
-            item.id === reportId
-              ? {
-                  ...item,
-                  status: "resolved" as const,
-                  resolvedAt,
-                  resolution,
-                  resolutionNote: note,
-                }
-              : item,
-          ),
-          managedUsers,
-          moderationHistory: [
-            historyItem,
-            ...currentState.moderationHistory,
-          ].slice(0, 200),
-        };
-      });
-
+      await loadModerationData().catch(() => undefined);
       return true;
     },
-    [accountRole, sessionMode, state.reports],
+    [accountRole, loadModerationData, sessionMode],
   );
 
   const setUserRole = useCallback(
-    (authorId: string, role: CampusAdminRole) => {
-      if (
-        sessionMode !== "member" ||
-        accountRole !== "admin" ||
-        authorId === "local-current-account"
-      ) {
+    async (userId: string, role: "member" | "moderator" | "admin") => {
+      if (sessionMode !== "member" || accountRole !== "admin") {
         return false;
       }
 
-      const currentUser = state.managedUsers.find(
-        (user) => user.authorId === authorId,
-      );
-
-      if (!currentUser || currentUser.role === role) {
+      try {
+        await updateUserRole(userId, role);
+      } catch {
         return false;
       }
 
-      const createdAt = Date.now();
-      const historyItem: CampusModerationHistoryEntry = {
-        id: createId("moderation"),
-        action: "role-changed",
-        createdAt,
-        moderator: "@yagizkaragoz",
-        authorId,
-        author: currentUser.author,
-        note: `${currentUser.role} → ${role}`,
-      };
-
-      setState((currentState) => ({
-        ...currentState,
-        managedUsers: currentState.managedUsers.map((user) =>
-          user.authorId === authorId ? { ...user, role } : user,
-        ),
-        moderationHistory: [
-          historyItem,
-          ...currentState.moderationHistory,
-        ].slice(0, 200),
-      }));
-
+      await loadModerationData().catch(() => undefined);
       return true;
     },
-    [accountRole, sessionMode, state.managedUsers],
+    [accountRole, loadModerationData, sessionMode],
   );
 
   const suspendUser = useCallback(
-    (authorId: string) => {
-      if (
-        sessionMode !== "member" ||
-        accountRole === "member" ||
-        authorId === "local-current-account"
-      ) {
+    async (userId: string, note?: string) => {
+      if (sessionMode !== "member" || accountRole === "member") {
         return false;
       }
 
-      const currentUser = state.managedUsers.find(
-        (user) =>
-          user.authorId === authorId && user.status === "active",
-      );
-
-      if (!currentUser) {
+      try {
+        await updateUserStatus(userId, { status: "suspended", note });
+      } catch {
         return false;
       }
 
-      const createdAt = Date.now();
-      const historyItem: CampusModerationHistoryEntry = {
-        id: createId("moderation"),
-        action: "user-suspended",
-        createdAt,
-        moderator: "@yagizkaragoz",
-        authorId,
-        author: currentUser.author,
-        note: "Kullanıcı yönetiminden askıya alındı.",
-      };
-
-      setState((currentState) => ({
-        ...currentState,
-        managedUsers: currentState.managedUsers.map((user) =>
-          user.authorId === authorId
-            ? {
-                ...user,
-                status: "suspended" as const,
-                suspendedAt: createdAt,
-              }
-            : user,
-        ),
-        moderationHistory: [
-          historyItem,
-          ...currentState.moderationHistory,
-        ].slice(0, 200),
-      }));
-
+      await loadModerationData().catch(() => undefined);
       return true;
     },
-    [accountRole, sessionMode, state.managedUsers],
+    [accountRole, loadModerationData, sessionMode],
   );
 
   const restoreUser = useCallback(
-    (authorId: string) => {
-      if (
-        sessionMode !== "member" ||
-        accountRole === "member"
-      ) {
+    async (userId: string, note?: string) => {
+      if (sessionMode !== "member" || accountRole === "member") {
         return false;
       }
 
-      const currentUser = state.managedUsers.find(
-        (user) =>
-          user.authorId === authorId && user.status === "suspended",
-      );
-
-      if (!currentUser) {
+      try {
+        await updateUserStatus(userId, { status: "active", note });
+      } catch {
         return false;
       }
 
-      const createdAt = Date.now();
-      const historyItem: CampusModerationHistoryEntry = {
-        id: createId("moderation"),
-        action: "user-restored",
-        createdAt,
-        moderator: "@yagizkaragoz",
-        authorId,
-        author: currentUser.author,
-      };
-
-      setState((currentState) => ({
-        ...currentState,
-        managedUsers: currentState.managedUsers.map((user) =>
-          user.authorId === authorId
-            ? {
-                ...user,
-                status: "active" as const,
-                suspendedAt: undefined,
-              }
-            : user,
-        ),
-        moderationHistory: [
-          historyItem,
-          ...currentState.moderationHistory,
-        ].slice(0, 200),
-      }));
-
+      await loadModerationData().catch(() => undefined);
       return true;
     },
-    [accountRole, sessionMode, state.managedUsers],
+    [accountRole, loadModerationData, sessionMode],
   );
 
   const blockUser = useCallback(
@@ -924,6 +543,11 @@ export function CampusModerationProvider({
 
   const resetModeration = useCallback(() => {
     setState(getInitialState());
+    setRemoteBlockedUsers([]);
+    setRemoteReports([]);
+    setRemoteManagedUsers([]);
+    setRemoteModerationHistory([]);
+    setReportedTargetIds(new Set());
 
     try {
       window.localStorage.removeItem(STORAGE_KEY);
@@ -932,24 +556,6 @@ export function CampusModerationProvider({
     }
   }, []);
 
-  const reportedPostIds = useMemo(
-    () =>
-      new Set(
-        state.reports
-          .filter((report) => report.targetType === "post")
-          .map((report) => report.targetId),
-      ),
-    [state.reports],
-  );
-  const reportedCommentIds = useMemo(
-    () =>
-      new Set(
-        state.reports
-          .filter((report) => report.targetType === "comment")
-          .map((report) => report.targetId),
-      ),
-    [state.reports],
-  );
   const effectiveBlockedUsers =
     sessionMode === "member" ? remoteBlockedUsers : state.blockedUsers;
   const blockedAuthorIds = useMemo(
@@ -960,28 +566,21 @@ export function CampusModerationProvider({
     sessionMode === "member" ? isRemoteBlockedHydrated : true;
   const pendingReportCount = useMemo(
     () =>
-      state.reports.filter((report) => report.status === "pending")
+      remoteReports.filter((report) => report.status === "pending")
         .length,
-    [state.reports],
-  );
-  const hasReportedPost = useCallback(
-    (postId: string) => reportedPostIds.has(postId),
-    [reportedPostIds],
-  );
-  const hasReportedComment = useCallback(
-    (commentId: string) => reportedCommentIds.has(commentId),
-    [reportedCommentIds],
+    [remoteReports],
   );
 
   const value = useMemo<CampusModerationContextValue>(
     () => ({
       blockedUsers: effectiveBlockedUsers,
       blockedAuthorIds,
-      reports: state.reports,
+      reports: remoteReports,
       pendingReportCount,
-      managedUsers: state.managedUsers,
-      moderationHistory: state.moderationHistory,
+      managedUsers: remoteManagedUsers,
+      moderationHistory: remoteModerationHistory,
       isHydrated: isHydrated && isBlockedListHydrated,
+      isModerationHydrated,
       hasReportedPost,
       hasReportedComment,
       reportPost,
@@ -1002,7 +601,11 @@ export function CampusModerationProvider({
       hasReportedPost,
       isBlockedListHydrated,
       isHydrated,
+      isModerationHydrated,
       pendingReportCount,
+      remoteManagedUsers,
+      remoteModerationHistory,
+      remoteReports,
       reportComment,
       reportPost,
       resetModeration,
@@ -1010,9 +613,6 @@ export function CampusModerationProvider({
       restoreUser,
       setUserRole,
       suspendUser,
-      state.managedUsers,
-      state.moderationHistory,
-      state.reports,
       unblockUser,
     ],
   );

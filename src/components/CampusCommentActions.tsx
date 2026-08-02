@@ -24,7 +24,7 @@ import {
 const reportReasons: { id: CampusReportReason; label: string }[] = [
   { id: "spam", label: "Spam veya reklam" },
   { id: "harassment", label: "Taciz veya zorbalık" },
-  { id: "personal-information", label: "Kişisel bilgi" },
+  { id: "personal_information", label: "Kişisel bilgi" },
   { id: "misleading", label: "Yanıltıcı içerik" },
   { id: "other", label: "Başka bir neden" },
 ];
@@ -257,9 +257,9 @@ export default function CampusCommentActions({
     });
   };
 
-  const submitReport = (event: FormEvent<HTMLFormElement>) => {
+  const submitReport = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const wasAdded = reportComment(
+    const wasAdded = await reportComment(
       comment.id,
       postId,
       reportReason,

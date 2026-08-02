@@ -370,6 +370,121 @@ export const pollVotes = pgTable(
   ],
 );
 
+export const reportReason = pgEnum("report_reason", [
+  "spam",
+  "harassment",
+  "personal_information",
+  "misleading",
+  "other",
+]);
+
+export const reportTargetType = pgEnum("report_target_type", [
+  "post",
+  "comment",
+]);
+
+export const reportStatus = pgEnum("report_status", [
+  "pending",
+  "resolved",
+]);
+
+export const reportResolution = pgEnum("report_resolution", [
+  "dismissed",
+  "content_removed",
+  "user_suspended",
+]);
+
+export const reports = pgTable(
+  "reports",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    reporterId: uuid("reporter_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    targetType: reportTargetType("target_type").notNull(),
+    targetId: uuid("target_id").notNull(),
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    reason: reportReason("reason").notNull(),
+    detail: varchar("detail", { length: 300 }).default("").notNull(),
+    status: reportStatus("status").default("pending").notNull(),
+    resolution: reportResolution("resolution"),
+    resolutionNote: varchar("resolution_note", { length: 240 }),
+    resolvedBy: uuid("resolved_by").references(() => users.id),
+    resolvedAt: timestampWithTimezone("resolved_at"),
+    createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    unique("reports_reporter_target_unique").on(
+      table.reporterId,
+      table.targetType,
+      table.targetId,
+    ),
+    index("reports_status_idx").on(table.status),
+    index("reports_post_id_idx").on(table.postId),
+    check(
+      "reports_detail_length_check",
+      sql`char_length(${table.detail}) <= 300`,
+    ),
+    check(
+      "reports_resolution_state_check",
+      sql`(
+          ${table.status} = 'pending'
+          and ${table.resolution} is null
+          and ${table.resolvedBy} is null
+          and ${table.resolvedAt} is null
+        ) or (
+          ${table.status} = 'resolved'
+          and ${table.resolution} is not null
+          and ${table.resolvedBy} is not null
+          and ${table.resolvedAt} is not null
+        )`,
+    ),
+    check(
+      "reports_resolved_at_order_check",
+      sql`${table.resolvedAt} is null
+        or ${table.resolvedAt} >= ${table.createdAt}`,
+    ),
+  ],
+);
+
+export const moderationActionType = pgEnum("moderation_action_type", [
+  "report_dismissed",
+  "content_removed",
+  "user_suspended",
+  "user_restored",
+  "role_changed",
+]);
+
+export const moderationActions = pgTable(
+  "moderation_actions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    actorId: uuid("actor_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    action: moderationActionType("action").notNull(),
+    reportId: uuid("report_id").references(() => reports.id, {
+      onDelete: "set null",
+    }),
+    targetUserId: uuid("target_user_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
+    postId: uuid("post_id").references(() => posts.id, {
+      onDelete: "set null",
+    }),
+    note: varchar("note", { length: 240 }),
+    createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("moderation_actions_created_at_idx").on(table.createdAt),
+    index("moderation_actions_target_user_id_idx").on(
+      table.targetUserId,
+    ),
+  ],
+);
+
 export type Post = typeof posts.$inferSelect;
 export type NewPost = typeof posts.$inferInsert;
 export type Comment = typeof comments.$inferSelect;
@@ -384,3 +499,5 @@ export type PostImage = typeof postImages.$inferSelect;
 export type Poll = typeof polls.$inferSelect;
 export type PollOption = typeof pollOptions.$inferSelect;
 export type PollVote = typeof pollVotes.$inferSelect;
+export type Report = typeof reports.$inferSelect;
+export type ModerationAction = typeof moderationActions.$inferSelect;
