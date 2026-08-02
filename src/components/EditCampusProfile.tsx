@@ -43,7 +43,7 @@ type EditableProfile = {
   department: string;
   year: string;
   bio: string;
-  avatarDataUrl?: string;
+  avatarUrl: string | null;
 };
 
 type ProfileField =
@@ -120,7 +120,23 @@ function focusFirstInvalidField() {
   });
 }
 
-async function createAvatarDataUrl(file: File) {
+function canvasToBlob(canvas: HTMLCanvasElement, quality: number) {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error("Avatar blob could not be created."));
+        }
+      },
+      "image/webp",
+      quality,
+    );
+  });
+}
+
+async function createAvatarAssets(file: File) {
   const image = await createImageBitmap(file);
 
   try {
@@ -150,7 +166,10 @@ async function createAvatarDataUrl(file: File) {
       outputSize,
     );
 
-    return canvas.toDataURL("image/webp", 0.82);
+    const blob = await canvasToBlob(canvas, 0.82);
+    const previewUrl = canvas.toDataURL("image/webp", 0.82);
+
+    return { previewUrl, blob };
   } finally {
     image.close();
   }
@@ -202,8 +221,8 @@ function EditProfileForm({
   initialShowDepartment: boolean;
   updateProfile: (updates: UpdateCampusProfileInput) => Promise<void>;
   updateShowDepartment: (showDepartment: boolean) => Promise<void>;
-  updateAvatar: (avatarDataUrl: string) => boolean;
-  removeAvatar: () => boolean;
+  updateAvatar: (file: Blob) => Promise<void>;
+  removeAvatar: () => Promise<void>;
   renameAuthoredContent: (
     previousUsername: string,
     newUsername: string,
@@ -219,7 +238,7 @@ function EditProfileForm({
   const [year, setYear] = useState(initialProfile.year);
   const [bio, setBio] = useState(initialProfile.bio);
   const [avatarPreview, setAvatarPreview] = useState(
-    initialProfile.avatarDataUrl,
+    initialProfile.avatarUrl ?? undefined,
   );
   const [shouldRemoveAvatar, setShouldRemoveAvatar] = useState(false);
   const [showDepartment, setShowDepartment] = useState(
@@ -232,6 +251,7 @@ function EditProfileForm({
   const [isSaving, setIsSaving] = useState(false);
   const isMountedRef = useRef(false);
   const saveGenerationRef = useRef(0);
+  const avatarFileRef = useRef<Blob | null>(null);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -285,8 +305,9 @@ function EditProfileForm({
     setIsProcessingAvatar(true);
 
     try {
-      const nextAvatar = await createAvatarDataUrl(file);
-      setAvatarPreview(nextAvatar);
+      const { previewUrl, blob } = await createAvatarAssets(file);
+      setAvatarPreview(previewUrl);
+      avatarFileRef.current = blob;
       setShouldRemoveAvatar(false);
     } catch {
       setAvatarError("Görsel okunamadı. Başka bir dosya deneyebilirsin.");
@@ -298,6 +319,7 @@ function EditProfileForm({
 
   const handleRemoveAvatar = () => {
     setAvatarPreview(undefined);
+    avatarFileRef.current = null;
     setShouldRemoveAvatar(true);
     setAvatarError("");
     setStatusMessage("");
@@ -367,7 +389,7 @@ function EditProfileForm({
       bio: bio.trim(),
     };
     let profileWasSaved = false;
-    let avatarStorageFailed = false;
+    let avatarErrorMessage: string | null = null;
 
     try {
       await updateProfile(normalizedProfile);
@@ -379,12 +401,27 @@ function EditProfileForm({
       profileWasSaved = true;
 
       if (shouldRemoveAvatar) {
-        avatarStorageFailed = !removeAvatar();
-      } else if (
-        avatarPreview &&
-        avatarPreview !== initialProfile.avatarDataUrl
-      ) {
-        avatarStorageFailed = !updateAvatar(avatarPreview);
+        try {
+          await removeAvatar();
+        } catch (avatarError) {
+          avatarErrorMessage =
+            avatarError instanceof AuthClientError
+              ? avatarError.message
+              : "Profil fotoğrafı kaldırılamadı.";
+        }
+      } else if (avatarFileRef.current) {
+        try {
+          await updateAvatar(avatarFileRef.current);
+        } catch (avatarError) {
+          avatarErrorMessage =
+            avatarError instanceof AuthClientError
+              ? avatarError.message
+              : "Profil fotoğrafı yüklenemedi.";
+        }
+      }
+
+      if (!isCurrentSave(saveGeneration)) {
+        return;
       }
 
       renameAuthoredContent(
@@ -400,9 +437,9 @@ function EditProfileForm({
         }
       }
 
-      if (avatarStorageFailed) {
+      if (avatarErrorMessage) {
         setStatusMessage(
-          "Profil bilgilerin kaydedildi; ancak geçici profil fotoğrafı bu cihazda saklanamadı. Tarayıcı depolama alanını kontrol edip yeniden dene.",
+          `Profil bilgilerin kaydedildi; ancak profil fotoğrafı güncellenemedi. ${avatarErrorMessage}`,
         );
         return;
       }
@@ -419,9 +456,7 @@ function EditProfileForm({
         setStatusMessage(
           profileWasSaved
             ? `Profil bilgilerin kaydedildi; ancak görünürlük tercihi kaydedilemedi. ${error.message}${
-                avatarStorageFailed
-                  ? " Geçici profil fotoğrafı da bu cihazda saklanamadı."
-                  : ""
+                avatarErrorMessage ? ` ${avatarErrorMessage}` : ""
               }`
             : error.message,
         );
@@ -433,9 +468,7 @@ function EditProfileForm({
         setStatusMessage(
           profileWasSaved
             ? `Profil bilgilerin kaydedildi; ancak görünürlük tercihi kaydedilemedi. Lütfen yeniden dene.${
-                avatarStorageFailed
-                  ? " Geçici profil fotoğrafı da bu cihazda saklanamadı."
-                  : ""
+                avatarErrorMessage ? ` ${avatarErrorMessage}` : ""
               }`
             : "Değişiklikler kaydedilemedi. Bağlantını kontrol edip yeniden dene.",
         );
@@ -555,7 +588,7 @@ function EditProfileForm({
                   className="mt-2 text-[11px] leading-5 text-white/55"
                 >
                   PNG, JPEG veya WebP · En fazla 2 MB · Kare kırpılır ·
-                  Yalnızca bu cihazda geçici saklanır
+                  Kaydettiğinde hesabına yüklenir
                 </p>
                 <p
                   id="profile-avatar-error"

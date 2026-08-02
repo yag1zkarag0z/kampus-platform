@@ -16,6 +16,11 @@ import {
   type CampusAdminRole,
   type CampusManagedUser,
 } from "@/data/campusAdmin";
+import {
+  blockMember,
+  getMyBlockedUsers,
+  unblockMember,
+} from "@/moderation/client";
 
 const STORAGE_KEY = "kampus-moderation-v1";
 const MAX_REPORT_DETAIL_LENGTH = 300;
@@ -42,6 +47,7 @@ export type CampusModerationHistoryAction =
 export type BlockedCampusUser = {
   authorId: string;
   author: string;
+  avatarUrl?: string | null;
 };
 
 export type CampusContentReport = {
@@ -114,8 +120,8 @@ type CampusModerationContextValue = {
   setUserRole: (authorId: string, role: CampusAdminRole) => boolean;
   suspendUser: (authorId: string) => boolean;
   restoreUser: (authorId: string) => boolean;
-  blockUser: (authorId: string, author: string) => boolean;
-  unblockUser: (authorId: string) => void;
+  blockUser: (authorId: string, author: string) => Promise<boolean>;
+  unblockUser: (authorId: string) => Promise<boolean>;
   resetModeration: () => void;
 };
 
@@ -416,10 +422,15 @@ export function CampusModerationProvider({
 }: {
   children: ReactNode;
 }) {
-  const { sessionMode, role: accountRole } = useCampusAccount();
+  const { accountId, sessionMode, role: accountRole } = useCampusAccount();
   const [state, setState] =
     useState<StoredModerationState>(getInitialState);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [remoteBlockedUsers, setRemoteBlockedUsers] = useState<
+    BlockedCampusUser[]
+  >([]);
+  const [isRemoteBlockedHydrated, setIsRemoteBlockedHydrated] =
+    useState(false);
 
   useEffect(() => {
     let isCancelled = false;
@@ -466,6 +477,56 @@ export function CampusModerationProvider({
       // The in-memory moderation state remains usable without persistence.
     }
   }, [isHydrated, state]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    if (sessionMode !== "member") {
+      queueMicrotask(() => {
+        if (isCancelled) {
+          return;
+        }
+
+        setIsRemoteBlockedHydrated(false);
+        setRemoteBlockedUsers([]);
+      });
+
+      return () => {
+        isCancelled = true;
+      };
+    }
+
+    queueMicrotask(() => {
+      if (!isCancelled) {
+        setIsRemoteBlockedHydrated(false);
+      }
+    });
+
+    getMyBlockedUsers()
+      .then((rows) => {
+        if (isCancelled) {
+          return;
+        }
+
+        setRemoteBlockedUsers(
+          rows.map((row) => ({
+            authorId: row.id,
+            author: `@${row.username}`,
+            avatarUrl: row.avatarUrl,
+          })),
+        );
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!isCancelled) {
+          setIsRemoteBlockedHydrated(true);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [accountId, sessionMode]);
 
   const reportContent = useCallback(
     (
@@ -794,7 +855,7 @@ export function CampusModerationProvider({
   );
 
   const blockUser = useCallback(
-    (authorId: string, author: string) => {
+    async (authorId: string, author: string) => {
       if (
         sessionMode !== "member" ||
         !authorId.trim() ||
@@ -804,48 +865,61 @@ export function CampusModerationProvider({
       }
 
       if (
-        state.blockedUsers.some((user) => user.authorId === authorId)
+        remoteBlockedUsers.some((user) => user.authorId === authorId)
       ) {
         return false;
       }
 
-      setState((currentState) => {
-        if (
-          currentState.blockedUsers.some(
-            (user) => user.authorId === authorId,
-          )
-        ) {
-          return currentState;
+      const username = author.trim().replace(/^@/, "");
+
+      try {
+        await blockMember(username);
+      } catch {
+        return false;
+      }
+
+      setRemoteBlockedUsers((current) => {
+        if (current.some((user) => user.authorId === authorId)) {
+          return current;
         }
 
-        return {
-          ...currentState,
-          blockedUsers: [
-            ...currentState.blockedUsers,
-            { authorId, author },
-          ],
-        };
+        return [...current, { authorId, author }];
       });
 
       return true;
     },
-    [sessionMode, state.blockedUsers],
+    [remoteBlockedUsers, sessionMode],
   );
 
   const unblockUser = useCallback(
-    (authorId: string) => {
+    async (authorId: string) => {
       if (sessionMode !== "member") {
-        return;
+        return false;
       }
 
-      setState((currentState) => ({
-        ...currentState,
-        blockedUsers: currentState.blockedUsers.filter(
-          (user) => user.authorId !== authorId,
-        ),
-      }));
+      const target = remoteBlockedUsers.find(
+        (user) => user.authorId === authorId,
+      );
+
+      if (!target) {
+        return false;
+      }
+
+      const username = target.author.trim().replace(/^@/, "");
+
+      try {
+        await unblockMember(username);
+      } catch {
+        return false;
+      }
+
+      setRemoteBlockedUsers((current) =>
+        current.filter((user) => user.authorId !== authorId),
+      );
+
+      return true;
     },
-    [sessionMode],
+    [remoteBlockedUsers, sessionMode],
   );
 
   const resetModeration = useCallback(() => {
@@ -876,10 +950,14 @@ export function CampusModerationProvider({
       ),
     [state.reports],
   );
+  const effectiveBlockedUsers =
+    sessionMode === "member" ? remoteBlockedUsers : state.blockedUsers;
   const blockedAuthorIds = useMemo(
-    () => new Set(state.blockedUsers.map((user) => user.authorId)),
-    [state.blockedUsers],
+    () => new Set(effectiveBlockedUsers.map((user) => user.authorId)),
+    [effectiveBlockedUsers],
   );
+  const isBlockedListHydrated =
+    sessionMode === "member" ? isRemoteBlockedHydrated : true;
   const pendingReportCount = useMemo(
     () =>
       state.reports.filter((report) => report.status === "pending")
@@ -897,13 +975,13 @@ export function CampusModerationProvider({
 
   const value = useMemo<CampusModerationContextValue>(
     () => ({
-      blockedUsers: state.blockedUsers,
+      blockedUsers: effectiveBlockedUsers,
       blockedAuthorIds,
       reports: state.reports,
       pendingReportCount,
       managedUsers: state.managedUsers,
       moderationHistory: state.moderationHistory,
-      isHydrated,
+      isHydrated: isHydrated && isBlockedListHydrated,
       hasReportedPost,
       hasReportedComment,
       reportPost,
@@ -919,8 +997,10 @@ export function CampusModerationProvider({
     [
       blockUser,
       blockedAuthorIds,
+      effectiveBlockedUsers,
       hasReportedComment,
       hasReportedPost,
+      isBlockedListHydrated,
       isHydrated,
       pendingReportCount,
       reportComment,
@@ -930,7 +1010,6 @@ export function CampusModerationProvider({
       restoreUser,
       setUserRole,
       suspendUser,
-      state.blockedUsers,
       state.managedUsers,
       state.moderationHistory,
       state.reports,

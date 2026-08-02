@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { updateAccountProfile } from "@/server/account/service";
+import { deleteAccount, updateAccountProfile } from "@/server/account/service";
 import {
   parseAccountInput,
   updateProfileSchema,
@@ -12,6 +12,7 @@ import {
 import {
   assertSameOrigin,
   authErrorResponse,
+  clearSessionCookie,
   noStoreHeaders,
   readJsonBody,
 } from "@/server/auth/request";
@@ -36,6 +37,25 @@ export async function PATCH(request: NextRequest) {
       { data: state },
       { headers: noStoreHeaders },
     );
+  } catch (error) {
+    return authErrorResponse(error);
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    assertSameOrigin(request);
+    const member = await requireActiveMember(request);
+
+    await deleteAccount(member.userId);
+
+    const response = new NextResponse(null, {
+      status: 204,
+      headers: noStoreHeaders,
+    });
+    clearSessionCookie(response);
+
+    return response;
   } catch (error) {
     return authErrorResponse(error);
   }

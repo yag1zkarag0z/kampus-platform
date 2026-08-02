@@ -258,7 +258,7 @@ export default function CampusPostActions({
       return;
     }
 
-    const wasAdded = blockUser(post.authorId, post.author);
+    const wasAdded = await blockUser(post.authorId, post.author);
     showToast({
       message: wasAdded
         ? `${post.author} engellendi.`

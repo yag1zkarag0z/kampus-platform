@@ -271,3 +271,25 @@ export function logoutCurrentSession() {
     method: "POST",
   });
 }
+
+export function deleteCurrentAccount() {
+  return requestApi<void>("/v1/me/profile", {
+    method: "DELETE",
+  });
+}
+
+export function uploadCurrentAvatar(file: Blob) {
+  const formData = new FormData();
+  formData.set("image", file, "avatar.webp");
+
+  return requestApi<SessionState>("/v1/me/avatar", {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export function removeCurrentAvatar() {
+  return requestApi<SessionState>("/v1/me/avatar", {
+    method: "DELETE",
+  });
+}

@@ -6,6 +6,7 @@ import {
   authErrorResponse,
   noStoreHeaders,
 } from "@/server/auth/request";
+import { getFollowSummary } from "@/server/social/service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,12 +20,15 @@ export async function GET(
   context: UserRouteContext,
 ) {
   try {
-    await requireActiveMember(request);
+    const member = await requireActiveMember(request);
     const { username } = await context.params;
-    const profile = await getPublicAccountProfile(username);
+    const [profile, followSummary] = await Promise.all([
+      getPublicAccountProfile(username),
+      getFollowSummary(member.userId, username),
+    ]);
 
     return NextResponse.json(
-      { data: profile },
+      { data: { ...profile, ...followSummary } },
       { headers: noStoreHeaders },
     );
   } catch (error) {

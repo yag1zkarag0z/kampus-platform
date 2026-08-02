@@ -332,8 +332,58 @@ export const sessions = pgTable(
   ],
 );
 
+export const follows = pgTable(
+  "follows",
+  {
+    followerId: uuid("follower_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    followingId: uuid("following_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "follows_pk",
+      columns: [table.followerId, table.followingId],
+    }),
+    index("follows_following_id_idx").on(table.followingId),
+    check(
+      "follows_not_self_check",
+      sql`${table.followerId} <> ${table.followingId}`,
+    ),
+  ],
+);
+
+export const blocks = pgTable(
+  "blocks",
+  {
+    blockerId: uuid("blocker_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blockedId: uuid("blocked_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "blocks_pk",
+      columns: [table.blockerId, table.blockedId],
+    }),
+    index("blocks_blocked_id_idx").on(table.blockedId),
+    check(
+      "blocks_not_self_check",
+      sql`${table.blockerId} <> ${table.blockedId}`,
+    ),
+  ],
+);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type UserSettings = typeof userSettings.$inferSelect;
 export type OtpChallenge = typeof otpChallenges.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
+export type Follow = typeof follows.$inferSelect;
+export type Block = typeof blocks.$inferSelect;

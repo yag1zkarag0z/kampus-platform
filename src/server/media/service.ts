@@ -104,7 +104,7 @@ async function assertUploadAllowed(userId: string) {
   }
 }
 
-async function processImage(file: File) {
+export async function processImage(file: File) {
   if (file.size < 1 || file.size > MAX_UPLOAD_BYTES) {
     throw invalidImageError("İşlenmiş görsel en fazla 1 MB olabilir.");
   }

@@ -294,7 +294,7 @@ export default function CampusCommentActions({
       return;
     }
 
-    const wasBlocked = blockUser(comment.authorId, comment.author);
+    const wasBlocked = await blockUser(comment.authorId, comment.author);
     showToast({
       message: wasBlocked
         ? `${comment.author} engellendi.`

@@ -54,12 +54,14 @@ function getAvatarTone(value: string) {
 export default function CampusAuthorAvatar({
   author,
   authorId,
+  avatarUrl: avatarUrlProp,
   isAnonymous: isAnonymousProp,
   size = "md",
   className = "",
 }: {
   author: string;
   authorId?: string;
+  avatarUrl?: string | null;
   isAnonymous?: boolean;
   size?: AvatarSize;
   className?: string;
@@ -74,7 +76,8 @@ export default function CampusAuthorAvatar({
     sessionMode === "member" &&
     !isAnonymous &&
     (authorId === LOCAL_ACCOUNT_OWNER_ID || author === "@sen");
-  const avatarDataUrl = isLocalAccount ? profile.avatarDataUrl : undefined;
+  const avatarUrl =
+    avatarUrlProp ?? (isLocalAccount ? profile.avatarUrl : null);
   const fallbackSource = isLocalAccount ? profile.displayName : author;
   const toneClassName = isAnonymous
     ? "border-white/11 bg-[#25282c] text-white/55"
@@ -85,9 +88,9 @@ export default function CampusAuthorAvatar({
       aria-hidden="true"
       className={`relative grid shrink-0 place-items-center overflow-hidden rounded-full border font-black tracking-[-0.04em] shadow-[0_5px_16px_rgba(0,0,0,0.18)] ${sizeClassNames[size]} ${toneClassName} ${className}`}
     >
-      {avatarDataUrl ? (
+      {avatarUrl ? (
         <Image
-          src={avatarDataUrl}
+          src={avatarUrl}
           alt=""
           fill
           sizes={imageSizes[size]}

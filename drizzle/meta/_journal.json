@@ -113,6 +113,20 @@
       "when": 1785614588645,
       "tag": "0015_late_tusk",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1785670920385,
+      "tag": "0016_mean_johnny_storm",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1785673140750,
+      "tag": "0017_clumsy_nextwave",
+      "breakpoints": true
     }
   ]
 }

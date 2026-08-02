@@ -13,10 +13,13 @@ import {
 
 import {
   AuthClientError,
+  deleteCurrentAccount,
   getCurrentSession,
   logoutCurrentSession,
+  removeCurrentAvatar,
   updateCurrentProfile,
   updateCurrentSettings,
+  uploadCurrentAvatar,
   type UpdateCampusProfileInput,
 } from "@/auth/client";
 import type {
@@ -25,9 +28,6 @@ import type {
   SessionState,
 } from "@/auth/types";
 import type { CampusAdminRole } from "@/data/campusAdmin";
-
-const LEGACY_ACCOUNT_DRAFT_KEY = "kampus-account-draft-v2";
-const AVATAR_DRAFT_KEY_PREFIX = "kampus-avatar-draft-v1:";
 
 export type CampusProfile = AuthProfile;
 export type CampusAccountSettings = AuthSettings;
@@ -50,10 +50,10 @@ type CampusAccountContextValue = {
   updateSettings: (
     updates: Partial<CampusAccountSettings>,
   ) => Promise<void>;
-  updateAvatar: (avatarDataUrl: string) => boolean;
-  removeAvatar: () => boolean;
-  resetAccount: (targetAccountId?: string) => boolean;
+  updateAvatar: (file: Blob) => Promise<void>;
+  removeAvatar: () => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 };
 
 const defaultProfile: CampusProfile = {
@@ -62,6 +62,7 @@ const defaultProfile: CampusProfile = {
   department: "",
   year: "",
   bio: "",
+  avatarUrl: null,
   joinedLabel: "",
 };
 
@@ -70,6 +71,7 @@ const guestProfile: CampusProfile = {
   displayName: "İsimsiz Kullanıcı",
   department: "",
   year: "",
+  avatarUrl: null,
   bio: "KAMPÜS’ü misafir olarak görüntülüyorsun.",
   joinedLabel: "Misafir hesap",
 };
@@ -92,92 +94,10 @@ const CampusAccountContext = createContext<
   CampusAccountContextValue | undefined
 >(undefined);
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isValidAvatarDataUrl(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    value.length <= 1_000_000 &&
-    /^data:image\/(?:png|jpe?g|webp);base64,[a-z0-9+/]+={0,2}$/i.test(
-      value,
-    )
-  );
-}
-
-function getAvatarDraftKey(userId: string) {
-  return `${AVATAR_DRAFT_KEY_PREFIX}${userId}`;
-}
-
 function getSessionErrorMessage(error: unknown) {
   return error instanceof AuthClientError
     ? error.message
     : "Oturumun kontrol edilemedi. Bağlantını kontrol edip yeniden dene.";
-}
-
-function readAvatarDraft(userId: string) {
-  try {
-    const storedAvatar = window.localStorage.getItem(
-      getAvatarDraftKey(userId),
-    );
-    const legacyRawValue = window.localStorage.getItem(
-      LEGACY_ACCOUNT_DRAFT_KEY,
-    );
-    window.localStorage.removeItem(LEGACY_ACCOUNT_DRAFT_KEY);
-
-    if (storedAvatar && isValidAvatarDataUrl(storedAvatar)) {
-      return storedAvatar;
-    }
-
-    if (storedAvatar) {
-      window.localStorage.removeItem(getAvatarDraftKey(userId));
-    }
-
-    if (!legacyRawValue) {
-      return undefined;
-    }
-
-    const legacyValue: unknown = JSON.parse(legacyRawValue);
-
-    if (
-      !isRecord(legacyValue) ||
-      legacyValue.userId !== userId ||
-      !isRecord(legacyValue.profile) ||
-      !isValidAvatarDataUrl(legacyValue.profile.avatarDataUrl)
-    ) {
-      return undefined;
-    }
-
-    window.localStorage.setItem(
-      getAvatarDraftKey(userId),
-      legacyValue.profile.avatarDataUrl,
-    );
-    return legacyValue.profile.avatarDataUrl;
-  } catch {
-    return undefined;
-  }
-}
-
-function writeAvatarDraft(
-  userId: string,
-  avatarDataUrl: string | undefined,
-) {
-  try {
-    if (avatarDataUrl) {
-      window.localStorage.setItem(
-        getAvatarDraftKey(userId),
-        avatarDataUrl,
-      );
-      return true;
-    }
-
-    window.localStorage.removeItem(getAvatarDraftKey(userId));
-    return true;
-  } catch {
-    // The avatar can continue in memory if browser storage is unavailable.
-    return false;
-  }
 }
 
 function createMemberSessionRequiredError() {
@@ -215,7 +135,6 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
   const [isSessionLoading, setIsSessionLoading] = useState(true);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const isMountedRef = useRef(false);
-  const avatarDraftRef = useRef<string | undefined>(undefined);
   const sessionRequestRef = useRef<Promise<void> | null>(null);
   const settingsQueueRef = useRef<Promise<void>>(Promise.resolve());
   const settingsRef = useRef<CampusAccountSettings>(defaultSettings);
@@ -234,26 +153,15 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
     );
 
     if (session.mode === "member") {
-      const avatarDataUrl =
-        userIdRef.current === session.user.id
-          ? avatarDraftRef.current
-          : readAvatarDraft(session.user.id);
-      const nextProfile = {
-        ...session.user.profile,
-        ...(avatarDataUrl ? { avatarDataUrl } : {}),
-      };
-
-      avatarDraftRef.current = avatarDataUrl;
       userIdRef.current = session.user.id;
       setAccountId(session.user.id);
-      setProfile(nextProfile);
+      setProfile(session.user.profile);
       settingsRef.current = session.user.settings;
       setSettings(session.user.settings);
       setRole(session.user.role);
       return;
     }
 
-    avatarDraftRef.current = undefined;
     userIdRef.current = null;
     setAccountId(null);
     setRole("member");
@@ -467,86 +375,72 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
     [applySession, handleMutationError],
   );
 
-  const updateAvatar = useCallback((avatarDataUrl: string) => {
-    const currentUserId = userIdRef.current;
+  const updateAvatar = useCallback(
+    async (file: Blob) => {
+      const expectedUserId = userIdRef.current;
 
-    if (
-      sessionModeRef.current !== "member" ||
-      !currentUserId ||
-      !isValidAvatarDataUrl(avatarDataUrl)
-    ) {
-      return false;
+      if (sessionModeRef.current !== "member" || !expectedUserId) {
+        throw createMemberSessionRequiredError();
+      }
+
+      try {
+        const session = await uploadCurrentAvatar(file);
+        assertMemberMutationSession(session, expectedUserId);
+
+        if (
+          sessionModeRef.current !== "member" ||
+          userIdRef.current !== expectedUserId
+        ) {
+          throw createMemberSessionRequiredError();
+        }
+
+        applySession(session);
+      } catch (error) {
+        handleMutationError(error, expectedUserId);
+        throw error;
+      }
+    },
+    [applySession, handleMutationError],
+  );
+
+  const removeAvatar = useCallback(async () => {
+    const expectedUserId = userIdRef.current;
+
+    if (sessionModeRef.current !== "member" || !expectedUserId) {
+      throw createMemberSessionRequiredError();
     }
-
-    const wasStored = writeAvatarDraft(currentUserId, avatarDataUrl);
-
-    if (!wasStored) {
-      return false;
-    }
-
-    avatarDraftRef.current = avatarDataUrl;
-    setProfile((current) => ({
-      ...current,
-      avatarDataUrl,
-    }));
-    return wasStored;
-  }, []);
-
-  const removeAvatar = useCallback(() => {
-    const currentUserId = userIdRef.current;
-
-    if (
-      sessionModeRef.current !== "member" ||
-      !currentUserId
-    ) {
-      return false;
-    }
-
-    const wasRemoved = writeAvatarDraft(currentUserId, undefined);
-
-    if (!wasRemoved) {
-      return false;
-    }
-
-    avatarDraftRef.current = undefined;
-    setProfile((current) => ({
-      ...current,
-      avatarDataUrl: undefined,
-    }));
-    return wasRemoved;
-  }, []);
-
-  const resetAccount = useCallback((targetAccountId?: string) => {
-    const currentUserId = targetAccountId ?? userIdRef.current;
-
-    if (!currentUserId) {
-      return false;
-    }
-
-    let legacyDraftWasRemoved = true;
 
     try {
-      window.localStorage.removeItem(LEGACY_ACCOUNT_DRAFT_KEY);
-    } catch {
-      // The in-memory reset still completes.
-      legacyDraftWasRemoved = false;
+      const session = await removeCurrentAvatar();
+      assertMemberMutationSession(session, expectedUserId);
+
+      if (
+        sessionModeRef.current !== "member" ||
+        userIdRef.current !== expectedUserId
+      ) {
+        throw createMemberSessionRequiredError();
+      }
+
+      applySession(session);
+    } catch (error) {
+      handleMutationError(error, expectedUserId);
+      throw error;
     }
-
-    const avatarWasRemoved = writeAvatarDraft(currentUserId, undefined);
-
-    if (userIdRef.current === currentUserId) {
-      avatarDraftRef.current = undefined;
-      setProfile((current) => ({
-        ...current,
-        avatarDataUrl: undefined,
-      }));
-    }
-
-    return legacyDraftWasRemoved && avatarWasRemoved;
-  }, []);
+  }, [applySession, handleMutationError]);
 
   const signOut = useCallback(async () => {
     await logoutCurrentSession();
+    applySession(signedOutSession);
+
+    if (typeof BroadcastChannel !== "undefined") {
+      const channel = new BroadcastChannel("kampus-auth");
+      channel.postMessage("signed-out");
+      channel.close();
+    }
+  }, [applySession]);
+
+  const deleteAccount = useCallback(async () => {
+    await deleteCurrentAccount();
     applySession(signedOutSession);
 
     if (typeof BroadcastChannel !== "undefined") {
@@ -574,8 +468,8 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
       updateSettings,
       updateAvatar,
       removeAvatar,
-      resetAccount,
       signOut,
+      deleteAccount,
     }),
     [
       profile,
@@ -594,8 +488,8 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
       updateSettings,
       updateAvatar,
       removeAvatar,
-      resetAccount,
       signOut,
+      deleteAccount,
     ],
   );
 

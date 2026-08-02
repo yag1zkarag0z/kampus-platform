@@ -1,15 +1,25 @@
 import { randomUUID } from "node:crypto";
 
 import { NextRequest } from "next/server";
-import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { Pool } from "pg";
+import sharp from "sharp";
 
-import { PATCH as patchProfile } from "@/app/v1/me/profile/route";
+import {
+  DELETE as deleteAvatar,
+  POST as postAvatar,
+} from "@/app/v1/me/avatar/route";
+import {
+  DELETE as deleteProfile,
+  PATCH as patchProfile,
+} from "@/app/v1/me/profile/route";
 import { PATCH as patchSettings } from "@/app/v1/me/settings/route";
 import { GET as getMemberProfile } from "@/app/v1/users/[username]/route";
+import { GET as getMemberAvatar } from "@/app/v1/users/[username]/avatar/route";
 import { createGuestToken } from "@/server/auth/crypto";
 import { createMemberSession } from "@/server/auth/session";
 import { getDatabase } from "@/server/db/client";
+import { getMediaStorage } from "@/server/media/storage";
 
 const pool = new Pool({
   connectionString: process.env.TEST_DATABASE_URL,
@@ -92,6 +102,22 @@ function createJsonRequest(
   });
 }
 
+function createDeleteRequest({
+  cookie,
+  origin = appOrigin,
+}: {
+  cookie?: string;
+  origin?: string;
+} = {}) {
+  return new NextRequest(new URL("/v1/me/profile", appOrigin), {
+    method: "DELETE",
+    headers: {
+      ...(cookie ? { Cookie: `kampus_session=${cookie}` } : {}),
+      Origin: origin,
+    },
+  });
+}
+
 function createProfileRequest(username: string, cookie?: string) {
   return new NextRequest(
     new URL(`/v1/users/${username}`, appOrigin),
@@ -101,6 +127,53 @@ function createProfileRequest(username: string, cookie?: string) {
         : undefined,
     },
   );
+}
+
+async function createTestAvatarFile(color: string, name = "avatar.png") {
+  const buffer = await sharp({
+    create: {
+      width: 32,
+      height: 32,
+      channels: 3,
+      background: color,
+    },
+  })
+    .png()
+    .toBuffer();
+
+  return new File([buffer], name, { type: "image/png" });
+}
+
+function createAvatarUploadRequest(
+  formData: FormData,
+  {
+    cookie,
+    origin = appOrigin,
+  }: { cookie?: string; origin?: string } = {},
+) {
+  const request = new NextRequest(new URL("/v1/me/avatar", appOrigin), {
+    method: "POST",
+    headers: {
+      ...(cookie ? { Cookie: `kampus_session=${cookie}` } : {}),
+      Origin: origin,
+    },
+  });
+
+  vi.spyOn(request, "formData").mockResolvedValue(formData);
+  return request;
+}
+
+function createAvatarDeleteRequest({
+  cookie,
+  origin = appOrigin,
+}: { cookie?: string; origin?: string } = {}) {
+  return new NextRequest(new URL("/v1/me/avatar", appOrigin), {
+    method: "DELETE",
+    headers: {
+      ...(cookie ? { Cookie: `kampus_session=${cookie}` } : {}),
+      Origin: origin,
+    },
+  });
 }
 
 afterEach(async () => {
@@ -327,5 +400,217 @@ describe("profile route authorization and persistence", () => {
       },
     );
     expect(guestProfile.status).toBe(401);
+  });
+});
+
+describe("DELETE /v1/me/profile", () => {
+  it(
+    "anonymizes the account, revokes sessions, and frees the email " +
+      "for reuse",
+    async () => {
+      const account = await insertAccount();
+      const cookie = await createMemberCookie(account.id);
+
+      try {
+        const response = await deleteProfile(
+          createDeleteRequest({ cookie }),
+        );
+
+        expect(response.status).toBe(204);
+        expect(
+          response.cookies.get("kampus_session")?.value,
+        ).toBe("");
+
+        const stored = await pool.query<{
+          email: string;
+          username: string;
+          display_name: string;
+          bio: string;
+          deleted_at: Date | null;
+        }>(
+          `select email, username, display_name, bio, deleted_at
+           from users
+           where id = $1`,
+          [account.id],
+        );
+
+        expect(stored.rows[0]?.email).not.toBe(account.email);
+        expect(stored.rows[0]?.username).not.toBe(account.username);
+        expect(stored.rows[0]?.display_name).toBe(
+          "Silinmiş kullanıcı",
+        );
+        expect(stored.rows[0]?.bio).toBe("");
+        expect(stored.rows[0]?.deleted_at).not.toBeNull();
+
+        const activeSessions = await pool.query(
+          `select id from sessions
+           where user_id = $1 and revoked_at is null`,
+          [account.id],
+        );
+        expect(activeSessions.rowCount).toBe(0);
+
+        const reuseResult = await pool.query<{ id: string }>(
+          `insert into users (
+            email, username, display_name, department, year_label, bio
+          ) values ($1, $2, $3, $4, $5, $6)
+          returning id`,
+          [
+            account.email,
+            `reuse${account.username}`,
+            "Yeniden Kayıt",
+            "Yazılım Mühendisliği",
+            "1. sınıf",
+            "",
+          ],
+        );
+        await pool.query("delete from users where id = $1", [
+          reuseResult.rows[0]!.id,
+        ]);
+      } finally {
+        await pool.query("delete from users where id = $1", [
+          account.id,
+        ]);
+        testEmails.delete(account.email);
+      }
+    },
+  );
+
+  it("rejects a cross-origin delete before changing the database", async () => {
+    const account = await insertAccount();
+    const cookie = await createMemberCookie(account.id);
+
+    const response = await deleteProfile(
+      createDeleteRequest({
+        cookie,
+        origin: "https://attacker.example",
+      }),
+    );
+
+    expect(response.status).toBe(403);
+
+    const stored = await pool.query<{ deleted_at: Date | null }>(
+      "select deleted_at from users where id = $1",
+      [account.id],
+    );
+    expect(stored.rows[0]?.deleted_at).toBeNull();
+  });
+
+  it("requires an active member session", async () => {
+    const response = await deleteProfile(createDeleteRequest());
+
+    expect(response.status).toBe(401);
+  });
+});
+
+describe("POST/DELETE /v1/me/avatar", () => {
+  it("uploads, replaces, serves, and removes an avatar", async () => {
+    const account = await insertAccount();
+    const cookie = await createMemberCookie(account.id);
+    const storage = getMediaStorage();
+
+    try {
+      const firstUpload = new FormData();
+      firstUpload.set("image", await createTestAvatarFile("#d26f45"));
+
+      const uploadResponse = await postAvatar(
+        createAvatarUploadRequest(firstUpload, { cookie }),
+      );
+
+      expect(uploadResponse.status).toBe(200);
+      const uploadedState = await uploadResponse.json();
+      expect(uploadedState.data.user.profile.avatarUrl).toBe(
+        `/v1/users/${account.username}/avatar`,
+      );
+
+      const firstStored = await pool.query<{
+        avatar_object_key: string | null;
+      }>("select avatar_object_key from users where id = $1", [
+        account.id,
+      ]);
+      const firstKey = firstStored.rows[0]?.avatar_object_key;
+      expect(firstKey).toBeTruthy();
+
+      const avatarResponse = await getMemberAvatar(
+        new NextRequest(
+          new URL(`/v1/users/${account.username}/avatar`, appOrigin),
+          { headers: { Cookie: `kampus_session=${cookie}` } },
+        ),
+        { params: Promise.resolve({ username: account.username }) },
+      );
+      expect(avatarResponse.status).toBe(200);
+      expect(avatarResponse.headers.get("content-type")).toBe(
+        "image/webp",
+      );
+
+      const secondUpload = new FormData();
+      secondUpload.set("image", await createTestAvatarFile("#2f6f9f"));
+
+      const replaceResponse = await postAvatar(
+        createAvatarUploadRequest(secondUpload, { cookie }),
+      );
+      expect(replaceResponse.status).toBe(200);
+
+      const secondStored = await pool.query<{
+        avatar_object_key: string | null;
+      }>("select avatar_object_key from users where id = $1", [
+        account.id,
+      ]);
+      const secondKey = secondStored.rows[0]?.avatar_object_key;
+      expect(secondKey).toBeTruthy();
+      expect(secondKey).not.toBe(firstKey);
+      expect(await storage.get(firstKey!)).toBeNull();
+
+      const deleteResponse = await deleteAvatar(
+        createAvatarDeleteRequest({ cookie }),
+      );
+      expect(deleteResponse.status).toBe(200);
+      const deletedState = await deleteResponse.json();
+      expect(deletedState.data.user.profile.avatarUrl).toBeNull();
+
+      const finalStored = await pool.query<{
+        avatar_object_key: string | null;
+      }>("select avatar_object_key from users where id = $1", [
+        account.id,
+      ]);
+      expect(finalStored.rows[0]?.avatar_object_key).toBeNull();
+      expect(await storage.get(secondKey!)).toBeNull();
+    } finally {
+      await pool.query("delete from users where id = $1", [account.id]);
+      testEmails.delete(account.email);
+    }
+  });
+
+  it("rejects a cross-origin upload before authorization", async () => {
+    const account = await insertAccount();
+    const cookie = await createMemberCookie(account.id);
+    const formData = new FormData();
+    formData.set("image", await createTestAvatarFile("#d26f45"));
+
+    const response = await postAvatar(
+      createAvatarUploadRequest(formData, {
+        cookie,
+        origin: "https://attacker.example",
+      }),
+    );
+
+    expect(response.status).toBe(403);
+
+    const stored = await pool.query<{
+      avatar_object_key: string | null;
+    }>("select avatar_object_key from users where id = $1", [
+      account.id,
+    ]);
+    expect(stored.rows[0]?.avatar_object_key).toBeNull();
+  });
+
+  it("requires an active member session to upload", async () => {
+    const formData = new FormData();
+    formData.set("image", await createTestAvatarFile("#d26f45"));
+
+    const response = await postAvatar(
+      createAvatarUploadRequest(formData),
+    );
+
+    expect(response.status).toBe(401);
   });
 });

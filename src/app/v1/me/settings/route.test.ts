@@ -38,6 +38,7 @@ const memberState = {
       department: "Yazılım Mühendisliği",
       year: "2. sınıf",
       bio: "",
+      avatarUrl: null,
       joinedLabel: "Temmuz 2026",
     },
     settings: {

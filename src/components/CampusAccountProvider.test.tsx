@@ -7,8 +7,10 @@ import {
   AuthClientError,
   getCurrentSession,
   logoutCurrentSession,
+  removeCurrentAvatar,
   updateCurrentProfile,
   updateCurrentSettings,
+  uploadCurrentAvatar,
 } from "@/auth/client";
 import {
   CampusAccountProvider,
@@ -25,8 +27,10 @@ vi.mock("@/auth/client", async () => {
     ...actual,
     getCurrentSession: vi.fn(),
     logoutCurrentSession: vi.fn(),
+    removeCurrentAvatar: vi.fn(),
     updateCurrentProfile: vi.fn(),
     updateCurrentSettings: vi.fn(),
+    uploadCurrentAvatar: vi.fn(),
   };
 });
 
@@ -34,6 +38,8 @@ const mockedGetCurrentSession = vi.mocked(getCurrentSession);
 const mockedLogoutCurrentSession = vi.mocked(logoutCurrentSession);
 const mockedUpdateCurrentProfile = vi.mocked(updateCurrentProfile);
 const mockedUpdateCurrentSettings = vi.mocked(updateCurrentSettings);
+const mockedUploadCurrentAvatar = vi.mocked(uploadCurrentAvatar);
+const mockedRemoveCurrentAvatar = vi.mocked(removeCurrentAvatar);
 
 const memberSession = {
   mode: "member" as const,
@@ -47,6 +53,7 @@ const memberSession = {
       department: "Yazılım Mühendisliği",
       year: "2. sınıf",
       bio: "",
+      avatarUrl: null,
       joinedLabel: "Temmuz 2026",
     },
     settings: {
@@ -71,6 +78,7 @@ function AccountConsumer() {
     retrySession,
     signOut,
     settings,
+    removeAvatar,
     updateAvatar,
     updateProfile,
     updateSettings,
@@ -86,7 +94,7 @@ function AccountConsumer() {
       <span data-testid="session-expired">
         {sessionExpired ? "session-expired" : "session-active"}
       </span>
-      <span>{profile.avatarDataUrl ?? "no-avatar"}</span>
+      <span>{profile.avatarUrl ?? "no-avatar"}</span>
       <span>{settings.showDepartment ? "department-visible" : "department-hidden"}</span>
       <span>{role}</span>
       <span>{sessionError ?? "no-session-error"}</span>
@@ -133,11 +141,29 @@ function AccountConsumer() {
       </button>
       <button
         type="button"
-        onClick={() =>
-          updateAvatar("data:image/png;base64,AA==")
-        }
+        onClick={() => {
+          void updateAvatar(
+            new Blob(["fake-avatar"], { type: "image/webp" }),
+          ).catch((error: unknown) => {
+            setMutationError(
+              error instanceof Error ? error.message : "mutation failed",
+            );
+          });
+        }}
       >
         Avatar ekle
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          void removeAvatar().catch((error: unknown) => {
+            setMutationError(
+              error instanceof Error ? error.message : "mutation failed",
+            );
+          });
+        }}
+      >
+        Avatar kaldır
       </button>
     </div>
   );
@@ -149,6 +175,8 @@ describe("CampusAccountProvider", () => {
     mockedGetCurrentSession.mockReset();
     mockedUpdateCurrentProfile.mockReset();
     mockedUpdateCurrentSettings.mockReset();
+    mockedUploadCurrentAvatar.mockReset();
+    mockedRemoveCurrentAvatar.mockReset();
   });
 
   it("hydrates a member only from the server session", async () => {
@@ -164,6 +192,7 @@ describe("CampusAccountProvider", () => {
           department: "Yazılım Mühendisliği",
           year: "2. sınıf",
           bio: "",
+          avatarUrl: null,
           joinedLabel: "Temmuz 2026",
         },
         settings: {
@@ -187,44 +216,6 @@ describe("CampusAccountProvider", () => {
     expect(screen.getByText("kampuslu35")).toBeInTheDocument();
     expect(screen.queryByText("admin")).not.toBeInTheDocument();
     expect(localStorage.getItem("kampus-session-v1")).toBeNull();
-  });
-
-  it("keeps server profile and settings authoritative while migrating only a legacy avatar", async () => {
-    localStorage.setItem(
-      "kampus-account-draft-v2",
-      JSON.stringify({
-        userId: memberSession.user.id,
-        profile: {
-          ...memberSession.user.profile,
-          username: "stale-local-name",
-          avatarDataUrl: "data:image/png;base64,AA==",
-        },
-        settings: {
-          ...memberSession.user.settings,
-          showDepartment: true,
-        },
-      }),
-    );
-    mockedGetCurrentSession.mockResolvedValue(memberSession);
-
-    render(
-      <CampusAccountProvider>
-        <AccountConsumer />
-      </CampusAccountProvider>,
-    );
-
-    expect(await screen.findByText("kampuslu35")).toBeInTheDocument();
-    expect(screen.queryByText("stale-local-name")).not.toBeInTheDocument();
-    expect(screen.getByText("department-hidden")).toBeInTheDocument();
-    expect(
-      screen.getByText("data:image/png;base64,AA=="),
-    ).toBeInTheDocument();
-    expect(localStorage.getItem("kampus-account-draft-v2")).toBeNull();
-    expect(
-      localStorage.getItem(
-        `kampus-avatar-draft-v1:${memberSession.user.id}`,
-      ),
-    ).toBe("data:image/png;base64,AA==");
   });
 
   it("updates profile through the API and applies the returned session", async () => {
@@ -468,8 +459,19 @@ describe("CampusAccountProvider", () => {
     ).toBeInTheDocument();
   });
 
-  it("stores temporary avatars under the current user only", async () => {
+  it("uploads a new avatar through the API and applies the returned session", async () => {
+    const updatedSession = {
+      ...memberSession,
+      user: {
+        ...memberSession.user,
+        profile: {
+          ...memberSession.user.profile,
+          avatarUrl: "/v1/users/kampuslu35/avatar",
+        },
+      },
+    };
     mockedGetCurrentSession.mockResolvedValue(memberSession);
+    mockedUploadCurrentAvatar.mockResolvedValue(updatedSession);
     const user = userEvent.setup();
 
     render(
@@ -482,13 +484,62 @@ describe("CampusAccountProvider", () => {
     await user.click(screen.getByRole("button", { name: "Avatar ekle" }));
 
     expect(
-      screen.getByText("data:image/png;base64,AA=="),
+      await screen.findByText("/v1/users/kampuslu35/avatar"),
     ).toBeInTheDocument();
-    expect(
-      localStorage.getItem(
-        `kampus-avatar-draft-v1:${memberSession.user.id}`,
-      ),
-    ).toBe("data:image/png;base64,AA==");
+    expect(mockedUploadCurrentAvatar).toHaveBeenCalledOnce();
+  });
+
+  it("surfaces an avatar upload failure without signing the user out", async () => {
+    mockedGetCurrentSession.mockResolvedValue(memberSession);
+    mockedUploadCurrentAvatar.mockRejectedValue(
+      new AuthClientError(400, {
+        code: "INVALID_REQUEST",
+        message: "Görsel işlenemedi.",
+        fieldErrors: {},
+      }),
+    );
+    const user = userEvent.setup();
+
+    render(
+      <CampusAccountProvider>
+        <AccountConsumer />
+      </CampusAccountProvider>,
+    );
+
+    await screen.findByText("no-avatar");
+    await user.click(screen.getByRole("button", { name: "Avatar ekle" }));
+
+    expect(await screen.findByText("Görsel işlenemedi.")).toBeInTheDocument();
+    expect(screen.getAllByText("member")).toHaveLength(2);
+    expect(screen.getByText("no-avatar")).toBeInTheDocument();
+  });
+
+  it("removes the current avatar through the API", async () => {
+    const sessionWithAvatar = {
+      ...memberSession,
+      user: {
+        ...memberSession.user,
+        profile: {
+          ...memberSession.user.profile,
+          avatarUrl: "/v1/users/kampuslu35/avatar",
+        },
+      },
+    };
+    mockedGetCurrentSession.mockResolvedValue(sessionWithAvatar);
+    mockedRemoveCurrentAvatar.mockResolvedValue(memberSession);
+    const user = userEvent.setup();
+
+    render(
+      <CampusAccountProvider>
+        <AccountConsumer />
+      </CampusAccountProvider>,
+    );
+
+    await screen.findByText("/v1/users/kampuslu35/avatar");
+    await user.click(screen.getByRole("button", { name: "Avatar kaldır" }));
+
+    expect(await screen.findByText("no-avatar")).toBeInTheDocument();
+    expect(mockedRemoveCurrentAvatar).toHaveBeenCalledOnce();
   });
 
   it("hydrates the read-only guest returned by the API", async () => {

@@ -159,7 +159,7 @@ export function CampusFollowProvider({
       detail: [profile.department, profile.year]
         .filter(Boolean)
         .join(" · "),
-      avatarDataUrl: profile.avatarDataUrl,
+      avatarDataUrl: profile.avatarUrl ?? undefined,
     }),
     [profile],
   );

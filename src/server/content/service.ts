@@ -12,6 +12,7 @@ import {
   inArray,
   isNull,
   lt,
+  notExists,
   or,
   sql,
   type SQL,
@@ -32,6 +33,7 @@ import { getDatabase } from "@/server/db/client";
 import { getMediaStorage } from "@/server/media/storage";
 import { resolveGiphyGif } from "@/server/giphy/client";
 import {
+  blocks,
   comments,
   listings,
   mediaAssets,
@@ -748,6 +750,17 @@ export async function listContentPosts(
   const filters: SQL[] = [
     isNull(posts.deletedAt),
     isNull(users.deletedAt),
+    notExists(
+      getDatabase()
+        .select({ blockedId: blocks.blockedId })
+        .from(blocks)
+        .where(
+          and(
+            eq(blocks.blockerId, viewerId),
+            eq(blocks.blockedId, posts.authorId),
+          ),
+        ),
+    ),
   ];
   const likeCount = sql<number>`(
     select count(*)::int

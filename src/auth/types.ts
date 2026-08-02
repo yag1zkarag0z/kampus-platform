@@ -6,7 +6,7 @@ export type AuthProfile = {
   department: string;
   year: string;
   bio: string;
-  avatarDataUrl?: string;
+  avatarUrl: string | null;
   joinedLabel: string;
 };
 

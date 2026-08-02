@@ -1,11 +1,15 @@
 import "server-only";
 
+import { randomBytes, randomInt, randomUUID } from "node:crypto";
+
 import { and, eq, isNull } from "drizzle-orm";
 
 import { reservedCampusUsernames } from "@/data/campusAccountRules";
 import { AuthError } from "@/server/auth/errors";
 import { getDatabase } from "@/server/db/client";
-import { userSettings, users } from "@/server/db/schema";
+import { sessions, userSettings, users } from "@/server/db/schema";
+import { processImage } from "@/server/media/service";
+import { getMediaStorage } from "@/server/media/storage";
 
 import {
   getCampusAcademicIssues,
@@ -62,6 +66,14 @@ function userNotFoundError() {
   );
 }
 
+function avatarNotFoundError() {
+  return new AuthError(
+    "AVATAR_NOT_FOUND",
+    "Profil fotoğrafı bulunamadı veya artık görüntülenemiyor.",
+    { status: 404 },
+  );
+}
+
 function usernameTakenError(message: string) {
   return new AuthError("USERNAME_TAKEN", message, {
     fieldErrors: {
@@ -89,6 +101,21 @@ function formatJoinedLabel(createdAt: Date) {
     month: "long",
     year: "numeric",
   }).format(createdAt);
+}
+
+function tombstoneEmail() {
+  return `${Date.now()}${randomInt(100_000, 999_999)}@stu.yasar.edu.tr`;
+}
+
+function tombstoneUsername() {
+  return `silinmis.${randomBytes(6).toString("hex")}`;
+}
+
+function avatarUrlFor(
+  username: string,
+  avatarObjectKey: string | null,
+) {
+  return avatarObjectKey ? `/v1/users/${username}/avatar` : null;
 }
 
 export async function updateAccountProfile(
@@ -243,6 +270,7 @@ export async function getPublicAccountProfile(username: string) {
       bio: users.bio,
       role: users.role,
       createdAt: users.createdAt,
+      avatarObjectKey: users.avatarObjectKey,
       showDepartment: userSettings.showDepartment,
     })
     .from(users)
@@ -268,8 +296,196 @@ export async function getPublicAccountProfile(username: string) {
     displayName: profile.displayName,
     bio: profile.bio,
     role: profile.role,
+    avatarUrl: avatarUrlFor(profile.username, profile.avatarObjectKey),
     joinedLabel: formatJoinedLabel(profile.createdAt),
     department: showDepartment ? profile.department : null,
     year: showDepartment ? profile.year : null,
   };
+}
+
+export async function deleteAccount(userId: string, now = new Date()) {
+  const database = getDatabase();
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    let previousAvatarObjectKey: string | null = null;
+
+    try {
+      await database.transaction(async (transaction) => {
+        const [activeUser] = await transaction
+          .select({
+            id: users.id,
+            avatarObjectKey: users.avatarObjectKey,
+          })
+          .from(users)
+          .where(
+            and(
+              eq(users.id, userId),
+              eq(users.status, "active"),
+              isNull(users.deletedAt),
+            ),
+          )
+          .for("update")
+          .limit(1);
+
+        if (!activeUser) {
+          throw authenticationRequiredError();
+        }
+
+        previousAvatarObjectKey = activeUser.avatarObjectKey;
+
+        await transaction
+          .update(users)
+          .set({
+            email: tombstoneEmail(),
+            username: tombstoneUsername(),
+            displayName: "Silinmiş kullanıcı",
+            bio: "",
+            avatarObjectKey: null,
+            deletedAt: now,
+          })
+          .where(eq(users.id, userId));
+
+        await transaction
+          .update(sessions)
+          .set({ revokedAt: now })
+          .where(
+            and(
+              eq(sessions.userId, userId),
+              isNull(sessions.revokedAt),
+            ),
+          );
+      });
+
+      if (previousAvatarObjectKey) {
+        await getMediaStorage().delete(previousAvatarObjectKey);
+      }
+
+      return;
+    } catch (error) {
+      if (error instanceof AuthError) {
+        throw error;
+      }
+
+      const postgresError = findPostgresError(error);
+      const isTombstoneCollision =
+        postgresError?.code === "23505" &&
+        (postgresError.constraint === "users_email_unique" ||
+          postgresError.constraint === "users_username_unique");
+
+      if (!isTombstoneCollision || attempt === 2) {
+        throw error;
+      }
+    }
+  }
+}
+
+export async function uploadAccountAvatar(userId: string, file: File) {
+  const processed = await processImage(file);
+  const storageKey = `images/${userId}/${randomUUID()}.webp`;
+  const storage = getMediaStorage();
+
+  await storage.put(storageKey, processed.body, "image/webp");
+
+  let previousAvatarObjectKey: string | null = null;
+
+  try {
+    await getDatabase().transaction(async (transaction) => {
+      const [activeUser] = await transaction
+        .select({ avatarObjectKey: users.avatarObjectKey })
+        .from(users)
+        .where(
+          and(
+            eq(users.id, userId),
+            eq(users.status, "active"),
+            isNull(users.deletedAt),
+          ),
+        )
+        .for("update")
+        .limit(1);
+
+      if (!activeUser) {
+        throw authenticationRequiredError();
+      }
+
+      previousAvatarObjectKey = activeUser.avatarObjectKey;
+
+      await transaction
+        .update(users)
+        .set({ avatarObjectKey: storageKey })
+        .where(eq(users.id, userId));
+    });
+  } catch (error) {
+    await storage.delete(storageKey).catch(() => undefined);
+    throw error;
+  }
+
+  if (previousAvatarObjectKey) {
+    await storage.delete(previousAvatarObjectKey);
+  }
+}
+
+export async function removeAccountAvatar(userId: string) {
+  const previousAvatarObjectKey = await getDatabase().transaction(
+    async (transaction) => {
+      const [activeUser] = await transaction
+        .select({ avatarObjectKey: users.avatarObjectKey })
+        .from(users)
+        .where(
+          and(
+            eq(users.id, userId),
+            eq(users.status, "active"),
+            isNull(users.deletedAt),
+          ),
+        )
+        .for("update")
+        .limit(1);
+
+      if (!activeUser) {
+        throw authenticationRequiredError();
+      }
+
+      if (!activeUser.avatarObjectKey) {
+        return null;
+      }
+
+      await transaction
+        .update(users)
+        .set({ avatarObjectKey: null })
+        .where(eq(users.id, userId));
+
+      return activeUser.avatarObjectKey;
+    },
+  );
+
+  if (previousAvatarObjectKey) {
+    await getMediaStorage().delete(previousAvatarObjectKey);
+  }
+}
+
+export async function getAccountAvatar(username: string) {
+  const normalizedUsername = username.trim().toLowerCase();
+
+  const [user] = await getDatabase()
+    .select({ avatarObjectKey: users.avatarObjectKey })
+    .from(users)
+    .where(
+      and(
+        eq(users.username, normalizedUsername),
+        eq(users.status, "active"),
+        isNull(users.deletedAt),
+      ),
+    )
+    .limit(1);
+
+  if (!user?.avatarObjectKey) {
+    throw avatarNotFoundError();
+  }
+
+  const stored = await getMediaStorage().get(user.avatarObjectKey);
+
+  if (!stored) {
+    throw avatarNotFoundError();
+  }
+
+  return stored;
 }

@@ -6,11 +6,12 @@ import {
   requireActiveMember,
 } from "@/server/auth/authorization";
 import { AuthError } from "@/server/auth/errors";
-import { updateAccountProfile } from "@/server/account/service";
+import { deleteAccount, updateAccountProfile } from "@/server/account/service";
 
-import { PATCH } from "./route";
+import { DELETE, PATCH } from "./route";
 
 vi.mock("@/server/account/service", () => ({
+  deleteAccount: vi.fn(),
   updateAccountProfile: vi.fn(),
 }));
 
@@ -22,6 +23,7 @@ vi.mock("@/server/auth/authorization", () => ({
 const mockedUpdateAccountProfile = vi.mocked(
   updateAccountProfile,
 );
+const mockedDeleteAccount = vi.mocked(deleteAccount);
 const mockedRefreshActiveMemberSession = vi.mocked(
   refreshActiveMemberSession,
 );
@@ -39,6 +41,7 @@ const memberState = {
       department: "Yazılım Mühendisliği",
       year: "3. sınıf",
       bio: "Yeni bio",
+      avatarUrl: null,
       joinedLabel: "Temmuz 2026",
     },
     settings: {
@@ -66,6 +69,16 @@ function createRequest(
   });
 }
 
+function createDeleteRequest(origin = "http://localhost:3000") {
+  return new NextRequest("http://localhost:3000/v1/me/profile", {
+    method: "DELETE",
+    headers: {
+      Cookie: "kampus_session=m1.raw-token",
+      Origin: origin,
+    },
+  });
+}
+
 describe("PATCH /v1/me/profile", () => {
   beforeEach(() => {
     process.env.AUTH_SECRET =
@@ -86,6 +99,7 @@ describe("PATCH /v1/me/profile", () => {
     mockedUpdateAccountProfile
       .mockReset()
       .mockResolvedValue(undefined);
+    mockedDeleteAccount.mockReset().mockResolvedValue(undefined);
     mockedRefreshActiveMemberSession
       .mockReset()
       .mockResolvedValue(memberState);
@@ -155,5 +169,64 @@ describe("PATCH /v1/me/profile", () => {
     expect(response.status).toBe(403);
     expect(mockedRequireActiveMember).not.toHaveBeenCalled();
     expect(mockedUpdateAccountProfile).not.toHaveBeenCalled();
+  });
+});
+
+describe("DELETE /v1/me/profile", () => {
+  beforeEach(() => {
+    process.env.AUTH_SECRET =
+      "kampus-test-secret-that-is-at-least-32-characters";
+    process.env.APP_ORIGIN = "http://localhost:3000";
+    process.env.SMTP_HOST = "127.0.0.1";
+    process.env.SMTP_PORT = "1025";
+    process.env.SMTP_SECURE = "false";
+    process.env.SMTP_USER = "";
+    process.env.SMTP_PASSWORD = "";
+    process.env.EMAIL_FROM = "KAMPUS Test <no-reply@kampus.local>";
+
+    mockedRequireActiveMember.mockReset().mockResolvedValue({
+      cookieValue: "m1.raw-token",
+      state: memberState,
+      userId: memberState.user.id,
+    });
+    mockedDeleteAccount.mockReset().mockResolvedValue(undefined);
+  });
+
+  it("deletes the account and clears the session cookie", async () => {
+    const response = await DELETE(createDeleteRequest());
+
+    expect(mockedDeleteAccount).toHaveBeenCalledWith(
+      memberState.user.id,
+    );
+    expect(response.status).toBe(204);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+
+    const clearedCookie = response.cookies.get("kampus_session");
+    expect(clearedCookie?.value).toBe("");
+  });
+
+  it("requires an active member session", async () => {
+    mockedRequireActiveMember.mockRejectedValueOnce(
+      new AuthError(
+        "AUTHENTICATION_REQUIRED",
+        "Devam etmek için giriş yapmalısın.",
+        { status: 401 },
+      ),
+    );
+
+    const response = await DELETE(createDeleteRequest());
+
+    expect(response.status).toBe(401);
+    expect(mockedDeleteAccount).not.toHaveBeenCalled();
+  });
+
+  it("rejects a cross-origin delete before authorization", async () => {
+    const response = await DELETE(
+      createDeleteRequest("https://attacker.example"),
+    );
+
+    expect(response.status).toBe(403);
+    expect(mockedRequireActiveMember).not.toHaveBeenCalled();
+    expect(mockedDeleteAccount).not.toHaveBeenCalled();
   });
 });

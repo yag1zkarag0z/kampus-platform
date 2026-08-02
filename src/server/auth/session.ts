@@ -130,6 +130,9 @@ function toAuthenticatedUser(
       department: row.department,
       year: row.yearLabel,
       bio: row.bio,
+      avatarUrl: row.avatarObjectKey
+        ? `/v1/users/${row.username}/avatar`
+        : null,
       joinedLabel: new Intl.DateTimeFormat("tr-TR", {
         month: "long",
         year: "numeric",

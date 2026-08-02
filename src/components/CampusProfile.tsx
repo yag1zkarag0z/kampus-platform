@@ -187,7 +187,7 @@ export default function CampusProfile() {
         <div className="px-4 pt-7 pb-6 sm:px-6 sm:pt-9 sm:pb-8">
           <div className="flex flex-col gap-5 min-[400px]:flex-row min-[400px]:items-start">
             <Avatar
-              avatarDataUrl={profile.avatarDataUrl}
+              avatarUrl={profile.avatarUrl}
               displayName={profile.displayName}
             />
 
@@ -458,17 +458,17 @@ export default function CampusProfile() {
 }
 
 function Avatar({
-  avatarDataUrl,
+  avatarUrl,
   displayName,
 }: {
-  avatarDataUrl?: string;
+  avatarUrl: string | null;
   displayName: string;
 }) {
   return (
     <div className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-full border border-white/11 bg-[#22252a] text-2xl font-black text-[#ff7a45] sm:size-28">
-      {avatarDataUrl ? (
+      {avatarUrl ? (
         <Image
-          src={avatarDataUrl}
+          src={avatarUrl}
           alt={`${displayName} profil fotoğrafı`}
           fill
           sizes="(min-width: 640px) 112px, 96px"

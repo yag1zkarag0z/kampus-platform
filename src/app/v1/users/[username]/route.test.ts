@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getPublicAccountProfile } from "@/server/account/service";
 import { requireActiveMember } from "@/server/auth/authorization";
 import { AuthError } from "@/server/auth/errors";
+import { getFollowSummary } from "@/server/social/service";
 
 import { GET } from "./route";
 
@@ -15,10 +16,21 @@ vi.mock("@/server/auth/authorization", () => ({
   requireActiveMember: vi.fn(),
 }));
 
+vi.mock("@/server/social/service", () => ({
+  getFollowSummary: vi.fn(),
+}));
+
 const mockedGetPublicAccountProfile = vi.mocked(
   getPublicAccountProfile,
 );
 const mockedRequireActiveMember = vi.mocked(requireActiveMember);
+const mockedGetFollowSummary = vi.mocked(getFollowSummary);
+
+const followSummary = {
+  followerCount: 3,
+  followingCount: 5,
+  isFollowing: false,
+};
 
 const publicProfile = {
   id: "650e1d64-2b2e-42dd-b9bd-ea268e91588e",
@@ -26,6 +38,7 @@ const publicProfile = {
   displayName: "Test User",
   bio: "Kısa bio",
   role: "member" as const,
+  avatarUrl: null,
   joinedLabel: "Temmuz 2026",
   department: null,
   year: null,
@@ -43,6 +56,7 @@ const memberState = {
       department: "Yazılım Mühendisliği",
       year: "2. sınıf",
       bio: "",
+      avatarUrl: null,
       joinedLabel: "Temmuz 2026",
     },
     settings: {
@@ -76,9 +90,10 @@ describe("GET /v1/users/[username]", () => {
     mockedGetPublicAccountProfile
       .mockReset()
       .mockResolvedValue(publicProfile);
+    mockedGetFollowSummary.mockReset().mockResolvedValue(followSummary);
   });
 
-  it("returns the public profile to an active member without requiring an Origin header", async () => {
+  it("returns the public profile merged with the follow summary to an active member without requiring an Origin header", async () => {
     const request = createRequest();
     const response = await GET(
       request,
@@ -89,10 +104,14 @@ describe("GET /v1/users/[username]", () => {
     expect(mockedGetPublicAccountProfile).toHaveBeenCalledWith(
       "test.user",
     );
+    expect(mockedGetFollowSummary).toHaveBeenCalledWith(
+      memberState.user.id,
+      "test.user",
+    );
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
     await expect(response.json()).resolves.toEqual({
-      data: publicProfile,
+      data: { ...publicProfile, ...followSummary },
     });
   });
 

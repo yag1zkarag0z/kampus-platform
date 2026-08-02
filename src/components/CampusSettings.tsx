@@ -61,13 +61,12 @@ export default function CampusSettings() {
   const router = useRouter();
   const { confirm: confirmAction, showToast } = useFeedback();
   const {
-    accountId,
     profile,
     settings,
     isHydrated,
     updateSettings,
-    resetAccount,
     signOut,
+    deleteAccount,
   } = useCampusAccount();
   const { resetCampusData } = useCampusData();
   const {
@@ -180,32 +179,18 @@ export default function CampusSettings() {
       return;
     }
 
-    const accountIdToReset = accountId;
     isResettingLocalDataRef.current = true;
     setIsResettingLocalData(true);
 
     try {
-      await signOut();
+      await deleteAccount();
       resetCampusData();
       resetModeration();
-      const accountDraftWasRemoved = accountIdToReset
-        ? resetAccount(accountIdToReset)
-        : true;
-
       setIsDeleteDialogOpen(false);
-
-      if (!accountDraftWasRemoved) {
-        showToast({
-          message:
-            "Oturum kapatıldı; ancak geçici profil fotoğrafı tarayıcıdan temizlenemedi.",
-          tone: "error",
-        });
-      }
-
       router.replace("/kayit");
     } catch {
       showToast({
-        message: "Oturum kapatılamadı. Lütfen yeniden dene.",
+        message: "Hesabın silinemedi. Lütfen yeniden dene.",
         tone: "error",
       });
     } finally {
@@ -343,12 +328,12 @@ export default function CampusSettings() {
                   aria-hidden="true"
                   className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-full border border-white/12 bg-white/7 bg-cover bg-center text-sm font-black text-[#ff7a45] sm:size-16"
                   style={
-                    profile.avatarDataUrl
-                      ? { backgroundImage: `url("${profile.avatarDataUrl}")` }
+                    profile.avatarUrl
+                      ? { backgroundImage: `url("${profile.avatarUrl}")` }
                       : undefined
                   }
                 >
-                  {!profile.avatarDataUrl && getInitials(profile.displayName)}
+                  {!profile.avatarUrl && getInitials(profile.displayName)}
                 </div>
 
                 <div className="min-w-0 flex-1">
@@ -509,6 +494,7 @@ export default function CampusSettings() {
                       <CampusAuthorAvatar
                         author={user.author}
                         authorId={user.authorId}
+                        avatarUrl={user.avatarUrl}
                         size="sm"
                       />
                       <div className="min-w-0 flex-1">
@@ -521,11 +507,15 @@ export default function CampusSettings() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => {
-                          unblockUser(user.authorId);
+                        onClick={async () => {
+                          const succeeded = await unblockUser(
+                            user.authorId,
+                          );
                           showToast({
-                            message: `${user.author} için engel kaldırıldı.`,
-                            tone: "success",
+                            message: succeeded
+                              ? `${user.author} için engel kaldırıldı.`
+                              : "Engel kaldırılamadı. Lütfen yeniden dene.",
+                            tone: succeeded ? "success" : "error",
                           });
                         }}
                         className={`min-h-11 shrink-0 cursor-pointer px-3 text-xs font-black text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/8 ${focusRing}`}
@@ -564,15 +554,16 @@ export default function CampusSettings() {
 
             <SettingsSection
               eyebrow="Tehlikeli alan"
-              title="Yerel verileri sıfırla"
-              description="Bu işlem bu cihazda saklanan frontend verilerini temizler."
+              title="Hesabımı sil"
+              description="Bu işlem hesabını kalıcı olarak devre dışı bırakır."
               danger
             >
               <p className="text-xs leading-5 text-white/62">
-                Geçici profil fotoğrafın, bu cihazda oluşturduğun yerel konu
-                ve yorumlar, kaydettiklerin ve moderasyon tercihlerin
-                temizlenir. Sunucuda kayıtlı profil bilgilerin ve hesap
-                tercihlerin silinmez.
+                Profil bilgilerin (isim, biyografi, e-posta, kullanıcı adı,
+                profil fotoğrafı) sunucuda anonimleştirilir ve hesabına bir
+                daha giriş yapılamaz. Bu cihazdaki geçici veriler de
+                temizlenir. Gönderilerin ve yorumların kalır, ama yazarları
+                “Silinmiş kullanıcı” olarak görünür.
               </p>
               <button
                 ref={deleteTriggerRef}
@@ -581,7 +572,7 @@ export default function CampusSettings() {
                 disabled={!isHydrated}
                 className={`mt-4 inline-flex min-h-11 w-full items-center justify-center border border-[#ffb199]/42 px-4 text-xs font-black text-[#ffb199] transition-colors hover:border-[#ffb199] hover:bg-[#ffb199] hover:text-[#12100e] disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto ${focusRing}`}
               >
-                Yerel verileri sıfırla
+                Hesabımı sil
               </button>
             </SettingsSection>
           </div>
@@ -615,14 +606,14 @@ export default function CampusSettings() {
                   id="delete-account-title"
                   className="mt-1 text-xl font-black tracking-[-0.04em] sm:text-2xl"
                 >
-                  Bu cihazdaki verileri sıfırlamak istediğine emin misin?
+                  Hesabını silmek istediğine emin misin?
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={closeDeleteDialog}
                 disabled={isResettingLocalData}
-                aria-label="Veri sıfırlama penceresini kapat"
+                aria-label="Hesap silme penceresini kapat"
                 className={`grid size-11 shrink-0 place-items-center rounded-full text-white/55 transition-colors hover:bg-white/8 hover:text-white ${focusRing}`}
               >
                 <CloseIcon />
@@ -633,20 +624,24 @@ export default function CampusSettings() {
               id="delete-account-description"
               className="mt-4 text-sm leading-6 text-white/68"
             >
-              <p>Onayladığında bu tarayıcıdaki:</p>
+              <p>Onayladığında:</p>
               <ul className="mt-2 grid gap-1.5 pl-5">
                 <li className="list-disc">
-                  Geçici profil fotoğrafın,
+                  Profilin (isim, biyografi, e-posta, kullanıcı adı, profil
+                  fotoğrafı) sunucuda anonimleştirilir,
                 </li>
                 <li className="list-disc">
-                  Oluşturduğun konu ve yorumlar,
+                  Tüm oturumların kapatılır ve hesabına bir daha giriş
+                  yapılamaz,
                 </li>
                 <li className="list-disc">
-                  Beğeni ve kaydetme tercihlerin temizlenir.
+                  Bu cihazdaki yerel konu ve yorumlar, kaydettiklerin ve
+                  moderasyon tercihlerin temizlenir.
                 </li>
               </ul>
               <p className="mt-3 font-bold text-[#ffb199]">
-                Sunucudaki profil bilgilerin ve hesap tercihlerin korunur.
+                Gönderilerin ve yorumların kalır; yazarları “Silinmiş
+                kullanıcı” olarak görünür. Bu işlem geri alınamaz.
               </p>
             </div>
 
@@ -713,8 +708,8 @@ export default function CampusSettings() {
                   className={`inline-flex min-h-11 items-center justify-center bg-[#ffb199] px-4 text-xs font-black text-[#12100e] transition-colors hover:bg-[#ffb199]/90 disabled:cursor-not-allowed disabled:bg-[#ffb199]/35 disabled:text-white/60 ${focusRing}`}
                 >
                   {isResettingLocalData
-                    ? "Oturum kapatılıyor…"
-                    : "Verileri sıfırla"}
+                    ? "Hesap siliniyor…"
+                    : "Hesabımı sil"}
                 </button>
               </div>
             </form>

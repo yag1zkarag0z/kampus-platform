@@ -53,7 +53,7 @@ const faqItems = [
   {
     question: "Bir sorun olursa ya da fikrim olursa ne yapmalıyım?",
     answer:
-      "Direkt bana ulaşabilirsin.Email atman yeterli.",
+      "Direkt aşağıdaki instagram kartından dm atabilirsin.",
   },
 ];
 
