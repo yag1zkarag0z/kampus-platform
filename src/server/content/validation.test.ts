@@ -305,6 +305,7 @@ describe("content validation", () => {
   it("parses bounded feed filters and rejects malformed queries", () => {
     expect(parseContentInput(feedQuerySchema, {})).toEqual({
       sort: "newest",
+      scope: "global",
       limit: 20,
     });
     expect(
@@ -318,6 +319,7 @@ describe("content validation", () => {
     ).toEqual({
       category: "lost_found",
       sort: "popular",
+      scope: "global",
       author: "campus.user",
       cursor: "eyJpZCI6IjEyMyJ9",
       limit: 50,
@@ -326,6 +328,7 @@ describe("content validation", () => {
     for (const invalidQuery of [
       { category: "unknown" },
       { sort: "oldest" },
+      { scope: "mine" },
       { limit: "0" },
       { limit: "51" },
       { limit: "1.5" },

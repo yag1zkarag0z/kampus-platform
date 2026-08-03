@@ -139,6 +139,7 @@ describe("GET /v1/posts", () => {
 
     expect(mockedListContentPosts).toHaveBeenCalledWith(memberId, {
       sort: "newest",
+      scope: "global",
       limit: 20,
     });
     expect(response.status).toBe(200);
@@ -162,6 +163,7 @@ describe("GET /v1/posts", () => {
     expect(mockedListContentPosts).toHaveBeenCalledWith(memberId, {
       category: "lost_found",
       sort: "newest",
+      scope: "global",
       author: "campus.user",
       cursor: "abc_123",
       limit: 50,
@@ -195,6 +197,18 @@ describe("GET /v1/posts", () => {
 
     expect(mockedListContentPosts).toHaveBeenCalledWith(memberId, {
       sort: "popular",
+      scope: "global",
+      limit: 20,
+    });
+    expect(response.status).toBe(200);
+  });
+
+  it("forwards the following feed scope", async () => {
+    const response = await GET(createGetRequest("?scope=following"));
+
+    expect(mockedListContentPosts).toHaveBeenCalledWith(memberId, {
+      sort: "newest",
+      scope: "following",
       limit: 20,
     });
     expect(response.status).toBe(200);

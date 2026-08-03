@@ -37,7 +37,7 @@ describe("content API client", () => {
     await listContentPosts();
 
     expect(mockedRequestApiPayload).toHaveBeenCalledWith(
-      "/v1/posts?sort=newest&limit=50",
+      "/v1/posts?sort=newest&scope=global&limit=50",
       {
         method: "GET",
         cache: "no-store",
@@ -54,7 +54,7 @@ describe("content API client", () => {
     });
 
     expect(mockedRequestApiPayload).toHaveBeenCalledWith(
-      "/v1/posts?sort=newest&limit=25&category=lost_found&author=campus.user&cursor=next_page-token",
+      "/v1/posts?sort=newest&scope=global&limit=25&category=lost_found&author=campus.user&cursor=next_page-token",
       {
         method: "GET",
         cache: "no-store",
@@ -134,7 +134,7 @@ describe("content API client", () => {
     await listContentPosts({ sort: "popular", limit: 20 });
 
     expect(mockedRequestApiPayload).toHaveBeenCalledWith(
-      "/v1/posts?sort=popular&limit=20",
+      "/v1/posts?sort=popular&scope=global&limit=20",
       {
         method: "GET",
         cache: "no-store",

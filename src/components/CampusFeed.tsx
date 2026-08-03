@@ -42,7 +42,6 @@ import {
   type CampusPostImage as CampusPostImageData,
 } from "@/data/campusPosts";
 import { useFeedback } from "@/components/FeedbackProvider";
-import { getMemberFollowing } from "@/social/client";
 
 type FeedView = "latest" | "following";
 
@@ -128,13 +127,15 @@ async function createQuickPostImage(
 export default function CampusFeed() {
   const router = useRouter();
   const { showToast } = useFeedback();
-  const { accountId, isGuest, profile, sessionMode } = useCampusAccount();
+  const { isGuest } = useCampusAccount();
   const {
     posts,
     isHydrated,
     hasMore,
     isLoadingMore,
     loadMore,
+    feedScope,
+    setFeedScope,
     createPost,
     toggleLike,
     toggleBookmark,
@@ -142,7 +143,8 @@ export default function CampusFeed() {
   const categoryMenuRef = useRef<HTMLDivElement>(null);
   const quickPostBodyRef = useRef<HTMLTextAreaElement>(null);
   const quickPostImageInputRef = useRef<HTMLInputElement>(null);
-  const [activeView, setActiveView] = useState<FeedView>("latest");
+  const activeView: FeedView =
+    feedScope === "following" ? "following" : "latest";
   const [activeCategory, setActiveCategory] =
     useState<CampusCategoryFilter>("Tümü");
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
@@ -161,56 +163,6 @@ export default function CampusFeed() {
   const [isPollEnabled, setIsPollEnabled] = useState(false);
   const [pollOptions, setPollOptions] = useState(["", ""]);
   const [pollError, setPollError] = useState("");
-  const [followingAuthorIds, setFollowingAuthorIds] = useState<Set<string>>(
-    new Set(),
-  );
-  const [isFollowingLoading, setIsFollowingLoading] = useState(false);
-
-  useEffect(() => {
-    let isCancelled = false;
-
-    if (sessionMode !== "member") {
-      queueMicrotask(() => {
-        if (!isCancelled) {
-          setFollowingAuthorIds(new Set());
-          setIsFollowingLoading(false);
-        }
-      });
-
-      return () => {
-        isCancelled = true;
-      };
-    }
-
-    queueMicrotask(() => {
-      if (!isCancelled) {
-        setIsFollowingLoading(true);
-      }
-    });
-
-    getMemberFollowing(profile.username)
-      .then((members) => {
-        if (!isCancelled) {
-          setFollowingAuthorIds(
-            new Set(members.map((member) => member.id)),
-          );
-        }
-      })
-      .catch(() => {
-        if (!isCancelled) {
-          setFollowingAuthorIds(new Set());
-        }
-      })
-      .finally(() => {
-        if (!isCancelled) {
-          setIsFollowingLoading(false);
-        }
-      });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [profile.username, sessionMode]);
 
   useEffect(() => {
     const closeCategoryMenu = (event: PointerEvent) => {
@@ -244,20 +196,11 @@ export default function CampusFeed() {
       activeCategory === "Tümü"
         ? posts
         : posts.filter((post) => post.category === activeCategory);
-    const filtered =
-      activeView === "following"
-        ? categoryPosts.filter(
-            (post) =>
-              post.authorId === LOCAL_ACCOUNT_OWNER_ID ||
-              (accountId && post.authorId === accountId) ||
-              (post.authorId && followingAuthorIds.has(post.authorId)),
-          )
-        : categoryPosts;
 
-    return [...filtered].sort(
+    return [...categoryPosts].sort(
       (first, second) => second.createdAt - first.createdAt,
     );
-  }, [accountId, activeCategory, activeView, followingAuthorIds, posts]);
+  }, [activeCategory, posts]);
 
   const changeFeedView = (view: FeedView) => {
     if (view === "following" && isGuest) {
@@ -272,7 +215,7 @@ export default function CampusFeed() {
       return;
     }
 
-    setActiveView(view);
+    setFeedScope(view === "following" ? "following" : "global");
   };
 
   const handleGuestComposerClick = () => {
@@ -489,7 +432,7 @@ export default function CampusFeed() {
         message: "Gönderin akışta paylaşıldı.",
         tone: "success",
       });
-      setActiveView("latest");
+      setFeedScope("global");
       setActiveCategory("Tümü");
     } catch {
       if (uploadedImageId) {
@@ -940,7 +883,7 @@ export default function CampusFeed() {
         </form>
       </div>
 
-      {activeView === "following" && isFollowingLoading ? (
+      {!isHydrated ? (
         <div
           role="status"
           className="grid min-h-64 place-items-center border-b border-white/12 px-4 py-14 text-center"
@@ -1170,7 +1113,7 @@ export default function CampusFeed() {
           <button
             type="button"
             onClick={() => {
-              setActiveView("latest");
+              setFeedScope("global");
               setActiveCategory("Tümü");
             }}
             className={`mt-3 inline-flex min-h-11 items-center text-sm font-bold text-[#ff7a45] underline decoration-[#ff7a45]/40 underline-offset-4 sm:text-base ${focusRing}`}

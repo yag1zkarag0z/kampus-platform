@@ -346,6 +346,7 @@ describe("CampusDataProvider", () => {
       2,
       {
         cursor: "cursor-page-2",
+        scope: "global",
       },
     );
     expect(result.current.posts.map((post) => post.id)).toEqual([

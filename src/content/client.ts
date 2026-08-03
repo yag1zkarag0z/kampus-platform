@@ -20,15 +20,18 @@ export function listContentPosts({
   cursor,
   limit = 50,
   sort = "newest",
+  scope = "global",
 }: {
   category?: CoreContentPostCategory;
   author?: string;
   cursor?: string;
   limit?: number;
   sort?: "newest" | "popular";
+  scope?: "global" | "following";
 } = {}) {
   const searchParams = new URLSearchParams({
     sort,
+    scope,
     limit: String(limit),
   });
 

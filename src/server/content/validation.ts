@@ -13,6 +13,7 @@ export const POST_CATEGORIES = [
 ] as const;
 
 export const POST_SORTS = ["newest", "popular"] as const;
+export const FEED_SCOPES = ["global", "following"] as const;
 
 const CONTENT_REQUIRED_MESSAGE =
   "Başlık veya gönderi metninden en az birini yazmalısın.";
@@ -406,6 +407,11 @@ export const feedQuerySchema = z
       })
       .default("newest"),
     author: usernameSchema.optional(),
+    scope: z
+      .enum(FEED_SCOPES, {
+        error: "Kapsam global veya following olmalıdır.",
+      })
+      .default("global"),
     cursor: z
       .string({ error: "Sayfalama anahtarı geçersiz." })
       .trim()

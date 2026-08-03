@@ -8,6 +8,7 @@ import {
   count,
   desc,
   eq,
+  exists,
   gte,
   inArray,
   isNull,
@@ -40,6 +41,7 @@ import {
 import {
   blocks,
   comments,
+  follows,
   listings,
   mediaAssets,
   postBookmarks,
@@ -70,7 +72,7 @@ export type {
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
-const CURSOR_VERSION = 2;
+const CURSOR_VERSION = 3;
 const COMMENT_CREATION_MINUTE_LIMIT = 20;
 const POST_COMMENT_TOTAL_LIMIT = 500;
 
@@ -79,6 +81,7 @@ type FeedCursor = {
   sort: FeedQueryInput["sort"];
   category: FeedQueryInput["category"] | null;
   author: string | null;
+  scope: FeedQueryInput["scope"];
   createdAt: Date;
   id: string;
   likeCount: number | null;
@@ -328,7 +331,7 @@ async function assertCommentCreationAllowed(
 
 function encodeFeedCursor(
   row: Pick<PostRow, "createdAt" | "id" | "likeCount">,
-  query: Pick<FeedQueryInput, "author" | "category" | "sort">,
+  query: Pick<FeedQueryInput, "author" | "category" | "sort" | "scope">,
 ) {
   return Buffer.from(
     JSON.stringify({
@@ -336,6 +339,7 @@ function encodeFeedCursor(
       sort: query.sort,
       category: query.category ?? null,
       author: query.author ?? null,
+      scope: query.scope,
       createdAt: row.createdAt.toISOString(),
       id: row.id,
       likeCount: query.sort === "popular" ? Number(row.likeCount) : null,
@@ -346,7 +350,7 @@ function encodeFeedCursor(
 
 function decodeFeedCursor(
   value: string,
-  query: Pick<FeedQueryInput, "author" | "category" | "sort">,
+  query: Pick<FeedQueryInput, "author" | "category" | "sort" | "scope">,
 ): FeedCursor {
   try {
     const decoded = JSON.parse(
@@ -365,6 +369,8 @@ function decodeFeedCursor(
         typeof decoded.category !== "string") ||
       !("author" in decoded) ||
       (decoded.author !== null && typeof decoded.author !== "string") ||
+      !("scope" in decoded) ||
+      (decoded.scope !== "global" && decoded.scope !== "following") ||
       !("createdAt" in decoded) ||
       typeof decoded.createdAt !== "string" ||
       !("id" in decoded) ||
@@ -383,6 +389,7 @@ function decodeFeedCursor(
       decoded.category !== (query.category ?? null) ||
       decoded.author !== (query.author ?? null) ||
       decoded.sort !== query.sort ||
+      decoded.scope !== query.scope ||
       (query.sort === "newest" && decoded.likeCount !== null) ||
       (query.sort === "popular" && decoded.likeCount === null)
     ) {
@@ -403,6 +410,7 @@ function decodeFeedCursor(
       sort: decoded.sort,
       category: decoded.category as FeedQueryInput["category"] | null,
       author: decoded.author,
+      scope: decoded.scope,
       createdAt,
       id: decoded.id,
       likeCount: decoded.likeCount,
@@ -784,6 +792,25 @@ export async function listContentPosts(
     filters.push(
       eq(users.username, query.author),
       eq(posts.isAnonymous, false),
+    );
+  }
+
+  if (query.scope === "following") {
+    filters.push(
+      or(
+        eq(posts.authorId, viewerId),
+        exists(
+          getDatabase()
+            .select({ followerId: follows.followerId })
+            .from(follows)
+            .where(
+              and(
+                eq(follows.followerId, viewerId),
+                eq(follows.followingId, posts.authorId),
+              ),
+            ),
+        ),
+      )!,
     );
   }
 

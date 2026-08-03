@@ -40,6 +40,7 @@ function newestFeed(
   return {
     limit: 20,
     sort: "newest",
+    scope: "global",
     ...overrides,
   };
 }
@@ -378,6 +379,7 @@ describe("content service with PostgreSQL", () => {
       category: "question",
       limit: 2,
       sort: "popular",
+      scope: "global",
     };
     const firstPage = await listContentPosts(viewer.id, query);
 
@@ -704,6 +706,161 @@ describe("content service with PostgreSQL", () => {
     expect(seenIds).toEqual(expectedIds);
     expect(new Set(seenIds).size).toBe(seenIds.length);
     expect(seenIds).not.toContain(headPost.id);
+  });
+
+  it("scopes the following feed to the viewer and followed authors, excluding blocked and suspended accounts", async () => {
+    const viewer = await insertUser("Following Viewer");
+    const followedAuthor = await insertUser("Followed Author");
+    const strangerAuthor = await insertUser("Stranger Author");
+    const blockedFollowedAuthor = await insertUser(
+      "Blocked Followed Author",
+    );
+    const suspendedFollowedAuthor = await insertUser(
+      "Suspended Followed Author",
+    );
+
+    await pool.query(
+      `insert into follows (follower_id, following_id) values
+         ($1, $2), ($1, $3), ($1, $4)`,
+      [
+        viewer.id,
+        followedAuthor.id,
+        blockedFollowedAuthor.id,
+        suspendedFollowedAuthor.id,
+      ],
+    );
+    await pool.query(
+      "insert into blocks (blocker_id, blocked_id) values ($1, $2)",
+      [viewer.id, blockedFollowedAuthor.id],
+    );
+
+    const ownPost = await createContentPost(viewer.id, {
+      category: "chat",
+      title: "Kendi gönderim",
+      body: "",
+      isAnonymous: false,
+    });
+    const followedPost = await createContentPost(followedAuthor.id, {
+      category: "chat",
+      title: "Takip ettiğim kişinin gönderisi",
+      body: "",
+      isAnonymous: false,
+    });
+    const strangerPost = await createContentPost(strangerAuthor.id, {
+      category: "chat",
+      title: "Takip etmediğim biri",
+      body: "",
+      isAnonymous: false,
+    });
+    const blockedFollowedPost = await createContentPost(
+      blockedFollowedAuthor.id,
+      {
+        category: "chat",
+        title: "Takip ettiğim ama engellediğim",
+        body: "",
+        isAnonymous: false,
+      },
+    );
+    const suspendedFollowedPost = await createContentPost(
+      suspendedFollowedAuthor.id,
+      {
+        category: "chat",
+        title: "Takip ettiğim ama askıya alınmış",
+        body: "",
+        isAnonymous: false,
+      },
+    );
+    await pool.query(
+      "update users set status = 'suspended', suspended_at = now() where id = $1",
+      [suspendedFollowedAuthor.id],
+    );
+
+    const globalFeed = await listContentPosts(viewer.id, newestFeed());
+    const globalIds = new Set(globalFeed.data.map((post) => post.id));
+    expect(globalIds.has(ownPost.id)).toBe(true);
+    expect(globalIds.has(followedPost.id)).toBe(true);
+    expect(globalIds.has(strangerPost.id)).toBe(true);
+    expect(globalIds.has(blockedFollowedPost.id)).toBe(false);
+    expect(globalIds.has(suspendedFollowedPost.id)).toBe(false);
+
+    const followingFeed = await listContentPosts(
+      viewer.id,
+      newestFeed({ scope: "following" }),
+    );
+
+    expect(
+      followingFeed.data.map((post) => post.id).sort(),
+    ).toEqual([ownPost.id, followedPost.id].sort());
+  });
+
+  it("paginates the following feed across pages without leaking unfollowed authors", async () => {
+    const viewer = await insertUser("Following Pagination Viewer");
+    const followedAuthor = await insertUser(
+      "Following Pagination Followed",
+    );
+    const strangerAuthor = await insertUser(
+      "Following Pagination Stranger",
+    );
+
+    await pool.query(
+      "insert into follows (follower_id, following_id) values ($1, $2)",
+      [viewer.id, followedAuthor.id],
+    );
+
+    const baseTime = Date.now() - 60_000;
+    const followedPostIds: string[] = [];
+
+    for (const [index, offset] of [4_000, 3_000, 2_000, 1_000].entries()) {
+      const post = await createContentPost(followedAuthor.id, {
+        category: "event",
+        title: `Takip gönderisi ${index}`,
+        body: "",
+        isAnonymous: false,
+      });
+
+      followedPostIds.push(post.id);
+      await pool.query(
+        "update posts set created_at = $2 where id = $1",
+        [post.id, new Date(baseTime + offset)],
+      );
+    }
+
+    await createContentPost(strangerAuthor.id, {
+      category: "event",
+      title: "Takip etmediğim gönderi",
+      body: "",
+      isAnonymous: false,
+    });
+
+    const expectedResult = await pool.query<{ id: string }>(
+      `select id from posts
+       where id = any($1::uuid[])
+       order by created_at desc, id desc`,
+      [followedPostIds],
+    );
+    const expectedIds = expectedResult.rows.map((row) => row.id);
+    const feedQuery = newestFeed({ scope: "following", limit: 2 });
+
+    const seenIds: string[] = [];
+    let cursor: string | null = null;
+    let pageCount = 0;
+
+    do {
+      const page = await listContentPosts(viewer.id, {
+        ...feedQuery,
+        ...(cursor ? { cursor } : {}),
+      });
+
+      seenIds.push(...page.data.map((post) => post.id));
+      cursor = page.page.nextCursor;
+      pageCount += 1;
+
+      if (pageCount > 5) {
+        throw new Error("Following feed pagination did not terminate.");
+      }
+    } while (cursor);
+
+    expect(seenIds).toEqual(expectedIds);
   });
 
   it("creates, updates, and tombstones a comment with owner checks", async () => {

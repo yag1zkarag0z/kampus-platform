@@ -107,12 +107,16 @@ export type UpdateCampusPostInput = {
   body: string;
 };
 
+type CampusFeedScope = "global" | "following";
+
 type CampusDataContextValue = {
   posts: CampusPost[];
   isHydrated: boolean;
   hasMore: boolean;
   isLoadingMore: boolean;
   loadMore: () => Promise<void>;
+  feedScope: CampusFeedScope;
+  setFeedScope: (scope: CampusFeedScope) => void;
   createPost: (input: CreateCampusPostInput) => Promise<string>;
   toggleLike: (postId: string) => void;
   toggleBookmark: (postId: string) => void;
@@ -411,6 +415,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [feedScope, setFeedScope] = useState<CampusFeedScope>("global");
   const isLoadingMoreRef = useRef(false);
   const feedRequestVersionRef = useRef(0);
   const interactionVersionsRef = useRef(new Map<string, number>());
@@ -441,7 +446,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         }
       });
 
-      void listContentPostsRequest()
+      void listContentPostsRequest({ scope: feedScope })
         .then((response) => {
           if (
             isCancelled ||
@@ -527,6 +532,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
     };
   }, [
     accountId,
+    feedScope,
     replacePosts,
     retrySession,
     sessionMode,
@@ -562,6 +568,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
     try {
       const response = await listContentPostsRequest({
         cursor: nextCursor,
+        scope: feedScope,
       });
 
       if (requestVersion !== feedRequestVersionRef.current) {
@@ -594,6 +601,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
     }
   }, [
     accountId,
+    feedScope,
     hasMore,
     nextCursor,
     retrySession,
@@ -1402,7 +1410,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
     setHasMore(false);
     setIsLoadingMore(false);
 
-    void listContentPostsRequest()
+    void listContentPostsRequest({ scope: feedScope })
       .then((response) => {
         if (requestVersion !== feedRequestVersionRef.current) {
           return;
@@ -1427,7 +1435,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
           void retrySession();
         }
       });
-  }, [replacePosts, retrySession, sessionMode]);
+  }, [feedScope, replacePosts, retrySession, sessionMode]);
 
   const visiblePosts = useMemo(() => {
     const accountDetail = settings.showDepartment
@@ -1519,6 +1527,8 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
       hasMore: !isGuest && hasMore,
       isLoadingMore: !isGuest && isLoadingMore,
       loadMore,
+      feedScope,
+      setFeedScope,
       createPost,
       toggleLike,
       toggleBookmark,
@@ -1541,6 +1551,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
       hasMore,
       isLoadingMore,
       loadMore,
+      feedScope,
       createPost,
       toggleLike,
       toggleBookmark,

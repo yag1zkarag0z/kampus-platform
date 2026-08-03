@@ -272,6 +272,7 @@ describe("block routes with PostgreSQL", () => {
     const beforeBlock = await listContentPosts(viewer.id, {
       limit: 20,
       sort: "newest",
+      scope: "global",
     });
     expect(
       beforeBlock.data.some(
@@ -300,6 +301,7 @@ describe("block routes with PostgreSQL", () => {
     const afterBlock = await listContentPosts(viewer.id, {
       limit: 20,
       sort: "newest",
+      scope: "global",
     });
     expect(
       afterBlock.data.some(
