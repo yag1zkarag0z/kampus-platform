@@ -127,6 +127,25 @@ describe("CampusSessionGate", () => {
     },
   );
 
+  it("lets a guest open follow suggestions", () => {
+    gateState.pathname = "/takip";
+    Object.assign(gateState.account, {
+      isSignedIn: true,
+      isGuest: true,
+    });
+
+    render(
+      <CampusSessionGate>
+        <p>Takip önerileri</p>
+      </CampusSessionGate>,
+    );
+
+    act(() => vi.advanceTimersByTime(1_280));
+
+    expect(gateState.replace).not.toHaveBeenCalled();
+    expect(screen.getByText("Takip önerileri")).toBeInTheDocument();
+  });
+
   it("does not let a regular member open the admin panel", () => {
     gateState.pathname = "/admin";
 

@@ -128,6 +128,9 @@ export const userSettings = pgTable("user_settings", {
   notifyAnnouncements: boolean("notify_announcements")
     .default(true)
     .notNull(),
+  notifyComments: boolean("notify_comments").default(true).notNull(),
+  notifyFollows: boolean("notify_follows").default(true).notNull(),
+  notifyMentions: boolean("notify_mentions").default(true).notNull(),
   emailNotifications: boolean("email_notifications").default(true).notNull(),
 });
 

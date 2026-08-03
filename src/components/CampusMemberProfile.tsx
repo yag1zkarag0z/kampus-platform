@@ -23,6 +23,7 @@ import {
   type CampusComment,
   type CampusPost,
 } from "@/data/campusPosts";
+import { campusFollowMembers } from "@/data/campusFollows";
 
 type MemberProfileTab = "posts" | "comments";
 type AuthoredComment = {
@@ -37,9 +38,14 @@ function authorMatchesUsername(
   author: CampusAuthorReference,
   username: string,
   currentUsername: string,
+  expectedAuthorId?: string,
 ) {
   if (isAnonymousCampusAuthor(author)) {
     return false;
+  }
+
+  if (expectedAuthorId && author.authorId === expectedAuthorId) {
+    return true;
   }
 
   if (author.authorId === LOCAL_ACCOUNT_OWNER_ID) {
@@ -100,6 +106,15 @@ export default function CampusMemberProfile({
   const currentUsername = normalizeCampusProfileUsername(
     profile.username,
   );
+  const suggestedMember = useMemo(
+    () =>
+      campusFollowMembers.find(
+        (member) =>
+          normalizeCampusProfileUsername(member.username) === username,
+      ),
+    [username],
+  );
+  const suggestedAuthorId = suggestedMember?.authorId;
   const isSelf =
     sessionMode === "member" && username === currentUsername;
   const isOfficial = username === "kampus";
@@ -122,7 +137,14 @@ export default function CampusMemberProfile({
   );
   const firstVisibleReference = (() => {
     for (const post of posts) {
-      if (authorMatchesUsername(post, username, currentUsername)) {
+      if (
+        authorMatchesUsername(
+          post,
+          username,
+          currentUsername,
+          suggestedAuthorId,
+        )
+      ) {
         return {
           author: post.author,
           authorId: post.authorId,
@@ -131,7 +153,12 @@ export default function CampusMemberProfile({
       }
 
       const comment = post.comments.find((item) =>
-        authorMatchesUsername(item, username, currentUsername),
+        authorMatchesUsername(
+          item,
+          username,
+          currentUsername,
+          suggestedAuthorId,
+        ),
       );
 
       if (comment) {
@@ -152,6 +179,7 @@ export default function CampusMemberProfile({
         ? CAMPUS_OFFICIAL_AUTHOR_ID
         : managedUser?.id ??
           blockedUser?.authorId ??
+          suggestedAuthorId ??
           firstVisibleReference?.authorId;
   const isBlocked = Boolean(
     resolvedAuthorId && blockedAuthorIds.has(resolvedAuthorId),
@@ -160,7 +188,12 @@ export default function CampusMemberProfile({
   const profileExists =
     isSelf ||
     isOfficial ||
-    Boolean(managedUser || blockedUser || firstVisibleReference);
+    Boolean(
+      managedUser ||
+        blockedUser ||
+        suggestedMember ||
+        firstVisibleReference,
+    );
 
   const authoredPosts = useMemo(
     () =>
@@ -168,14 +201,19 @@ export default function CampusMemberProfile({
         .filter(
           (post) =>
             !post.isDeleted &&
-            authorMatchesUsername(post, username, currentUsername),
+            authorMatchesUsername(
+              post,
+              username,
+              currentUsername,
+              suggestedAuthorId,
+            ),
         )
         .sort(
           (first, second) =>
             second.createdAt - first.createdAt ||
             second.id.localeCompare(first.id, "tr"),
         ),
-    [currentUsername, posts, username],
+    [currentUsername, posts, suggestedAuthorId, username],
   );
   const authoredComments = useMemo(
     () =>
@@ -195,11 +233,12 @@ export default function CampusMemberProfile({
                   comment,
                   username,
                   currentUsername,
+                  suggestedAuthorId,
                 ),
             )
             .map((comment) => ({ comment, post })),
         ),
-    [currentUsername, posts, username],
+    [currentUsername, posts, suggestedAuthorId, username],
   );
 
   const isHydrated =
@@ -220,6 +259,7 @@ export default function CampusMemberProfile({
         ? "KAMPÜS"
         : (managedUser && `@${managedUser.username}`) ??
           blockedUser?.author ??
+          suggestedMember?.author ??
           firstVisibleReference?.author ??
           `@${username}`;
   const displayName =
@@ -227,25 +267,33 @@ export default function CampusMemberProfile({
       ? profile.displayName
       : isOfficial
         ? "KAMPÜS"
-        : managedUser?.displayName ?? getFallbackDisplayName(username);
+        : managedUser?.displayName ??
+          suggestedMember?.displayName ??
+          getFallbackDisplayName(username);
   const department =
     isSelf
       ? settings.showDepartment
         ? [profile.department, profile.year].filter(Boolean).join(" · ")
         : ""
-      : managedUser?.department ?? firstVisibleReference?.detail ?? "";
+      : managedUser?.department ??
+        suggestedMember?.detail ??
+        firstVisibleReference?.detail ??
+        "";
   const joinedLabel =
     isSelf
       ? profile.joinedLabel
       : isOfficial
         ? "Resmî topluluk hesabı"
-        : managedUser?.joinedLabel ?? "KAMPÜS topluluğu";
+        : managedUser?.joinedLabel ??
+          suggestedMember?.joinedLabel ??
+          "KAMPÜS topluluğu";
   const bio =
     isSelf && profile.bio
       ? profile.bio
       : isOfficial
         ? "Yaşar Üniversitesi öğrencileri için duyuru, güvenlik ve topluluk güncellemeleri."
-        : "Yaşar Üniversitesi kampüs topluluğu üyesi.";
+        : suggestedMember?.bio ??
+          "Yaşar Üniversitesi kampüs topluluğu üyesi.";
   const receivedLikes = authoredPosts.reduce(
     (total, post) => total + post.likes,
     0,
@@ -320,6 +368,11 @@ export default function CampusMemberProfile({
             <CampusAuthorAvatar
               author={author}
               authorId={resolvedAuthorId}
+              avatarUrl={
+                isSelf
+                  ? profile.avatarUrl
+                  : managedUser?.avatarUrl ?? suggestedMember?.avatarDataUrl
+              }
               size="md"
               className="size-20 text-xl min-[420px]:size-24 min-[420px]:text-2xl"
             />
@@ -366,6 +419,11 @@ export default function CampusMemberProfile({
                       username,
                       author,
                       displayName,
+                      detail: department || undefined,
+                      avatarDataUrl:
+                        managedUser?.avatarUrl ??
+                        suggestedMember?.avatarDataUrl ??
+                        undefined,
                     }}
                     isSelf={isSelf}
                   />

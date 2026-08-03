@@ -8,16 +8,18 @@ import {
   LOCAL_ACCOUNT_OWNER_ID,
 } from "@/data/campusPosts";
 
-type AvatarSize = "sm" | "md";
+type AvatarSize = "sm" | "md" | "lg";
 
 const sizeClassNames: Record<AvatarSize, string> = {
   sm: "size-8 text-[10px]",
   md: "size-10 text-xs",
+  lg: "size-12 text-sm",
 };
 
 const imageSizes: Record<AvatarSize, string> = {
   sm: "32px",
   md: "40px",
+  lg: "48px",
 };
 
 const avatarToneClassNames = [

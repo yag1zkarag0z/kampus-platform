@@ -81,6 +81,9 @@ const defaultSettings: CampusAccountSettings = {
   notifyReplies: true,
   notifyLikes: true,
   notifyAnnouncements: true,
+  notifyComments: true,
+  notifyFollows: true,
+  notifyMentions: true,
   emailNotifications: true,
 };
 

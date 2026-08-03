@@ -432,6 +432,45 @@ export default function CampusSettings() {
                   }}
                 />
                 <SettingSwitch
+                  id="notify-comments"
+                  label="Yorumlar"
+                  description="Bir gönderine yeni bir yorum geldiğinde."
+                  checked={settings.notifyComments}
+                  disabled={!isHydrated || pendingSetting !== null}
+                  onChange={(notifyComments) => {
+                    void handleSettingChange(
+                      "notifyComments",
+                      notifyComments,
+                    );
+                  }}
+                />
+                <SettingSwitch
+                  id="notify-mentions"
+                  label="Bahsetmeler"
+                  description="Bir yorumda senden @kullaniciadi ile bahsedildiğinde."
+                  checked={settings.notifyMentions}
+                  disabled={!isHydrated || pendingSetting !== null}
+                  onChange={(notifyMentions) => {
+                    void handleSettingChange(
+                      "notifyMentions",
+                      notifyMentions,
+                    );
+                  }}
+                />
+                <SettingSwitch
+                  id="notify-follows"
+                  label="Yeni takipçiler"
+                  description="Biri seni takip etmeye başladığında."
+                  checked={settings.notifyFollows}
+                  disabled={!isHydrated || pendingSetting !== null}
+                  onChange={(notifyFollows) => {
+                    void handleSettingChange(
+                      "notifyFollows",
+                      notifyFollows,
+                    );
+                  }}
+                />
+                <SettingSwitch
                   id="notify-announcements"
                   label="Kampüs duyuruları"
                   description="Topluluğu ilgilendiren önemli duyurular yayınlandığında."

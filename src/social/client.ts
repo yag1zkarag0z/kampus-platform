@@ -27,6 +27,10 @@ export type FollowMemberDto = {
   avatarUrl: string | null;
 };
 
+export type SuggestedMemberDto = FollowMemberDto & {
+  department: string;
+};
+
 export function getMemberProfile(username: string) {
   return requestApi<PublicMemberProfileDto>(
     `/v1/users/${encodeURIComponent(username)}`,
@@ -60,4 +64,10 @@ export function getMemberFollowing(username: string) {
     `/v1/users/${encodeURIComponent(username)}/following`,
     { cache: "no-store" },
   );
+}
+
+export function getSuggestedFollows() {
+  return requestApi<SuggestedMemberDto[]>("/v1/me/suggested-follows", {
+    cache: "no-store",
+  });
 }

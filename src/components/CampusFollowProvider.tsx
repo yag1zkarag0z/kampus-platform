@@ -80,6 +80,8 @@ function normalizeMember(value: unknown): CampusFollowMember | null {
     author,
     displayName,
     detail: member.detail?.trim() || undefined,
+    bio: member.bio?.trim() || undefined,
+    joinedLabel: member.joinedLabel?.trim() || undefined,
     avatarDataUrl: member.avatarDataUrl,
   };
 }

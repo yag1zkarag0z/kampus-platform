@@ -118,6 +118,9 @@ function toAuthenticatedUser(
     notifyReplies: boolean | null;
     notifyLikes: boolean | null;
     notifyAnnouncements: boolean | null;
+    notifyComments: boolean | null;
+    notifyFollows: boolean | null;
+    notifyMentions: boolean | null;
     emailNotifications: boolean | null;
   },
 ): AuthenticatedUser {
@@ -143,6 +146,9 @@ function toAuthenticatedUser(
       notifyReplies: row.notifyReplies ?? true,
       notifyLikes: row.notifyLikes ?? true,
       notifyAnnouncements: row.notifyAnnouncements ?? true,
+      notifyComments: row.notifyComments ?? true,
+      notifyFollows: row.notifyFollows ?? true,
+      notifyMentions: row.notifyMentions ?? true,
       emailNotifications: row.emailNotifications ?? true,
     },
   };
@@ -218,6 +224,9 @@ export async function resolveSessionCookie(
       notifyReplies: userSettings.notifyReplies,
       notifyLikes: userSettings.notifyLikes,
       notifyAnnouncements: userSettings.notifyAnnouncements,
+      notifyComments: userSettings.notifyComments,
+      notifyFollows: userSettings.notifyFollows,
+      notifyMentions: userSettings.notifyMentions,
       emailNotifications: userSettings.emailNotifications,
     })
     .from(sessions)

@@ -34,6 +34,7 @@ export default function CampusSessionGate({
     pathname === "/kesfet" ||
     pathname === "/bildirimler" ||
     pathname === "/kaydedilenler" ||
+    pathname === "/takip" ||
     isGuestProfileRoute ||
     pathname.startsWith("/gonderi/");
   const canAccessAdmin =

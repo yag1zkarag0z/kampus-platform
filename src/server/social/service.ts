@@ -1,12 +1,26 @@
 import "server-only";
 
-import { and, count, desc, eq, isNull, or } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  isNull,
+  ne,
+  notExists,
+  notInArray,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 
 import { AuthError } from "@/server/auth/errors";
 import { getDatabase } from "@/server/db/client";
 import { blocks, follows, users } from "@/server/db/schema";
+import { recordFollowNotification } from "@/server/notifications/service";
 
 const FOLLOW_LIST_LIMIT = 200;
+const SUGGESTION_LIMIT = 8;
 
 export type FollowSummary = {
   followerCount: number;
@@ -19,6 +33,10 @@ export type FollowMemberSummary = {
   username: string;
   displayName: string;
   avatarUrl: string | null;
+};
+
+export type SuggestedMemberSummary = FollowMemberSummary & {
+  department: string;
 };
 
 function userNotFoundError() {
@@ -118,10 +136,20 @@ export async function followUser(
 
   await assertNotBlocked(followerId, targetId);
 
-  await getDatabase()
-    .insert(follows)
-    .values({ followerId, followingId: targetId })
-    .onConflictDoNothing();
+  await getDatabase().transaction(async (transaction) => {
+    const inserted = await transaction
+      .insert(follows)
+      .values({ followerId, followingId: targetId })
+      .onConflictDoNothing()
+      .returning({ followerId: follows.followerId });
+
+    if (inserted.length > 0) {
+      await recordFollowNotification(transaction, {
+        recipientId: targetId,
+        actorId: followerId,
+      });
+    }
+  });
 }
 
 export async function unfollowUser(
@@ -173,6 +201,100 @@ export async function getFollowSummary(
     followingCount: followingRows[0]?.total ?? 0,
     isFollowing: viewerEdge.length > 0,
   };
+}
+
+function toSuggestedMemberSummary(row: {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarObjectKey: string | null;
+  department: string;
+}): SuggestedMemberSummary {
+  return { ...toFollowMemberSummary(row), department: row.department };
+}
+
+export async function getSuggestedMembers(
+  viewerId: string,
+  limit = SUGGESTION_LIMIT,
+): Promise<SuggestedMemberSummary[]> {
+  const database = getDatabase();
+
+  const [viewer] = await database
+    .select({ department: users.department })
+    .from(users)
+    .where(eq(users.id, viewerId))
+    .limit(1);
+
+  if (!viewer) {
+    return [];
+  }
+
+  const selection = {
+    id: users.id,
+    username: users.username,
+    displayName: users.displayName,
+    avatarObjectKey: users.avatarObjectKey,
+    department: users.department,
+  };
+
+  const baseFilters: SQL[] = [
+    ne(users.id, viewerId),
+    eq(users.status, "active"),
+    isNull(users.deletedAt),
+    notExists(
+      database
+        .select({ followerId: follows.followerId })
+        .from(follows)
+        .where(
+          and(
+            eq(follows.followerId, viewerId),
+            eq(follows.followingId, users.id),
+          ),
+        ),
+    ),
+    notExists(
+      database
+        .select({ blockerId: blocks.blockerId })
+        .from(blocks)
+        .where(
+          or(
+            and(
+              eq(blocks.blockerId, viewerId),
+              eq(blocks.blockedId, users.id),
+            ),
+            and(
+              eq(blocks.blockerId, users.id),
+              eq(blocks.blockedId, viewerId),
+            ),
+          ),
+        ),
+    ),
+  ];
+
+  const sameDepartmentRows = await database
+    .select(selection)
+    .from(users)
+    .where(and(...baseFilters, eq(users.department, viewer.department)))
+    .orderBy(sql`random()`)
+    .limit(limit);
+
+  if (sameDepartmentRows.length >= limit) {
+    return sameDepartmentRows.map(toSuggestedMemberSummary);
+  }
+
+  const excludedIds = sameDepartmentRows.map((row) => row.id);
+  const backfillFilters = excludedIds.length > 0
+    ? [...baseFilters, notInArray(users.id, excludedIds)]
+    : baseFilters;
+
+  const otherRows = await database
+    .select(selection)
+    .from(users)
+    .where(and(...backfillFilters))
+    .orderBy(sql`random()`)
+    .limit(limit - sameDepartmentRows.length);
+
+  return [...sameDepartmentRows, ...otherRows].map(toSuggestedMemberSummary);
 }
 
 export async function listFollowers(

@@ -11,6 +11,7 @@ import {
 import { GET as getFollowers } from "@/app/v1/users/[username]/followers/route";
 import { GET as getFollowing } from "@/app/v1/users/[username]/following/route";
 import { GET as getMemberProfile } from "@/app/v1/users/[username]/route";
+import { GET as getSuggestedFollows } from "@/app/v1/me/suggested-follows/route";
 import { createMemberSession } from "@/server/auth/session";
 import { getDatabase } from "@/server/db/client";
 
@@ -31,7 +32,7 @@ function createAccountFixture() {
   };
 }
 
-async function insertAccount() {
+async function insertAccount(department = "Yazılım Mühendisliği") {
   const fixture = createAccountFixture();
   testEmails.add(fixture.email);
   const result = await pool.query<{ id: string }>(
@@ -48,7 +49,7 @@ async function insertAccount() {
       fixture.email,
       fixture.username,
       "Takip Öğrencisi",
-      "Yazılım Mühendisliği",
+      department,
       "2. sınıf",
       "",
     ],
@@ -275,6 +276,55 @@ describe("follow routes with PostgreSQL", () => {
     const response = await postFollow(
       createFollowRequest(target.username, "POST"),
       { params: Promise.resolve({ username: target.username }) },
+    );
+
+    expect(response.status).toBe(401);
+  });
+
+  it("suggests same-department members first and excludes self, followed, and blocked users", async () => {
+    const viewer = await insertAccount("Yazılım Mühendisliği");
+    const sameDepartment = await insertAccount("Yazılım Mühendisliği");
+    const alreadyFollowed = await insertAccount("Yazılım Mühendisliği");
+    const blocked = await insertAccount("Yazılım Mühendisliği");
+    const otherDepartment = await insertAccount("İşletme");
+    const viewerCookie = await createMemberCookie(viewer.id);
+
+    await postFollow(
+      createFollowRequest(alreadyFollowed.username, "POST", {
+        cookie: viewerCookie,
+      }),
+      { params: Promise.resolve({ username: alreadyFollowed.username }) },
+    );
+    await pool.query(
+      "insert into blocks (blocker_id, blocked_id) values ($1, $2)",
+      [viewer.id, blocked.id],
+    );
+
+    const response = await getSuggestedFollows(
+      createGetRequest("/v1/me/suggested-follows", viewerCookie),
+    );
+    const { data } = (await response.json()) as {
+      data: Array<{ id: string; department: string }>;
+    };
+    const suggestedIds = data.map((entry) => entry.id);
+
+    expect(response.status).toBe(200);
+    expect(suggestedIds).toContain(sameDepartment.id);
+    expect(suggestedIds).not.toContain(viewer.id);
+    expect(suggestedIds).not.toContain(alreadyFollowed.id);
+    expect(suggestedIds).not.toContain(blocked.id);
+    // Same-department pool (1 member) is smaller than the suggestion
+    // limit, so the other-department member should backfill the list.
+    expect(suggestedIds).toContain(otherDepartment.id);
+
+    const sameDepartmentIndex = suggestedIds.indexOf(sameDepartment.id);
+    const otherDepartmentIndex = suggestedIds.indexOf(otherDepartment.id);
+    expect(sameDepartmentIndex).toBeLessThan(otherDepartmentIndex);
+  });
+
+  it("requires an active member session for suggestions", async () => {
+    const response = await getSuggestedFollows(
+      createGetRequest("/v1/me/suggested-follows"),
     );
 
     expect(response.status).toBe(401);

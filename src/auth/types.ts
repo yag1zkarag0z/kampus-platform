@@ -15,6 +15,9 @@ export type AuthSettings = {
   notifyReplies: boolean;
   notifyLikes: boolean;
   notifyAnnouncements: boolean;
+  notifyComments: boolean;
+  notifyFollows: boolean;
+  notifyMentions: boolean;
   emailNotifications: boolean;
 };
 

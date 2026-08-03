@@ -4,18 +4,18 @@ import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
-import { useCampusNotificationStore } from "@/components/CampusNotificationStore";
+import { useCampusNotifications } from "@/components/CampusNotificationProvider";
 import { useFeedback } from "@/components/FeedbackProvider";
-import {
-  campusNotifications,
-  type CampusNotification,
-  type CampusNotificationKind,
-} from "@/data/campusNotifications";
+import { getNotificationCopy } from "@/notifications/copy";
+import type {
+  NotificationDto,
+  NotificationKindDto,
+} from "@/notifications/client";
 
 type NotificationFilter = "all" | "unread" | "mentions";
 
-const mentionKinds = new Set<CampusNotificationKind>(["mention", "reply"]);
-const commentTargetKinds = new Set<CampusNotificationKind>([
+const mentionKinds = new Set<NotificationKindDto>(["mention", "reply"]);
+const commentTargetKinds = new Set<NotificationKindDto>([
   "comment",
   "mention",
   "reply",
@@ -32,13 +32,43 @@ const filterOptions: {
   { id: "mentions", label: "Bahsetmeler" },
 ];
 
-function getNotificationHref(notification: CampusNotification) {
-  if (notification.kind === "follow") {
-    const username = notification.actor.username ?? notification.actor.id;
-    return `/profil/${encodeURIComponent(username)}`;
+const relativeTimeFormatter = new Intl.RelativeTimeFormat("tr-TR", {
+  numeric: "auto",
+});
+
+function formatRelativeTime(isoDate: string) {
+  const elapsedMs = Date.now() - new Date(isoDate).getTime();
+  const elapsedMinutes = Math.round(elapsedMs / 60_000);
+
+  if (elapsedMinutes < 1) {
+    return "Az önce";
+  }
+  if (elapsedMinutes < 60) {
+    return relativeTimeFormatter.format(-elapsedMinutes, "minute");
   }
 
-  if (!notification.postId) {
+  const elapsedHours = Math.round(elapsedMinutes / 60);
+  if (elapsedHours < 24) {
+    return relativeTimeFormatter.format(-elapsedHours, "hour");
+  }
+
+  const elapsedDays = Math.round(elapsedHours / 24);
+  if (elapsedDays < 7) {
+    return relativeTimeFormatter.format(-elapsedDays, "day");
+  }
+
+  return new Intl.DateTimeFormat("tr-TR", {
+    day: "numeric",
+    month: "long",
+  }).format(new Date(isoDate));
+}
+
+function getNotificationHref(notification: NotificationDto) {
+  if (notification.kind === "follow") {
+    return `/profil/${encodeURIComponent(notification.actor.username)}`;
+  }
+
+  if (!notification.post) {
     return "/bildirimler";
   }
 
@@ -46,64 +76,55 @@ function getNotificationHref(notification: CampusNotification) {
     bildirim: notification.id,
   });
 
-  if (commentTargetKinds.has(notification.kind)) {
+  if (commentTargetKinds.has(notification.kind) && notification.comment) {
     searchParams.set("hedef", "yorum");
-    if (notification.commentId) {
-      searchParams.set("yorum", notification.commentId);
-    }
-    return `/gonderi/${notification.postId}?${searchParams.toString()}#${
-      notification.commentId
-        ? `yorum-${notification.commentId}`
-        : "yorumlar"
-    }`;
+    searchParams.set("yorum", notification.comment.id);
+    return `/gonderi/${notification.post.id}?${searchParams.toString()}#yorum-${notification.comment.id}`;
   }
 
-  return `/gonderi/${notification.postId}?${searchParams.toString()}`;
+  return `/gonderi/${notification.post.id}?${searchParams.toString()}`;
 }
 
 export default function CampusNotifications() {
   const [activeFilter, setActiveFilter] =
     useState<NotificationFilter>("all");
   const {
-    isHydrated,
-    readIds,
+    notifications,
+    isNotificationsHydrated,
     unreadCount,
     markAsRead,
     markAllAsRead,
-  } = useCampusNotificationStore();
+  } = useCampusNotifications();
   const titleRef = useRef<HTMLHeadingElement>(null);
   const { showToast } = useFeedback();
 
   const mentionCount = useMemo(
     () =>
-      campusNotifications.filter((notification) =>
-        mentionKinds.has(notification.kind),
-      ).length,
-    [],
+      notifications.filter((notification) => mentionKinds.has(notification.kind))
+        .length,
+    [notifications],
   );
 
   const visibleNotifications = useMemo(() => {
     if (activeFilter === "unread") {
-      return campusNotifications.filter(
-        (notification) => !readIds.has(notification.id),
-      );
+      return notifications.filter((notification) => !notification.isRead);
     }
 
     if (activeFilter === "mentions") {
-      return campusNotifications.filter((notification) =>
+      return notifications.filter((notification) =>
         mentionKinds.has(notification.kind),
       );
     }
 
-    return campusNotifications;
-  }, [activeFilter, readIds]);
+    return notifications;
+  }, [activeFilter, notifications]);
 
-  const handleMarkAllAsRead = () => {
+  const handleMarkAllAsRead = async () => {
     if (unreadCount === 0) {
       return;
     }
 
-    const readCount = markAllAsRead();
+    const readCount = await markAllAsRead();
     showToast({
       message: `${readCount} bildirim okundu olarak işaretlendi.`,
       tone: "success",
@@ -119,13 +140,13 @@ export default function CampusNotifications() {
       return mentionCount;
     }
 
-    return campusNotifications.length;
+    return notifications.length;
   };
 
   return (
     <section
       aria-labelledby="notifications-title"
-      aria-busy={!isHydrated}
+      aria-busy={!isNotificationsHydrated}
       className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
     >
       <header className="sticky top-16 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl md:top-0">
@@ -147,8 +168,8 @@ export default function CampusNotifications() {
 
           <button
             type="button"
-            disabled={!isHydrated || unreadCount === 0}
-            onClick={handleMarkAllAsRead}
+            disabled={!isNotificationsHydrated || unreadCount === 0}
+            onClick={() => void handleMarkAllAsRead()}
             aria-label="Tüm bildirimleri okundu olarak işaretle"
             className={`inline-flex min-h-11 min-w-11 items-center justify-center justify-self-end gap-1.5 px-1.5 text-[11px] font-black text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/8 disabled:cursor-not-allowed disabled:opacity-38 sm:px-3 sm:text-xs ${focusRing}`}
           >
@@ -195,7 +216,7 @@ export default function CampusNotifications() {
         </div>
       </header>
 
-      {!isHydrated ? (
+      {!isNotificationsHydrated ? (
         <NotificationsLoading />
       ) : visibleNotifications.length > 0 ? (
         <div
@@ -220,7 +241,6 @@ export default function CampusNotifications() {
               <NotificationItem
                 key={notification.id}
                 notification={notification}
-                isRead={readIds.has(notification.id)}
                 onMarkAsRead={markAsRead}
               />
             ))}
@@ -235,23 +255,21 @@ export default function CampusNotifications() {
 
 function NotificationItem({
   notification,
-  isRead,
   onMarkAsRead,
 }: {
-  notification: CampusNotification;
-  isRead: boolean;
-  onMarkAsRead: (notificationId: string) => void;
+  notification: NotificationDto;
+  onMarkAsRead: (notificationId: string) => Promise<void>;
 }) {
-  const label = `${notification.actor.name} ${notification.action}`;
+  const copy = getNotificationCopy(notification);
+  const isRead = notification.isRead;
   const targetLabel =
     notification.kind === "follow" ? "Profili aç." : "Gönderiyi aç.";
+  const time = formatRelativeTime(notification.createdAt);
 
   return (
     <li
       className={`relative border-b border-white/10 transition-colors last:border-b-0 ${
-        isRead
-          ? "bg-transparent"
-          : "bg-[#ff7a45]/[0.065]"
+        isRead ? "bg-transparent" : "bg-[#ff7a45]/[0.065]"
       }`}
     >
       {!isRead && (
@@ -263,43 +281,38 @@ function NotificationItem({
 
       <article className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 px-4 py-4 sm:px-6 sm:py-5">
         <CampusAuthorAvatar
-          author={notification.actor.name}
+          author={`@${notification.actor.username}`}
           authorId={notification.actor.id}
+          avatarUrl={notification.actor.avatarUrl}
           size="md"
           className="mt-0.5"
         />
 
         <Link
           href={getNotificationHref(notification)}
-          onClick={() => onMarkAsRead(notification.id)}
-          aria-label={`${label} ${notification.preview}. ${notification.time} önce. ${targetLabel}`}
+          onClick={() => void onMarkAsRead(notification.id)}
+          aria-label={`${copy.actorLabel} ${copy.action} ${copy.preview}. ${time}. ${targetLabel}`}
           className={`min-w-0 rounded-sm ${focusRing}`}
         >
           <p className="text-sm leading-5.5">
-            <span className="font-black">{notification.actor.name}</span>{" "}
-            <span className="font-medium text-white/70">
-              {notification.action}
-            </span>
+            <span className="font-black">{copy.actorLabel}</span>{" "}
+            <span className="font-medium text-white/70">{copy.action}</span>
           </p>
           <p
             className={`mt-1 line-clamp-2 text-sm leading-5.5 ${
-              isRead
-                ? "text-white/55"
-                : "font-semibold text-white/80"
+              isRead ? "text-white/55" : "font-semibold text-white/80"
             }`}
           >
-            {notification.preview}
+            {copy.preview}
           </p>
           <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#ff7a45]/80">
-            {notification.postTitle && (
+            {copy.postTitle && (
               <>
-                <span className="max-w-full truncate">
-                  {notification.postTitle}
-                </span>
+                <span className="max-w-full truncate">{copy.postTitle}</span>
                 <span aria-hidden="true">·</span>
               </>
             )}
-            <time>{notification.time}</time>
+            <time dateTime={notification.createdAt}>{time}</time>
           </p>
         </Link>
 
@@ -310,8 +323,8 @@ function NotificationItem({
               <span className="sr-only">Okunmamış bildirim.</span>
               <button
                 type="button"
-                onClick={() => onMarkAsRead(notification.id)}
-                aria-label={`${notification.actor.name} bildirimini okundu olarak işaretle`}
+                onClick={() => void onMarkAsRead(notification.id)}
+                aria-label={`${copy.actorLabel} bildirimini okundu olarak işaretle`}
                 className={`grid size-10 place-items-center rounded-full text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/10 hover:text-[#ffb18c] ${focusRing}`}
               >
                 <span
@@ -397,12 +410,8 @@ function NotificationsEmptyState({
   );
 }
 
-function NotificationKindIcon({
-  kind,
-}: {
-  kind: CampusNotificationKind;
-}) {
-  const labelByKind: Record<CampusNotificationKind, string> = {
+function NotificationKindIcon({ kind }: { kind: NotificationKindDto }) {
+  const labelByKind: Record<NotificationKindDto, string> = {
     like: "Beğeni",
     comment: "Yorum",
     reply: "Yanıt",

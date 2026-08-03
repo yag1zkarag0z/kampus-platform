@@ -9,6 +9,8 @@ export type CampusFollowMember = {
   displayName: string;
   username: string;
   detail?: string;
+  bio?: string;
+  joinedLabel?: string;
   avatarDataUrl?: string;
 };
 
@@ -19,6 +21,8 @@ export const campusFollowMembers: CampusFollowMember[] = [
     displayName: "Yağız Karagöz",
     username: "yagizkaragoz",
     detail: "Yazılım Mühendisliği",
+    bio: "Yazılım, ürün geliştirme ve kampüs projeleriyle ilgileniyor.",
+    joinedLabel: "Temmuz 2026",
   },
   {
     authorId: CAMPUS_OFFICIAL_AUTHOR_ID,
@@ -26,6 +30,8 @@ export const campusFollowMembers: CampusFollowMember[] = [
     displayName: "KAMPÜS",
     username: "kampus",
     detail: "Resmî topluluk hesabı",
+    bio: "Kampüsten duyurular, topluluk haberleri ve önemli güncellemeler.",
+    joinedLabel: "Resmî topluluk hesabı",
   },
   {
     authorId: "seed-ecearslan",
@@ -33,6 +39,8 @@ export const campusFollowMembers: CampusFollowMember[] = [
     displayName: "Ece Arslan",
     username: "ecearslan",
     detail: "İşletme",
+    bio: "Girişimcilik, öğrenci kulüpleri ve kampüs etkinlikleriyle ilgileniyor.",
+    joinedLabel: "Haziran 2026",
   },
   {
     authorId: "seed-deniz",
@@ -40,6 +48,8 @@ export const campusFollowMembers: CampusFollowMember[] = [
     displayName: "Deniz Akın",
     username: "deniz",
     detail: "Endüstriyel Tasarım",
+    bio: "Tasarım, üretim ve yaratıcı kampüs projelerini takip ediyor.",
+    joinedLabel: "Haziran 2026",
   },
   {
     authorId: "seed-mertcan",
@@ -47,6 +57,8 @@ export const campusFollowMembers: CampusFollowMember[] = [
     displayName: "Mert Can",
     username: "mertcan",
     detail: "Ekonomi",
+    bio: "Ekonomi, finans ve öğrenci toplulukları üzerine paylaşımlar yapıyor.",
+    joinedLabel: "Temmuz 2026",
   },
   {
     authorId: "seed-selin",
@@ -54,6 +66,8 @@ export const campusFollowMembers: CampusFollowMember[] = [
     displayName: "Selin Yılmaz",
     username: "selin",
     detail: "Psikoloji",
+    bio: "Psikoloji, kitaplar ve kampüs yaşamı hakkında konuşmayı seviyor.",
+    joinedLabel: "Temmuz 2026",
   },
   {
     authorId: "seed-canberk",
@@ -61,6 +75,8 @@ export const campusFollowMembers: CampusFollowMember[] = [
     displayName: "Can Berk",
     username: "canberk",
     detail: "Mimarlık",
+    bio: "Mimarlık, kent kültürü ve fotoğrafçılıkla ilgileniyor.",
+    joinedLabel: "Mayıs 2026",
   },
   {
     authorId: "seed-beril",
@@ -68,42 +84,62 @@ export const campusFollowMembers: CampusFollowMember[] = [
     displayName: "Beril Aydın",
     username: "beril",
     detail: "Görsel İletişim Tasarımı",
+    bio: "İllüstrasyon, görsel tasarım ve yaratıcı etkinlikleri takip ediyor.",
+    joinedLabel: "Temmuz 2026",
   },
   {
     authorId: "ece-yilmaz",
     author: "@eceyilmaz",
     displayName: "Ece Yılmaz",
     username: "eceyilmaz",
+    detail: "İletişim Tasarımı",
+    bio: "Tasarım, fotoğraf ve kampüs etkinlikleriyle ilgileniyor.",
+    joinedLabel: "Haziran 2026",
   },
   {
     authorId: "technology-club",
     author: "@teknolojitoplulugu",
     displayName: "Teknoloji Topluluğu",
     username: "teknolojitoplulugu",
+    detail: "Öğrenci topluluğu",
+    bio: "Yazılım, yapay zekâ ve teknoloji etkinliklerini kampüsle buluşturuyor.",
+    joinedLabel: "Topluluk hesabı",
   },
   {
     authorId: "deniz-ari",
     author: "@denizari",
     displayName: "Deniz Arı",
     username: "denizari",
+    detail: "Bilgisayar Mühendisliği",
+    bio: "Açık kaynak, mobil uygulamalar ve teknoloji buluşmalarıyla ilgileniyor.",
+    joinedLabel: "Mayıs 2026",
   },
   {
     authorId: "bora-demir",
     author: "@borademir",
     displayName: "Bora Demir",
     username: "borademir",
+    detail: "Endüstri Mühendisliği",
+    bio: "Kariyer etkinlikleri, spor ve kampüs yaşamını takip ediyor.",
+    joinedLabel: "Haziran 2026",
   },
   {
     authorId: "selin-kaya",
     author: "@selinkaya",
     displayName: "Selin Kaya",
     username: "selinkaya",
+    detail: "Hukuk",
+    bio: "Hukuk, öğrenci hakları ve sosyal sorumluluk projeleriyle ilgileniyor.",
+    joinedLabel: "Temmuz 2026",
   },
   {
     authorId: "irem-ozturk",
     author: "@iremozturk",
     displayName: "İrem Öztürk",
     username: "iremozturk",
+    detail: "Yeni Medya ve İletişim",
+    bio: "Yeni medya, içerik üretimi ve kampüs etkinliklerini paylaşıyor.",
+    joinedLabel: "Temmuz 2026",
   },
 ];
 

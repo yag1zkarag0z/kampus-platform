@@ -3,8 +3,10 @@ import { CampusAccountProvider } from "@/components/CampusAccountProvider";
 import { CampusDataProvider } from "@/components/CampusDataProvider";
 import { CampusFollowProvider } from "@/components/CampusFollowProvider";
 import { CampusModerationProvider } from "@/components/CampusModerationProvider";
+import { CampusNotificationProvider } from "@/components/CampusNotificationProvider";
 import CampusSessionGate from "@/components/CampusSessionGate";
 import { FeedbackProvider } from "@/components/FeedbackProvider";
+import FollowSuggestions from "@/components/FollowSuggestions";
 
 export default function PlatformLayout({
   children,
@@ -16,9 +18,10 @@ export default function PlatformLayout({
       <FeedbackProvider>
         <CampusSessionGate>
           <CampusModerationProvider>
-            <CampusFollowProvider>
-              <CampusDataProvider>
-                <div className="min-h-svh bg-[#0a0d16] text-white transition-colors">
+            <CampusNotificationProvider>
+              <CampusFollowProvider>
+                <CampusDataProvider>
+                  <div className="min-h-svh bg-[#0a0d16] text-white transition-colors">
               <a
                 href="#platform-content"
                 className="fixed left-4 top-3 z-[100] -translate-y-20 rounded-full bg-white px-4 py-2 text-xs font-bold text-[#12100e] outline-none transition-transform focus:translate-y-0"
@@ -34,10 +37,16 @@ export default function PlatformLayout({
                 >
                   {children}
                 </main>
-              </div>
+                <div className="hidden min-w-0 md:col-start-3 md:row-start-1 md:block">
+                  <div className="sticky top-0">
+                    <FollowSuggestions className="m-3" />
+                  </div>
                 </div>
-              </CampusDataProvider>
-            </CampusFollowProvider>
+              </div>
+                  </div>
+                </CampusDataProvider>
+              </CampusFollowProvider>
+            </CampusNotificationProvider>
           </CampusModerationProvider>
         </CampusSessionGate>
       </FeedbackProvider>

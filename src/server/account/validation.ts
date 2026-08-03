@@ -38,6 +38,9 @@ export const updateSettingsSchema = z
     notifyReplies: z.boolean().optional(),
     notifyLikes: z.boolean().optional(),
     notifyAnnouncements: z.boolean().optional(),
+    notifyComments: z.boolean().optional(),
+    notifyFollows: z.boolean().optional(),
+    notifyMentions: z.boolean().optional(),
     emailNotifications: z.boolean().optional(),
   })
   .strict()

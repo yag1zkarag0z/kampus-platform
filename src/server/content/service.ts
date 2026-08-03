@@ -33,6 +33,11 @@ import { getDatabase } from "@/server/db/client";
 import { getMediaStorage } from "@/server/media/storage";
 import { resolveGiphyGif } from "@/server/giphy/client";
 import {
+  recordCommentNotification,
+  recordLikeNotification,
+  recordMentionNotifications,
+} from "@/server/notifications/service";
+import {
   blocks,
   comments,
   listings,
@@ -249,7 +254,7 @@ async function assertActivePostForInteraction(
   postId: string,
 ) {
   const [activePost] = await transaction
-    .select({ id: posts.id })
+    .select({ id: posts.id, authorId: posts.authorId })
     .from(posts)
     .innerJoin(users, eq(users.id, posts.authorId))
     .where(
@@ -265,6 +270,8 @@ async function assertActivePostForInteraction(
   if (!activePost) {
     throw postNotFoundError();
   }
+
+  return activePost;
 }
 
 async function lockContentKeys(
@@ -945,13 +952,25 @@ export async function setContentPostLike(
 
   return getDatabase().transaction(async (transaction) => {
     await assertActiveContentMember(transaction, viewerId);
-    await assertActivePostForInteraction(transaction, postId);
+    const activePost = await assertActivePostForInteraction(
+      transaction,
+      postId,
+    );
 
     if (liked) {
-      await transaction
+      const inserted = await transaction
         .insert(postLikes)
         .values({ postId, userId: viewerId })
-        .onConflictDoNothing();
+        .onConflictDoNothing()
+        .returning({ postId: postLikes.postId });
+
+      if (inserted.length > 0) {
+        await recordLikeNotification(transaction, {
+          recipientId: activePost.authorId,
+          actorId: viewerId,
+          postId,
+        });
+      }
     } else {
       await transaction
         .delete(postLikes)
@@ -1394,7 +1413,7 @@ export async function createContentComment(
       const createdAt = new Date();
 
       const [activePost] = await transaction
-        .select({ id: posts.id })
+        .select({ id: posts.id, authorId: posts.authorId })
         .from(posts)
         .innerJoin(users, eq(users.id, posts.authorId))
         .where(
@@ -1418,12 +1437,15 @@ export async function createContentComment(
         createdAt,
       );
 
+      let replyRecipientId: string | null = null;
+
       if (parentId) {
         const [parent] = await transaction
           .select({
             id: comments.id,
             postId: comments.postId,
             parentId: comments.parentId,
+            authorId: comments.authorId,
             deletedAt: comments.deletedAt,
           })
           .from(comments)
@@ -1448,6 +1470,7 @@ export async function createContentComment(
           );
         }
 
+        replyRecipientId = parent.authorId;
         parentId = parent.parentId ?? parent.id;
       }
 
@@ -1475,6 +1498,31 @@ export async function createContentComment(
           { status: 500 },
         );
       }
+
+      if (replyRecipientId) {
+        await recordCommentNotification(transaction, {
+          recipientId: replyRecipientId,
+          actorId: viewerId,
+          postId,
+          commentId: created.id,
+          kind: "reply",
+        });
+      } else {
+        await recordCommentNotification(transaction, {
+          recipientId: activePost.authorId,
+          actorId: viewerId,
+          postId,
+          commentId: created.id,
+          kind: "comment",
+        });
+      }
+
+      await recordMentionNotifications(transaction, {
+        actorId: viewerId,
+        postId,
+        commentId: created.id,
+        commentBody: input.body,
+      });
 
       return created.id;
     },

@@ -10,6 +10,7 @@ import {
   primaryKey,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -485,6 +486,78 @@ export const moderationActions = pgTable(
   ],
 );
 
+export const notificationKind = pgEnum("notification_kind", [
+  "like",
+  "comment",
+  "reply",
+  "mention",
+  "follow",
+  "announcement",
+]);
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    recipientId: uuid("recipient_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    actorId: uuid("actor_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: notificationKind("kind").notNull(),
+    postId: uuid("post_id").references(() => posts.id, {
+      onDelete: "cascade",
+    }),
+    commentId: uuid("comment_id").references(() => comments.id, {
+      onDelete: "cascade",
+    }),
+    likeCount: integer("like_count"),
+    readAt: timestampWithTimezone("read_at"),
+    createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("notifications_like_recipient_post_unique")
+      .on(table.recipientId, table.postId)
+      .where(sql`${table.kind} = 'like'`),
+    index("notifications_recipient_created_at_idx").on(
+      table.recipientId,
+      table.createdAt.desc(),
+      table.id.desc(),
+    ),
+    index("notifications_recipient_unread_idx")
+      .on(table.recipientId)
+      .where(sql`${table.readAt} is null`),
+    check(
+      "notifications_not_self_check",
+      sql`${table.actorId} <> ${table.recipientId}`,
+    ),
+    check(
+      "notifications_target_shape_check",
+      sql`(
+          ${table.kind} = 'follow'
+          and ${table.postId} is null
+          and ${table.commentId} is null
+          and ${table.likeCount} is null
+        ) or (
+          ${table.kind} = 'like'
+          and ${table.postId} is not null
+          and ${table.commentId} is null
+          and ${table.likeCount} >= 1
+        ) or (
+          ${table.kind} in ('comment', 'reply', 'mention')
+          and ${table.postId} is not null
+          and ${table.commentId} is not null
+          and ${table.likeCount} is null
+        ) or (
+          ${table.kind} = 'announcement'
+          and ${table.commentId} is null
+          and ${table.likeCount} is null
+        )`,
+    ),
+  ],
+);
+
 export type Post = typeof posts.$inferSelect;
 export type NewPost = typeof posts.$inferInsert;
 export type Comment = typeof comments.$inferSelect;
@@ -501,3 +574,4 @@ export type PollOption = typeof pollOptions.$inferSelect;
 export type PollVote = typeof pollVotes.$inferSelect;
 export type Report = typeof reports.$inferSelect;
 export type ModerationAction = typeof moderationActions.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;

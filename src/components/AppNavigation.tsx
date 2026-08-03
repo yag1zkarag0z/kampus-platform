@@ -6,7 +6,7 @@ import { useEffect, useState, type MouseEvent } from "react";
 
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusLogo from "@/components/CampusLogo";
-import { useCampusNotificationStore } from "@/components/CampusNotificationStore";
+import { useCampusNotifications } from "@/components/CampusNotificationProvider";
 import { useFeedback } from "@/components/FeedbackProvider";
 
 type NavigationIconName =
@@ -16,7 +16,8 @@ type NavigationIconName =
   | "notifications"
   | "saved"
   | "profile"
-  | "admin";
+  | "admin"
+  | "follow";
 
 type NavigationItem = {
   href: string;
@@ -105,6 +106,14 @@ function NavigationIconGlyph({ name }: { name: NavigationIconName }) {
           <path d="m9.2 12 1.8 1.8 3.9-4" />
         </>
       );
+    case "follow":
+      return (
+        <>
+          <circle cx="9.5" cy="8.3" r="3.2" />
+          <path d="M4 19.2c.6-3.7 2.6-5.7 5.5-5.7s4.9 2 5.5 5.7" />
+          <path d="M17.5 7.5v5M15 10h5" />
+        </>
+      );
   }
 }
 
@@ -163,9 +172,9 @@ export default function AppNavigation() {
   const router = useRouter();
   const { signOut, isGuest, role } = useCampusAccount();
   const {
-    isHydrated: areNotificationsHydrated,
+    isUnreadCountHydrated: areNotificationsHydrated,
     unreadCount,
-  } = useCampusNotificationStore();
+  } = useCampusNotifications();
   const { confirm: confirmAction, showToast } = useFeedback();
   const [isDesktopNavigationOpen, setIsDesktopNavigationOpen] =
     useState(true);
@@ -269,6 +278,20 @@ export default function AppNavigation() {
               <NavigationIcon name="admin" className="size-[1.15rem]" />
             </Link>
           )}
+          <Link
+            href="/takip"
+            aria-label="Takip önerilerini aç"
+            aria-current={
+              isActivePath(pathname, "/takip") ? "page" : undefined
+            }
+            className={`grid size-11 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 ${
+              isActivePath(pathname, "/takip")
+                ? "bg-[#ff7a45]/12 text-[#ff7a45]"
+                : "text-white/58 hover:bg-white/8 hover:text-white"
+            }`}
+          >
+            <NavigationIcon name="follow" className="size-[1.15rem]" />
+          </Link>
           <Link
             href="/kaydedilenler"
             aria-label="Kaydedilen konuları aç"
@@ -461,9 +484,7 @@ export default function AppNavigation() {
         aria-label="Mobil uygulama menüsü"
         className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0a0d16]/96 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-white shadow-[0_-12px_34px_rgba(0,0,0,0.24)] backdrop-blur-xl md:hidden"
       >
-        <ul
-          className="mx-auto grid max-w-lg grid-cols-5 gap-1"
-        >
+        <ul className="mx-auto grid max-w-lg grid-cols-5 gap-1">
           {mobileNavigationItems.map((item) => {
             const isActive = isActivePath(pathname, item.href);
 
