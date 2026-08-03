@@ -398,6 +398,23 @@ const usernameSchema = z
     "Kullanıcı adı yalnızca küçük harf, rakam, nokta ve alt çizgi içerebilir.",
   );
 
+const listCursorSchema = z
+  .string({ error: "Sayfalama anahtarı geçersiz." })
+  .trim()
+  .min(1, "Sayfalama anahtarı boş olamaz.")
+  .max(512, "Sayfalama anahtarı çok uzun.")
+  .regex(
+    /^[A-Za-z0-9_-]+$/,
+    "Sayfalama anahtarı geçersiz.",
+  );
+
+const listLimitSchema = z.coerce
+  .number({ error: "Limit bir sayı olmalıdır." })
+  .int("Limit tam sayı olmalıdır.")
+  .min(1, "Limit en az 1 olmalıdır.")
+  .max(50, "Limit en fazla 50 olabilir.")
+  .default(20);
+
 export const feedQuerySchema = z
   .object({
     category: postCategorySchema.optional(),
@@ -412,22 +429,15 @@ export const feedQuerySchema = z
         error: "Kapsam global veya following olmalıdır.",
       })
       .default("global"),
-    cursor: z
-      .string({ error: "Sayfalama anahtarı geçersiz." })
-      .trim()
-      .min(1, "Sayfalama anahtarı boş olamaz.")
-      .max(512, "Sayfalama anahtarı çok uzun.")
-      .regex(
-        /^[A-Za-z0-9_-]+$/,
-        "Sayfalama anahtarı geçersiz.",
-      )
-      .optional(),
-    limit: z.coerce
-      .number({ error: "Limit bir sayı olmalıdır." })
-      .int("Limit tam sayı olmalıdır.")
-      .min(1, "Limit en az 1 olmalıdır.")
-      .max(50, "Limit en fazla 50 olabilir.")
-      .default(20),
+    cursor: listCursorSchema.optional(),
+    limit: listLimitSchema,
+  })
+  .strict();
+
+export const bookmarksQuerySchema = z
+  .object({
+    cursor: listCursorSchema.optional(),
+    limit: listLimitSchema,
   })
   .strict();
 
@@ -446,6 +456,7 @@ export type UpdatePostInput = z.infer<typeof updatePostSchema>;
 export type CreateCommentInput = z.infer<typeof createCommentSchema>;
 export type UpdateCommentInput = z.infer<typeof updateCommentSchema>;
 export type FeedQueryInput = z.infer<typeof feedQuerySchema>;
+export type BookmarksQueryInput = z.infer<typeof bookmarksQuerySchema>;
 export type VotePollInput = z.infer<typeof votePollSchema>;
 
 export function parseContentInput<TSchema extends z.ZodType>(

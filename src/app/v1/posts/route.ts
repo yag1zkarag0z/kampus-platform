@@ -10,44 +10,24 @@ import {
   parseContentInput,
 } from "@/server/content/validation";
 import { requireActiveMember } from "@/server/auth/authorization";
-import { AuthError } from "@/server/auth/errors";
 import {
   assertSameOrigin,
   authErrorResponse,
   noStoreHeaders,
   readJsonBody,
+  readQueryParams,
 } from "@/server/auth/request";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function parseFeedQuery(searchParams: URLSearchParams) {
-  const query: Record<string, string> = {};
-
-  for (const [key, value] of searchParams.entries()) {
-    if (key in query) {
-      throw new AuthError(
-        "INVALID_REQUEST",
-        "Aynı sorgu alanı birden fazla kez gönderilemez.",
-        {
-          fieldErrors: {
-            [key]: ["Bu alanı yalnızca bir kez gönder."],
-          },
-          status: 400,
-        },
-      );
-    }
-
-    query[key] = value;
-  }
-
-  return parseContentInput(feedQuerySchema, query);
-}
-
 export async function GET(request: NextRequest) {
   try {
     const member = await requireActiveMember(request);
-    const query = parseFeedQuery(request.nextUrl.searchParams);
+    const query = parseContentInput(
+      feedQuerySchema,
+      readQueryParams(request.nextUrl.searchParams),
+    );
     const result = await listContentPosts(member.userId, query);
 
     return NextResponse.json(result, {

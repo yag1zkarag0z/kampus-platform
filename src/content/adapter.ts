@@ -2,6 +2,7 @@ import type {
   ContentCommentDto,
   ContentPostDetailDto,
   ContentPostDto,
+  ContentPostPageDto,
 } from "@/content/types";
 import {
   LOCAL_ACCOUNT_OWNER_ID,
@@ -99,6 +100,33 @@ export function toContentCategory(
   category: CampusPostCategory,
 ) {
   return categoryValues[category];
+}
+
+export function getUsablePageCursor(page: ContentPostPageDto) {
+  return page.hasMore &&
+    typeof page.nextCursor === "string" &&
+    page.nextCursor.length > 0
+    ? page.nextCursor
+    : null;
+}
+
+export function appendUniqueCampusPosts(
+  currentPosts: CampusPost[],
+  incomingPosts: CampusPost[],
+) {
+  const knownPostIds = new Set(currentPosts.map((post) => post.id));
+  const uniquePosts = incomingPosts.filter((post) => {
+    if (knownPostIds.has(post.id)) {
+      return false;
+    }
+
+    knownPostIds.add(post.id);
+    return true;
+  });
+
+  return uniquePosts.length > 0
+    ? [...currentPosts, ...uniquePosts]
+    : currentPosts;
 }
 
 function toCampusAuthor(

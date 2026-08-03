@@ -39,6 +39,8 @@ import {
   type CoreContentPostCategory,
 } from "@/content/client";
 import {
+  appendUniqueCampusPosts,
+  getUsablePageCursor,
   toCampusComment,
   toCampusPost,
   toContentCategory,
@@ -330,36 +332,6 @@ function getLatestCreatedAt(posts: CampusPost[]) {
   );
 }
 
-function getUsableNextCursor(page: {
-  nextCursor: string | null;
-  hasMore: boolean;
-}) {
-  return page.hasMore &&
-    typeof page.nextCursor === "string" &&
-    page.nextCursor.length > 0
-    ? page.nextCursor
-    : null;
-}
-
-function appendUniquePosts(
-  currentPosts: CampusPost[],
-  incomingPosts: CampusPost[],
-) {
-  const knownPostIds = new Set(currentPosts.map((post) => post.id));
-  const uniquePosts = incomingPosts.filter((post) => {
-    if (knownPostIds.has(post.id)) {
-      return false;
-    }
-
-    knownPostIds.add(post.id);
-    return true;
-  });
-
-  return uniquePosts.length > 0
-    ? [...currentPosts, ...uniquePosts]
-    : currentPosts;
-}
-
 function migrateLegacyOwnership(posts: CampusPost[]) {
   return posts.map((post) => {
     const isAnonymous = isAnonymousCampusAuthor(post);
@@ -456,7 +428,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
           }
 
           const nextPosts = response.data.map(toCampusPost);
-          const usableNextCursor = getUsableNextCursor(response.page);
+          const usableNextCursor = getUsablePageCursor(response.page);
           latestCreatedAtRef.current = getLatestCreatedAt(nextPosts);
           replacePosts(nextPosts);
           setNextCursor(usableNextCursor);
@@ -576,10 +548,10 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
       }
 
       const incomingPosts = response.data.map(toCampusPost);
-      const usableNextCursor = getUsableNextCursor(response.page);
+      const usableNextCursor = getUsablePageCursor(response.page);
 
       updatePosts((currentPosts) =>
-        appendUniquePosts(currentPosts, incomingPosts),
+        appendUniqueCampusPosts(currentPosts, incomingPosts),
       );
       setNextCursor(usableNextCursor);
       setHasMore(usableNextCursor !== null);
@@ -1417,7 +1389,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         }
 
         const nextPosts = response.data.map(toCampusPost);
-        const usableNextCursor = getUsableNextCursor(response.page);
+        const usableNextCursor = getUsablePageCursor(response.page);
         latestCreatedAtRef.current = getLatestCreatedAt(nextPosts);
         replacePosts(nextPosts);
         setNextCursor(usableNextCursor);

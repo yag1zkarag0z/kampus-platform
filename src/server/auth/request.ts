@@ -100,6 +100,29 @@ export function assertSameOrigin(request: Request) {
   }
 }
 
+export function readQueryParams(searchParams: URLSearchParams) {
+  const query: Record<string, string> = {};
+
+  for (const [key, value] of searchParams.entries()) {
+    if (Object.hasOwn(query, key)) {
+      throw new AuthError(
+        "INVALID_REQUEST",
+        "Aynı sorgu alanı birden fazla kez gönderilemez.",
+        {
+          fieldErrors: {
+            [key]: ["Bu alanı yalnızca bir kez gönder."],
+          },
+          status: 400,
+        },
+      );
+    }
+
+    query[key] = value;
+  }
+
+  return query;
+}
+
 export async function readJsonBody(request: Request) {
   const contentType =
     request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();

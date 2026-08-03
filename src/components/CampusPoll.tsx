@@ -12,14 +12,18 @@ export default function CampusPoll({
   postId,
   poll,
   compact = false,
+  onVote,
 }: {
   postId: string;
   poll: CampusPostPoll;
   compact?: boolean;
+  onVote?: (optionId: string) => void;
 }) {
   const { isGuest } = useCampusAccount();
   const { voteInPoll } = useCampusData();
   const { showToast } = useFeedback();
+  const submitVote =
+    onVote ?? ((optionId: string) => voteInPoll(postId, optionId));
   const totalVotes = poll.options.reduce(
     (total, option) => total + option.votes,
     0,
@@ -55,7 +59,7 @@ export default function CampusPoll({
                   return;
                 }
 
-                voteInPoll(postId, option.id);
+                submitVote(option.id);
               }}
               className={`relative isolate min-h-12 cursor-pointer overflow-hidden border px-3.5 py-2.5 text-left transition-colors ${focusRing} ${
                 isSelected

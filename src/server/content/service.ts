@@ -57,6 +57,7 @@ import {
 
 import {
   validateFinalPostContent,
+  type BookmarksQueryInput,
   type CreateCommentInput,
   type CreatePostInput,
   type FeedQueryInput,
@@ -73,6 +74,7 @@ export type {
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const CURSOR_VERSION = 3;
+const BOOKMARK_CURSOR_VERSION = 1;
 const COMMENT_CREATION_MINUTE_LIMIT = 20;
 const POST_COMMENT_TOTAL_LIMIT = 500;
 
@@ -85,6 +87,12 @@ type FeedCursor = {
   createdAt: Date;
   id: string;
   likeCount: number | null;
+};
+
+type BookmarkCursor = {
+  version: typeof BOOKMARK_CURSOR_VERSION;
+  bookmarkedAt: Date;
+  postId: string;
 };
 
 type PostRow = {
@@ -107,6 +115,10 @@ type PostRow = {
   likeCount: number;
   liked: boolean;
   bookmarked: boolean;
+};
+
+type BookmarkRow = PostRow & {
+  bookmarkedAt: Date;
 };
 
 type CommentRow = {
@@ -414,6 +426,60 @@ function decodeFeedCursor(
       createdAt,
       id: decoded.id,
       likeCount: decoded.likeCount,
+    };
+  } catch (error) {
+    if (error instanceof AuthError) {
+      throw error;
+    }
+
+    throw invalidCursorError();
+  }
+}
+
+function encodeBookmarkCursor(row: Pick<BookmarkRow, "bookmarkedAt" | "id">) {
+  return Buffer.from(
+    JSON.stringify({
+      version: BOOKMARK_CURSOR_VERSION,
+      bookmarkedAt: row.bookmarkedAt.toISOString(),
+      postId: row.id,
+    }),
+    "utf8",
+  ).toString("base64url");
+}
+
+function decodeBookmarkCursor(value: string): BookmarkCursor {
+  try {
+    const decoded = JSON.parse(
+      Buffer.from(value, "base64url").toString("utf8"),
+    ) as unknown;
+
+    if (
+      typeof decoded !== "object" ||
+      decoded === null ||
+      !("version" in decoded) ||
+      decoded.version !== BOOKMARK_CURSOR_VERSION ||
+      !("bookmarkedAt" in decoded) ||
+      typeof decoded.bookmarkedAt !== "string" ||
+      !("postId" in decoded) ||
+      typeof decoded.postId !== "string" ||
+      !UUID_PATTERN.test(decoded.postId)
+    ) {
+      throw invalidCursorError();
+    }
+
+    const bookmarkedAt = new Date(decoded.bookmarkedAt);
+
+    if (
+      !Number.isFinite(bookmarkedAt.getTime()) ||
+      bookmarkedAt.toISOString() !== decoded.bookmarkedAt
+    ) {
+      throw invalidCursorError();
+    }
+
+    return {
+      version: BOOKMARK_CURSOR_VERSION,
+      bookmarkedAt,
+      postId: decoded.postId,
     };
   } catch (error) {
     if (error instanceof AuthError) {
@@ -920,6 +986,125 @@ export async function listContentPosts(
       nextCursor:
         hasMore && lastVisibleRow
           ? encodeFeedCursor(lastVisibleRow, query)
+          : null,
+      hasMore,
+    },
+  };
+}
+
+export async function listContentBookmarks(
+  viewerId: string,
+  query: BookmarksQueryInput,
+) {
+  const filters: SQL[] = [
+    eq(postBookmarks.userId, viewerId),
+    isNull(posts.deletedAt),
+    isNull(users.deletedAt),
+    eq(users.status, "active"),
+    notExists(
+      getDatabase()
+        .select({ blockedId: blocks.blockedId })
+        .from(blocks)
+        .where(
+          and(
+            eq(blocks.blockerId, viewerId),
+            eq(blocks.blockedId, posts.authorId),
+          ),
+        ),
+    ),
+  ];
+
+  if (query.cursor) {
+    const cursor = decodeBookmarkCursor(query.cursor);
+    const cursorFilter = or(
+      lt(postBookmarks.createdAt, cursor.bookmarkedAt),
+      and(
+        eq(postBookmarks.createdAt, cursor.bookmarkedAt),
+        lt(posts.id, cursor.postId),
+      ),
+    );
+
+    if (cursorFilter) {
+      filters.push(cursorFilter);
+    }
+  }
+
+  const commentCount = sql<number>`count(${comments.id})::int`;
+  const likeCount = sql<number>`(
+    select count(*)::int
+    from ${postLikes}
+    where ${postLikes.postId} = ${posts.id}
+  )`;
+  const liked = sql<boolean>`exists (
+    select 1
+    from ${postLikes}
+    where ${postLikes.postId} = ${posts.id}
+      and ${postLikes.userId} = ${viewerId}
+  )`;
+  const database = getDatabase();
+  const rows = await database
+    .select({
+      id: posts.id,
+      authorId: posts.authorId,
+      category: posts.category,
+      isAnonymous: posts.isAnonymous,
+      title: posts.title,
+      body: posts.body,
+      gifId: posts.gifId,
+      gifUrl: posts.gifUrl,
+      gifWidth: posts.gifWidth,
+      gifHeight: posts.gifHeight,
+      gifAlt: posts.gifAlt,
+      createdAt: posts.createdAt,
+      editedAt: posts.editedAt,
+      username: users.username,
+      displayName: users.displayName,
+      bookmarkedAt: postBookmarks.createdAt,
+      commentCount,
+      likeCount,
+      liked,
+      // The join already restricts rows to bookmarks owned by the viewer.
+      bookmarked: sql<boolean>`true`,
+    })
+    .from(postBookmarks)
+    .innerJoin(posts, eq(posts.id, postBookmarks.postId))
+    .innerJoin(users, eq(users.id, posts.authorId))
+    .leftJoin(
+      comments,
+      and(
+        eq(comments.postId, posts.id),
+        isNull(comments.deletedAt),
+      ),
+    )
+    .where(and(...filters))
+    .groupBy(posts.id, users.id, postBookmarks.createdAt)
+    .orderBy(desc(postBookmarks.createdAt), desc(posts.id))
+    .limit(query.limit + 1);
+
+  const hasMore = rows.length > query.limit;
+  const visibleRows = hasMore ? rows.slice(0, query.limit) : rows;
+  const lastVisibleRow = visibleRows.at(-1);
+  const visiblePostIds = visibleRows.map((row) => row.id);
+  const [pollViews, listingViews, imageViews] = await Promise.all([
+    selectPostPolls(database, visiblePostIds, viewerId),
+    selectPostListings(database, visiblePostIds),
+    selectPostImages(database, visiblePostIds),
+  ]);
+
+  return {
+    data: visibleRows.map((row) =>
+      serializePost(
+        row,
+        viewerId,
+        pollViews.get(row.id),
+        listingViews.get(row.id),
+        imageViews.get(row.id),
+      ),
+    ),
+    page: {
+      nextCursor:
+        hasMore && lastVisibleRow
+          ? encodeBookmarkCursor(lastVisibleRow)
           : null,
       hasMore,
     },

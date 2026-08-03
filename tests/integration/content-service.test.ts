@@ -10,6 +10,7 @@ import {
   deleteContentComment,
   deleteContentPost,
   getContentPost,
+  listContentBookmarks,
   listContentPosts,
   setContentPostBookmark,
   setContentPostLike,
@@ -344,6 +345,167 @@ describe("content service with PostgreSQL", () => {
     });
     expect(repeatedLikeRemoval.likeCount).toBe(0);
     expect(removedBookmark.viewerState.bookmarked).toBe(false);
+  });
+
+  it("lists saved posts newest-saved-first and hides unreachable ones", async () => {
+    const viewer = await insertUser("Bookmark Viewer");
+    const owner = await insertUser("Bookmark Owner");
+    const blockedAuthor = await insertUser("Bookmark Blocked Author");
+    const suspendedAuthor = await insertUser("Bookmark Suspended Author");
+    const savedPost = async (authorId: string, title: string) =>
+      createContentPost(authorId, {
+        category: "chat",
+        title,
+        body: "",
+        isAnonymous: false,
+      });
+
+    const oldest = await savedPost(owner.id, "Kayıt 1");
+    const middle = await savedPost(owner.id, "Kayıt 2");
+    const newest = await savedPost(owner.id, "Kayıt 3");
+    const deletedPost = await savedPost(owner.id, "Silinecek kayıt");
+    const blockedPost = await savedPost(
+      blockedAuthor.id,
+      "Engellenen yazarın kaydı",
+    );
+    const suspendedPost = await savedPost(
+      suspendedAuthor.id,
+      "Askıya alınan yazarın kaydı",
+    );
+    const savedAtBase = Date.now() - 60_000;
+    const bookmarkOrder = [
+      oldest,
+      middle,
+      newest,
+      deletedPost,
+      blockedPost,
+      suspendedPost,
+    ];
+
+    for (const [index, post] of bookmarkOrder.entries()) {
+      await setContentPostBookmark(viewer.id, post.id, true);
+      await pool.query(
+        `update post_bookmarks
+         set created_at = $3
+         where user_id = $1 and post_id = $2`,
+        [viewer.id, post.id, new Date(savedAtBase + index * 1_000)],
+      );
+    }
+
+    await deleteContentPost(owner.id, deletedPost.id);
+    await pool.query(
+      "insert into blocks (blocker_id, blocked_id) values ($1, $2)",
+      [viewer.id, blockedAuthor.id],
+    );
+    await pool.query(
+      "update users set status = 'suspended', suspended_at = now() where id = $1",
+      [suspendedAuthor.id],
+    );
+
+    const firstPage = await listContentBookmarks(viewer.id, { limit: 2 });
+
+    expect(firstPage.data.map((post) => post.id)).toEqual([
+      newest.id,
+      middle.id,
+    ]);
+    expect(firstPage.page).toMatchObject({
+      hasMore: true,
+      nextCursor: expect.any(String),
+    });
+    expect(
+      firstPage.data.every((post) => post.viewerState.bookmarked),
+    ).toBe(true);
+
+    const cursor = firstPage.page.nextCursor;
+
+    if (!cursor) {
+      throw new Error("Expected a cursor for the first bookmark page.");
+    }
+
+    const secondPage = await listContentBookmarks(viewer.id, {
+      cursor,
+      limit: 2,
+    });
+
+    expect(secondPage.data.map((post) => post.id)).toEqual([oldest.id]);
+    expect(secondPage.page).toEqual({
+      hasMore: false,
+      nextCursor: null,
+    });
+
+    await expectAuthError(
+      () =>
+        listContentBookmarks(viewer.id, {
+          cursor: "not-a-real-cursor",
+          limit: 20,
+        }),
+      "INVALID_REQUEST",
+      400,
+    );
+
+    const outsider = await insertUser("Bookmark Outsider");
+
+    await expect(
+      listContentBookmarks(outsider.id, { limit: 20 }),
+    ).resolves.toEqual({
+      data: [],
+      page: { hasMore: false, nextCursor: null },
+    });
+  });
+
+  it("paginates bookmarks saved at the same instant without gaps", async () => {
+    const viewer = await insertUser("Bookmark Tie Viewer");
+    const owner = await insertUser("Bookmark Tie Owner");
+    const savedAt = new Date(Date.now() - 60_000);
+    const postIds: string[] = [];
+
+    for (let index = 0; index < 5; index += 1) {
+      const post = await createContentPost(owner.id, {
+        category: "chat",
+        title: `Aynı anda kaydedilen ${index}`,
+        body: "",
+        isAnonymous: false,
+      });
+
+      postIds.push(post.id);
+      await setContentPostBookmark(viewer.id, post.id, true);
+      await pool.query(
+        `update post_bookmarks
+         set created_at = $3
+         where user_id = $1 and post_id = $2`,
+        [viewer.id, post.id, savedAt],
+      );
+    }
+
+    const expectedResult = await pool.query<{ post_id: string }>(
+      `select post_id
+       from post_bookmarks
+       where user_id = $1 and post_id = any($2::uuid[])
+       order by created_at desc, post_id desc`,
+      [viewer.id, postIds],
+    );
+    const expectedIds = expectedResult.rows.map((row) => row.post_id);
+    const seenIds: string[] = [];
+    let cursor: string | null | undefined;
+    let pageCount = 0;
+
+    do {
+      const page = await listContentBookmarks(viewer.id, {
+        limit: 2,
+        ...(cursor ? { cursor } : {}),
+      });
+
+      seenIds.push(...page.data.map((post) => post.id));
+      cursor = page.page.nextCursor;
+      pageCount += 1;
+
+      if (pageCount > 4) {
+        throw new Error("Bookmark pagination did not terminate.");
+      }
+    } while (cursor);
+
+    expect(seenIds).toEqual(expectedIds);
+    expect(new Set(seenIds).size).toBe(seenIds.length);
   });
 
   it("orders and paginates the popular feed by real like counts", async () => {

@@ -30,6 +30,10 @@ anlamına gelmez.
   gizleme; anonim gönderileri yazar filtresine dahil etmeme
 - Kullanıcı başına idempotent beğeni ve kaydetme işlemleri; gerçek beğeni
   sayaçları ve beğeni sayısına göre cursor tabanlı popüler akış
+- Kaydedilenler listesi: kaydetme zamanına göre azalan sıralı, opaque cursor
+  pagination'lı `GET /v1/me/bookmarks`. Silinmiş gönderiler ile silinmiş,
+  askıya alınmış veya engellenmiş yazarların gönderileri listeden düşer;
+  kayıt satırı veritabanında korunur.
 
 Kalıcı gönderi oluşturma şu temel kategorilerle sınırlıdır:
 `chat | confession | question | event | lost_found`.
@@ -294,9 +298,10 @@ Bu tablo append-only olmalıdır.
 
 Bu bölüm hedef endpoint setini gösterir. Gönderi/yorum grubunda şu anda
 `GET/POST /v1/posts`, `GET/PATCH/DELETE /v1/posts/:id`,
-`POST /v1/posts/:id/comments`, `PATCH/DELETE /v1/comments/:id` ve idempotent
-like/bookmark endpoint'leri uygulanmıştır. Poll, vote ve bookmark-listesi
-endpoint'leri ile sonraki grupların sosyal/moderasyon endpoint'leri planlıdır.
+`POST /v1/posts/:id/comments`, `PATCH/DELETE /v1/comments/:id`, idempotent
+like/bookmark endpoint'leri ve `GET /v1/me/bookmarks` uygulanmıştır. Poll ve
+vote endpoint'leri ile sonraki grupların sosyal/moderasyon endpoint'leri
+planlıdır.
 
 ### Authentication
 

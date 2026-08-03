@@ -56,6 +56,28 @@ export function listContentPosts({
   );
 }
 
+export function listContentBookmarks({
+  cursor,
+  limit = 20,
+}: {
+  cursor?: string;
+  limit?: number;
+} = {}) {
+  const searchParams = new URLSearchParams({ limit: String(limit) });
+
+  if (cursor) {
+    searchParams.set("cursor", cursor);
+  }
+
+  return requestApiPayload<ContentPostListDto>(
+    `/v1/me/bookmarks?${searchParams.toString()}`,
+    {
+      method: "GET",
+      cache: "no-store",
+    },
+  );
+}
+
 export function getContentPost(postId: string) {
   return requestApi<ContentPostDetailDto>(`/v1/posts/${postId}`, {
     method: "GET",
