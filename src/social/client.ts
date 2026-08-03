@@ -1,6 +1,7 @@
 "use client";
 
-import { requestApi } from "@/auth/client";
+import { requestApi, requestApiPayload } from "@/auth/client";
+import type { CursorPage } from "@/components/useCursorList";
 
 export type FollowSummaryDto = {
   followerCount: number;
@@ -52,16 +53,24 @@ export function unfollowMember(username: string) {
   );
 }
 
-export function getMemberFollowers(username: string) {
-  return requestApi<FollowMemberDto[]>(
-    `/v1/users/${encodeURIComponent(username)}/followers`,
+function followListQuery(cursor?: string) {
+  return cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+}
+
+export function getMemberFollowers(username: string, cursor?: string) {
+  return requestApiPayload<CursorPage<FollowMemberDto>>(
+    `/v1/users/${encodeURIComponent(username)}/followers${followListQuery(
+      cursor,
+    )}`,
     { cache: "no-store" },
   );
 }
 
-export function getMemberFollowing(username: string) {
-  return requestApi<FollowMemberDto[]>(
-    `/v1/users/${encodeURIComponent(username)}/following`,
+export function getMemberFollowing(username: string, cursor?: string) {
+  return requestApiPayload<CursorPage<FollowMemberDto>>(
+    `/v1/users/${encodeURIComponent(username)}/following${followListQuery(
+      cursor,
+    )}`,
     { cache: "no-store" },
   );
 }

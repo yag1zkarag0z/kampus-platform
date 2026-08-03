@@ -54,7 +54,10 @@ describe("GET /v1/moderation/users", () => {
       state: {} as never,
       userId: moderatorId,
     });
-    mockedListManagedUsers.mockReset().mockResolvedValue(managedUsers);
+    mockedListManagedUsers.mockReset().mockResolvedValue({
+      data: managedUsers,
+      page: { nextCursor: null, hasMore: false },
+    });
   });
 
   it("returns the managed user list", async () => {
@@ -67,7 +70,10 @@ describe("GET /v1/moderation/users", () => {
     expect(mockedListManagedUsers).toHaveBeenCalled();
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
-    await expect(response.json()).resolves.toEqual({ data: managedUsers });
+    await expect(response.json()).resolves.toEqual({
+      data: managedUsers,
+      page: { nextCursor: null, hasMore: false },
+    });
   });
 
   it("rejects a non-moderator caller", async () => {

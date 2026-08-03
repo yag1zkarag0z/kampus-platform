@@ -13,7 +13,6 @@ import {
   inArray,
   isNull,
   lt,
-  notExists,
   or,
   sql,
   type SQL,
@@ -33,13 +32,13 @@ import { AuthError } from "@/server/auth/errors";
 import { getDatabase } from "@/server/db/client";
 import { getMediaStorage } from "@/server/media/storage";
 import { resolveGiphyGif } from "@/server/giphy/client";
+import { noBlockBetween } from "@/server/social/blocking";
 import {
   recordCommentNotification,
   recordLikeNotification,
   recordMentionNotifications,
 } from "@/server/notifications/service";
 import {
-  blocks,
   comments,
   follows,
   listings,
@@ -73,7 +72,8 @@ export type {
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
-const CURSOR_VERSION = 3;
+const CURSOR_VERSION = 4;
+const TRENDING_WINDOW_DAYS = 7;
 const BOOKMARK_CURSOR_VERSION = 1;
 const COMMENT_CREATION_MINUTE_LIMIT = 20;
 const POST_COMMENT_TOTAL_LIMIT = 500;
@@ -84,9 +84,11 @@ type FeedCursor = {
   category: FeedQueryInput["category"] | null;
   author: string | null;
   scope: FeedQueryInput["scope"];
+  q: string | null;
   createdAt: Date;
   id: string;
-  likeCount: number | null;
+  /** popular sıralamasında beğeni, trending sıralamasında etkileşim puanı. */
+  rank: number | null;
 };
 
 type BookmarkCursor = {
@@ -267,6 +269,7 @@ async function assertActiveContentMember(
 async function assertActivePostForInteraction(
   transaction: ContentTransaction,
   postId: string,
+  viewerId: string,
 ) {
   const [activePost] = await transaction
     .select({ id: posts.id, authorId: posts.authorId })
@@ -277,6 +280,7 @@ async function assertActivePostForInteraction(
         eq(posts.id, postId),
         isNull(posts.deletedAt),
         isNull(users.deletedAt),
+        noBlockBetween(viewerId, posts.authorId),
       ),
     )
     .for("share")
@@ -341,9 +345,31 @@ async function assertCommentCreationAllowed(
   }
 }
 
+type FeedCursorBinding = Pick<
+  FeedQueryInput,
+  "author" | "category" | "q" | "sort" | "scope"
+>;
+
+function feedRowRank(
+  row: Pick<PostRow, "likeCount"> & { trendingScore?: number },
+  sort: FeedQueryInput["sort"],
+) {
+  if (sort === "popular") {
+    return Number(row.likeCount);
+  }
+
+  if (sort === "trending") {
+    return Number(row.trendingScore ?? 0);
+  }
+
+  return null;
+}
+
 function encodeFeedCursor(
-  row: Pick<PostRow, "createdAt" | "id" | "likeCount">,
-  query: Pick<FeedQueryInput, "author" | "category" | "sort" | "scope">,
+  row: Pick<PostRow, "createdAt" | "id" | "likeCount"> & {
+    trendingScore?: number;
+  },
+  query: FeedCursorBinding,
 ) {
   return Buffer.from(
     JSON.stringify({
@@ -352,9 +378,10 @@ function encodeFeedCursor(
       category: query.category ?? null,
       author: query.author ?? null,
       scope: query.scope,
+      q: query.q ?? null,
       createdAt: row.createdAt.toISOString(),
       id: row.id,
-      likeCount: query.sort === "popular" ? Number(row.likeCount) : null,
+      rank: feedRowRank(row, query.sort),
     }),
     "utf8",
   ).toString("base64url");
@@ -362,7 +389,7 @@ function encodeFeedCursor(
 
 function decodeFeedCursor(
   value: string,
-  query: Pick<FeedQueryInput, "author" | "category" | "sort" | "scope">,
+  query: FeedCursorBinding,
 ): FeedCursor {
   try {
     const decoded = JSON.parse(
@@ -375,7 +402,9 @@ function decodeFeedCursor(
       !("version" in decoded) ||
       decoded.version !== CURSOR_VERSION ||
       !("sort" in decoded) ||
-      (decoded.sort !== "newest" && decoded.sort !== "popular") ||
+      (decoded.sort !== "newest" &&
+        decoded.sort !== "popular" &&
+        decoded.sort !== "trending") ||
       !("category" in decoded) ||
       (decoded.category !== null &&
         typeof decoded.category !== "string") ||
@@ -383,16 +412,18 @@ function decodeFeedCursor(
       (decoded.author !== null && typeof decoded.author !== "string") ||
       !("scope" in decoded) ||
       (decoded.scope !== "global" && decoded.scope !== "following") ||
+      !("q" in decoded) ||
+      (decoded.q !== null && typeof decoded.q !== "string") ||
       !("createdAt" in decoded) ||
       typeof decoded.createdAt !== "string" ||
       !("id" in decoded) ||
       typeof decoded.id !== "string" ||
       !UUID_PATTERN.test(decoded.id) ||
-      !("likeCount" in decoded) ||
-      (decoded.likeCount !== null &&
-        (typeof decoded.likeCount !== "number" ||
-          !Number.isSafeInteger(decoded.likeCount) ||
-          decoded.likeCount < 0))
+      !("rank" in decoded) ||
+      (decoded.rank !== null &&
+        (typeof decoded.rank !== "number" ||
+          !Number.isSafeInteger(decoded.rank) ||
+          decoded.rank < 0))
     ) {
       throw invalidCursorError();
     }
@@ -402,8 +433,8 @@ function decodeFeedCursor(
       decoded.author !== (query.author ?? null) ||
       decoded.sort !== query.sort ||
       decoded.scope !== query.scope ||
-      (query.sort === "newest" && decoded.likeCount !== null) ||
-      (query.sort === "popular" && decoded.likeCount === null)
+      decoded.q !== (query.q ?? null) ||
+      (query.sort === "newest") !== (decoded.rank === null)
     ) {
       throw invalidCursorError();
     }
@@ -423,9 +454,10 @@ function decodeFeedCursor(
       category: decoded.category as FeedQueryInput["category"] | null,
       author: decoded.author,
       scope: decoded.scope,
+      q: decoded.q,
       createdAt,
       id: decoded.id,
-      likeCount: decoded.likeCount,
+      rank: decoded.rank,
     };
   } catch (error) {
     if (error instanceof AuthError) {
@@ -488,6 +520,24 @@ function decodeBookmarkCursor(value: string): BookmarkCursor {
 
     throw invalidCursorError();
   }
+}
+
+/**
+ * LIKE joker karakterlerini kaçırır; aksi hâlde "%" yazan bir arama tüm
+ * gönderilerle eşleşirdi. Kaçış karakteri PostgreSQL'in varsayılanı olan
+ * ters bölü, normalizasyon fonksiyonu ise bu karakterlere dokunmuyor.
+ */
+function escapeSearchPattern(value: string) {
+  return value.replace(/[\\%_]/gu, (character) => `\\${character}`);
+}
+
+/**
+ * Arama, `kampus_search_text` ile normalize edilmiş başlık ve gövde üzerinde
+ * yapılır; aynı ifade `posts_search_trgm_idx` indeksinde tanımlıdır.
+ */
+function postSearchFilter(term: string): SQL {
+  return sql`kampus_search_text(${posts.title} || ' ' || ${posts.body})
+    like '%' || kampus_search_text(${escapeSearchPattern(term)}) || '%'`;
 }
 
 function anonymousAuthor(): ContentAuthorDto {
@@ -779,6 +829,7 @@ async function selectPost(
       and(
         eq(comments.postId, posts.id),
         isNull(comments.deletedAt),
+        noBlockBetween(viewerId, comments.authorId),
       ),
     )
     .where(
@@ -786,6 +837,8 @@ async function selectPost(
         eq(posts.id, postId),
         isNull(posts.deletedAt),
         isNull(users.deletedAt),
+        // Doğrudan URL ile açılan gönderi de engellenmiş sayılır.
+        noBlockBetween(viewerId, posts.authorId),
       ),
     )
     .groupBy(posts.id, users.id)
@@ -797,6 +850,7 @@ async function selectPost(
 async function selectPostComments(
   executor: ContentReadExecutor,
   postId: string,
+  viewerId: string,
 ): Promise<CommentRow[]> {
   return executor
     .select({
@@ -820,7 +874,12 @@ async function selectPostComments(
     })
     .from(comments)
     .innerJoin(users, eq(users.id, comments.authorId))
-    .where(eq(comments.postId, postId))
+    .where(
+      and(
+        eq(comments.postId, postId),
+        noBlockBetween(viewerId, comments.authorId),
+      ),
+    )
     .orderBy(asc(comments.createdAt), asc(comments.id));
 }
 
@@ -832,23 +891,42 @@ export async function listContentPosts(
     isNull(posts.deletedAt),
     isNull(users.deletedAt),
     eq(users.status, "active"),
-    notExists(
-      getDatabase()
-        .select({ blockedId: blocks.blockedId })
-        .from(blocks)
-        .where(
-          and(
-            eq(blocks.blockerId, viewerId),
-            eq(blocks.blockedId, posts.authorId),
-          ),
-        ),
-    ),
+    noBlockBetween(viewerId, posts.authorId),
   ];
   const likeCount = sql<number>`(
     select count(*)::int
     from ${postLikes}
     where ${postLikes.postId} = ${posts.id}
   )`;
+  // Etkileşim puanı: yorum, beğeniden daha güçlü bir ilgi sinyali sayılır.
+  // Cursor karşılaştırmasında kullanıldığı için toplama değil, skaler alt
+  // sorgu olmak zorunda.
+  const trendingScore = sql<number>`(
+    (
+      select count(*)::int
+      from ${postLikes}
+      where ${postLikes.postId} = ${posts.id}
+    ) * 3 + (
+      select count(*)::int
+      from ${comments}
+      where ${comments.postId} = ${posts.id}
+        and ${comments.deletedAt} is null
+        and ${noBlockBetween(viewerId, comments.authorId)}
+    ) * 2
+  )`;
+  const feedRank = query.sort === "trending" ? trendingScore : likeCount;
+
+  if (query.q) {
+    filters.push(postSearchFilter(query.q));
+  }
+
+  if (query.sort === "trending") {
+    filters.push(
+      sql`${posts.createdAt} >= now() - interval '${sql.raw(
+        String(TRENDING_WINDOW_DAYS),
+      )} days'`,
+    );
+  }
 
   if (query.category) {
     filters.push(eq(posts.category, query.category));
@@ -862,35 +940,34 @@ export async function listContentPosts(
   }
 
   if (query.scope === "following") {
+    // Takip akışı yalnızca takip edilenleri gösterir; kendi gönderilerin
+    // burada değil, profilinde ve genel akışta görünür.
     filters.push(
-      or(
-        eq(posts.authorId, viewerId),
-        exists(
-          getDatabase()
-            .select({ followerId: follows.followerId })
-            .from(follows)
-            .where(
-              and(
-                eq(follows.followerId, viewerId),
-                eq(follows.followingId, posts.authorId),
-              ),
+      exists(
+        getDatabase()
+          .select({ followerId: follows.followerId })
+          .from(follows)
+          .where(
+            and(
+              eq(follows.followerId, viewerId),
+              eq(follows.followingId, posts.authorId),
             ),
-        ),
-      )!,
+          ),
+      ),
     );
   }
 
   if (query.cursor) {
     const cursor = decodeFeedCursor(query.cursor, query);
-    const cursorFilter = query.sort === "popular"
+    const cursorFilter = cursor.rank !== null
       ? or(
-          lt(likeCount, cursor.likeCount!),
+          lt(feedRank, cursor.rank),
           and(
-            eq(likeCount, cursor.likeCount!),
+            eq(feedRank, cursor.rank),
             lt(posts.createdAt, cursor.createdAt),
           ),
           and(
-            eq(likeCount, cursor.likeCount!),
+            eq(feedRank, cursor.rank),
             eq(posts.createdAt, cursor.createdAt),
             lt(posts.id, cursor.id),
           ),
@@ -941,6 +1018,7 @@ export async function listContentPosts(
       displayName: users.displayName,
       commentCount,
       likeCount,
+      trendingScore,
       liked,
       bookmarked,
     })
@@ -951,14 +1029,16 @@ export async function listContentPosts(
       and(
         eq(comments.postId, posts.id),
         isNull(comments.deletedAt),
+        // Sayaç, görüntüleyenin gerçekten görebildiği yorumları saymalı.
+        noBlockBetween(viewerId, comments.authorId),
       ),
     )
     .where(and(...filters))
     .groupBy(posts.id, users.id)
     .orderBy(
-      ...(query.sort === "popular"
-        ? [desc(likeCount), desc(posts.createdAt), desc(posts.id)]
-        : [desc(posts.createdAt), desc(posts.id)]),
+      ...(query.sort === "newest"
+        ? [desc(posts.createdAt), desc(posts.id)]
+        : [desc(feedRank), desc(posts.createdAt), desc(posts.id)]),
     )
     .limit(query.limit + 1);
 
@@ -1001,17 +1081,7 @@ export async function listContentBookmarks(
     isNull(posts.deletedAt),
     isNull(users.deletedAt),
     eq(users.status, "active"),
-    notExists(
-      getDatabase()
-        .select({ blockedId: blocks.blockedId })
-        .from(blocks)
-        .where(
-          and(
-            eq(blocks.blockerId, viewerId),
-            eq(blocks.blockedId, posts.authorId),
-          ),
-        ),
-    ),
+    noBlockBetween(viewerId, posts.authorId),
   ];
 
   if (query.cursor) {
@@ -1074,6 +1144,8 @@ export async function listContentBookmarks(
       and(
         eq(comments.postId, posts.id),
         isNull(comments.deletedAt),
+        // Sayaç, görüntüleyenin gerçekten görebildiği yorumları saymalı.
+        noBlockBetween(viewerId, comments.authorId),
       ),
     )
     .where(and(...filters))
@@ -1128,6 +1200,7 @@ export async function getContentPost(
       const commentRows = await selectPostComments(
         transaction,
         postId,
+        viewerId,
       );
       const [pollViews, listingViews, imageViews] = await Promise.all([
         selectPostPolls(transaction, [postId], viewerId),
@@ -1167,6 +1240,7 @@ export async function setContentPostLike(
     const activePost = await assertActivePostForInteraction(
       transaction,
       postId,
+      viewerId,
     );
 
     if (liked) {
@@ -1224,7 +1298,7 @@ export async function setContentPostBookmark(
 
   return getDatabase().transaction(async (transaction) => {
     await assertActiveContentMember(transaction, viewerId);
-    await assertActivePostForInteraction(transaction, postId);
+    await assertActivePostForInteraction(transaction, postId, viewerId);
 
     if (bookmarked) {
       await transaction
@@ -1378,7 +1452,7 @@ export async function voteInContentPoll(
 
   return getDatabase().transaction(async (transaction) => {
     await assertActiveContentMember(transaction, viewerId);
-    await assertActivePostForInteraction(transaction, pollId);
+    await assertActivePostForInteraction(transaction, pollId, viewerId);
 
     const [option] = await transaction
       .select({ id: pollOptions.id })
@@ -1633,6 +1707,7 @@ export async function createContentComment(
             eq(posts.id, postId),
             isNull(posts.deletedAt),
             isNull(users.deletedAt),
+            noBlockBetween(viewerId, posts.authorId),
           ),
         )
         .for("share")
@@ -1661,7 +1736,13 @@ export async function createContentComment(
             deletedAt: comments.deletedAt,
           })
           .from(comments)
-          .where(eq(comments.id, parentId))
+          .where(
+            and(
+              eq(comments.id, parentId),
+              // Engellenen kullanıcının yorumuna yanıt verilemez.
+              noBlockBetween(viewerId, comments.authorId),
+            ),
+          )
           .for("share")
           .limit(1);
 
@@ -1773,6 +1854,8 @@ export async function updateContentComment(
           isNull(comments.deletedAt),
           isNull(posts.deletedAt),
           isNull(users.deletedAt),
+          // Erişilemeyen bir gönderideki yorum üzerinde işlem yapılamaz.
+          noBlockBetween(viewerId, posts.authorId),
         ),
       )
       .for("update")
@@ -1834,6 +1917,8 @@ export async function deleteContentComment(
           isNull(comments.deletedAt),
           isNull(posts.deletedAt),
           isNull(users.deletedAt),
+          // Erişilemeyen bir gönderideki yorum üzerinde işlem yapılamaz.
+          noBlockBetween(viewerId, posts.authorId),
         ),
       )
       .for("update")

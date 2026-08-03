@@ -30,6 +30,31 @@ anlamına gelmez.
   gizleme; anonim gönderileri yazar filtresine dahil etmeme
 - Kullanıcı başına idempotent beğeni ve kaydetme işlemleri; gerçek beğeni
   sayaçları ve beğeni sayısına göre cursor tabanlı popüler akış
+- Bütün liste endpoint'lerinde cursor pagination: bildirimler, takipçi/takip,
+  engellenenler, moderasyon şikâyetleri, moderasyon kullanıcıları ve moderasyon
+  geçmişi. Ortak biçim `server/pagination/cursor.ts` içinde tanımlıdır;
+  cursor `(createdAt, id)` ikilisini taşır ve üretildiği sorguya bağlanır
+  (ör. bekleyen şikâyet cursor'ı çözülmüş listede reddedilir). Varsayılan
+  sayfa boyutu 20, en fazla 50.
+- Gönderi araması: `GET /v1/posts?q=` başlık ve gövdede arar. Karşılaştırma
+  `kampus_search_text()` ile küçük harfe indirgenmiş ve Türkçe aksanı
+  sadeleştirilmiş metin üzerinde yapılır; aynı ifade `posts_search_trgm_idx`
+  (pg_trgm GIN) indeksinde tanımlıdır. Arama metni 2-80 karakter olmalı, LIKE
+  joker karakterleri düz metin olarak aranır ve cursor sorguya bağlanır.
+  Kategori ve yazar filtreleriyle birlikte çalışır.
+- `sort=trending`: son 7 gündeki gönderileri `beğeni * 3 + yorum * 2`
+  etkileşim puanına göre sıralar. Cursor puanı da taşır.
+- Çift yönlü engelleme görünürlüğü: engelleyen ve engellenen taraf birbirinin
+  içeriğini akışta, kaydedilenlerde, gönderi detayında, yorum ve yanıtlarda,
+  profil ile profil gönderilerinde, takipçi/takip listelerinde ve
+  bildirimlerde göremez. Doğrudan URL ile açılan gönderi de "bulunamadı"
+  döner; engelli çift arasında like, comment, reply, mention ve follow
+  bildirimi hiç üretilmez. Kural `server/social/blocking.ts` içinde tek
+  yerde tanımlıdır.
+- Profil görünürlüğü engelin yönüne göre asimetriktir: engelleyen taraf
+  profili `blockedByViewer: true` ile açar (sayaçlar sıfır, içerik ve sosyal
+  grafik gizli), engellenen taraf ise `USER_NOT_FOUND` alır ve profilin
+  varlığını öğrenemez.
 - Kaydedilenler listesi: kaydetme zamanına göre azalan sıralı, opaque cursor
   pagination'lı `GET /v1/me/bookmarks`. Silinmiş gönderiler ile silinmiş,
   askıya alınmış veya engellenmiş yazarların gönderileri listeden düşer;

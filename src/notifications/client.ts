@@ -1,6 +1,7 @@
 "use client";
 
-import { requestApi } from "@/auth/client";
+import { requestApi, requestApiPayload } from "@/auth/client";
+import type { CursorPage } from "@/components/useCursorList";
 
 export type NotificationKindDto =
   | "like"
@@ -28,12 +29,26 @@ export type NotificationDto = {
   createdAt: string;
 };
 
-export function getMyNotifications(limit?: number) {
-  const query = limit ? `?limit=${limit}` : "";
+export function getMyNotifications({
+  cursor,
+  limit,
+}: { cursor?: string; limit?: number } = {}) {
+  const searchParams = new URLSearchParams();
 
-  return requestApi<NotificationDto[]>(`/v1/me/notifications${query}`, {
-    cache: "no-store",
-  });
+  if (cursor) {
+    searchParams.set("cursor", cursor);
+  }
+
+  if (limit) {
+    searchParams.set("limit", String(limit));
+  }
+
+  const query = searchParams.size > 0 ? `?${searchParams.toString()}` : "";
+
+  return requestApiPayload<CursorPage<NotificationDto>>(
+    `/v1/me/notifications${query}`,
+    { cache: "no-store" },
+  );
 }
 
 export function getMyUnreadNotificationCount() {

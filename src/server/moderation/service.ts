@@ -1,11 +1,27 @@
 import "server-only";
 
 import { alias } from "drizzle-orm/pg-core";
-import { and, desc, eq, inArray, isNull, ne, or } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  lt,
+  ne,
+  or,
+  type SQL,
+} from "drizzle-orm";
 
 import type { AuthRole } from "@/auth/types";
 import { AuthError } from "@/server/auth/errors";
 import { getDatabase } from "@/server/db/client";
+import {
+  buildCursorPage,
+  decodeTimelineCursor,
+  encodeTimelineCursor,
+  sliceCursorPage,
+} from "@/server/pagination/cursor";
 import {
   blocks,
   comments,
@@ -15,6 +31,8 @@ import {
   reports,
   users,
 } from "@/server/db/schema";
+
+const DEFAULT_LIST_LIMIT = 20;
 
 export type BlockedMemberSummary = {
   id: string;
@@ -232,27 +250,50 @@ export async function unblockUser(
 
 export async function listBlockedUsers(
   blockerId: string,
-): Promise<BlockedMemberSummary[]> {
+  query: { cursor?: string; limit?: number } = {},
+) {
+  const limit = query.limit ?? DEFAULT_LIST_LIMIT;
+  const scope = "blocked-users";
+  const filters = [eq(blocks.blockerId, blockerId)];
+
+  if (query.cursor) {
+    const cursor = decodeTimelineCursor(scope, query.cursor);
+
+    filters.push(
+      or(
+        lt(blocks.createdAt, cursor.createdAt),
+        and(eq(blocks.createdAt, cursor.createdAt), lt(users.id, cursor.id)),
+      )!,
+    );
+  }
+
   const rows = await getDatabase()
     .select({
       id: users.id,
       username: users.username,
       displayName: users.displayName,
       avatarObjectKey: users.avatarObjectKey,
+      createdAt: blocks.createdAt,
     })
     .from(blocks)
     .innerJoin(users, eq(users.id, blocks.blockedId))
-    .where(eq(blocks.blockerId, blockerId))
-    .orderBy(blocks.createdAt);
+    .where(and(...filters))
+    .orderBy(desc(blocks.createdAt), desc(users.id))
+    .limit(limit + 1);
 
-  return rows.map((row) => ({
-    id: row.id,
-    username: row.username,
-    displayName: row.displayName,
-    avatarUrl: row.avatarObjectKey
-      ? `/v1/users/${row.username}/avatar`
-      : null,
-  }));
+  return buildCursorPage({
+    rows,
+    limit,
+    scope,
+    toDto: (row): BlockedMemberSummary => ({
+      id: row.id,
+      username: row.username,
+      displayName: row.displayName,
+      avatarUrl: row.avatarObjectKey
+        ? `/v1/users/${row.username}/avatar`
+        : null,
+    }),
+  });
 }
 
 async function resolveReportTarget(
@@ -320,9 +361,30 @@ export async function submitReport(
 
 export async function listReports(
   status?: "pending" | "resolved",
-): Promise<ReportSummary[]> {
+  query: { cursor?: string; limit?: number } = {},
+) {
   const database = getDatabase();
-  const rows = await database
+  const limit = query.limit ?? DEFAULT_LIST_LIMIT;
+  // Cursor duruma bağlı: bekleyenler için alınan anahtar çözülmüşlerde
+  // kullanılamaz, aksi hâlde sayfa atlanır.
+  const scope = `reports:${status ?? "all"}`;
+  const filters: SQL[] = status ? [eq(reports.status, status)] : [];
+
+  if (query.cursor) {
+    const cursor = decodeTimelineCursor(scope, query.cursor);
+
+    filters.push(
+      or(
+        lt(reports.createdAt, cursor.createdAt),
+        and(
+          eq(reports.createdAt, cursor.createdAt),
+          lt(reports.id, cursor.id),
+        ),
+      )!,
+    );
+  }
+
+  const pagedRows = await database
     .select({
       id: reports.id,
       targetType: reports.targetType,
@@ -341,9 +403,13 @@ export async function listReports(
     })
     .from(reports)
     .innerJoin(users, eq(users.id, reports.reporterId))
-    .where(status ? eq(reports.status, status) : undefined)
-    .orderBy(desc(reports.createdAt));
+    .where(filters.length > 0 ? and(...filters) : undefined)
+    .orderBy(desc(reports.createdAt), desc(reports.id))
+    .limit(limit + 1);
 
+  // Hedef içerik sorguları yalnızca gösterilecek satırlar için çalışsın.
+  const { visibleRows: rows, hasMore } = sliceCursorPage(pagedRows, limit);
+  const lastVisibleRow = rows.at(-1);
   const postTargetIds = rows
     .filter((row) => row.targetType === "post")
     .map((row) => row.targetId);
@@ -411,7 +477,7 @@ export async function listReports(
     }
   }
 
-  return rows.map((row) => {
+  const data = rows.map((row): ReportSummary => {
     const postTarget =
       row.targetType === "post" ? postMap.get(row.targetId) : undefined;
     const commentTarget =
@@ -463,6 +529,17 @@ export async function listReports(
           },
     };
   });
+
+  return {
+    data,
+    page: {
+      nextCursor:
+        hasMore && lastVisibleRow
+          ? encodeTimelineCursor(scope, lastVisibleRow)
+          : null,
+      hasMore,
+    },
+  };
 }
 
 async function assertCanModerateTarget(
@@ -601,7 +678,27 @@ export async function resolveReport(
   });
 }
 
-export async function listManagedUsers(): Promise<ManagedUserSummary[]> {
+export async function listManagedUsers(
+  query: { cursor?: string; limit?: number } = {},
+) {
+  const limit = query.limit ?? DEFAULT_LIST_LIMIT;
+  const scope = "managed-users";
+  const filters = [
+    isNull(users.deletedAt),
+    or(ne(users.role, "member"), eq(users.status, "suspended"))!,
+  ];
+
+  if (query.cursor) {
+    const cursor = decodeTimelineCursor(scope, query.cursor);
+
+    filters.push(
+      or(
+        lt(users.createdAt, cursor.createdAt),
+        and(eq(users.createdAt, cursor.createdAt), lt(users.id, cursor.id)),
+      )!,
+    );
+  }
+
   const rows = await getDatabase()
     .select({
       id: users.id,
@@ -615,26 +712,26 @@ export async function listManagedUsers(): Promise<ManagedUserSummary[]> {
       avatarObjectKey: users.avatarObjectKey,
     })
     .from(users)
-    .where(
-      and(
-        isNull(users.deletedAt),
-        or(ne(users.role, "member"), eq(users.status, "suspended")),
-      ),
-    )
-    .orderBy(desc(users.createdAt))
-    .limit(500);
+    .where(and(...filters))
+    .orderBy(desc(users.createdAt), desc(users.id))
+    .limit(limit + 1);
 
-  return rows.map((row) => ({
-    id: row.id,
-    username: row.username,
-    displayName: row.displayName,
-    department: row.department,
-    role: row.role,
-    status: row.status,
-    suspendedAt: row.suspendedAt ? row.suspendedAt.toISOString() : null,
-    joinedLabel: formatJoinedLabel(row.createdAt),
-    avatarUrl: avatarUrlFor(row.username, row.avatarObjectKey),
-  }));
+  return buildCursorPage({
+    rows,
+    limit,
+    scope,
+    toDto: (row): ManagedUserSummary => ({
+      id: row.id,
+      username: row.username,
+      displayName: row.displayName,
+      department: row.department,
+      role: row.role,
+      status: row.status,
+      suspendedAt: row.suspendedAt ? row.suspendedAt.toISOString() : null,
+      joinedLabel: formatJoinedLabel(row.createdAt),
+      avatarUrl: avatarUrlFor(row.username, row.avatarObjectKey),
+    }),
+  });
 }
 
 export async function setUserRole(
@@ -728,12 +825,29 @@ export async function restoreUser(
   });
 }
 
-export async function getModerationHistory(): Promise<
-  ModerationHistoryEntry[]
-> {
+export async function getModerationHistory(
+  query: { cursor?: string; limit?: number } = {},
+) {
   const database = getDatabase();
   const actor = alias(users, "moderation_history_actor");
   const target = alias(users, "moderation_history_target");
+  const limit = query.limit ?? DEFAULT_LIST_LIMIT;
+  const scope = "moderation-history";
+  const filters: SQL[] = [];
+
+  if (query.cursor) {
+    const cursor = decodeTimelineCursor(scope, query.cursor);
+
+    filters.push(
+      or(
+        lt(moderationActions.createdAt, cursor.createdAt),
+        and(
+          eq(moderationActions.createdAt, cursor.createdAt),
+          lt(moderationActions.id, cursor.id),
+        ),
+      )!,
+    );
+  }
 
   const rows = await database
     .select({
@@ -752,27 +866,33 @@ export async function getModerationHistory(): Promise<
     .from(moderationActions)
     .innerJoin(actor, eq(actor.id, moderationActions.actorId))
     .leftJoin(target, eq(target.id, moderationActions.targetUserId))
-    .orderBy(desc(moderationActions.createdAt))
-    .limit(300);
+    .where(filters.length > 0 ? and(...filters) : undefined)
+    .orderBy(desc(moderationActions.createdAt), desc(moderationActions.id))
+    .limit(limit + 1);
 
-  return rows.map((row) => ({
-    id: row.id,
-    action: row.action,
-    createdAt: row.createdAt.toISOString(),
-    reportId: row.reportId,
-    postId: row.postId,
-    note: row.note,
-    actor: {
-      username: row.actorUsername,
-      displayName: row.actorDisplayName,
-    },
-    target:
-      row.targetUserId && row.targetUsername && row.targetDisplayName
-        ? {
-            id: row.targetUserId,
-            username: row.targetUsername,
-            displayName: row.targetDisplayName,
-          }
-        : null,
-  }));
+  return buildCursorPage({
+    rows,
+    limit,
+    scope,
+    toDto: (row): ModerationHistoryEntry => ({
+      id: row.id,
+      action: row.action,
+      createdAt: row.createdAt.toISOString(),
+      reportId: row.reportId,
+      postId: row.postId,
+      note: row.note,
+      actor: {
+        username: row.actorUsername,
+        displayName: row.actorDisplayName,
+      },
+      target:
+        row.targetUserId && row.targetUsername && row.targetDisplayName
+          ? {
+              id: row.targetUserId,
+              username: row.targetUsername,
+              displayName: row.targetDisplayName,
+            }
+          : null,
+    }),
+  });
 }

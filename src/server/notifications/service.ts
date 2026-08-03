@@ -1,6 +1,16 @@
 import "server-only";
 
-import { and, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  lt,
+  or,
+  sql,
+} from "drizzle-orm";
 
 import { AuthError } from "@/server/auth/errors";
 import { getDatabase } from "@/server/db/client";
@@ -11,6 +21,11 @@ import {
   userSettings,
   users,
 } from "@/server/db/schema";
+import {
+  buildCursorPage,
+  decodeTimelineCursor,
+} from "@/server/pagination/cursor";
+import { hasBlockBetween, noBlockBetween } from "@/server/social/blocking";
 
 import { extractMentionedUsernames } from "./validation";
 
@@ -55,10 +70,36 @@ function avatarUrlFor(username: string, avatarObjectKey: string | null) {
   return avatarObjectKey ? `/v1/users/${username}/avatar` : null;
 }
 
+const NOTIFICATIONS_CURSOR_SCOPE = "notifications";
+
 export async function listNotifications(
   recipientId: string,
-  limit = DEFAULT_LIST_LIMIT,
-): Promise<NotificationSummary[]> {
+  query: { cursor?: string; limit?: number } = {},
+) {
+  const limit = query.limit ?? DEFAULT_LIST_LIMIT;
+  const filters = [
+    eq(notifications.recipientId, recipientId),
+    // Engel sonrası geçmişte üretilmiş bildirimler de görünmemeli.
+    noBlockBetween(recipientId, notifications.actorId),
+  ];
+
+  if (query.cursor) {
+    const cursor = decodeTimelineCursor(
+      NOTIFICATIONS_CURSOR_SCOPE,
+      query.cursor,
+    );
+
+    filters.push(
+      or(
+        lt(notifications.createdAt, cursor.createdAt),
+        and(
+          eq(notifications.createdAt, cursor.createdAt),
+          lt(notifications.id, cursor.id),
+        ),
+      )!,
+    );
+  }
+
   const rows = await getDatabase()
     .select({
       id: notifications.id,
@@ -82,37 +123,42 @@ export async function listNotifications(
     .innerJoin(users, eq(users.id, notifications.actorId))
     .leftJoin(posts, eq(posts.id, notifications.postId))
     .leftJoin(comments, eq(comments.id, notifications.commentId))
-    .where(eq(notifications.recipientId, recipientId))
+    .where(and(...filters))
     .orderBy(desc(notifications.createdAt), desc(notifications.id))
-    .limit(limit);
+    .limit(limit + 1);
 
-  return rows.map((row) => ({
-    id: row.id,
-    kind: row.kind,
-    actor: {
-      id: row.actorId,
-      username: row.actorUsername,
-      displayName: row.actorDisplayName,
-      avatarUrl: avatarUrlFor(row.actorUsername, row.actorAvatarObjectKey),
-    },
-    likeCount: row.likeCount,
-    post: row.postId
-      ? {
-          id: row.postId,
-          title: (row.postTitle || row.postBody || "").slice(0, 140),
-          isDeleted: Boolean(row.postDeletedAt),
-        }
-      : null,
-    comment: row.commentId
-      ? {
-          id: row.commentId,
-          excerpt: (row.commentBody ?? "").slice(0, 140),
-          isDeleted: Boolean(row.commentDeletedAt),
-        }
-      : null,
-    isRead: row.readAt !== null,
-    createdAt: row.createdAt.toISOString(),
-  }));
+  return buildCursorPage({
+    rows,
+    limit,
+    scope: NOTIFICATIONS_CURSOR_SCOPE,
+    toDto: (row): NotificationSummary => ({
+      id: row.id,
+      kind: row.kind,
+      actor: {
+        id: row.actorId,
+        username: row.actorUsername,
+        displayName: row.actorDisplayName,
+        avatarUrl: avatarUrlFor(row.actorUsername, row.actorAvatarObjectKey),
+      },
+      likeCount: row.likeCount,
+      post: row.postId
+        ? {
+            id: row.postId,
+            title: (row.postTitle || row.postBody || "").slice(0, 140),
+            isDeleted: Boolean(row.postDeletedAt),
+          }
+        : null,
+      comment: row.commentId
+        ? {
+            id: row.commentId,
+            excerpt: (row.commentBody ?? "").slice(0, 140),
+            isDeleted: Boolean(row.commentDeletedAt),
+          }
+        : null,
+      isRead: row.readAt !== null,
+      createdAt: row.createdAt.toISOString(),
+    }),
+  });
 }
 
 export async function getUnreadNotificationCount(
@@ -125,6 +171,7 @@ export async function getUnreadNotificationCount(
       and(
         eq(notifications.recipientId, recipientId),
         isNull(notifications.readAt),
+        noBlockBetween(recipientId, notifications.actorId),
       ),
     );
 
@@ -189,20 +236,45 @@ async function isNotificationEnabled(
   return row?.enabled ?? true;
 }
 
+/**
+ * Bildirim üretimi, engelin her iki yönünde de durur: engelleyen taraf da
+ * engellenen taraftan bildirim almamalı.
+ */
+async function isNotificationAllowed(
+  transaction: NotificationsTransaction,
+  params: {
+    recipientId: string;
+    actorId: string;
+    column: NotificationPreferenceColumn;
+  },
+): Promise<boolean> {
+  if (params.recipientId === params.actorId) {
+    return false;
+  }
+
+  if (
+    await hasBlockBetween(transaction, params.recipientId, params.actorId)
+  ) {
+    return false;
+  }
+
+  return isNotificationEnabled(
+    transaction,
+    params.recipientId,
+    params.column,
+  );
+}
+
 export async function recordLikeNotification(
   transaction: NotificationsTransaction,
   params: { recipientId: string; actorId: string; postId: string },
 ): Promise<void> {
-  if (params.recipientId === params.actorId) {
-    return;
-  }
-
   if (
-    !(await isNotificationEnabled(
-      transaction,
-      params.recipientId,
-      "notifyLikes",
-    ))
+    !(await isNotificationAllowed(transaction, {
+      recipientId: params.recipientId,
+      actorId: params.actorId,
+      column: "notifyLikes",
+    }))
   ) {
     return;
   }
@@ -238,14 +310,16 @@ export async function recordCommentNotification(
     kind: "comment" | "reply";
   },
 ): Promise<void> {
-  if (params.recipientId === params.actorId) {
-    return;
-  }
-
   const column: NotificationPreferenceColumn =
     params.kind === "reply" ? "notifyReplies" : "notifyComments";
 
-  if (!(await isNotificationEnabled(transaction, params.recipientId, column))) {
+  if (
+    !(await isNotificationAllowed(transaction, {
+      recipientId: params.recipientId,
+      actorId: params.actorId,
+      column,
+    }))
+  ) {
     return;
   }
 
@@ -296,7 +370,11 @@ export async function recordMentionNotifications(
 
   for (const recipientId of recipientIds) {
     if (
-      await isNotificationEnabled(transaction, recipientId, "notifyMentions")
+      await isNotificationAllowed(transaction, {
+        recipientId,
+        actorId: params.actorId,
+        column: "notifyMentions",
+      })
     ) {
       enabledRecipientIds.push(recipientId);
     }
@@ -321,16 +399,12 @@ export async function recordFollowNotification(
   transaction: NotificationsTransaction,
   params: { recipientId: string; actorId: string },
 ): Promise<void> {
-  if (params.recipientId === params.actorId) {
-    return;
-  }
-
   if (
-    !(await isNotificationEnabled(
-      transaction,
-      params.recipientId,
-      "notifyFollows",
-    ))
+    !(await isNotificationAllowed(transaction, {
+      recipientId: params.recipientId,
+      actorId: params.actorId,
+      column: "notifyFollows",
+    }))
   ) {
     return;
   }

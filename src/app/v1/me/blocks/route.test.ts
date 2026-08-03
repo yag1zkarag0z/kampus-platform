@@ -49,7 +49,10 @@ describe("GET /v1/me/blocks", () => {
       state: {} as never,
       userId: memberId,
     });
-    mockedListBlockedUsers.mockReset().mockResolvedValue(blockedUsers);
+    mockedListBlockedUsers.mockReset().mockResolvedValue({
+      data: blockedUsers,
+      page: { nextCursor: null, hasMore: false },
+    });
   });
 
   it("returns the caller's blocked users", async () => {
@@ -59,11 +62,14 @@ describe("GET /v1/me/blocks", () => {
 
     const response = await GET(request);
 
-    expect(mockedListBlockedUsers).toHaveBeenCalledWith(memberId);
+    expect(mockedListBlockedUsers).toHaveBeenCalledWith(memberId, {
+      limit: 20,
+    });
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
     await expect(response.json()).resolves.toEqual({
       data: blockedUsers,
+      page: { nextCursor: null, hasMore: false },
     });
   });
 

@@ -34,6 +34,7 @@ const followSummary = {
   followerCount: 4,
   followingCount: 2,
   isFollowing: true,
+  blockedByViewer: false,
 };
 
 function configureEnvironment() {

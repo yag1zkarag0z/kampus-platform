@@ -91,6 +91,9 @@ export default function CampusNotifications() {
   const {
     notifications,
     isNotificationsHydrated,
+    hasMoreNotifications,
+    isLoadingMoreNotifications,
+    loadMoreNotifications,
     unreadCount,
     markAsRead,
     markAllAsRead,
@@ -245,6 +248,30 @@ export default function CampusNotifications() {
               />
             ))}
           </ol>
+
+          {hasMoreNotifications && (
+            <div className="px-4 py-5 text-center sm:px-6">
+              <button
+                type="button"
+                aria-label="Daha fazla bildirim yükle"
+                aria-busy={isLoadingMoreNotifications}
+                disabled={isLoadingMoreNotifications}
+                onClick={() =>
+                  void loadMoreNotifications().catch(() => {
+                    showToast({
+                      message: "Bildirimler yüklenemedi. Tekrar dene.",
+                      tone: "error",
+                    });
+                  })
+                }
+                className={`inline-flex min-h-12 items-center justify-center border border-white/12 bg-white/[0.035] px-5 text-sm font-black text-white transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 disabled:cursor-wait disabled:opacity-60 ${focusRing}`}
+              >
+                {isLoadingMoreNotifications
+                  ? "Bildirimler yükleniyor…"
+                  : "Daha fazla bildirim yükle"}
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <NotificationsEmptyState filter={activeFilter} />

@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireActiveMember } from "@/server/auth/authorization";
-import { authErrorResponse, noStoreHeaders } from "@/server/auth/request";
+import {
+  authErrorResponse,
+  noStoreHeaders,
+  readQueryParams,
+} from "@/server/auth/request";
 import { listNotifications } from "@/server/notifications/service";
 import {
   listNotificationsQuerySchema,
@@ -14,15 +18,13 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     const member = await requireActiveMember(request);
-    const { limit } = parseNotificationsInput(listNotificationsQuerySchema, {
-      limit: request.nextUrl.searchParams.get("limit") ?? undefined,
-    });
-    const notifications = await listNotifications(member.userId, limit);
-
-    return NextResponse.json(
-      { data: notifications },
-      { headers: noStoreHeaders },
+    const query = parseNotificationsInput(
+      listNotificationsQuerySchema,
+      readQueryParams(request.nextUrl.searchParams),
     );
+    const result = await listNotifications(member.userId, query);
+
+    return NextResponse.json(result, { headers: noStoreHeaders });
   } catch (error) {
     return authErrorResponse(error);
   }

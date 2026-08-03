@@ -49,7 +49,10 @@ describe("GET /v1/users/[username]/following", () => {
       state: {} as never,
       userId: memberId,
     });
-    mockedListFollowing.mockReset().mockResolvedValue(following);
+    mockedListFollowing.mockReset().mockResolvedValue({
+      data: following,
+      page: { nextCursor: null, hasMore: false },
+    });
   });
 
   it("returns the following list for an active member", async () => {
@@ -62,10 +65,15 @@ describe("GET /v1/users/[username]/following", () => {
       params: Promise.resolve({ username: "test.user" }),
     });
 
-    expect(mockedListFollowing).toHaveBeenCalledWith("test.user");
+    expect(mockedListFollowing).toHaveBeenCalledWith(memberId, "test.user", {
+      limit: 20,
+    });
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
-    await expect(response.json()).resolves.toEqual({ data: following });
+    await expect(response.json()).resolves.toEqual({
+      data: following,
+      page: { nextCursor: null, hasMore: false },
+    });
   });
 
   it("requires an active member session", async () => {

@@ -163,7 +163,7 @@ describe("block routes with PostgreSQL", () => {
     const listResponse = await getMyBlocks(
       createGetBlocksRequest(blockerCookie),
     );
-    await expect(listResponse.json()).resolves.toEqual({
+    await expect(listResponse.json()).resolves.toMatchObject({
       data: [
         {
           id: target.id,
@@ -188,7 +188,10 @@ describe("block routes with PostgreSQL", () => {
     const finalListResponse = await getMyBlocks(
       createGetBlocksRequest(blockerCookie),
     );
-    await expect(finalListResponse.json()).resolves.toEqual({ data: [] });
+    await expect(finalListResponse.json()).resolves.toEqual({
+      data: [],
+      page: { nextCursor: null, hasMore: false },
+    });
   });
 
   it("rejects blocking yourself", async () => {

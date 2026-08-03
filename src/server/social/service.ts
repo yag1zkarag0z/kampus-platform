@@ -6,6 +6,7 @@ import {
   desc,
   eq,
   isNull,
+  lt,
   ne,
   notExists,
   notInArray,
@@ -18,6 +19,11 @@ import { AuthError } from "@/server/auth/errors";
 import { getDatabase } from "@/server/db/client";
 import { blocks, follows, users } from "@/server/db/schema";
 import { recordFollowNotification } from "@/server/notifications/service";
+import {
+  buildCursorPage,
+  decodeTimelineCursor,
+} from "@/server/pagination/cursor";
+import { hasBlockBetween, noBlockBetween } from "@/server/social/blocking";
 
 const FOLLOW_LIST_LIMIT = 200;
 const SUGGESTION_LIMIT = 8;
@@ -26,6 +32,7 @@ export type FollowSummary = {
   followerCount: number;
   followingCount: number;
   isFollowing: boolean;
+  blockedByViewer: boolean;
 };
 
 export type FollowMemberSummary = {
@@ -64,24 +71,7 @@ function blockedFollowError() {
 }
 
 async function assertNotBlocked(userId: string, otherUserId: string) {
-  const [edge] = await getDatabase()
-    .select({ blockerId: blocks.blockerId })
-    .from(blocks)
-    .where(
-      or(
-        and(
-          eq(blocks.blockerId, userId),
-          eq(blocks.blockedId, otherUserId),
-        ),
-        and(
-          eq(blocks.blockerId, otherUserId),
-          eq(blocks.blockedId, userId),
-        ),
-      ),
-    )
-    .limit(1);
-
-  if (edge) {
+  if (await hasBlockBetween(getDatabase(), userId, otherUserId)) {
     throw blockedFollowError();
   }
 }
@@ -106,6 +96,49 @@ async function resolveActiveUserId(username: string) {
   }
 
   return user.id;
+}
+
+/**
+ * Engelin iki yönü farklı davranır:
+ *
+ * - Görüntüleyen karşı tarafı engellediyse profil açılır ama içerik gizlenir;
+ *   bu kendi kararı olduğu için saklamak yalnızca kafa karıştırır.
+ * - Karşı taraf görüntüleyeni engellediyse profilin varlığı bile sızmamalı,
+ *   yoksa "seni kim engelledi" bilgisi taciz için kullanılabilir.
+ */
+async function resolveProfileTarget(viewerId: string, username: string) {
+  const targetId = await resolveActiveUserId(username);
+
+  if (targetId === viewerId) {
+    return { id: targetId, blockedByViewer: false };
+  }
+
+  const [edge] = await getDatabase()
+    .select({ blockerId: blocks.blockerId })
+    .from(blocks)
+    .where(
+      or(
+        and(
+          eq(blocks.blockerId, viewerId),
+          eq(blocks.blockedId, targetId),
+        ),
+        and(
+          eq(blocks.blockerId, targetId),
+          eq(blocks.blockedId, viewerId),
+        ),
+      ),
+    )
+    .limit(1);
+
+  if (!edge) {
+    return { id: targetId, blockedByViewer: false };
+  }
+
+  if (edge.blockerId === viewerId) {
+    return { id: targetId, blockedByViewer: true };
+  }
+
+  throw userNotFoundError();
 }
 
 function toFollowMemberSummary(row: {
@@ -172,7 +205,19 @@ export async function getFollowSummary(
   viewerId: string,
   username: string,
 ): Promise<FollowSummary> {
-  const targetId = await resolveActiveUserId(username);
+  const target = await resolveProfileTarget(viewerId, username);
+
+  // Engellenen profilin sosyal grafiği de gösterilmez.
+  if (target.blockedByViewer) {
+    return {
+      followerCount: 0,
+      followingCount: 0,
+      isFollowing: false,
+      blockedByViewer: true,
+    };
+  }
+
+  const targetId = target.id;
   const database = getDatabase();
 
   const [followerRows, followingRows, viewerEdge] = await Promise.all([
@@ -200,6 +245,7 @@ export async function getFollowSummary(
     followerCount: followerRows[0]?.total ?? 0,
     followingCount: followingRows[0]?.total ?? 0,
     isFollowing: viewerEdge.length > 0,
+    blockedByViewer: false,
   };
 }
 
@@ -297,10 +343,48 @@ export async function getSuggestedMembers(
   return [...sameDepartmentRows, ...otherRows].map(toSuggestedMemberSummary);
 }
 
-export async function listFollowers(
+type FollowListQuery = {
+  cursor?: string;
+  limit?: number;
+};
+
+const emptyFollowPage = {
+  data: [] as FollowMemberSummary[],
+  page: { nextCursor: null, hasMore: false },
+};
+
+async function listFollowEdges(
+  viewerId: string,
   username: string,
-): Promise<FollowMemberSummary[]> {
-  const targetId = await resolveActiveUserId(username);
+  direction: "followers" | "following",
+  query: FollowListQuery,
+) {
+  const target = await resolveProfileTarget(viewerId, username);
+
+  if (target.blockedByViewer) {
+    return emptyFollowPage;
+  }
+
+  const limit = query.limit ?? FOLLOW_LIST_LIMIT;
+  const scope = `${direction}:${target.id}`;
+  const isFollowers = direction === "followers";
+  const filters = [
+    isFollowers
+      ? eq(follows.followingId, target.id)
+      : eq(follows.followerId, target.id),
+    noBlockBetween(viewerId, users.id),
+  ];
+
+  if (query.cursor) {
+    const cursor = decodeTimelineCursor(scope, query.cursor);
+
+    filters.push(
+      or(
+        lt(follows.createdAt, cursor.createdAt),
+        and(eq(follows.createdAt, cursor.createdAt), lt(users.id, cursor.id)),
+      )!,
+    );
+  }
 
   const rows = await getDatabase()
     .select({
@@ -308,33 +392,37 @@ export async function listFollowers(
       username: users.username,
       displayName: users.displayName,
       avatarObjectKey: users.avatarObjectKey,
+      createdAt: follows.createdAt,
     })
     .from(follows)
-    .innerJoin(users, eq(users.id, follows.followerId))
-    .where(eq(follows.followingId, targetId))
-    .orderBy(desc(follows.createdAt))
-    .limit(FOLLOW_LIST_LIMIT);
+    .innerJoin(
+      users,
+      eq(users.id, isFollowers ? follows.followerId : follows.followingId),
+    )
+    .where(and(...filters))
+    .orderBy(desc(follows.createdAt), desc(users.id))
+    .limit(limit + 1);
 
-  return rows.map(toFollowMemberSummary);
+  return buildCursorPage({
+    rows,
+    limit,
+    scope,
+    toDto: toFollowMemberSummary,
+  });
 }
 
-export async function listFollowing(
+export function listFollowers(
+  viewerId: string,
   username: string,
-): Promise<FollowMemberSummary[]> {
-  const targetId = await resolveActiveUserId(username);
+  query: FollowListQuery = {},
+) {
+  return listFollowEdges(viewerId, username, "followers", query);
+}
 
-  const rows = await getDatabase()
-    .select({
-      id: users.id,
-      username: users.username,
-      displayName: users.displayName,
-      avatarObjectKey: users.avatarObjectKey,
-    })
-    .from(follows)
-    .innerJoin(users, eq(users.id, follows.followingId))
-    .where(eq(follows.followerId, targetId))
-    .orderBy(desc(follows.createdAt))
-    .limit(FOLLOW_LIST_LIMIT);
-
-  return rows.map(toFollowMemberSummary);
+export function listFollowing(
+  viewerId: string,
+  username: string,
+  query: FollowListQuery = {},
+) {
+  return listFollowEdges(viewerId, username, "following", query);
 }

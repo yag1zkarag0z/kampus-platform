@@ -137,6 +137,7 @@ describe("follow routes with PostgreSQL", () => {
         followerCount: 1,
         followingCount: 0,
         isFollowing: true,
+        blockedByViewer: false,
       },
     });
 
@@ -153,6 +154,7 @@ describe("follow routes with PostgreSQL", () => {
         followerCount: 1,
         followingCount: 0,
         isFollowing: true,
+        blockedByViewer: false,
       },
     });
 
@@ -175,7 +177,7 @@ describe("follow routes with PostgreSQL", () => {
       ),
       { params: Promise.resolve({ username: target.username }) },
     );
-    await expect(followersResponse.json()).resolves.toEqual({
+    await expect(followersResponse.json()).resolves.toMatchObject({
       data: [
         {
           id: follower.id,
@@ -193,7 +195,7 @@ describe("follow routes with PostgreSQL", () => {
       ),
       { params: Promise.resolve({ username: follower.username }) },
     );
-    await expect(followingResponse.json()).resolves.toEqual({
+    await expect(followingResponse.json()).resolves.toMatchObject({
       data: [
         {
           id: target.id,
@@ -216,6 +218,7 @@ describe("follow routes with PostgreSQL", () => {
         followerCount: 0,
         followingCount: 0,
         isFollowing: false,
+        blockedByViewer: false,
       },
     });
   });

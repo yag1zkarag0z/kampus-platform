@@ -22,7 +22,8 @@
     "db:test:migrate": "drizzle-kit migrate --config=drizzle.test.config.ts",
     "db:check": "drizzle-kit check",
     "db:studio": "drizzle-kit studio",
-    "db:make-admin": "tsx scripts/make-admin.ts"
+    "db:make-admin": "tsx scripts/make-admin.ts",
+    "db:seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1101.0",

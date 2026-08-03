@@ -14,7 +14,10 @@ import type {
 
 export type CoreContentPostCategory = ContentPostCategory;
 
+export type ContentPostSort = "newest" | "popular" | "trending";
+
 export function listContentPosts({
+  q,
   category,
   author,
   cursor,
@@ -22,11 +25,12 @@ export function listContentPosts({
   sort = "newest",
   scope = "global",
 }: {
+  q?: string;
   category?: CoreContentPostCategory;
   author?: string;
   cursor?: string;
   limit?: number;
-  sort?: "newest" | "popular";
+  sort?: ContentPostSort;
   scope?: "global" | "following";
 } = {}) {
   const searchParams = new URLSearchParams({
@@ -34,6 +38,10 @@ export function listContentPosts({
     scope,
     limit: String(limit),
   });
+
+  if (q) {
+    searchParams.set("q", q);
+  }
 
   if (category) {
     searchParams.set("category", category);

@@ -12,7 +12,7 @@ export const POST_CATEGORIES = [
   "listing",
 ] as const;
 
-export const POST_SORTS = ["newest", "popular"] as const;
+export const POST_SORTS = ["newest", "popular", "trending"] as const;
 export const FEED_SCOPES = ["global", "following"] as const;
 
 const CONTENT_REQUIRED_MESSAGE =
@@ -415,12 +415,19 @@ const listLimitSchema = z.coerce
   .max(50, "Limit en fazla 50 olabilir.")
   .default(20);
 
+const searchQuerySchema = z
+  .string({ error: "Arama metni geçersiz." })
+  .trim()
+  .min(2, "Arama için en az 2 karakter yazmalısın.")
+  .max(80, "Arama metni en fazla 80 karakter olabilir.");
+
 export const feedQuerySchema = z
   .object({
+    q: searchQuerySchema.optional(),
     category: postCategorySchema.optional(),
     sort: z
       .enum(POST_SORTS, {
-        error: "Sıralama newest veya popular olmalıdır.",
+        error: "Sıralama newest, popular veya trending olmalıdır.",
       })
       .default("newest"),
     author: usernameSchema.optional(),

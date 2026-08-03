@@ -30,6 +30,7 @@ const followSummary = {
   followerCount: 3,
   followingCount: 5,
   isFollowing: false,
+  blockedByViewer: false,
 };
 
 const publicProfile = {

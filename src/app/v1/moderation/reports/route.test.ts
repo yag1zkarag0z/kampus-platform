@@ -73,22 +73,32 @@ describe("GET /v1/moderation/reports", () => {
       state: {} as never,
       userId: moderatorId,
     });
-    mockedListReports.mockReset().mockResolvedValue(reports);
+    mockedListReports.mockReset().mockResolvedValue({
+      data: reports,
+      page: { nextCursor: null, hasMore: false },
+    });
   });
 
   it("returns the report queue", async () => {
     const response = await GET(createRequest());
 
-    expect(mockedListReports).toHaveBeenCalledWith(undefined);
+    expect(mockedListReports).toHaveBeenCalledWith(undefined, {
+      limit: 20,
+    });
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
-    await expect(response.json()).resolves.toEqual({ data: reports });
+    await expect(response.json()).resolves.toEqual({
+      data: reports,
+      page: { nextCursor: null, hasMore: false },
+    });
   });
 
   it("forwards the status filter", async () => {
     await GET(createRequest("?status=pending"));
 
-    expect(mockedListReports).toHaveBeenCalledWith("pending");
+    expect(mockedListReports).toHaveBeenCalledWith("pending", {
+      limit: 20,
+    });
   });
 
   it("rejects a non-moderator caller", async () => {

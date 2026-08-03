@@ -5,6 +5,7 @@ import {
   authErrorResponse,
   noStoreHeaders,
 } from "@/server/auth/request";
+import { parseTimelineQuery } from "@/server/pagination/cursor";
 import { listFollowing } from "@/server/social/service";
 
 export const runtime = "nodejs";
@@ -19,14 +20,12 @@ export async function GET(
   context: FollowingRouteContext,
 ) {
   try {
-    await requireActiveMember(request);
+    const member = await requireActiveMember(request);
     const { username } = await context.params;
-    const following = await listFollowing(username);
+    const query = parseTimelineQuery(request.nextUrl.searchParams);
+    const result = await listFollowing(member.userId, username, query);
 
-    return NextResponse.json(
-      { data: following },
-      { headers: noStoreHeaders },
-    );
+    return NextResponse.json(result, { headers: noStoreHeaders });
   } catch (error) {
     return authErrorResponse(error);
   }

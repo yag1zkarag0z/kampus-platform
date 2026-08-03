@@ -1,121 +1,66 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import CampusAuthorProfileLink from "@/components/CampusAuthorProfileLink";
 import CampusCategoryNav, {
   type CampusCategoryFilter,
 } from "@/components/CampusCategoryNav";
-import { useCampusData } from "@/components/CampusDataProvider";
 import CampusListingMeta from "@/components/CampusListingMeta";
 import CampusPoll from "@/components/CampusPoll";
 import CampusPostCardSurface from "@/components/CampusPostCardSurface";
 import CampusPostImage from "@/components/CampusPostImage";
 import CampusGif from "@/components/CampusGif";
 import {
+  useCampusPostQuery,
+  useDebouncedValue,
+} from "@/components/useCampusPostQuery";
+import { toContentCategory } from "@/content/adapter";
+import type { ContentPostSort } from "@/content/client";
+import {
   getCampusPostCommentCount,
   isAnonymousCampusAuthor,
-  type CampusPost,
 } from "@/data/campusPosts";
 
-type ExploreSort = "rising" | "latest" | "liked";
+const SEARCH_MIN_LENGTH = 2;
 
-const sortOptions: { id: ExploreSort; label: string }[] = [
-  { id: "rising", label: "Yükselen" },
-  { id: "latest", label: "Yeni" },
-  { id: "liked", label: "En çok beğenilen" },
+const sortOptions: { id: ContentPostSort; label: string }[] = [
+  { id: "trending", label: "Yükselen" },
+  { id: "newest", label: "Yeni" },
+  { id: "popular", label: "En çok beğenilen" },
 ];
 
 const focusRing =
   "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
 
-function normalizeSearchValue(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("tr-TR")
-    .replace(/ı/g, "i")
-    .trim();
-}
-
-function comparePostIds(first: CampusPost, second: CampusPost) {
-  return first.id.localeCompare(second.id, "tr");
-}
-
 export default function CampusExplore() {
-  const { posts } = useCampusData();
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] =
     useState<CampusCategoryFilter>("Tümü");
-  const [activeSort, setActiveSort] = useState<ExploreSort>("rising");
+  const [activeSort, setActiveSort] =
+    useState<ContentPostSort>("trending");
+  const debouncedQuery = useDebouncedValue(query.trim());
+  const searchTerm =
+    debouncedQuery.length >= SEARCH_MIN_LENGTH ? debouncedQuery : undefined;
 
-  const visiblePosts = useMemo(() => {
-    const normalizedQuery = normalizeSearchValue(query);
-
-    const filteredPosts = posts.filter((post) => {
-      if (post.isDeleted) {
-        return false;
-      }
-
-      const matchesCategory =
-        activeCategory === "Tümü" || post.category === activeCategory;
-      const searchableContent = normalizeSearchValue(
-        [
-          post.title,
-          post.body,
-          post.category,
-          post.author,
-          isAnonymousCampusAuthor(post) ? "" : (post.detail ?? ""),
-          post.poll?.options.map((option) => option.text).join(" ") ??
-            "",
-          post.listing
-            ? `${post.listing.type} ${post.listing.condition} ${post.listing.price} TL`
-            : "",
-        ].join(" ")
-      );
-
-      return (
-        matchesCategory &&
-        (!normalizedQuery || searchableContent.includes(normalizedQuery))
-      );
-    });
-
-    return [...filteredPosts].sort((first, second) => {
-      if (activeSort === "liked") {
-        return (
-          second.likes - first.likes ||
-          getCampusPostCommentCount(second) -
-            getCampusPostCommentCount(first) ||
-          second.createdAt - first.createdAt ||
-          comparePostIds(first, second)
-        );
-      }
-
-      if (activeSort === "latest") {
-        return (
-          second.createdAt - first.createdAt ||
-          comparePostIds(first, second)
-        );
-      }
-
-      const firstRisingScore =
-        first.likes * 2 +
-        getCampusPostCommentCount(first) * 4 +
-        first.createdAt * 3;
-      const secondRisingScore =
-        second.likes * 2 +
-        getCampusPostCommentCount(second) * 4 +
-        second.createdAt * 3;
-
-      return (
-        secondRisingScore - firstRisingScore ||
-        second.createdAt - first.createdAt ||
-        comparePostIds(first, second)
-      );
-    });
-  }, [activeCategory, activeSort, posts, query]);
+  const {
+    posts: visiblePosts,
+    isLoading,
+    hasFailed,
+    hasMore,
+    isLoadingMore,
+    loadMore,
+    reload,
+  } = useCampusPostQuery({
+    q: searchTerm,
+    category:
+      activeCategory === "Tümü"
+        ? undefined
+        : toContentCategory(activeCategory),
+    sort: activeSort,
+  });
 
   const clearFilters = () => {
     setQuery("");
@@ -147,7 +92,9 @@ export default function CampusExplore() {
             aria-atomic="true"
             className="shrink-0 justify-self-end text-right text-xs font-bold text-white/55"
           >
-            {visiblePosts.length} sonuç
+            {isLoading
+              ? "Aranıyor"
+              : `${visiblePosts.length}${hasMore ? "+" : ""} sonuç`}
           </p>
         </div>
 
@@ -214,7 +161,11 @@ export default function CampusExplore() {
         </div>
       </div>
 
-      {visiblePosts.length > 0 ? (
+      {isLoading ? (
+        <ExploreLoadingState />
+      ) : hasFailed ? (
+        <ExploreErrorState onReload={reload} />
+      ) : visiblePosts.length > 0 ? (
         <ol className="grid px-3 py-3 sm:px-5 sm:py-4 lg:px-6 2xl:grid-cols-2 2xl:gap-4">
           {visiblePosts.map((post) => (
             <li
@@ -323,7 +274,24 @@ export default function CampusExplore() {
             </li>
           ))}
         </ol>
-      ) : (
+      ) : null}
+
+      {!isLoading && !hasFailed && visiblePosts.length > 0 && hasMore && (
+        <div className="px-4 pb-6 text-center sm:px-6">
+          <button
+            type="button"
+            aria-label="Daha fazla sonuç yükle"
+            aria-busy={isLoadingMore}
+            disabled={isLoadingMore}
+            onClick={() => void loadMore().catch(() => undefined)}
+            className={`inline-flex min-h-12 items-center justify-center border border-white/12 bg-white/[0.035] px-5 text-sm font-black text-white transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 disabled:cursor-wait disabled:opacity-60 ${focusRing}`}
+          >
+            {isLoadingMore ? "Sonuçlar yükleniyor…" : "Daha fazla sonuç yükle"}
+          </button>
+        </div>
+      )}
+
+      {!isLoading && !hasFailed && visiblePosts.length === 0 && (
         <div className="grid min-h-80 place-items-center px-4 py-14 text-center sm:px-6">
           <div className="max-w-sm">
             <span
@@ -349,6 +317,48 @@ export default function CampusExplore() {
         </div>
       )}
     </section>
+  );
+}
+
+function ExploreLoadingState() {
+  return (
+    <div
+      role="status"
+      aria-label="Sonuçlar yükleniyor"
+      className="grid min-h-80 place-items-center px-4 py-14 text-center sm:px-6"
+    >
+      <div>
+        <span
+          aria-hidden="true"
+          className="mx-auto block size-7 animate-spin rounded-full border-2 border-white/14 border-t-[#ff7a45] motion-reduce:animate-none"
+        />
+        <p className="mt-4 text-sm font-bold text-white/60">
+          Sonuçlar yükleniyor…
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ExploreErrorState({ onReload }: { onReload: () => void }) {
+  return (
+    <div className="grid min-h-80 place-items-center px-4 py-14 text-center sm:px-6">
+      <div className="max-w-sm">
+        <h2 className="text-lg font-black tracking-[-0.03em]">
+          Arama tamamlanamadı
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-white/55">
+          Bağlantı kurulamadı. Birazdan yeniden deneyebilirsin.
+        </p>
+        <button
+          type="button"
+          onClick={onReload}
+          className={`mt-5 inline-flex min-h-11 items-center justify-center bg-white px-4 text-xs font-bold text-[#12100e] transition-colors hover:bg-white/90 ${focusRing}`}
+        >
+          Yeniden dene
+        </button>
+      </div>
+    </div>
   );
 }
 

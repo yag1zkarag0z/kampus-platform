@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -25,6 +26,9 @@ const UNREAD_COUNT_POLL_INTERVAL_MS = 45_000;
 type CampusNotificationContextValue = {
   notifications: NotificationDto[];
   isNotificationsHydrated: boolean;
+  hasMoreNotifications: boolean;
+  isLoadingMoreNotifications: boolean;
+  loadMoreNotifications: () => Promise<void>;
   unreadCount: number;
   isUnreadCountHydrated: boolean;
   markAsRead: (notificationId: string) => Promise<void>;
@@ -45,6 +49,10 @@ export function CampusNotificationProvider({
   const [notifications, setNotifications] = useState<NotificationDto[]>([]);
   const [isNotificationsHydrated, setIsNotificationsHydrated] =
     useState(true);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [isLoadingMoreNotifications, setIsLoadingMoreNotifications] =
+    useState(false);
+  const isLoadingMoreRef = useRef(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isUnreadCountHydrated, setIsUnreadCountHydrated] = useState(true);
 
@@ -127,9 +135,12 @@ export function CampusNotificationProvider({
     });
 
     getMyNotifications()
-      .then((rows) => {
+      .then((result) => {
         if (!isCancelled) {
-          setNotifications(rows);
+          setNotifications(result.data);
+          setNextCursor(
+            result.page.hasMore ? result.page.nextCursor : null,
+          );
         }
       })
       .catch(() => undefined)
@@ -143,6 +154,32 @@ export function CampusNotificationProvider({
       isCancelled = true;
     };
   }, [accountId, pathname, sessionMode]);
+
+  const loadMoreNotifications = useCallback(async () => {
+    if (!nextCursor || isLoadingMoreRef.current) {
+      return;
+    }
+
+    isLoadingMoreRef.current = true;
+    setIsLoadingMoreNotifications(true);
+
+    try {
+      const result = await getMyNotifications({ cursor: nextCursor });
+
+      setNotifications((current) => {
+        const knownIds = new Set(current.map((item) => item.id));
+
+        return [
+          ...current,
+          ...result.data.filter((item) => !knownIds.has(item.id)),
+        ];
+      });
+      setNextCursor(result.page.hasMore ? result.page.nextCursor : null);
+    } finally {
+      isLoadingMoreRef.current = false;
+      setIsLoadingMoreNotifications(false);
+    }
+  }, [nextCursor]);
 
   const markAsRead = useCallback(
     async (notificationId: string) => {
@@ -206,16 +243,22 @@ export function CampusNotificationProvider({
     () => ({
       notifications,
       isNotificationsHydrated,
+      hasMoreNotifications: nextCursor !== null,
+      isLoadingMoreNotifications,
+      loadMoreNotifications,
       unreadCount,
       isUnreadCountHydrated,
       markAsRead,
       markAllAsRead,
     }),
     [
+      isLoadingMoreNotifications,
       isNotificationsHydrated,
       isUnreadCountHydrated,
+      loadMoreNotifications,
       markAllAsRead,
       markAsRead,
+      nextCursor,
       notifications,
       unreadCount,
     ],

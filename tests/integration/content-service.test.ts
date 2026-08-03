@@ -347,6 +347,105 @@ describe("content service with PostgreSQL", () => {
     expect(removedBookmark.viewerState.bookmarked).toBe(false);
   });
 
+  it("ranks the trending feed by weighted engagement within its window", async () => {
+    const author = await insertUser("Trending Author");
+    const viewer = await insertUser("Trending Viewer");
+    const voters = await Promise.all([
+      insertUser("Trending Voter 1"),
+      insertUser("Trending Voter 2"),
+      insertUser("Trending Voter 3"),
+    ]);
+    const createPost = async (title: string) =>
+      createContentPost(author.id, {
+        category: "chat",
+        title,
+        body: "",
+        isAnonymous: false,
+      });
+
+    const commented = await createPost("Yorumlu gönderi");
+    const liked = await createPost("Beğenilen gönderi");
+    const quiet = await createPost("Sessiz gönderi");
+    const stale = await createPost("Eski ama popüler gönderi");
+
+    // Yorum 2, beğeni 3 puan: iki beğeni bir yorumu geçmeli.
+    await createContentComment(voters[0].id, commented.id, {
+      body: "Tek yorum",
+      isAnonymous: false,
+    });
+
+    for (const voter of voters.slice(0, 2)) {
+      await setContentPostLike(voter.id, liked.id, true);
+    }
+
+    for (const voter of voters) {
+      await setContentPostLike(voter.id, stale.id, true);
+    }
+
+    await pool.query(
+      "update posts set created_at = now() - interval '30 days' where id = $1",
+      [stale.id],
+    );
+
+    const trending = await listContentPosts(viewer.id, {
+      limit: 20,
+      sort: "trending",
+      scope: "global",
+    });
+    const ids = trending.data.map((post) => post.id);
+
+    expect(ids.indexOf(liked.id)).toBeLessThan(ids.indexOf(commented.id));
+    expect(ids.indexOf(commented.id)).toBeLessThan(ids.indexOf(quiet.id));
+    // Pencere dışındaki gönderi puanı yüksek olsa da listede olmamalı.
+    expect(ids).not.toContain(stale.id);
+  });
+
+  it("paginates the trending feed without repeating posts", async () => {
+    const author = await insertUser("Trending Pagination Author");
+    const viewer = await insertUser("Trending Pagination Viewer");
+    const createdIds: string[] = [];
+
+    for (let index = 0; index < 5; index += 1) {
+      const post = await createContentPost(author.id, {
+        category: "chat",
+        title: `Trend gönderi ${index}`,
+        body: "",
+        isAnonymous: false,
+      });
+
+      createdIds.push(post.id);
+
+      if (index % 2 === 0) {
+        await setContentPostLike(viewer.id, post.id, true);
+      }
+    }
+
+    const query = {
+      limit: 2,
+      sort: "trending" as const,
+      scope: "global" as const,
+    };
+    const firstPage = await listContentPosts(viewer.id, query);
+    const seenIds = firstPage.data.map((post) => post.id);
+    let cursor = firstPage.page.nextCursor;
+    let pageCount = 1;
+
+    while (cursor) {
+      const page = await listContentPosts(viewer.id, { ...query, cursor });
+
+      seenIds.push(...page.data.map((post) => post.id));
+      cursor = page.page.nextCursor;
+      pageCount += 1;
+
+      if (pageCount > 4) {
+        throw new Error("Trending sayfalaması sonlanmadı.");
+      }
+    }
+
+    expect(new Set(seenIds).size).toBe(seenIds.length);
+    expect(seenIds).toEqual(expect.arrayContaining(createdIds));
+  });
+
   it("lists saved posts newest-saved-first and hides unreachable ones", async () => {
     const viewer = await insertUser("Bookmark Viewer");
     const owner = await insertUser("Bookmark Owner");
@@ -950,9 +1049,13 @@ describe("content service with PostgreSQL", () => {
       newestFeed({ scope: "following" }),
     );
 
-    expect(
-      followingFeed.data.map((post) => post.id).sort(),
-    ).toEqual([ownPost.id, followedPost.id].sort());
+    // Takip akışı yalnızca takip edilenleri gösterir, kendi gönderini değil.
+    expect(followingFeed.data.map((post) => post.id)).toEqual([
+      followedPost.id,
+    ]);
+    expect(followingFeed.data.map((post) => post.id)).not.toContain(
+      ownPost.id,
+    );
   });
 
   it("paginates the following feed across pages without leaking unfollowed authors", async () => {

@@ -64,25 +64,32 @@ describe("GET /v1/me/notifications", () => {
       state: {} as never,
       userId: memberId,
     });
-    mockedListNotifications.mockReset().mockResolvedValue(notifications);
+    mockedListNotifications.mockReset().mockResolvedValue({
+      data: notifications,
+      page: { nextCursor: null, hasMore: false },
+    });
   });
 
   it("returns the caller's notifications", async () => {
     const response = await GET(createRequest());
 
-    expect(mockedListNotifications).toHaveBeenCalledWith(
-      memberId,
-      undefined,
-    );
+    expect(mockedListNotifications).toHaveBeenCalledWith(memberId, {
+      limit: 20,
+    });
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
-    await expect(response.json()).resolves.toEqual({ data: notifications });
+    await expect(response.json()).resolves.toEqual({
+      data: notifications,
+      page: { nextCursor: null, hasMore: false },
+    });
   });
 
   it("forwards the limit query parameter", async () => {
     await GET(createRequest("?limit=10"));
 
-    expect(mockedListNotifications).toHaveBeenCalledWith(memberId, 10);
+    expect(mockedListNotifications).toHaveBeenCalledWith(memberId, {
+      limit: 10,
+    });
   });
 
   it("rejects an invalid limit", async () => {

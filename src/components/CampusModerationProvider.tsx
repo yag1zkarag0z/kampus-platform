@@ -231,7 +231,7 @@ export function CampusModerationProvider({
         }
 
         setRemoteBlockedUsers(
-          rows.map((row) => ({
+          rows.data.map((row) => ({
             authorId: row.id,
             author: `@${row.username}`,
             avatarUrl: row.avatarUrl,
@@ -262,9 +262,9 @@ export function CampusModerationProvider({
 
   const applyModerationData = useCallback(
     (data: Awaited<ReturnType<typeof fetchModerationData>>) => {
-      setRemoteReports(data.reportsData);
-      setRemoteManagedUsers(data.usersData);
-      setRemoteModerationHistory(data.historyData);
+      setRemoteReports(data.reportsData.data);
+      setRemoteManagedUsers(data.usersData.data);
+      setRemoteModerationHistory(data.historyData.data);
     },
     [],
   );

@@ -1,6 +1,7 @@
 "use client";
 
-import { requestApi } from "@/auth/client";
+import { requestApi, requestApiPayload } from "@/auth/client";
+import type { CursorPage } from "@/components/useCursorList";
 
 export type BlockedMemberDto = {
   id: string;
@@ -23,10 +24,21 @@ export function unblockMember(username: string) {
   );
 }
 
-export function getMyBlockedUsers() {
-  return requestApi<BlockedMemberDto[]>("/v1/me/blocks", {
-    cache: "no-store",
-  });
+function cursorQuery(cursor?: string, extra?: string) {
+  const searchParams = new URLSearchParams(extra);
+
+  if (cursor) {
+    searchParams.set("cursor", cursor);
+  }
+
+  return searchParams.size > 0 ? `?${searchParams.toString()}` : "";
+}
+
+export function getMyBlockedUsers(cursor?: string) {
+  return requestApiPayload<CursorPage<BlockedMemberDto>>(
+    `/v1/me/blocks${cursorQuery(cursor)}`,
+    { cache: "no-store" },
+  );
 }
 
 export type ReportReasonDto =
@@ -102,11 +114,15 @@ export function submitReport(input: {
   });
 }
 
-export function getModerationReports(status?: "pending" | "resolved") {
-  const searchParams = status ? `?status=${status}` : "";
-
-  return requestApi<ReportSummaryDto[]>(
-    `/v1/moderation/reports${searchParams}`,
+export function getModerationReports(
+  status?: "pending" | "resolved",
+  cursor?: string,
+) {
+  return requestApiPayload<CursorPage<ReportSummaryDto>>(
+    `/v1/moderation/reports${cursorQuery(
+      cursor,
+      status ? `status=${status}` : undefined,
+    )}`,
     { cache: "no-store" },
   );
 }
@@ -121,10 +137,11 @@ export function resolveModerationReport(
   );
 }
 
-export function getManagedUsers() {
-  return requestApi<ManagedUserDto[]>("/v1/moderation/users", {
-    cache: "no-store",
-  });
+export function getManagedUsers(cursor?: string) {
+  return requestApiPayload<CursorPage<ManagedUserDto>>(
+    `/v1/moderation/users${cursorQuery(cursor)}`,
+    { cache: "no-store" },
+  );
 }
 
 export function updateUserStatus(
@@ -147,9 +164,9 @@ export function updateUserRole(
   );
 }
 
-export function getModerationHistory() {
-  return requestApi<ModerationHistoryEntryDto[]>(
-    "/v1/moderation/history",
+export function getModerationHistory(cursor?: string) {
+  return requestApiPayload<CursorPage<ModerationHistoryEntryDto>>(
+    `/v1/moderation/history${cursorQuery(cursor)}`,
     { cache: "no-store" },
   );
 }

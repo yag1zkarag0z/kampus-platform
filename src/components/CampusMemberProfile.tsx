@@ -1,15 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type KeyboardEvent } from "react";
+import { useRouter } from "next/navigation";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 
 import { useCampusAccount } from "@/components/CampusAccountProvider";
+import { useFeedback } from "@/components/FeedbackProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import { normalizeCampusProfileUsername } from "@/components/CampusAuthorProfileLink";
 import { useCampusData } from "@/components/CampusDataProvider";
 import CampusFollowConnections from "@/components/CampusFollowConnections";
 import { useCampusModeration } from "@/components/CampusModerationProvider";
 import CampusPostCardSurface from "@/components/CampusPostCardSurface";
+import { useCampusPostQuery } from "@/components/useCampusPostQuery";
 import {
   campusAdminRoleLabels,
   type CampusAdminRole,
@@ -195,26 +204,18 @@ export default function CampusMemberProfile({
         firstVisibleReference,
     );
 
-  const authoredPosts = useMemo(
-    () =>
-      posts
-        .filter(
-          (post) =>
-            !post.isDeleted &&
-            authorMatchesUsername(
-              post,
-              username,
-              currentUsername,
-              suggestedAuthorId,
-            ),
-        )
-        .sort(
-          (first, second) =>
-            second.createdAt - first.createdAt ||
-            second.id.localeCompare(first.id, "tr"),
-        ),
-    [currentUsername, posts, suggestedAuthorId, username],
-  );
+  // Profil gönderileri artık genel akışa yüklenmiş olanlardan süzülmüyor;
+  // sunucudaki author filtresiyle kendi sayfalamasını yapıyor.
+  const {
+    posts: authoredPosts,
+    isLoading: isAuthoredPostsLoading,
+    hasMore: hasMoreAuthoredPosts,
+    isLoadingMore: isLoadingMoreAuthoredPosts,
+    loadMore: loadMoreAuthoredPosts,
+  } = useCampusPostQuery({
+    author: username,
+    enabled: sessionMode === "member" && !isBlocked && !isSuspended,
+  });
   const authoredComments = useMemo(
     () =>
       [...posts]
@@ -295,7 +296,7 @@ export default function CampusMemberProfile({
         : suggestedMember?.bio ??
           "Yaşar Üniversitesi kampüs topluluğu üyesi.";
   const receivedLikes = authoredPosts.reduce(
-    (total, post) => total + post.likes,
+    (total: number, post: CampusPost) => total + post.likes,
     0,
   );
 
@@ -356,6 +357,13 @@ export default function CampusMemberProfile({
             >
               Profilim
             </Link>
+          ) : sessionMode === "member" && resolvedAuthorId ? (
+            <MemberProfileActions
+              authorId={resolvedAuthorId}
+              author={author}
+              displayName={displayName}
+              isBlocked={isBlocked}
+            />
           ) : (
             <span aria-hidden="true" />
           )}
@@ -506,6 +514,12 @@ export default function CampusMemberProfile({
               <MemberPosts
                 displayName={displayName}
                 posts={authoredPosts}
+                isLoading={isAuthoredPostsLoading}
+                hasMore={hasMoreAuthoredPosts}
+                isLoadingMore={isLoadingMoreAuthoredPosts}
+                onLoadMore={() =>
+                  void loadMoreAuthoredPosts().catch(() => undefined)
+                }
               />
             ) : (
               <MemberComments
@@ -520,13 +534,157 @@ export default function CampusMemberProfile({
   );
 }
 
+/**
+ * Engelleme kişi düzeyinde bir eylem; doğal yeri profilin sağ üstü. Yıkıcı
+ * olduğu için birincil butonun yanında düz durmuyor, menünün arkasında.
+ */
+function MemberProfileActions({
+  authorId,
+  author,
+  displayName,
+  isBlocked,
+}: {
+  authorId: string;
+  author: string;
+  displayName: string;
+  isBlocked: boolean;
+}) {
+  const router = useRouter();
+  const { blockUser, unblockUser } = useCampusModeration();
+  const { showToast } = useFeedback();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const closeOnOutside = (event: MouseEvent) => {
+      if (
+        event.target instanceof Node &&
+        !menuRef.current?.contains(event.target)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", closeOnOutside);
+    document.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isOpen]);
+
+  const toggleBlock = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const changed = isBlocked
+        ? await unblockUser(authorId)
+        : await blockUser(authorId, author);
+
+      if (!changed) {
+        showToast({
+          message: "İşlem şu anda tamamlanamadı. Tekrar dene.",
+          tone: "error",
+        });
+        return;
+      }
+
+      setIsOpen(false);
+      showToast({
+        message: isBlocked
+          ? `${displayName} engeli kaldırıldı.`
+          : `${displayName} engellendi.`,
+        tone: "success",
+      });
+
+      // Engellenen profil artık görüntülenemiyor; kullanıcıyı burada bırakma.
+      if (!isBlocked) {
+        router.push("/akis");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div ref={menuRef} className="relative justify-self-end">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        aria-label={`${displayName} için işlemler`}
+        onClick={() => setIsOpen((open) => !open)}
+        className={`grid size-11 place-items-center rounded-full text-white/62 transition-colors hover:bg-white/8 hover:text-white ${focusRing}`}
+      >
+        <BlockIcon />
+      </button>
+
+      {isOpen && (
+        <div
+          role="menu"
+          className="absolute right-0 z-40 mt-1 w-56 border border-white/12 bg-[#141720] py-1 shadow-[0_18px_50px_rgba(0,0,0,0.45)]"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            disabled={isSubmitting}
+            onClick={() => void toggleBlock()}
+            className={`flex min-h-11 w-full items-center px-4 text-left text-xs font-bold text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/8 disabled:cursor-wait disabled:opacity-60 ${focusRing}`}
+          >
+            {isBlocked ? "Engeli kaldır" : "Engelle"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MemberPosts({
   displayName,
   posts,
+  isLoading,
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
 }: {
   displayName: string;
   posts: CampusPost[];
+  isLoading: boolean;
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  onLoadMore: () => void;
 }) {
+  if (isLoading) {
+    return (
+      <div
+        id="member-profile-posts-panel"
+        role="tabpanel"
+        aria-labelledby="member-profile-posts-tab"
+        aria-busy="true"
+        className="grid min-h-40 place-items-center px-4 py-10 text-center"
+      >
+        <p className="text-sm font-bold text-white/60">
+          Gönderiler yükleniyor…
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div
       id="member-profile-posts-panel"
@@ -576,6 +734,23 @@ function MemberPosts({
           title="Henüz gönderi yok"
           description={`${displayName} kendi adıyla bir gönderi paylaştığında burada görünecek.`}
         />
+      )}
+
+      {hasMore && (
+        <div className="px-4 pb-6 text-center sm:px-6">
+          <button
+            type="button"
+            aria-label="Daha fazla gönderi yükle"
+            aria-busy={isLoadingMore}
+            disabled={isLoadingMore}
+            onClick={onLoadMore}
+            className={`inline-flex min-h-12 items-center justify-center border border-white/12 bg-white/[0.035] px-5 text-sm font-black text-white transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 disabled:cursor-wait disabled:opacity-60 ${focusRing}`}
+          >
+            {isLoadingMore
+              ? "Gönderiler yükleniyor…"
+              : "Daha fazla gönderi yükle"}
+          </button>
+        </div>
       )}
     </div>
   );
@@ -766,6 +941,31 @@ export function CampusMemberProfileLoading() {
       </div>
       <div className="mt-8 h-64 animate-pulse bg-white/8 motion-reduce:animate-none" />
     </section>
+  );
+}
+
+function BlockIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      className="size-[18px]"
+    >
+      <circle
+        cx="10"
+        cy="10"
+        r="6.6"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path
+        d="m5.3 5.3 9.4 9.4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 

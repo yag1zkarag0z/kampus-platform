@@ -53,7 +53,10 @@ describe("GET /v1/moderation/history", () => {
       state: {} as never,
       userId: moderatorId,
     });
-    mockedGetModerationHistory.mockReset().mockResolvedValue(history);
+    mockedGetModerationHistory.mockReset().mockResolvedValue({
+      data: history,
+      page: { nextCursor: null, hasMore: false },
+    });
   });
 
   it("returns the moderation audit log", async () => {
@@ -66,7 +69,10 @@ describe("GET /v1/moderation/history", () => {
     expect(mockedGetModerationHistory).toHaveBeenCalled();
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
-    await expect(response.json()).resolves.toEqual({ data: history });
+    await expect(response.json()).resolves.toEqual({
+      data: history,
+      page: { nextCursor: null, hasMore: false },
+    });
   });
 
   it("rejects a non-moderator caller", async () => {

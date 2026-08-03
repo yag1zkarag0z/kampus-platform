@@ -177,6 +177,8 @@ function useMemberFollowState(username: string) {
   const [following, setFollowing] = useState<FollowListMember[]>([]);
   const [isFollowersLoading, setIsFollowersLoading] = useState(false);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
+  const [followersCursor, setFollowersCursor] = useState<string | null>(null);
+  const [followingCursor, setFollowingCursor] = useState<string | null>(null);
   const hasFetchedFollowersRef = useRef(false);
   const hasFetchedFollowingRef = useRef(false);
 
@@ -226,7 +228,12 @@ function useMemberFollowState(username: string) {
     setIsFollowersLoading(true);
 
     getMemberFollowers(username)
-      .then((rows) => setFollowers(rows.map(toFollowListMember)))
+      .then((result) => {
+        setFollowers(result.data.map(toFollowListMember));
+        setFollowersCursor(
+          result.page.hasMore ? result.page.nextCursor : null,
+        );
+      })
       .catch(() => {
         hasFetchedFollowersRef.current = false;
       })
@@ -242,12 +249,45 @@ function useMemberFollowState(username: string) {
     setIsFollowingLoading(true);
 
     getMemberFollowing(username)
-      .then((rows) => setFollowing(rows.map(toFollowListMember)))
+      .then((result) => {
+        setFollowing(result.data.map(toFollowListMember));
+        setFollowingCursor(
+          result.page.hasMore ? result.page.nextCursor : null,
+        );
+      })
       .catch(() => {
         hasFetchedFollowingRef.current = false;
       })
       .finally(() => setIsFollowingLoading(false));
   }, [username]);
+
+  const loadMoreFollowers = useCallback(async () => {
+    if (!followersCursor) {
+      return;
+    }
+
+    const result = await getMemberFollowers(username, followersCursor);
+
+    setFollowers((current) => [
+      ...current,
+      ...result.data.map(toFollowListMember),
+    ]);
+    setFollowersCursor(result.page.hasMore ? result.page.nextCursor : null);
+  }, [followersCursor, username]);
+
+  const loadMoreFollowing = useCallback(async () => {
+    if (!followingCursor) {
+      return;
+    }
+
+    const result = await getMemberFollowing(username, followingCursor);
+
+    setFollowing((current) => [
+      ...current,
+      ...result.data.map(toFollowListMember),
+    ]);
+    setFollowingCursor(result.page.hasMore ? result.page.nextCursor : null);
+  }, [followingCursor, username]);
 
   const follow = useCallback(async () => {
     const summary = await followMember(username);
@@ -276,6 +316,10 @@ function useMemberFollowState(username: string) {
     isFollowingLoading,
     loadFollowers,
     loadFollowing,
+    hasMoreFollowers: followersCursor !== null,
+    hasMoreFollowing: followingCursor !== null,
+    loadMoreFollowers,
+    loadMoreFollowing,
     follow,
     unfollow,
   };
@@ -342,6 +386,10 @@ function MemberFollowConnections({
       isFollowingLoading={state.isFollowingLoading}
       onOpenFollowers={state.loadFollowers}
       onOpenFollowing={state.loadFollowing}
+      hasMoreFollowers={state.hasMoreFollowers}
+      hasMoreFollowing={state.hasMoreFollowing}
+      onLoadMoreFollowers={state.loadMoreFollowers}
+      onLoadMoreFollowing={state.loadMoreFollowing}
       onFollowToggle={() => void handleFollowToggle()}
     />
   );
@@ -363,6 +411,10 @@ function FollowConnectionsView({
   isFollowingLoading = false,
   onOpenFollowers,
   onOpenFollowing,
+  hasMoreFollowers = false,
+  hasMoreFollowing = false,
+  onLoadMoreFollowers,
+  onLoadMoreFollowing,
   onFollowToggle,
 }: {
   member: FollowListMember;
@@ -380,6 +432,10 @@ function FollowConnectionsView({
   isFollowingLoading?: boolean;
   onOpenFollowers?: () => void;
   onOpenFollowing?: () => void;
+  hasMoreFollowers?: boolean;
+  hasMoreFollowing?: boolean;
+  onLoadMoreFollowers?: () => Promise<void>;
+  onLoadMoreFollowing?: () => Promise<void>;
   onFollowToggle: () => void;
 }) {
   const { sessionMode } = useCampusAccount();
@@ -399,6 +455,14 @@ function FollowConnectionsView({
       : activeList === "following"
         ? isFollowingLoading
         : false;
+  const hasMoreInList =
+    activeList === "followers"
+      ? hasMoreFollowers
+      : activeList === "following"
+        ? hasMoreFollowing
+        : false;
+  const loadMoreInList =
+    activeList === "followers" ? onLoadMoreFollowers : onLoadMoreFollowing;
 
   useEffect(() => {
     if (!activeList) {
@@ -560,7 +624,23 @@ function FollowConnectionsView({
                     </li>
                   ))}
                 </ul>
-              ) : (
+              ) : null}
+
+              {!isListLoading && visibleMembers.length > 0 && hasMoreInList && (
+                <div className="px-4 py-4 text-center">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void loadMoreInList?.().catch(() => undefined)
+                    }
+                    className={`inline-flex min-h-11 items-center justify-center border border-white/12 px-4 text-xs font-bold text-white transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+                  >
+                    Daha fazla göster
+                  </button>
+                </div>
+              )}
+
+              {!isListLoading && visibleMembers.length === 0 && (
                 <div className="px-6 py-14 text-center">
                   <p className="text-sm font-black">
                     {activeList === "followers"

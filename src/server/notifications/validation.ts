@@ -1,15 +1,15 @@
 import { z } from "zod";
 
 import { parseAuthInput } from "@/server/auth/validation";
+import {
+  cursorFieldSchema,
+  limitFieldSchema,
+} from "@/server/pagination/cursor";
 
 export const listNotificationsQuerySchema = z
   .object({
-    limit: z.coerce
-      .number({ error: "Limit geçersiz." })
-      .int()
-      .min(1)
-      .max(50)
-      .optional(),
+    cursor: cursorFieldSchema.optional(),
+    limit: limitFieldSchema({ defaultLimit: 20 }),
   })
   .strict();
 
