@@ -14,6 +14,11 @@ import { useCampusAccount } from "@/components/CampusAccountProvider";
 import { useFeedback } from "@/components/FeedbackProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import CampusHiddenNotice from "@/components/CampusHiddenNotice";
+import CampusLogo from "@/components/CampusLogo";
+import {
+  campusCategoryBadgeBase,
+  campusCategoryStyles,
+} from "@/data/campusCategoryStyles";
 import { normalizeCampusProfileUsername } from "@/components/CampusAuthorProfileLink";
 import { useCampusData } from "@/components/CampusDataProvider";
 import CampusFollowConnections from "@/components/CampusFollowConnections";
@@ -331,7 +336,7 @@ export default function CampusMemberProfile({
       aria-labelledby="member-profile-title"
       className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
     >
-      <header className="sticky top-16 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl md:top-0">
+      <header className="sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl">
         <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 sm:px-6">
           <Link
             href="/akis"
@@ -372,20 +377,33 @@ export default function CampusMemberProfile({
       </header>
 
       <div className="mx-auto w-full max-w-6xl">
-        <div className="border-b border-white/12 px-4 py-7 sm:px-6 sm:py-9">
-          <div className="flex flex-col gap-5 min-[420px]:flex-row min-[420px]:items-start">
-            <CampusAuthorAvatar
-              author={author}
-              authorId={resolvedAuthorId}
-              avatarUrl={
-                isSelf
-                  ? profile.avatarUrl
-                  : managedUser?.avatarUrl ?? suggestedMember?.avatarDataUrl
-              }
-              size="md"
-              className="size-20 text-xl min-[420px]:size-24 min-[420px]:text-2xl"
-            />
-            <div className="min-w-0 flex-1">
+        {/* Kapak alanı: kullanıcıya ait veri değil, her profilde aynı. */}
+        <div
+          aria-hidden="true"
+          className="grid h-28 w-full place-items-center overflow-hidden border-b border-white/10 bg-[#12151d] sm:h-40"
+        >
+          <CampusLogo
+            idPrefix="member-profile-cover-lockup"
+            wordmarkClassName="text-3xl sm:text-4xl"
+          />
+        </div>
+
+        <div className="border-b border-white/12 px-4 pb-7 sm:px-6 sm:pb-9">
+          <div className="-mt-12 flex flex-col gap-5 min-[420px]:flex-row min-[420px]:items-start sm:-mt-16">
+            <span className="inline-flex shrink-0 rounded-full ring-4 ring-[#0a0d16]">
+              <CampusAuthorAvatar
+                author={author}
+                authorId={resolvedAuthorId}
+                avatarUrl={
+                  isSelf
+                    ? profile.avatarUrl
+                    : managedUser?.avatarUrl ?? suggestedMember?.avatarDataUrl
+                }
+                size="md"
+                className="size-20 text-xl min-[420px]:size-24 min-[420px]:text-2xl"
+              />
+            </span>
+            <div className="min-w-0 flex-1 min-[420px]:pt-14 sm:pt-[4.5rem]">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -701,9 +719,14 @@ function MemberPosts({
             >
               <CampusPostCardSurface postId={post.id}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-mono text-[10px] font-black uppercase tracking-[0.1em] text-[#ff7a45]">
-                    {post.category}
-                  </span>
+                  <span
+              className={`${campusCategoryBadgeBase} ${campusCategoryStyles[post.category].badge}`}
+            >
+              <span aria-hidden="true">
+                {campusCategoryStyles[post.category].glyph}
+              </span>
+              {post.category}
+            </span>
                   <time className="text-[11px] font-semibold text-white/55">
                     {post.time}
                     {post.edited ? " · düzenlendi" : ""}

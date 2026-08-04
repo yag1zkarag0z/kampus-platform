@@ -26,7 +26,7 @@ export default function PlatformFeedSkeleton() {
 
       <div
         aria-hidden="true"
-        className="sticky top-16 z-20 flex min-h-16 items-center justify-between border-b border-white/10 bg-[#0a0d16]/88 px-4 backdrop-blur-xl sm:px-5 md:top-0"
+        className="sticky top-0 z-20 flex min-h-16 items-center justify-between border-b border-white/10 bg-[#0a0d16]/88 px-4 backdrop-blur-xl sm:px-5"
       >
         <SkeletonBlock className="h-4 w-28" />
         <SkeletonBlock className="size-9" />

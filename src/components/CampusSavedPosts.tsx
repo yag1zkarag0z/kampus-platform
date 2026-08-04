@@ -33,6 +33,10 @@ import {
   voteInContentPoll,
 } from "@/content/client";
 import {
+  campusCategoryBadgeBase,
+  campusCategoryStyles,
+} from "@/data/campusCategoryStyles";
+import {
   getCampusPostCommentCount,
   isAnonymousCampusAuthor,
   type CampusPost,
@@ -430,7 +434,7 @@ function SavedPostsView({
       aria-busy={!isHydrated}
       className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
     >
-      <header className="sticky top-16 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl md:top-0">
+      <header className="sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl">
         <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 sm:px-6">
           <span aria-hidden="true" />
           <div className="min-w-0 justify-self-center text-center">
@@ -441,7 +445,7 @@ function SavedPostsView({
               ref={titleRef}
               id="saved-posts-title"
               tabIndex={-1}
-              className="mt-0.5 truncate text-xl font-black tracking-[-0.04em] outline-none"
+              className="mt-0.5 truncate text-2xl font-black tracking-[-0.04em] outline-none sm:text-3xl"
             >
               Kaydedilenler
             </h1>
@@ -536,7 +540,12 @@ function SavedPostCard({
           />
         </CampusAuthorProfileLink>
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
-          <span className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#ff7a45]">
+          <span
+            className={`${campusCategoryBadgeBase} ${campusCategoryStyles[post.category].badge}`}
+          >
+            <span aria-hidden="true">
+              {campusCategoryStyles[post.category].glyph}
+            </span>
             {post.category}
           </span>
           <span
@@ -582,7 +591,7 @@ function SavedPostCard({
         <CampusListingMeta listing={post.listing} variant="compact" />
       )}
 
-      <p className="mt-2 line-clamp-3 max-w-[78ch] whitespace-pre-wrap break-words text-sm leading-6 tracking-[-0.01em] text-white/74 [overflow-wrap:anywhere] sm:text-[15px] sm:leading-7">
+      <p className="mt-2.5 line-clamp-3 max-w-[78ch] whitespace-pre-wrap break-words text-[15px] leading-7 tracking-[-0.01em] text-white/74 [overflow-wrap:anywhere] sm:text-[15px] sm:leading-7">
         {post.body}
       </p>
 

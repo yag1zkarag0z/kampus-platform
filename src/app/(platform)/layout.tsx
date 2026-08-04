@@ -29,7 +29,10 @@ export default function PlatformLayout({
               >
                 İçeriğe geç
               </a>
-              <div className="min-h-svh w-full md:grid md:grid-cols-[minmax(6.5rem,1fr)_minmax(0,56rem)_minmax(6.5rem,1fr)]">
+              {/* X'in üç sütunlu düzeni (auto / orta / sağ rail), oranları
+                  korunarak %20 büyütüldü: bizim tipografi X'in 15px tabanından
+                  daha iri, 600px orta sütun sıkışık kalıyordu. */}
+              <div className="min-h-svh w-full md:grid md:justify-center md:grid-cols-[6rem_minmax(0,45rem)] lg:grid-cols-[6rem_minmax(0,45rem)_25rem] xl:grid-cols-[27rem_minmax(0,45rem)_25rem]">
                 <AppNavigation />
                 <main
                   id="platform-content"
@@ -38,7 +41,7 @@ export default function PlatformLayout({
                 >
                   {children}
                 </main>
-                <div className="hidden min-w-0 md:col-start-3 md:row-start-1 md:block">
+                <div className="hidden min-w-0 lg:col-start-3 lg:row-start-1 lg:block">
                   <div className="sticky top-0 max-h-svh space-y-3 overflow-y-auto p-3">
                     <FollowSuggestions />
                     <CampusCalendarWidget />

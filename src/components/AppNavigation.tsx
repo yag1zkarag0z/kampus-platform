@@ -5,9 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type MouseEvent } from "react";
 
 import { useCampusAccount } from "@/components/CampusAccountProvider";
+import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import CampusLogo from "@/components/CampusLogo";
 import { useCampusNotifications } from "@/components/CampusNotificationProvider";
 import { useFeedback } from "@/components/FeedbackProvider";
+import { LOCAL_ACCOUNT_OWNER_ID } from "@/data/campusPosts";
 
 type NavigationIconName =
   | "feed"
@@ -56,7 +58,8 @@ const mobileNavigationItems: readonly NavigationItem[] = [
     label: "Bildirim",
     icon: "notifications",
   },
-  { href: "/profil", label: "Profil", icon: "profile" },
+  // Profil, üst bardaki hesap menüsüne taşındı; alt sırada kaydedilenler var.
+  { href: "/kaydedilenler", label: "Kayıtlar", icon: "saved" },
 ];
 
 function isActivePath(pathname: string, href: string) {
@@ -179,7 +182,8 @@ function NotificationBadge({ count }: { count: number }) {
 export default function AppNavigation() {
   const pathname = usePathname();
   const router = useRouter();
-  const { signOut, isGuest, role } = useCampusAccount();
+  const { signOut, isGuest, role, profile } = useCampusAccount();
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const {
     isUnreadCountHydrated: areNotificationsHydrated,
     unreadCount,
@@ -205,6 +209,39 @@ export default function AppNavigation() {
       window.removeEventListener("keydown", closeWithEscape);
     };
   }, [isDesktopNavigationOpen]);
+
+  // Mobilde aşağı kaydırırken üst bar ve alt menü çekilir, yukarı
+  // kaydırınca geri gelir; okuma alanı büyür.
+  const [isMobileNavHidden, setIsMobileNavHidden] = useState(false);
+
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let frame = 0;
+
+    const onScroll = () => {
+      if (frame) {
+        return;
+      }
+
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        const currentY = window.scrollY;
+        const delta = currentY - lastY;
+
+        if (Math.abs(delta) > 6) {
+          setIsMobileNavHidden(delta > 0 && currentY > 72);
+          lastY = currentY;
+        }
+      });
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, []);
 
   const handleSignOut = async () => {
     const confirmed = await confirmAction({
@@ -258,19 +295,77 @@ export default function AppNavigation() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 flex min-h-16 items-center justify-between gap-3 border-b border-white/10 bg-[#0a0d16]/95 px-3 py-2 text-white shadow-[0_10px_32px_rgba(0,0,0,0.2)] backdrop-blur-xl md:hidden">
+      {/* Mobil üst bar: solda profil, ortada logo işareti, sağda kısayollar. */}
+      <header
+        className={`sticky top-0 z-40 grid min-h-16 grid-cols-[auto_1fr_auto] items-center gap-2 bg-[#0a0d16]/55 px-3 py-2 text-white backdrop-blur-xl transition-transform duration-300 md:hidden ${
+          isMobileNavHidden ? "-translate-y-full" : "translate-y-0"
+        }`}
+      >
+        <div className="relative">
+          <button
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={isAccountMenuOpen}
+            aria-label="Hesap menüsünü aç"
+            onClick={() => setIsAccountMenuOpen((current) => !current)}
+            className="inline-flex cursor-pointer rounded-full outline-none transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40"
+          >
+            <CampusAuthorAvatar
+              author={`@${profile.username}`}
+              authorId={LOCAL_ACCOUNT_OWNER_ID}
+              avatarUrl={profile.avatarUrl}
+            />
+          </button>
+
+          {isAccountMenuOpen && (
+            <div
+              role="menu"
+              className="absolute top-full left-0 z-50 mt-2 w-52 overflow-hidden rounded-2xl border border-white/12 bg-[#141720] py-1 shadow-[0_18px_48px_rgba(0,0,0,0.5)]"
+            >
+              <Link
+                href="/profil"
+                role="menuitem"
+                onClick={() => setIsAccountMenuOpen(false)}
+                className="block px-4 py-3 text-sm font-bold outline-none transition-colors hover:bg-white/7"
+              >
+                Profilim
+              </Link>
+              <Link
+                href="/ayarlar"
+                role="menuitem"
+                onClick={() => setIsAccountMenuOpen(false)}
+                className="block px-4 py-3 text-sm font-bold outline-none transition-colors hover:bg-white/7"
+              >
+                Ayarlar
+              </Link>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setIsAccountMenuOpen(false);
+                  handleSignOut();
+                }}
+                className="block w-full cursor-pointer border-t border-white/8 px-4 py-3 text-left text-sm font-bold text-[#ffb199] outline-none transition-colors hover:bg-[#ffb199]/9"
+              >
+                Çıkış yap
+              </button>
+            </div>
+          )}
+        </div>
+
         <Link
           href="/akis"
           aria-label="KAMPÜS akışına git"
-          className="inline-flex min-h-11 items-center rounded-lg px-1 outline-none transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40"
+          className="justify-self-center rounded-lg px-2 outline-none transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40"
         >
           <CampusLogo
+            variant="mark"
             idPrefix="mobile-app-navigation-logo"
-            wordmarkClassName="text-lg"
+            markClassName="h-10 w-8"
           />
         </Link>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 justify-self-end">
           {!isGuest && role !== "member" && (
             <Link
               href="/admin"
@@ -278,13 +373,13 @@ export default function AppNavigation() {
               aria-current={
                 isActivePath(pathname, "/admin") ? "page" : undefined
               }
-              className={`grid size-11 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 ${
+              className={`grid size-12 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 ${
                 isActivePath(pathname, "/admin")
                   ? "bg-[#ff7a45]/12 text-[#ff7a45]"
                   : "text-white/55 hover:bg-white/8 hover:text-white"
               }`}
             >
-              <NavigationIcon name="admin" className="size-[1.15rem]" />
+              <NavigationIcon name="admin" className="size-6" />
             </Link>
           )}
           <Link
@@ -293,29 +388,13 @@ export default function AppNavigation() {
             aria-current={
               isActivePath(pathname, "/takip") ? "page" : undefined
             }
-            className={`grid size-11 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 ${
+            className={`grid size-12 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 ${
               isActivePath(pathname, "/takip")
                 ? "bg-[#ff7a45]/12 text-[#ff7a45]"
                 : "text-white/58 hover:bg-white/8 hover:text-white"
             }`}
           >
-            <NavigationIcon name="follow" className="size-[1.15rem]" />
-          </Link>
-          <Link
-            href="/kaydedilenler"
-            aria-label="Kaydedilen konuları aç"
-            aria-current={
-              isActivePath(pathname, "/kaydedilenler")
-                ? "page"
-                : undefined
-            }
-            className={`grid size-11 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 ${
-              isActivePath(pathname, "/kaydedilenler")
-                ? "bg-[#ff7a45]/12 text-[#ff7a45]"
-                : "text-white/58 hover:bg-white/8 hover:text-white"
-            }`}
-          >
-            <NavigationIcon name="saved" className="size-[1.15rem]" />
+            <NavigationIcon name="follow" className="size-6" />
           </Link>
           {isGuest && (
             <button
@@ -427,16 +506,16 @@ export default function AppNavigation() {
                               : undefined
                           }
                           title={item.label}
-                          className={`group relative flex min-h-[4.1rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-center text-[10px] font-black leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 xl:min-h-12 xl:flex-row xl:justify-start xl:gap-3 xl:px-3 xl:text-left xl:text-sm ${
+                          className={`group relative flex min-h-[4.1rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-center text-[10px] font-black leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 xl:min-h-14 xl:flex-row xl:justify-start xl:gap-4 xl:rounded-full xl:px-4 xl:text-left xl:text-xl ${
                             isActive
                               ? "bg-[#ff7a45]/13 text-[#ff7a45]"
                               : "text-white/62 hover:bg-white/8 hover:text-white"
                           }`}
                         >
-                          <span className="relative grid size-[1.35rem] shrink-0 place-items-center">
+                          <span className="relative grid size-[1.35rem] shrink-0 place-items-center xl:size-7">
                             <NavigationIcon
                               name={item.icon}
-                              className="size-[1.35rem]"
+                              className="size-[1.35rem] xl:size-7"
                             />
                             {item.icon === "notifications" &&
                               areNotificationsHydrated &&
@@ -468,21 +547,82 @@ export default function AppNavigation() {
                     : undefined
                 }
                 title="Konu aç"
-                className="mt-2 inline-flex min-h-[4.1rem] w-full flex-col items-center justify-center gap-1.5 rounded-xl bg-white px-1 text-[10px] font-black leading-none text-[#12100e] shadow-none outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/45 xl:min-h-12 xl:flex-row xl:justify-start xl:gap-3 xl:px-3 xl:text-sm"
+                className="mt-4 inline-flex min-h-[4.1rem] w-full flex-col items-center justify-center gap-1.5 rounded-full bg-[#ff7a45] px-1 text-[10px] font-black leading-none text-[#12100e] outline-none transition-colors hover:bg-[#ff7a45]/90 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/45 xl:min-h-15 xl:flex-row xl:justify-center xl:gap-2.5 xl:px-4 xl:text-lg"
               >
-                <ShareIcon className="size-[1.35rem] shrink-0" />
+                <ShareIcon className="size-[1.35rem] shrink-0 xl:hidden" />
                 <span>Konu aç</span>
               </Link>
 
-              <div className="mt-auto grid gap-1 border-t border-white/10 pt-3">
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  title="Çıkış yap"
-                  className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-xl px-1 text-[10px] font-black text-[#ffb199] outline-none transition-colors hover:bg-[#ffb199]/9 focus-visible:ring-3 focus-visible:ring-[#ffb199]/35"
-                >
-                  Çıkış
-                </button>
+              {/* X'teki gibi hesap çipi: geniş menüde ad ve kullanıcı adı,
+                  dar menüde yalnızca avatar. Çıkış bu menünün içine girer. */}
+              <div className="mt-auto pt-3">
+                <div className="relative">
+                  <button
+                    type="button"
+                    aria-haspopup="menu"
+                    aria-expanded={isAccountMenuOpen}
+                    onClick={() =>
+                      setIsAccountMenuOpen((current) => !current)
+                    }
+                    title={`@${profile.username}`}
+                    className="flex min-h-14 w-full cursor-pointer items-center justify-center gap-3 rounded-full px-1.5 py-2 outline-none transition-colors hover:bg-white/8 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 xl:min-h-16 xl:justify-start xl:px-3"
+                  >
+                    <CampusAuthorAvatar
+                      author={`@${profile.username}`}
+                      authorId={LOCAL_ACCOUNT_OWNER_ID}
+                      avatarUrl={profile.avatarUrl}
+                    />
+                    <span className="hidden min-w-0 flex-1 text-left xl:block">
+                      <span className="block truncate text-base font-black leading-5">
+                        {profile.displayName}
+                      </span>
+                      <span className="block truncate text-sm font-semibold text-white/55">
+                        @{profile.username}
+                      </span>
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className="hidden shrink-0 text-lg leading-none text-white/55 xl:block"
+                    >
+                      ···
+                    </span>
+                  </button>
+
+                  {isAccountMenuOpen && (
+                    <div
+                      role="menu"
+                      className="absolute bottom-full left-0 z-50 mb-2 w-56 overflow-hidden rounded-2xl border border-white/12 bg-[#141720] py-1 shadow-[0_18px_48px_rgba(0,0,0,0.5)]"
+                    >
+                      <Link
+                        href="/profil"
+                        role="menuitem"
+                        onClick={() => setIsAccountMenuOpen(false)}
+                        className="block px-4 py-2.5 text-sm font-bold outline-none transition-colors hover:bg-white/7 focus-visible:bg-white/7"
+                      >
+                        Profilim
+                      </Link>
+                      <Link
+                        href="/ayarlar"
+                        role="menuitem"
+                        onClick={() => setIsAccountMenuOpen(false)}
+                        className="block px-4 py-2.5 text-sm font-bold outline-none transition-colors hover:bg-white/7 focus-visible:bg-white/7"
+                      >
+                        Ayarlar
+                      </Link>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setIsAccountMenuOpen(false);
+                          handleSignOut();
+                        }}
+                        className="block w-full cursor-pointer border-t border-white/8 px-4 py-2.5 text-left text-sm font-bold text-[#ffb199] outline-none transition-colors hover:bg-[#ffb199]/9 focus-visible:bg-[#ffb199]/9"
+                      >
+                        Çıkış yap
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </aside>
@@ -491,7 +631,9 @@ export default function AppNavigation() {
 
       <nav
         aria-label="Mobil uygulama menüsü"
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0a0d16]/96 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-white shadow-[0_-12px_34px_rgba(0,0,0,0.24)] backdrop-blur-xl md:hidden"
+        className={`fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0a0d16]/85 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-white shadow-[0_-12px_34px_rgba(0,0,0,0.24)] backdrop-blur-xl transition-transform duration-300 md:hidden ${
+          isMobileNavHidden ? "translate-y-full" : "translate-y-0"
+        }`}
       >
         <ul className="mx-auto grid max-w-lg grid-cols-5 gap-1">
           {mobileNavigationItems.map((item) => {

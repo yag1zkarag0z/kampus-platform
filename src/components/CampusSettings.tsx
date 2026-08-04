@@ -277,7 +277,7 @@ export default function CampusSettings() {
         inert={isDeleteDialogOpen ? true : undefined}
         aria-hidden={isDeleteDialogOpen ? true : undefined}
       >
-        <header className="sticky top-16 z-30 border-b border-white/12 bg-[#0a0d16]/94 backdrop-blur-xl md:top-0">
+        <header className="sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/94 backdrop-blur-xl">
           <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 sm:px-6">
             <Link
               href="/profil"

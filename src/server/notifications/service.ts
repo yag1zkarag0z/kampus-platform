@@ -17,6 +17,7 @@ import { getDatabase } from "@/server/db/client";
 import {
   comments,
   notifications,
+  postLikes,
   posts,
   userSettings,
   users,
@@ -54,6 +55,13 @@ export type NotificationSummary = {
     avatarUrl: string | null;
   };
   likeCount: number | null;
+  /** Gruplanan beğenilerde yığılmış avatar göstermek için ek aktörler. */
+  otherActors: {
+    id: string;
+    username: string;
+    displayName: string;
+    avatarUrl: string | null;
+  }[];
   post: { id: string; title: string; isDeleted: boolean } | null;
   comment: { id: string; excerpt: string; isDeleted: boolean } | null;
   isRead: boolean;
@@ -127,7 +135,7 @@ export async function listNotifications(
     .orderBy(desc(notifications.createdAt), desc(notifications.id))
     .limit(limit + 1);
 
-  return buildCursorPage({
+  const page = buildCursorPage({
     rows,
     limit,
     scope: NOTIFICATIONS_CURSOR_SCOPE,
@@ -141,6 +149,7 @@ export async function listNotifications(
         avatarUrl: avatarUrlFor(row.actorUsername, row.actorAvatarObjectKey),
       },
       likeCount: row.likeCount,
+      otherActors: [],
       post: row.postId
         ? {
             id: row.postId,
@@ -159,6 +168,87 @@ export async function listNotifications(
       createdAt: row.createdAt.toISOString(),
     }),
   });
+
+  await attachGroupedLikeActors(recipientId, page.data);
+
+  return page;
+}
+
+/**
+ * Gruplanan beğeni bildirimlerine aynı gönderiyi beğenen son kullanıcıları
+ * ekler. Bildirim tablosu gönderi başına tek satır tuttuğu için aktör listesi
+ * ayrıca okunur; engelli çiftler ve silinmiş hesaplar dışarıda bırakılır.
+ */
+async function attachGroupedLikeActors(
+  recipientId: string,
+  items: NotificationSummary[],
+) {
+  const groupedPostIds = [
+    ...new Set(
+      items
+        .filter(
+          (item) =>
+            item.kind === "like" && item.post && (item.likeCount ?? 0) > 1,
+        )
+        .map((item) => item.post!.id),
+    ),
+  ];
+
+  if (groupedPostIds.length === 0) {
+    return;
+  }
+
+  const result = await getDatabase().execute(sql`
+    select post_id, id, username, display_name, avatar_object_key
+    from (
+      select
+        ${postLikes.postId} as post_id,
+        ${users.id} as id,
+        ${users.username}::text as username,
+        ${users.displayName} as display_name,
+        ${users.avatarObjectKey} as avatar_object_key,
+        row_number() over (
+          partition by ${postLikes.postId}
+          order by ${postLikes.createdAt} desc
+        ) as rn
+      from ${postLikes}
+      join ${users} on ${users.id} = ${postLikes.userId}
+      where ${postLikes.postId} = any(${groupedPostIds}::uuid[])
+        and ${users.deletedAt} is null
+        and ${noBlockBetween(recipientId, users.id)}
+    ) ranked
+    where rn <= 3
+  `);
+
+  const byPost = new Map<string, NotificationSummary["otherActors"]>();
+
+  for (const row of result.rows as unknown as {
+    post_id: string;
+    id: string;
+    username: string;
+    display_name: string;
+    avatar_object_key: string | null;
+  }[]) {
+    const list = byPost.get(row.post_id) ?? [];
+
+    list.push({
+      id: row.id,
+      username: row.username,
+      displayName: row.display_name,
+      avatarUrl: avatarUrlFor(row.username, row.avatar_object_key),
+    });
+    byPost.set(row.post_id, list);
+  }
+
+  for (const item of items) {
+    if (item.kind !== "like" || !item.post) {
+      continue;
+    }
+
+    item.otherActors = (byPost.get(item.post.id) ?? []).filter(
+      (actor) => actor.id !== item.actor.id,
+    );
+  }
 }
 
 export async function getUnreadNotificationCount(

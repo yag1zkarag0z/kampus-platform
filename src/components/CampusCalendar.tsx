@@ -6,6 +6,8 @@ import CampusAudienceTags from "@/components/CampusAudienceTags";
 import {
   calendarCategoryStyles,
   calendarFocusRing,
+  calendarHeaderSurface,
+  calendarTile,
 } from "@/components/CampusCalendarStyles";
 import {
   ACADEMIC_YEAR_LABEL,
@@ -67,9 +69,9 @@ export default function CampusCalendar() {
   return (
     <section
       aria-labelledby="academic-calendar-title"
-      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] min-w-0 overflow-x-hidden bg-[#0a0d16] text-white md:min-h-svh"
     >
-      <header className="sticky top-16 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl md:top-0">
+      <header className={`sticky top-0 z-30 border-b border-white/12 ${calendarHeaderSurface}`}>
         <div className="px-4 py-4 sm:px-6">
           <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-[#ff7a45]">
             Akademik yıl {ACADEMIC_YEAR_LABEL}
@@ -108,7 +110,7 @@ export default function CampusCalendar() {
               >
                 {filter.label}
                 <span
-                  className={`font-mono text-[10px] ${
+                  className={`text-[10px] ${
                     isActive ? "text-[#12100e]/55" : "text-white/40"
                   }`}
                 >
@@ -154,7 +156,7 @@ export default function CampusCalendar() {
         >
           <h2
             id={`calendar-term-${group.term}`}
-            className="sticky top-[8.5rem] z-20 border-b border-white/8 bg-[#0a0d16]/95 px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-[#ff7a45] backdrop-blur-xl sm:px-6 md:top-[7.5rem]"
+            className={`sticky top-[8.5rem] z-20 border-b border-white/8 px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-[#ff7a45] sm:px-6 md:top-[7.5rem] ${calendarHeaderSurface}`}
           >
             {academicTermLabels[group.term]}
           </h2>
@@ -173,7 +175,7 @@ export default function CampusCalendar() {
       ))}
 
       <footer className="px-4 py-6 sm:px-6">
-        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-white/45">
+        <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-white/45">
           Son güncelleme · {formatCalendarUpdatedAt()}
         </p>
         <p className="mt-2 text-[11px] leading-5 text-white/50">
@@ -209,10 +211,10 @@ function UpcomingCard({ event }: { event: AcademicEvent }) {
   const timing = getEventTiming(event);
 
   return (
-    <article className="flex h-full min-w-0 flex-col border border-white/10 bg-white/[0.03] p-3.5 transition-colors hover:border-[#ff7a45]/30">
+    <article className={`flex h-full min-w-0 flex-col p-3.5 transition-colors hover:border-[#ff7a45]/30 ${calendarTile}`}>
       <div className="flex min-w-0 items-start gap-3">
         <div className="grid size-12 shrink-0 place-items-center border border-white/12 bg-white/6 text-center">
-          <span className="block text-base font-black leading-none">
+          <span className="block text-base font-black leading-none text-white">
             {badge.day}
           </span>
           <span className="mt-0.5 block font-mono text-[9px] font-bold tracking-[0.1em] text-[#ff7a45]">
@@ -220,12 +222,12 @@ function UpcomingCard({ event }: { event: AcademicEvent }) {
           </span>
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-bold leading-5 tracking-[-0.015em]">
+          <p className="text-sm font-bold leading-5 tracking-[-0.015em] text-white">
             {event.title}
           </p>
           <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <span
-              className={`inline-flex items-center border px-1.5 py-px font-mono text-[9px] font-bold uppercase tracking-[0.08em] ${style.badge}`}
+              className={`inline-flex items-center px-1.5 py-px font-mono text-[9px] font-bold uppercase tracking-[0.08em] ${style.badge}`}
             >
               {style.label}
             </span>
@@ -258,7 +260,7 @@ function CalendarRow({
   return (
     <div
       className={`group relative flex min-w-0 items-start gap-3 py-4 pl-3 transition-colors sm:gap-4 ${
-        isPast ? "opacity-45" : "hover:bg-white/[0.025]"
+        isPast ? "opacity-45" : "hover:bg-white/[0.03]"
       }`}
     >
       <span
@@ -273,13 +275,13 @@ function CalendarRow({
       />
 
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold leading-5 tracking-[-0.015em] break-words sm:text-[15px] sm:leading-6">
+        <p className="text-sm font-bold leading-5 tracking-[-0.015em] break-words text-white sm:text-[15px] sm:leading-6">
           {event.title}
         </p>
 
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
           <span
-            className={`inline-flex items-center border px-1.5 py-px font-mono text-[9px] font-bold uppercase tracking-[0.08em] ${style.badge}`}
+            className={`inline-flex items-center px-1.5 py-px font-mono text-[9px] font-bold uppercase tracking-[0.08em] ${style.badge}`}
           >
             {style.label}
           </span>
@@ -287,11 +289,11 @@ function CalendarRow({
         </div>
 
         {/* Mobilde sağ sütun yok; kritik bilgi burada kalır. */}
-        <div className="mt-2 sm:hidden">
-          <p className="text-xs font-bold text-white/80">
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 lg:hidden">
+          <p className="text-xs font-bold whitespace-nowrap text-white/80">
             {formatEventDate(event)}
           </p>
-          <CampusAudienceTags audiences={event.audiences} className="mt-1.5" />
+          <CampusAudienceTags audiences={event.audiences} />
         </div>
 
         {event.note && (
@@ -301,13 +303,13 @@ function CalendarRow({
         )}
       </div>
 
-      <div className="hidden w-44 shrink-0 pr-3 sm:block lg:w-52">
-        <p className="text-right text-xs font-bold leading-4 text-white/85">
+      <div className="hidden shrink-0 flex-col items-end gap-1.5 pr-3 lg:flex">
+        <p className="text-right text-xs font-bold leading-4 whitespace-nowrap text-white/85">
           {formatEventDate(event)}
         </p>
         <CampusAudienceTags
           audiences={event.audiences}
-          className="mt-1.5 justify-end"
+          className="justify-end"
         />
       </div>
     </div>

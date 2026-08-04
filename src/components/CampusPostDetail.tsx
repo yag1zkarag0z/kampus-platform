@@ -16,6 +16,10 @@ import { useCampusData } from "@/components/CampusDataProvider";
 import CampusHiddenNotice from "@/components/CampusHiddenNotice";
 import CampusListingMeta from "@/components/CampusListingMeta";
 import CampusPoll from "@/components/CampusPoll";
+import {
+  campusCategoryBadgeBase,
+  campusCategoryStyles,
+} from "@/data/campusCategoryStyles";
 import CampusPostActions from "@/components/CampusPostActions";
 import CampusPostImage from "@/components/CampusPostImage";
 import CampusGif from "@/components/CampusGif";
@@ -237,7 +241,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
 
   return (
     <section className="min-h-full min-w-0 bg-[#0a0d16] text-white">
-      <header className="sticky top-16 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl md:top-0">
+      <header className="sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl">
         <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 sm:px-5">
           <Link
             href="/akis"
@@ -278,9 +282,14 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
             </CampusAuthorProfileLink>
             <div className="min-w-0 pt-0.5">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#ff7a45]">
-                  {post.category}
-                </span>
+                <span
+              className={`${campusCategoryBadgeBase} ${campusCategoryStyles[post.category].badge}`}
+            >
+              <span aria-hidden="true">
+                {campusCategoryStyles[post.category].glyph}
+              </span>
+              {post.category}
+            </span>
                 <span
                   aria-hidden="true"
                   className="size-1 rotate-45 bg-[#ff7a45]/60"
@@ -342,7 +351,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
             )}
 
             {post.body && (
-              <p className="mt-4 max-w-[78ch] whitespace-pre-wrap break-words text-[15px] leading-7 tracking-[-0.01em] text-white/80 sm:text-base sm:leading-7">
+              <p className="mt-4 max-w-[78ch] whitespace-pre-wrap break-words text-base leading-7 tracking-[-0.01em] text-white/82 sm:text-[17px] sm:leading-8">
                 {post.body}
               </p>
             )}

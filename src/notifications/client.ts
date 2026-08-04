@@ -23,6 +23,12 @@ export type NotificationDto = {
   kind: NotificationKindDto;
   actor: NotificationActorDto;
   likeCount: number | null;
+  otherActors: {
+    id: string;
+    username: string;
+    displayName: string;
+    avatarUrl: string | null;
+  }[];
   post: { id: string; title: string; isDeleted: boolean } | null;
   comment: { id: string; excerpt: string; isDeleted: boolean } | null;
   isRead: boolean;

@@ -21,6 +21,10 @@ import {
 import { toContentCategory } from "@/content/adapter";
 import type { ContentPostSort } from "@/content/client";
 import {
+  campusCategoryBadgeBase,
+  campusCategoryStyles,
+} from "@/data/campusCategoryStyles";
+import {
   getCampusPostCommentCount,
   isAnonymousCampusAuthor,
 } from "@/data/campusPosts";
@@ -73,16 +77,16 @@ export default function CampusExplore() {
       aria-labelledby="explore-title"
       className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
     >
-      <header className="sticky top-16 z-30 border-b border-white/10 bg-[#0a0d16]/95 backdrop-blur-xl md:top-0">
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0a0d16]/95 backdrop-blur-xl">
         <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 sm:px-6">
           <span aria-hidden="true" />
           <div className="min-w-0 justify-self-center text-center">
-            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-[#ff7a45]">
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.13em] text-[#ff7a45]">
               Kampüste ara
             </p>
             <h1
               id="explore-title"
-              className="mt-0.5 text-xl font-black tracking-[-0.04em]"
+              className="mt-0.5 text-2xl font-black tracking-[-0.04em] sm:text-3xl"
             >
               Keşfet
             </h1>
@@ -91,7 +95,7 @@ export default function CampusExplore() {
             role="status"
             aria-live="polite"
             aria-atomic="true"
-            className="shrink-0 justify-self-end text-right text-xs font-bold text-white/55"
+            className="shrink-0 justify-self-end text-right text-sm font-bold text-white/55"
           >
             {isLoading
               ? "Aranıyor"
@@ -112,7 +116,7 @@ export default function CampusExplore() {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Başlık, kategori veya kullanıcı ara"
               autoComplete="off"
-              className={`min-h-12 w-full rounded-full border border-white/12 bg-white/5 py-2.5 pr-12 pl-11 text-sm font-medium text-white placeholder:text-white/45 ${focusRing}`}
+              className={`min-h-14 w-full rounded-full border border-white/12 bg-white/5 py-3 pr-12 pl-12 text-base font-medium text-white placeholder:text-white/45 ${focusRing}`}
             />
             {query && (
               <button
@@ -152,7 +156,7 @@ export default function CampusExplore() {
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => setActiveSort(sort.id)}
-                className={`min-h-11 rounded-full px-3 text-[11px] font-bold transition-colors sm:px-4 sm:text-xs ${focusRing} ${
+                className={`min-h-11 rounded-full px-4 text-xs font-bold transition-colors sm:px-5 sm:text-sm ${focusRing} ${
                   isActive
                     ? "bg-white text-[#12100e]"
                     : "text-white/55 hover:bg-white/5 hover:text-white"
@@ -178,7 +182,7 @@ export default function CampusExplore() {
             >
               <CampusPostCardSurface
                 postId={post.id}
-                className="py-5 sm:py-6"
+                className="py-6 sm:py-7"
               >
                 <header className="flex items-start gap-2.5">
                   <CampusAuthorProfileLink
@@ -197,7 +201,10 @@ export default function CampusExplore() {
                     />
                   </CampusAuthorProfileLink>
                   <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
-                    <span className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#ff7a45]">
+<span
+                      className={`${campusCategoryBadgeBase} ${campusCategoryStyles[post.category].badge}`}
+                    >
+                      <span aria-hidden="true">{campusCategoryStyles[post.category].glyph}</span>
                       {post.category}
                     </span>
                     <span
@@ -210,15 +217,15 @@ export default function CampusExplore() {
                       isAnonymous={post.isAnonymous}
                       ariaLabel={`${post.author} profilini aç`}
                       className="min-w-0"
-                      linkClassName={`truncate text-xs font-black transition-colors hover:text-[#ff7a45] ${focusRing}`}
+                      linkClassName={`truncate text-sm font-black transition-colors hover:text-[#ff7a45] ${focusRing}`}
                     >
-                      <span className="truncate text-xs font-black">
+                      <span className="truncate text-sm font-black">
                         {post.author}
                       </span>
                     </CampusAuthorProfileLink>
                     {!isAnonymousCampusAuthor(post) &&
                       post.detail && (
-                        <span className="text-[11px] font-semibold text-white/55">
+                        <span className="text-xs font-semibold text-white/55">
                           {post.detail}
                         </span>
                       )}
@@ -228,13 +235,13 @@ export default function CampusExplore() {
                     >
                       ·
                     </span>
-                    <time className="text-[11px] font-semibold text-white/55">
+                    <time className="text-xs font-semibold text-white/55">
                       {post.time}
                     </time>
                   </div>
                 </header>
 
-                <h2 className="mt-2.5 max-w-[78ch] break-words text-lg font-black leading-6 tracking-[-0.025em] [overflow-wrap:anywhere] sm:text-xl sm:leading-7">
+                <h2 className="mt-3 max-w-[78ch] break-words text-xl font-black leading-7 tracking-[-0.025em] [overflow-wrap:anywhere] sm:text-2xl sm:leading-8">
                   <Link
                     href={`/gonderi/${post.id}`}
                     className={`decoration-[#ff7a45]/30 underline-offset-4 transition-colors hover:text-[#ff7a45] hover:underline ${focusRing}`}
@@ -248,7 +255,7 @@ export default function CampusExplore() {
                     variant="compact"
                   />
                 )}
-                <p className="mt-2 max-w-[78ch] whitespace-pre-wrap break-words text-sm leading-6 tracking-[-0.01em] text-white/70 [overflow-wrap:anywhere] sm:text-[15px] sm:leading-7">
+                <p className="mt-2.5 max-w-[78ch] whitespace-pre-wrap break-words text-[15px] leading-7 tracking-[-0.01em] text-white/75 [overflow-wrap:anywhere] sm:text-base sm:leading-8">
                   {post.body}
                 </p>
 

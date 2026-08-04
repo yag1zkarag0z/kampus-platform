@@ -11,7 +11,7 @@ export default function PlatformEmptyState({
 }: PlatformEmptyStateProps) {
   return (
     <section className="flex min-h-[calc(100svh-4rem)] flex-col bg-[#0a0d16] md:min-h-svh">
-      <header className="sticky top-16 z-20 flex min-h-16 items-center justify-center border-b border-white/10 bg-[#0a0d16]/88 px-4 text-center backdrop-blur-xl sm:px-5 md:top-0">
+      <header className="sticky top-0 z-20 flex min-h-16 items-center justify-center border-b border-white/10 bg-[#0a0d16]/88 px-4 text-center backdrop-blur-xl sm:px-5">
         <p className="text-base font-black tracking-[-0.035em] text-white">{title}</p>
       </header>
 

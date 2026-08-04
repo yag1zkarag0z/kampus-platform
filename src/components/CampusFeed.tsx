@@ -36,10 +36,15 @@ import {
 } from "@/content/client";
 import { CAMPUS_POST_BODY_MAX_LENGTH } from "@/data/campusContentRules";
 import {
+  campusCategoryBadgeBase,
+  campusCategoryStyles,
+} from "@/data/campusCategoryStyles";
+import {
   getCampusPostCommentCount,
   isAnonymousCampusAuthor,
   LOCAL_ACCOUNT_OWNER_ID,
   type CampusGif as CampusGifData,
+  type CampusPostCategory,
   type CampusPostImage as CampusPostImageData,
 } from "@/data/campusPosts";
 import { useFeedback } from "@/components/FeedbackProvider";
@@ -49,6 +54,16 @@ type FeedView = "latest" | "following";
 const feedViews: { id: FeedView; label: string }[] = [
   { id: "latest", label: "En yeni" },
   { id: "following", label: "Takip" },
+];
+
+const COMPOSER_DRAFT_KEY = "kampus-composer-draft";
+
+const composerCategories: CampusPostCategory[] = [
+  "Sohbet",
+  "İtiraf",
+  "Soru",
+  "Etkinlik",
+  "Kayıp Eşya",
 ];
 
 const focusRing =
@@ -125,8 +140,69 @@ async function createQuickPostImage(
   }
 }
 
+function useHideOnScrollDown() {
+  const [isHidden, setIsHidden] = useState(false);
+
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let frame = 0;
+
+    const onScroll = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        const currentY = window.scrollY;
+        const delta = currentY - lastY;
+        if (Math.abs(delta) > 6) {
+          setIsHidden(delta > 0 && currentY > 72);
+          lastY = currentY;
+        }
+      });
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  return isHidden;
+}
+
+function CharacterRing({ value, max }: { value: number; max: number }) {
+  const ratio = Math.min(1, value / max);
+  const isNearLimit = max - value <= 40;
+  const circumference = 2 * Math.PI * 9;
+
+  return (
+    <span
+      role="status"
+      aria-label={`${value} / ${max} karakter`}
+      className="grid shrink-0 place-items-center"
+    >
+      <svg viewBox="0 0 24 24" className="size-6 -rotate-90">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="2.5" />
+        <circle
+          cx="12"
+          cy="12"
+          r="9"
+          fill="none"
+          stroke={isNearLimit ? "#ff5a5a" : "#ff7a45"}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - ratio)}
+        />
+      </svg>
+    </span>
+  );
+}
+
 export default function CampusFeed() {
   const router = useRouter();
+  // Aşağı kaydırırken sekmeler de üst barla birlikte çekilsin.
+  const isHeaderHidden = useHideOnScrollDown();
   const { showToast } = useFeedback();
   const { isGuest } = useCampusAccount();
   const {
@@ -142,6 +218,7 @@ export default function CampusFeed() {
     toggleBookmark,
   } = useCampusData();
   const categoryMenuRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLFormElement>(null);
   const quickPostBodyRef = useRef<HTMLTextAreaElement>(null);
   const quickPostImageInputRef = useRef<HTMLInputElement>(null);
   const activeView: FeedView =
@@ -162,6 +239,13 @@ export default function CampusFeed() {
   const [isQuickPostImageProcessing, setIsQuickPostImageProcessing] =
     useState(false);
   const [isPollEnabled, setIsPollEnabled] = useState(false);
+  // Alan odaklanana kadar tek satır durur; akış daha çok görünür.
+  const [isComposerExpanded, setIsComposerExpanded] = useState(false);
+  const [composerCategory, setComposerCategory] =
+    useState<CampusPostCategory>("Sohbet");
+  const [isComposerCategoryOpen, setIsComposerCategoryOpen] =
+    useState(false);
+  const [isComposerAnonymous, setIsComposerAnonymous] = useState(false);
   const [pollOptions, setPollOptions] = useState(["", ""]);
   const [pollError, setPollError] = useState("");
 
@@ -191,6 +275,105 @@ export default function CampusFeed() {
       );
     };
   }, []);
+
+  // Taslağı geri yükle: sayfa değişip dönünce yazdığın kaybolmasın.
+  useEffect(() => {
+    let isCancelled = false;
+
+    queueMicrotask(() => {
+      if (isCancelled) return;
+
+      try {
+        const stored = window.sessionStorage.getItem(COMPOSER_DRAFT_KEY);
+        if (!stored) return;
+
+        const draft = JSON.parse(stored) as {
+          body?: string;
+          category?: CampusPostCategory;
+          isAnonymous?: boolean;
+        };
+
+        if (draft.body) {
+          setQuickPostBody(draft.body.slice(0, CAMPUS_POST_BODY_MAX_LENGTH));
+          setIsComposerExpanded(true);
+        }
+        if (draft.category) setComposerCategory(draft.category);
+        if (draft.isAnonymous) setIsComposerAnonymous(true);
+      } catch {
+        // Bozuk taslak sessizce yok sayılır.
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  // Taslağı sakla.
+  useEffect(() => {
+    try {
+      if (quickPostBody.trim()) {
+        window.sessionStorage.setItem(
+          COMPOSER_DRAFT_KEY,
+          JSON.stringify({
+            body: quickPostBody,
+            category: composerCategory,
+            isAnonymous: isComposerAnonymous,
+          }),
+        );
+      } else {
+        window.sessionStorage.removeItem(COMPOSER_DRAFT_KEY);
+      }
+    } catch {
+      // Depolama kapalıysa taslak korunmaz, akış etkilenmez.
+    }
+  }, [composerCategory, isComposerAnonymous, quickPostBody]);
+
+  // Yazı alanı içeriğe göre büyüsün.
+  useEffect(() => {
+    const textarea = quickPostBodyRef.current;
+    if (!textarea) return;
+
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, [quickPostBody]);
+
+  useEffect(() => {
+    if (!isComposerExpanded) {
+      return;
+    }
+
+    const collapseOnOutsideClick = (event: PointerEvent) => {
+      if (composerRef.current?.contains(event.target as Node)) {
+        return;
+      }
+
+      // Yazılmış içerik veya ek varken kapatmak veri kaybı gibi hissettirir.
+      const hasDraft =
+        quickPostBody.trim().length > 0 ||
+        Boolean(quickPostImage) ||
+        Boolean(quickPostGif) ||
+        isPollEnabled;
+
+      if (!hasDraft) {
+        setIsComposerExpanded(false);
+        setIsComposerCategoryOpen(false);
+        setIsEmojiPickerOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", collapseOnOutsideClick);
+
+    return () => {
+      document.removeEventListener("pointerdown", collapseOnOutsideClick);
+    };
+  }, [
+    isComposerExpanded,
+    isPollEnabled,
+    quickPostBody,
+    quickPostGif,
+    quickPostImage,
+  ]);
 
   const visiblePosts = useMemo(() => {
     const categoryPosts =
@@ -414,13 +597,21 @@ export default function CampusFeed() {
 
       await createPost({
         body,
-        category: isPollEnabled ? "Anket" : "Sohbet",
-        isAnonymous: false,
+        category: isPollEnabled ? "Anket" : composerCategory,
+        isAnonymous: isComposerAnonymous,
         imageId: uploadedImageId,
         gif: quickPostGif,
         pollOptions: isPollEnabled ? normalizedPollOptions : undefined,
       });
       setQuickPostBody("");
+      setComposerCategory("Sohbet");
+      setIsComposerAnonymous(false);
+      setIsComposerExpanded(false);
+      try {
+        window.sessionStorage.removeItem(COMPOSER_DRAFT_KEY);
+      } catch {
+        // Depolama kapalıysa temizlik gerekmiyor.
+      }
       setQuickPostGif(undefined);
       removeQuickPostImage();
       setIsGifPickerOpen(false);
@@ -472,7 +663,11 @@ export default function CampusFeed() {
         Kampüs akışı
       </h1>
 
-      <header className="sticky top-16 z-30 border-b border-white/12 bg-transparent backdrop-blur-xl md:top-0">
+      <header
+        className={`sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/55 backdrop-blur-xl transition-transform duration-300 ${
+          isHeaderHidden ? "-translate-y-full md:translate-y-0" : "translate-y-0"
+        }`}
+      >
         <div
           role="group"
           aria-label="Akış görünümü"
@@ -589,6 +784,7 @@ export default function CampusFeed() {
         )}
         <form
           onSubmit={submitQuickPost}
+          ref={composerRef}
           aria-labelledby="campus-composer-title"
           aria-busy={isQuickPostSubmitting}
           aria-hidden={isGuest}
@@ -604,8 +800,61 @@ export default function CampusFeed() {
           <h2 id="campus-composer-title" className="sr-only">
             Yeni gönderi başlat
           </h2>
+          <div className="min-w-0 flex-1">
+            {isComposerExpanded && !isPollEnabled && (
+              <div className="relative mb-1 inline-block">
+                <button
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={isComposerCategoryOpen}
+                  onClick={() =>
+                    setIsComposerCategoryOpen((value) => !value)
+                  }
+                  className={`inline-flex min-h-8 items-center gap-1.5 rounded-full border border-[#ff7a45]/45 bg-[#ff7a45]/12 px-3 text-xs font-black text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/18 ${focusRing}`}
+                >
+                  {composerCategory}
+                  <span aria-hidden="true" className="text-[9px]">▾</span>
+                </button>
+
+                {isComposerCategoryOpen && (
+                  <div
+                    role="menu"
+                    className="absolute top-full left-0 z-50 mt-1 grid w-56 grid-cols-2 gap-1 border border-white/12 bg-[#141720] p-2 shadow-[0_20px_50px_rgba(0,0,0,0.42)]"
+                  >
+                    {composerCategories.map((category) => (
+                      <button
+                        key={category}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setComposerCategory(category);
+                          setIsComposerCategoryOpen(false);
+                        }}
+                        className={`min-h-10 px-2.5 text-left text-[11px] font-bold transition-colors ${focusRing} ${
+                          composerCategory === category
+                            ? "bg-[#ff7a45]/15 text-[#ff7a45]"
+                            : "text-white/62 hover:bg-white/6 hover:text-white"
+                        }`}
+                      >
+                        {category}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           <textarea
             ref={quickPostBodyRef}
+            onFocus={() => setIsComposerExpanded(true)}
+            onKeyDown={(event) => {
+              if (
+                (event.ctrlKey || event.metaKey) &&
+                event.key === "Enter"
+              ) {
+                event.preventDefault();
+                composerRef.current?.requestSubmit();
+              }
+            }}
             value={quickPostBody}
             onChange={(event) => {
               setQuickPostBody(event.target.value);
@@ -617,8 +866,25 @@ export default function CampusFeed() {
               isPollEnabled ? "Anket sorun ne?" : "Kampüste ne oluyor?"
             }
             aria-label="Gönderi metni"
-            className="max-h-48 min-h-14 min-w-0 flex-1 resize-none border-0 bg-transparent px-0 py-2 text-xl font-semibold leading-8 text-white outline-none ring-0 placeholder:font-medium placeholder:text-white/42 hover:border-transparent focus:border-transparent focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 sm:text-2xl"
+            className="max-h-48 min-h-14 w-full resize-none border-0 bg-transparent px-0 py-2 text-xl font-semibold leading-8 text-white outline-none ring-0 placeholder:font-medium placeholder:text-white/42 focus:outline-none focus:ring-0 sm:text-2xl"
           />
+
+            {isComposerExpanded && (
+              <label className="mt-1 inline-flex cursor-pointer items-center gap-2 text-xs font-bold text-white/62">
+                <input
+                  type="checkbox"
+                  checked={isComposerAnonymous}
+                  onChange={(event) =>
+                    setIsComposerAnonymous(event.target.checked)
+                  }
+                  className="size-4 accent-[#ff7a45]"
+                />
+                {isComposerAnonymous
+                  ? "Anonim paylaşıyorsun"
+                  : "Anonim paylaş"}
+              </label>
+            )}
+          </div>
 	        </div>
 
           <input
@@ -631,21 +897,22 @@ export default function CampusFeed() {
           />
 
           {quickPostImage && (
-            <div className="relative mt-3 overflow-hidden border border-white/12 bg-[#141720] min-[400px]:ml-[3.75rem] sm:ml-16">
+            /* ChatGPT tarzı küçük ek: önizleme akışı doldurmasın. */
+            <div className="relative mt-3 inline-block size-20 overflow-hidden rounded-xl border border-white/12 bg-[#141720] min-[400px]:ml-[3.75rem] sm:ml-16">
               <Image
                 src={quickPostImage.src}
                 alt="Seçilen gönderi fotoğrafının önizlemesi"
                 width={quickPostImage.width}
                 height={quickPostImage.height}
-                sizes="(max-width: 768px) calc(100vw - 5rem), 780px"
+                sizes="80px"
                 unoptimized
-                className="max-h-80 h-auto w-full object-contain"
+                className="size-full object-cover"
               />
               <button
                 type="button"
                 onClick={removeQuickPostImage}
                 aria-label="Seçilen fotoğrafı kaldır"
-                className={`absolute top-2 right-2 grid size-10 place-items-center rounded-full bg-black/75 text-base font-black text-white hover:bg-black ${focusRing}`}
+                className={`absolute top-1 right-1 grid size-6 place-items-center rounded-full bg-black/80 text-xs font-black text-white hover:bg-black ${focusRing}`}
               >
                 ×
               </button>
@@ -653,13 +920,13 @@ export default function CampusFeed() {
           )}
 
 	        {quickPostGif && (
-	          <div className="relative mt-3 min-[400px]:ml-[3.75rem] sm:ml-16">
+	          <div className="relative mt-3 inline-block w-32 overflow-hidden rounded-xl min-[400px]:ml-[3.75rem] sm:ml-16">
 	            <CampusGif gif={quickPostGif} compact />
 	            <button
 	              type="button"
 	              onClick={() => setQuickPostGif(undefined)}
 	              aria-label="Seçilen GIF'i kaldır"
-	              className={`absolute top-2 right-2 grid size-10 place-items-center rounded-full bg-black/75 text-base font-black text-white hover:bg-black ${focusRing}`}
+	              className={`absolute top-1 right-1 grid size-6 place-items-center rounded-full bg-black/80 text-xs font-black text-white hover:bg-black ${focusRing}`}
 	            >
 	              ×
 	            </button>
@@ -735,6 +1002,13 @@ export default function CampusFeed() {
             />
           </div>
 
+          {quickPostBody.length > 0 && (
+            <CharacterRing
+              value={quickPostBody.length}
+              max={CAMPUS_POST_BODY_MAX_LENGTH}
+            />
+          )}
+
           <button
             type="submit"
             disabled={
@@ -743,7 +1017,11 @@ export default function CampusFeed() {
               isQuickPostImageProcessing ||
               isQuickPostSubmitting
             }
-            className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-white px-4 text-sm font-black text-[#12100e] transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40 sm:min-h-12 sm:px-6 sm:text-base ${focusRing}`}
+            className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center rounded-full px-4 text-sm font-black transition-colors disabled:cursor-not-allowed sm:min-h-12 sm:px-6 sm:text-base ${focusRing} ${
+              quickPostBody.trim()
+                ? "bg-[#ff7a45] text-[#12100e] hover:bg-[#ff7a45]/90"
+                : "bg-white/12 text-white/40"
+            }`}
           >
             {isQuickPostSubmitting ? "Paylaşılıyor" : "Paylaş"}
           </button>
@@ -927,7 +1205,10 @@ export default function CampusFeed() {
                     </CampusAuthorProfileLink>
                     <div className="min-w-0 pt-0.5">
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="font-mono text-xs font-bold uppercase tracking-[0.09em] text-[#ff7a45] sm:text-[13px]">
+<span
+                          className={`${campusCategoryBadgeBase} ${campusCategoryStyles[post.category].badge}`}
+                        >
+                          <span aria-hidden="true">{campusCategoryStyles[post.category].glyph}</span>
                           {post.category}
                         </span>
                         <span

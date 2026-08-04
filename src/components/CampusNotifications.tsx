@@ -122,6 +122,18 @@ export default function CampusNotifications() {
     return notifications;
   }, [activeFilter, notifications]);
 
+  // Okunmamışlar üstte ayrı blokta dursun; geri dönen kullanıcı neyi
+  // kaçırdığını tek bakışta görsün.
+  const notificationSections = useMemo(() => {
+    const unread = visibleNotifications.filter((item) => !item.isRead);
+    const read = visibleNotifications.filter((item) => item.isRead);
+
+    return [
+      { id: "unread", label: "Yeni", items: unread },
+      { id: "read", label: "Daha önce", items: read },
+    ].filter((section) => section.items.length > 0);
+  }, [visibleNotifications]);
+
   const handleMarkAllAsRead = async () => {
     if (unreadCount === 0) {
       return;
@@ -152,18 +164,18 @@ export default function CampusNotifications() {
       aria-busy={!isNotificationsHydrated}
       className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
     >
-      <header className="sticky top-16 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl md:top-0">
+      <header className="sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl">
         <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-3 sm:gap-3 sm:px-6">
           <span aria-hidden="true" />
           <div className="min-w-0 justify-self-center text-center">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.13em] text-[#ff7a45] sm:text-[11px]">
+            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-[#ff7a45] sm:text-xs">
               Güncellemeler
             </p>
             <h1
               ref={titleRef}
               id="notifications-title"
               tabIndex={-1}
-              className="mt-0.5 truncate text-lg font-black tracking-[-0.04em] outline-none sm:text-xl"
+              className="mt-0.5 truncate text-2xl font-black tracking-[-0.04em] outline-none sm:text-3xl"
             >
               Bildirimler
             </h1>
@@ -174,7 +186,7 @@ export default function CampusNotifications() {
             disabled={!isNotificationsHydrated || unreadCount === 0}
             onClick={() => void handleMarkAllAsRead()}
             aria-label="Tüm bildirimleri okundu olarak işaretle"
-            className={`inline-flex min-h-11 min-w-11 items-center justify-center justify-self-end gap-1.5 px-1.5 text-[11px] font-black text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/8 disabled:cursor-not-allowed disabled:opacity-38 sm:px-3 sm:text-xs ${focusRing}`}
+            className={`inline-flex min-h-11 min-w-11 items-center justify-center justify-self-end gap-1.5 px-1.5 text-xs font-black text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/8 disabled:cursor-not-allowed disabled:opacity-38 sm:px-3 sm:text-sm ${focusRing}`}
           >
             <ReadAllIcon />
             <span className="hidden min-[460px]:inline">Tümünü oku</span>
@@ -196,7 +208,7 @@ export default function CampusNotifications() {
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => setActiveFilter(filter.id)}
-                className={`relative min-h-11 px-2 text-[11px] font-black transition-colors sm:text-xs ${focusRing} ${
+                className={`relative min-h-12 px-2 text-xs font-black transition-colors sm:text-sm ${focusRing} ${
                   isActive
                     ? "bg-[#ff7a45]/12 text-[#ff7a45]"
                     : "text-white/55 hover:bg-white/8 hover:text-white"
@@ -239,15 +251,27 @@ export default function CampusNotifications() {
             {unreadCount} tanesi okunmamış.
           </p>
 
-          <ol>
-            {visibleNotifications.map((notification) => (
-              <NotificationItem
-                key={notification.id}
-                notification={notification}
-                onMarkAsRead={markAsRead}
-              />
-            ))}
-          </ol>
+          {notificationSections.map((section) => (
+            <section key={section.id} aria-labelledby={`notifications-${section.id}`}>
+              {notificationSections.length > 1 && (
+                <h2
+                  id={`notifications-${section.id}`}
+                  className="border-b border-white/8 bg-white/[0.02] px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-[0.13em] text-white/62 sm:px-6"
+                >
+                  {section.label}
+                </h2>
+              )}
+              <ol>
+                {section.items.map((notification) => (
+                  <NotificationItem
+                    key={notification.id}
+                    notification={notification}
+                    onMarkAsRead={markAsRead}
+                  />
+                ))}
+              </ol>
+            </section>
+          ))}
 
           {hasMoreNotifications && (
             <div className="px-4 py-5 text-center sm:px-6">
@@ -306,14 +330,28 @@ function NotificationItem({
         />
       )}
 
-      <article className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 px-4 py-4 sm:px-6 sm:py-5">
-        <CampusAuthorAvatar
-          author={`@${notification.actor.username}`}
-          authorId={notification.actor.id}
-          avatarUrl={notification.actor.avatarUrl}
-          size="md"
-          className="mt-0.5"
-        />
+      <article className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3.5 px-4 py-5 sm:px-6 sm:py-6">
+        {/* Gruplanan beğenilerde yığılmış avatar: kimlerin beğendiği tek
+            bakışta görünsün. */}
+        <span className="mt-0.5 flex shrink-0 items-center -space-x-3">
+          <CampusAuthorAvatar
+            author={`@${notification.actor.username}`}
+            authorId={notification.actor.id}
+            avatarUrl={notification.actor.avatarUrl}
+            size="md"
+            className="ring-2 ring-[#0a0d16]"
+          />
+          {notification.otherActors.slice(0, 2).map((actor) => (
+            <CampusAuthorAvatar
+              key={actor.id}
+              author={`@${actor.username}`}
+              authorId={actor.id}
+              avatarUrl={actor.avatarUrl}
+              size="sm"
+              className="ring-2 ring-[#0a0d16]"
+            />
+          ))}
+        </span>
 
         <Link
           href={getNotificationHref(notification)}
@@ -321,18 +359,18 @@ function NotificationItem({
           aria-label={`${copy.actorLabel} ${copy.action} ${copy.preview}. ${time}. ${targetLabel}`}
           className={`min-w-0 rounded-sm ${focusRing}`}
         >
-          <p className="text-sm leading-5.5">
+          <p className="text-[15px] leading-6 sm:text-base">
             <span className="font-black">{copy.actorLabel}</span>{" "}
             <span className="font-medium text-white/70">{copy.action}</span>
           </p>
           <p
-            className={`mt-1 line-clamp-2 text-sm leading-5.5 ${
+            className={`mt-1 line-clamp-2 text-[15px] leading-6 sm:text-base ${
               isRead ? "text-white/55" : "font-semibold text-white/80"
             }`}
           >
             {copy.preview}
           </p>
-          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#ff7a45]/80">
+          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-[#ff7a45]/80">
             {copy.postTitle && (
               <>
                 <span className="max-w-full truncate">{copy.postTitle}</span>

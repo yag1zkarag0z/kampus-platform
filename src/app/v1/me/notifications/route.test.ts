@@ -31,6 +31,7 @@ const notifications = [
       avatarUrl: null,
     },
     likeCount: null,
+    otherActors: [],
     post: null,
     comment: null,
     isRead: false,

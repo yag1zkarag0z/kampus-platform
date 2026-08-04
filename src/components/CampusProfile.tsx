@@ -12,7 +12,12 @@ import { useCampusAccount } from "@/components/CampusAccountProvider";
 import { useCampusData } from "@/components/CampusDataProvider";
 import CampusFollowConnections from "@/components/CampusFollowConnections";
 import CampusListingMeta from "@/components/CampusListingMeta";
+import CampusLogo from "@/components/CampusLogo";
 import CampusPoll from "@/components/CampusPoll";
+import {
+  campusCategoryBadgeBase,
+  campusCategoryStyles,
+} from "@/data/campusCategoryStyles";
 import CampusPostCardSurface from "@/components/CampusPostCardSurface";
 import CampusPostImage from "@/components/CampusPostImage";
 import CampusGif from "@/components/CampusGif";
@@ -152,7 +157,7 @@ export default function CampusProfile() {
       aria-labelledby="profile-title"
       className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
     >
-      <header className="sticky top-16 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl md:top-0">
+      <header className="sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl">
         <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 sm:px-6">
           <span aria-hidden="true" />
           <div className="min-w-0 justify-self-center text-center">
@@ -184,14 +189,27 @@ export default function CampusProfile() {
       </header>
 
       <div className="mx-auto w-full max-w-6xl">
-        <div className="px-4 pt-7 pb-6 sm:px-6 sm:pt-9 sm:pb-8">
-          <div className="flex flex-col gap-5 min-[400px]:flex-row min-[400px]:items-start">
-            <Avatar
-              avatarUrl={profile.avatarUrl}
-              displayName={profile.displayName}
-            />
+        {/* Kapak alanı: banner yüklemesi yok, kimliği KAMPÜS logosu taşıyor. */}
+        <div
+          aria-hidden="true"
+          className="grid h-28 w-full place-items-center overflow-hidden border-b border-white/10 bg-[#12151d] sm:h-40"
+        >
+          <CampusLogo
+            idPrefix="profile-cover-lockup"
+            wordmarkClassName="text-3xl sm:text-4xl"
+          />
+        </div>
 
-            <div className="min-w-0 flex-1">
+        <div className="px-4 pb-6 sm:px-6 sm:pb-8">
+          <div className="-mt-12 flex flex-col gap-5 min-[400px]:flex-row min-[400px]:items-start sm:-mt-16">
+            <span className="inline-flex shrink-0 rounded-full ring-4 ring-[#0a0d16]">
+              <Avatar
+                avatarUrl={profile.avatarUrl}
+                displayName={profile.displayName}
+              />
+            </span>
+
+            <div className="min-w-0 flex-1 min-[400px]:pt-14 sm:pt-[4.5rem]">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
                   <h2 className="break-words text-2xl font-black tracking-[-0.045em] sm:text-3xl">
@@ -325,9 +343,14 @@ export default function CampusProfile() {
                       className="py-5 sm:py-6"
                     >
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[#ff7a45]">
-                          {post.category}
-                        </span>
+                        <span
+              className={`${campusCategoryBadgeBase} ${campusCategoryStyles[post.category].badge}`}
+            >
+              <span aria-hidden="true">
+                {campusCategoryStyles[post.category].glyph}
+              </span>
+              {post.category}
+            </span>
                         <span
                           aria-hidden="true"
                           className="size-1 rotate-45 bg-[#ff7a45]/55"
