@@ -37,7 +37,7 @@ export default function PlatformLayout({
                 <main
                   id="platform-content"
                   tabIndex={-1}
-                  className="min-w-0 border-x border-white/9 bg-[#0a0d16] pb-[calc(5.5rem+env(safe-area-inset-bottom))] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#ff7a45]/40 md:col-start-2 md:row-start-1 md:pb-0"
+                  className="route-page min-w-0 overflow-x-hidden border-x border-white/9 bg-[#0a0d16] pb-[calc(5.5rem+env(safe-area-inset-bottom))] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#ff7a45]/40 md:col-start-2 md:row-start-1 md:pb-0"
                 >
                   {children}
                 </main>

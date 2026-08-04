@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import { useCampusData } from "@/components/CampusDataProvider";
+import { campusButton } from "@/components/campusButtonStyles";
 import CampusGif from "@/components/CampusGif";
 import GiphyPicker from "@/components/GiphyPicker";
 import {
@@ -953,7 +954,7 @@ export default function CreateCampusPost() {
                   type="button"
                   onClick={() => imageInputRef.current?.click()}
                   disabled={isProcessingImage}
-                  className={`inline-flex min-h-11 items-center justify-center border border-white/12 px-4 text-xs font-black transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 disabled:cursor-wait disabled:opacity-50 ${focusRing}`}
+                  className={`${campusButton.secondary} disabled:cursor-wait disabled:opacity-50 `}
                 >
                   {isProcessingImage ? "İşleniyor…" : "Fotoğraf ekle"}
                 </button>

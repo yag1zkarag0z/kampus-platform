@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import { useCampusAccount } from "@/components/CampusAccountProvider";
+import { campusButton } from "@/components/campusButtonStyles";
 import { useFeedback } from "@/components/FeedbackProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import CampusHiddenNotice from "@/components/CampusHiddenNotice";
@@ -741,7 +742,7 @@ function MemberPosts({
                   </Link>
                 </h3>
                 {post.body && (
-                  <p className="mt-2 line-clamp-3 whitespace-pre-wrap break-words text-sm leading-6 text-white/70">
+                  <p className="mt-2 line-clamp-3 whitespace-pre-wrap break-words text-[15px] leading-7 text-white/72">
                     {post.body}
                   </p>
                 )}
@@ -769,7 +770,7 @@ function MemberPosts({
             aria-busy={isLoadingMore}
             disabled={isLoadingMore}
             onClick={onLoadMore}
-            className={`inline-flex min-h-12 items-center justify-center border border-white/12 bg-white/[0.035] px-5 text-sm font-black text-white transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 disabled:cursor-wait disabled:opacity-60 ${focusRing}`}
+            className={campusButton.secondary}
           >
             {isLoadingMore
               ? "Gönderiler yükleniyor…"
@@ -888,7 +889,7 @@ function RestrictedProfileState({
         </p>
         <Link
           href={actionHref}
-          className={`mt-6 inline-flex min-h-11 items-center justify-center border border-white/12 px-4 text-xs font-black hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+          className={`mt-6 ${campusButton.secondary} `}
         >
           {actionLabel}
         </Link>

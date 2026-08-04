@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
+import { campusButton } from "@/components/campusButtonStyles";
 import CampusCalendarStrip from "@/components/CampusCalendarStrip";
 import CampusAuthorProfileLink from "@/components/CampusAuthorProfileLink";
 import CampusCategoryNav, {
@@ -295,7 +296,7 @@ export default function CampusExplore() {
             aria-busy={isLoadingMore}
             disabled={isLoadingMore}
             onClick={() => void loadMore().catch(() => undefined)}
-            className={`inline-flex min-h-12 items-center justify-center border border-white/12 bg-white/[0.035] px-5 text-sm font-black text-white transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 disabled:cursor-wait disabled:opacity-60 ${focusRing}`}
+            className={campusButton.secondary}
           >
             {isLoadingMore ? "Sonuçlar yükleniyor…" : "Daha fazla sonuç yükle"}
           </button>
@@ -320,7 +321,7 @@ export default function CampusExplore() {
             <button
               type="button"
               onClick={clearFilters}
-              className={`mt-5 inline-flex min-h-11 items-center justify-center bg-white px-4 text-xs font-bold text-[#12100e] transition-colors hover:bg-white/90 ${focusRing}`}
+              className={`mt-5 ${campusButton.primary} `}
             >
               Aramayı temizle
             </button>
@@ -364,7 +365,7 @@ function ExploreErrorState({ onReload }: { onReload: () => void }) {
         <button
           type="button"
           onClick={onReload}
-          className={`mt-5 inline-flex min-h-11 items-center justify-center bg-white px-4 text-xs font-bold text-[#12100e] transition-colors hover:bg-white/90 ${focusRing}`}
+          className={`mt-5 ${campusButton.primary} `}
         >
           Yeniden dene
         </button>

@@ -23,6 +23,20 @@
 
 html {
   scroll-behavior: smooth;
+  /*
+   * Arayüz genelinde ölçek.
+   *
+   * Tailwind sınıflarının çoğu rem tabanlı olduğu için kök yazı boyutunu
+   * büyütmek yazıyı, boşlukları ve dokunma alanlarını birlikte büyütür.
+   * Tek tek her bileşeni elden geçirmek yerine tek kaldıraç kullanılıyor.
+   */
+  font-size: 17px;
+}
+
+@media (min-width: 640px) {
+  html {
+    font-size: 18px;
+  }
 }
 
 body {
@@ -760,5 +774,48 @@ button:not(:disabled) {
   .how-it-works-surface::before,
   .closing-cta-surface::before {
     opacity: 0.72;
+  }
+}
+
+/*
+ * Etkileşim geri bildirimi.
+ *
+ * Beğeni ve kaydetme yalnızca renk değiştiriyordu; "bir şey yaptım" hissi
+ * zayıftı. Kısa bir ölçek darbesi bunu karşılıyor, hareket azaltma tercihine
+ * saygı duyuluyor.
+ */
+@keyframes campus-pop {
+  0% {
+    transform: scale(1);
+  }
+  38% {
+    transform: scale(1.28);
+  }
+  70% {
+    transform: scale(0.94);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.campus-pop-on-active[aria-pressed="true"] svg {
+  animation: campus-pop 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .campus-pop-on-active[aria-pressed="true"] svg {
+    animation: none;
+  }
+}
+
+/* Akışa giren kartlar hafifçe yükselsin. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .campus-feed-enter {
+      animation: reveal-up both ease-out;
+      animation-timeline: view();
+      animation-range: entry 0% entry 40%;
+    }
   }
 }

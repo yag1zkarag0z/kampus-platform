@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { useCampusAccount } from "@/components/CampusAccountProvider";
+import { campusButton } from "@/components/campusButtonStyles";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import {
   type CampusModerationResolution,
@@ -182,7 +183,7 @@ export default function CampusAdminPanel() {
           </p>
           <Link
             href="/giris"
-            className={`mt-6 inline-flex min-h-11 items-center justify-center bg-white px-5 text-xs font-black text-[#12100e] transition-colors hover:bg-white/90 ${focusRing}`}
+            className={`mt-6 ${campusButton.primary} `}
           >
             Giriş yap
           </Link>

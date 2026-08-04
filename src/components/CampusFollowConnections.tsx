@@ -12,6 +12,7 @@ import {
 
 import { AuthClientError } from "@/auth/client";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
+import { campusButton } from "@/components/campusButtonStyles";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import {
   type CampusFollowMember,
@@ -633,7 +634,7 @@ function FollowConnectionsView({
                     onClick={() =>
                       void loadMoreInList?.().catch(() => undefined)
                     }
-                    className={`inline-flex min-h-11 items-center justify-center border border-white/12 px-4 text-xs font-bold text-white transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+                    className={`${campusButton.secondary} `}
                   >
                     Daha fazla göster
                   </button>

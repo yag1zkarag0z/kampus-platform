@@ -37,6 +37,13 @@ const focusRing =
   "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
 const fieldClassName = `mt-2 min-h-12 w-full border border-white/12 bg-white/[0.03] px-3.5 py-2.5 text-sm font-semibold text-white placeholder:font-medium placeholder:text-white/40 ${focusRing}`;
 
+/**
+ * Açılır listelerde seçenekler işletim sisteminin varsayılan beyaz zeminiyle
+ * çiziliyor; koyu temada beyaz üstüne beyaz yazı okunmuyordu. Seçenek zeminini
+ * açıkça koyuya sabitliyoruz.
+ */
+const selectClassName = `${fieldClassName} [&>option]:bg-[#141720] [&>option]:text-white [&>optgroup]:bg-[#141720] [&>optgroup]:text-white/70`;
+
 type EditableProfile = {
   displayName: string;
   username: string;
@@ -767,7 +774,7 @@ function EditProfileForm({
                     }
                     clearFieldError("department");
                   }}
-                  className={`${fieldClassName} ${
+                  className={`${selectClassName} ${
                     fieldErrors.department
                       ? "border-[#ffb199]"
                       : ""
@@ -811,7 +818,7 @@ function EditProfileForm({
                     setYear(event.target.value);
                     clearFieldError("year");
                   }}
-                  className={`${fieldClassName} ${
+                  className={`${selectClassName} ${
                     fieldErrors.year
                       ? "border-[#ffb199]"
                       : ""

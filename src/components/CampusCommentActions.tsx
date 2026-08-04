@@ -321,7 +321,7 @@ export default function CampusCommentActions({
             aria-label={`${comment.author} yorumunun seçeneklerini aç`}
             aria-expanded={isMenuOpen}
             onClick={openMenu}
-            className={`grid size-10 cursor-pointer place-items-center rounded-full text-white/55 transition-colors hover:bg-white/7 hover:text-white ${focusRing}`}
+            className={`campus-pop-on-active grid size-10 cursor-pointer place-items-center rounded-full text-white/55 transition-colors hover:bg-white/7 hover:text-white ${focusRing}`}
           >
             <MoreIcon />
           </button>
@@ -416,7 +416,7 @@ export default function CampusCommentActions({
                 type="button"
                 aria-label="Pencereyi kapat"
                 onClick={() => setDialog(null)}
-                className={`grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-xl text-white/55 hover:bg-white/8 ${focusRing}`}
+                className={`campus-pop-on-active grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-xl text-white/55 hover:bg-white/8 ${focusRing}`}
               >
                 <span aria-hidden="true">×</span>
               </button>

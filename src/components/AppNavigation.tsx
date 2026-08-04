@@ -210,6 +210,34 @@ export default function AppNavigation() {
     };
   }, [isDesktopNavigationOpen]);
 
+  // Hesap menüsü dışarı tıklanınca veya Escape ile kapansın.
+  useEffect(() => {
+    if (!isAccountMenuOpen) {
+      return;
+    }
+
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (
+        !(event.target as HTMLElement).closest("[data-account-menu]")
+      ) {
+        setIsAccountMenuOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsAccountMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isAccountMenuOpen]);
+
   // Mobilde aşağı kaydırırken üst bar ve alt menü çekilir, yukarı
   // kaydırınca geri gelir; okuma alanı büyür.
   const [isMobileNavHidden, setIsMobileNavHidden] = useState(false);
@@ -301,7 +329,7 @@ export default function AppNavigation() {
           isMobileNavHidden ? "-translate-y-full" : "translate-y-0"
         }`}
       >
-        <div className="relative">
+        <div data-account-menu className="relative">
           <button
             type="button"
             aria-haspopup="menu"
@@ -506,7 +534,7 @@ export default function AppNavigation() {
                               : undefined
                           }
                           title={item.label}
-                          className={`group relative flex min-h-[4.1rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-center text-[10px] font-black leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 xl:min-h-14 xl:flex-row xl:justify-start xl:gap-4 xl:rounded-full xl:px-4 xl:text-left xl:text-xl ${
+                          className={`group relative flex min-h-[4.4rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-center text-[11px] font-black leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 xl:min-h-14 xl:flex-row xl:justify-start xl:gap-4 xl:rounded-full xl:px-4 xl:text-left xl:text-xl ${
                             isActive
                               ? "bg-[#ff7a45]/13 text-[#ff7a45]"
                               : "text-white/62 hover:bg-white/8 hover:text-white"
@@ -556,7 +584,7 @@ export default function AppNavigation() {
               {/* X'teki gibi hesap çipi: geniş menüde ad ve kullanıcı adı,
                   dar menüde yalnızca avatar. Çıkış bu menünün içine girer. */}
               <div className="mt-auto pt-3">
-                <div className="relative">
+                <div data-account-menu className="relative">
                   <button
                     type="button"
                     aria-haspopup="menu"
@@ -658,7 +686,7 @@ export default function AppNavigation() {
                         ? `${item.label}, ${unreadCount} okunmamış bildirim`
                         : undefined
                   }
-                  className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-bold leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 ${
+                  className={`flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-[11px] font-bold leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 ${
                     item.primary
                       ? "text-[#ff7a45]"
                       : isActive
@@ -669,16 +697,16 @@ export default function AppNavigation() {
                   <span
                     className={
                       item.primary
-                        ? "relative grid size-8 -translate-y-1 place-items-center rounded-full bg-[#ff7a45] text-[#12100e] shadow-none"
-                        : "relative grid size-8 place-items-center"
+                        ? "relative grid size-10 -translate-y-1 place-items-center rounded-full bg-[#ff7a45] text-[#12100e] shadow-none"
+                        : "relative grid size-9 place-items-center"
                     }
                   >
                     <NavigationIcon
                       name={item.icon}
                       className={
                         item.primary
-                          ? "size-[1.05rem] shrink-0"
-                          : "size-[1.15rem] shrink-0"
+                          ? "size-5 shrink-0"
+                          : "size-6 shrink-0"
                       }
                     />
                     {item.icon === "notifications" &&

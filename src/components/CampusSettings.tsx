@@ -17,6 +17,7 @@ import {
   type CampusAccountSettings,
 } from "@/components/CampusAccountProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
+import { campusButton } from "@/components/campusButtonStyles";
 import { useCampusData } from "@/components/CampusDataProvider";
 import { useCampusModeration } from "@/components/CampusModerationProvider";
 import { useFeedback } from "@/components/FeedbackProvider";
@@ -363,7 +364,7 @@ export default function CampusSettings() {
                 </p>
                 <Link
                   href="/profil/duzenle"
-                  className={`mt-4 inline-flex min-h-11 items-center justify-center border border-white/12 px-4 text-xs font-black text-white transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 hover:text-[#ff7a45] ${focusRing}`}
+                  className={`mt-4 ${campusButton.secondary} hover:text-[#ff7a45] `}
                 >
                   Profili düzenle
                 </Link>

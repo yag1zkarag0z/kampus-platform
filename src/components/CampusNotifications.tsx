@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
+import { campusButton } from "@/components/campusButtonStyles";
 import { useCampusNotifications } from "@/components/CampusNotificationProvider";
 import { useFeedback } from "@/components/FeedbackProvider";
 import { getNotificationCopy } from "@/notifications/copy";
@@ -288,7 +289,7 @@ export default function CampusNotifications() {
                     });
                   })
                 }
-                className={`inline-flex min-h-12 items-center justify-center border border-white/12 bg-white/[0.035] px-5 text-sm font-black text-white transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 disabled:cursor-wait disabled:opacity-60 ${focusRing}`}
+                className={campusButton.secondary}
               >
                 {isLoadingMoreNotifications
                   ? "Bildirimler yükleniyor…"

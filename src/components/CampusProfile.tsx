@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import { useCampusAccount } from "@/components/CampusAccountProvider";
+import { campusButton } from "@/components/campusButtonStyles";
 import { useCampusData } from "@/components/CampusDataProvider";
 import CampusFollowConnections from "@/components/CampusFollowConnections";
 import CampusListingMeta from "@/components/CampusListingMeta";
@@ -161,12 +162,12 @@ export default function CampusProfile() {
         <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 sm:px-6">
           <span aria-hidden="true" />
           <div className="min-w-0 justify-self-center text-center">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
+            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
               {isGuest ? "Misafir hesabı" : "Hesabın"}
             </p>
             <h1
               id="profile-title"
-              className="mt-0.5 truncate text-xl font-black tracking-[-0.04em]"
+              className="mt-0.5 truncate text-2xl font-black tracking-[-0.04em] sm:text-3xl"
             >
               Profil
             </h1>
@@ -237,13 +238,13 @@ export default function CampusProfile() {
                     <>
                       <Link
                         href="/giris"
-                        className={`inline-flex min-h-11 items-center justify-center bg-white px-4 text-xs font-black text-[#12100e] transition-colors hover:bg-white/90 ${focusRing}`}
+                        className={`${campusButton.primary} `}
                       >
                         Giriş yap
                       </Link>
                       <Link
                         href="/kayit"
-                        className={`inline-flex min-h-11 items-center justify-center border border-white/12 px-4 text-xs font-black transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+                        className={`${campusButton.secondary} `}
                       >
                         Kayıt ol
                       </Link>
@@ -252,13 +253,13 @@ export default function CampusProfile() {
                     <>
                       <Link
                         href="/profil/duzenle"
-                        className={`inline-flex min-h-11 items-center justify-center bg-white px-4 text-xs font-black text-[#12100e] transition-colors hover:bg-white/90 ${focusRing}`}
+                        className={`${campusButton.primary} `}
                       >
                         Profili düzenle
                       </Link>
                       <Link
                         href="/ayarlar"
-                        className={`inline-flex min-h-11 items-center justify-center border border-white/12 px-4 text-xs font-black transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+                        className={`${campusButton.secondary} `}
                       >
                         Ayarlar
                       </Link>
@@ -587,7 +588,7 @@ function ProfileEmptyState({
         </p>
         <Link
           href={actionHref}
-          className={`mt-6 inline-flex min-h-11 items-center justify-center bg-white px-4 text-xs font-black text-[#12100e] transition-colors hover:bg-white/90 ${focusRing}`}
+          className={`mt-6 ${campusButton.primary} `}
         >
           {actionLabel}
         </Link>

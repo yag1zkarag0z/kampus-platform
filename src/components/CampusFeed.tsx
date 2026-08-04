@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { campusButton } from "@/components/campusButtonStyles";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -933,7 +934,7 @@ export default function CampusFeed() {
 	          </div>
 	        )}
 
-	        <div className="mt-3 flex min-w-0 items-center justify-between gap-1 min-[400px]:pl-[3.75rem] sm:pl-16">
+	        <div className="mt-3 flex min-w-0 items-center justify-between gap-1 border-t border-white/8 pt-3 min-[400px]:ml-[3.75rem] sm:ml-16">
           <div
             role="group"
             aria-label="Gönderi araçları"
@@ -1181,7 +1182,7 @@ export default function CampusFeed() {
         <>
           <ol className="min-w-0">
             {visiblePosts.map((post) => (
-              <li key={post.id}>
+              <li key={post.id} className="campus-feed-enter">
               <CampusPostCardSurface
                 postId={post.id}
                 className="border-b border-white/12 px-4 py-6 sm:bg-white/[0.015] sm:px-6 sm:py-6"
@@ -1320,7 +1321,7 @@ export default function CampusFeed() {
                           : `${post.title || "Gönderi"} gönderisini beğen, ${post.likes} beğeni`
                       }
                       onClick={() => toggleLike(post.id)}
-                      className={`inline-flex min-h-11 items-center gap-2 px-2 text-sm font-bold transition-colors sm:text-base ${focusRing} ${
+                      className={`campus-pop-on-active inline-flex min-h-11 items-center gap-2 px-2 text-sm font-bold transition-colors sm:text-base ${focusRing} ${
                         post.liked
                           ? "bg-[#ff7a45]/10 text-[#ff7a45]"
                           : "text-white/55 hover:bg-white/4 hover:text-[#ff7a45]"
@@ -1353,7 +1354,7 @@ export default function CampusFeed() {
                         : "Gönderiyi kaydet"
                     }
                     onClick={() => toggleBookmark(post.id)}
-                    className={`grid size-12 shrink-0 place-items-center transition-colors ${focusRing} ${
+                    className={`campus-pop-on-active grid size-12 shrink-0 place-items-center transition-colors ${focusRing} ${
                       post.bookmarked
                         ? "text-[#ff7a45]"
                         : "text-white/55 hover:text-[#ff7a45]"
@@ -1378,7 +1379,7 @@ export default function CampusFeed() {
                 aria-busy={isLoadingMore}
                 disabled={isLoadingMore}
                 onClick={() => void loadMorePosts()}
-                className={`inline-flex min-h-12 items-center justify-center border border-white/12 bg-white/[0.035] px-5 text-sm font-black text-white transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 disabled:cursor-wait disabled:opacity-60 sm:text-base ${focusRing}`}
+                className={campusButton.secondary}
               >
                 {isLoadingMore
                   ? "Gönderiler yükleniyor…"
@@ -1389,11 +1390,30 @@ export default function CampusFeed() {
         </>
       ) : (
         <div className="border-b border-white/12 px-4 py-14 text-center sm:m-3 sm:border">
-          <p className="text-base font-black sm:text-lg">
+          <span
+            aria-hidden="true"
+            className="mx-auto grid size-14 place-items-center rounded-full border border-white/12 text-2xl"
+          >
+            {activeView === "following" ? "👥" : "🔎"}
+          </span>
+          <p className="mt-5 text-base font-black sm:text-lg">
             {activeView === "following"
               ? "Takip ettiğin kişilerden henüz bir gönderi yok."
               : "Bu filtrelerle eşleşen bir konu yok."}
           </p>
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-white/55">
+            {activeView === "following"
+              ? "Keşfet'ten birkaç kişiyi takip et; paylaştıkları burada görünsün."
+              : "Farklı bir kategori dene ya da ilk konuyu sen aç."}
+          </p>
+          {activeView === "following" && (
+            <Link
+              href="/kesfet"
+              className={`mt-5 ${campusButton.primary}`}
+            >
+              Keşfet&apos;e git
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => {

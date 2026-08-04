@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import { useCampusAccount } from "@/components/CampusAccountProvider";
+import { campusButton } from "@/components/campusButtonStyles";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import CampusAuthorProfileLink from "@/components/CampusAuthorProfileLink";
 import CampusCommentActions from "@/components/CampusCommentActions";
@@ -54,6 +55,25 @@ const quickEmojis = [
 const focusRing =
   "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40";
 
+const absoluteDateTimeFormatter = new Intl.DateTimeFormat("tr-TR", {
+  hour: "2-digit",
+  minute: "2-digit",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
+/** "00:33 · 5 Ağustos 2026" biçiminde mutlak zaman. */
+function formatAbsoluteDateTime(createdAt: number) {
+  const parts = absoluteDateTimeFormatter.formatToParts(
+    new Date(createdAt),
+  );
+  const pick = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+
+  return `${pick("hour")}:${pick("minute")} · ${pick("day")} ${pick("month")} ${pick("year")}`;
+}
+
 export default function CampusPostDetail({ postId }: { postId: string }) {
   const { showToast } = useFeedback();
   const { isGuest } = useCampusAccount();
@@ -76,6 +96,8 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
   const [hasDetailRequestCompleted, setHasDetailRequestCompleted] =
     useState(false);
   const [replyTargetId, setReplyTargetId] = useState<string | null>(null);
+  // Kutu tek satır başlar; odaklanınca araçlar açılır.
+  const [isReplyExpanded, setIsReplyExpanded] = useState(false);
   const [isNotificationTarget, setIsNotificationTarget] = useState(false);
   const [targetCommentId, setTargetCommentId] = useState<string | null>(
     null,
@@ -242,24 +264,24 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
   return (
     <section className="min-h-full min-w-0 bg-[#0a0d16] text-white">
       <header className="sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl">
-        <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 sm:px-5">
+        {/* X'teki gibi sola yaslı: geri oku ve başlık yan yana. */}
+        <div className="flex min-h-16 items-center gap-4 px-3 sm:px-5">
           <Link
             href="/akis"
             aria-label="Kampüs akışına dön"
-            className={`grid size-11 shrink-0 place-items-center justify-self-start rounded-full text-white/65 transition-colors hover:bg-white/7 hover:text-white ${focusRing}`}
+            className={`grid size-11 shrink-0 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/8 hover:text-white ${focusRing}`}
           >
             <BackIcon />
           </Link>
 
-          <div className="min-w-0 justify-self-center text-center">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
+          <div className="min-w-0">
+            <h1 className="truncate text-xl font-black tracking-[-0.03em]">
               Gönderi
-            </p>
-            <p className="truncate text-sm font-black tracking-[-0.02em]">
+            </h1>
+            <p className="truncate text-xs font-semibold text-white/55">
               {post.category}
             </p>
           </div>
-          <span aria-hidden="true" />
         </div>
       </header>
 
@@ -280,47 +302,39 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                 isAnonymous={post.isAnonymous}
               />
             </CampusAuthorProfileLink>
+            {/* X'teki gibi: ad üstte, kullanıcı adı altında; kategori
+                rozetinin yeri gövdenin hemen üstü. */}
             <div className="min-w-0 pt-0.5">
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <span
-              className={`${campusCategoryBadgeBase} ${campusCategoryStyles[post.category].badge}`}
-            >
-              <span aria-hidden="true">
-                {campusCategoryStyles[post.category].glyph}
+              <CampusAuthorProfileLink
+                author={post.author}
+                authorId={post.authorId}
+                isAnonymous={post.isAnonymous}
+                ariaLabel={`${post.author} profilini aç`}
+                className="min-w-0"
+                linkClassName={`block truncate text-base font-black transition-colors hover:text-[#ff7a45] ${focusRing}`}
+              >
+                <span className="block truncate text-base font-black">
+                  {post.author}
+                </span>
+              </CampusAuthorProfileLink>
+
+              {!isAnonymousCampusAuthor(post) && post.detail && (
+                <p className="mt-0.5 truncate text-sm text-white/50">
+                  {post.detail}
+                </p>
+              )}
+
+              <span
+                className={`mt-2 ${campusCategoryBadgeBase} ${campusCategoryStyles[post.category].badge}`}
+              >
+                <span aria-hidden="true">
+                  {campusCategoryStyles[post.category].glyph}
+                </span>
+                {post.category}
               </span>
-              {post.category}
-            </span>
-                <span
-                  aria-hidden="true"
-                  className="size-1 rotate-45 bg-[#ff7a45]/60"
-                />
-                <CampusAuthorProfileLink
-                  author={post.author}
-                  authorId={post.authorId}
-                  isAnonymous={post.isAnonymous}
-                  ariaLabel={`${post.author} profilini aç`}
-                  className="min-w-0"
-                  linkClassName={`truncate text-xs font-black transition-colors hover:text-[#ff7a45] ${focusRing}`}
-                >
-                  <span className="truncate text-xs font-black">
-                    {post.author}
-                  </span>
-                </CampusAuthorProfileLink>
-              </div>
-              {!isAnonymousCampusAuthor(post) &&
-                post.detail && (
-                  <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-white/55">
-                    {post.detail}
-                  </p>
-                )}
             </div>
           </div>
           <div className="-mr-2 flex shrink-0 items-center gap-0.5">
-            <time className="text-[11px] font-semibold text-white/55">
-              {post.time}
-              {post.edited && !post.isDeleted ? " · düzenlendi" : ""}
-              {post.isHidden ? " · inceleme altında" : ""}
-            </time>
             <CampusPostActions
               post={post}
               redirectAfterBlock
@@ -339,7 +353,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
         ) : (
           <>
             {post.title && (
-              <h1 className="mt-5 max-w-[78ch] break-words text-[1.65rem] font-black leading-[1.12] tracking-[-0.04em] sm:text-3xl sm:leading-[1.1]">
+              <h1 className="mt-5 max-w-[78ch] break-words text-3xl font-black leading-[1.12] tracking-[-0.04em] sm:text-4xl sm:leading-[1.08]">
                 {post.title}
               </h1>
             )}
@@ -351,7 +365,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
             )}
 
             {post.body && (
-              <p className="mt-4 max-w-[78ch] whitespace-pre-wrap break-words text-base leading-7 tracking-[-0.01em] text-white/82 sm:text-[17px] sm:leading-8">
+              <p className="mt-4 max-w-[78ch] whitespace-pre-wrap break-words text-[17px] leading-8 tracking-[-0.01em] text-white/85 sm:text-lg sm:leading-8">
                 {post.body}
               </p>
             )}
@@ -364,7 +378,17 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
               <CampusPoll postId={post.id} poll={post.poll} />
             )}
 
-            <footer className="mt-6 border-t border-white/8 pt-3">
+            {/* Detayda göreli değil mutlak zaman: gönderiyi açan kişi tam
+                olarak ne zaman paylaşıldığını görmek ister. */}
+            <p className="mt-5 border-t border-white/8 pt-4 text-sm text-white/50">
+              <time dateTime={new Date(post.createdAt).toISOString()}>
+                {formatAbsoluteDateTime(post.createdAt)}
+              </time>
+              {post.edited && !post.isDeleted ? " · düzenlendi" : ""}
+              {post.isHidden ? " · inceleme altında" : ""}
+            </p>
+
+            <footer className="mt-4 border-t border-white/8 pt-3">
           {isGuest ? (
             <div className="flex min-h-11 flex-wrap items-center justify-between gap-3">
               <span className="inline-flex items-center gap-2 px-2 text-xs font-bold text-white/55">
@@ -436,17 +460,10 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
             : ""
         }`}
       >
-        <div className="flex min-h-14 items-center justify-between gap-4 border-b border-white/8">
-          <h2
-            id={commentsTitleId}
-            className="text-base font-black tracking-[-0.025em]"
-          >
-            Yorumlar
-          </h2>
-          <span className="font-mono text-[11px] font-bold text-white/55">
-            {post.comments.length}
-          </span>
-        </div>
+        {/* Başlık görsel olarak gereksiz; ekran okuyucu için duruyor. */}
+        <h2 id={commentsTitleId} className="sr-only">
+          Yorumlar
+        </h2>
 
         {post.isDeleted ? (
           <div className="border-b border-white/8 py-5">
@@ -464,7 +481,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
             </div>
             <Link
               href="/giris"
-              className={`inline-flex min-h-11 items-center justify-center bg-white px-4 text-xs font-bold text-[#12100e] transition-colors hover:bg-white/90 ${focusRing}`}
+              className={`${campusButton.primary} `}
             >
               Giriş yap
             </Link>
@@ -497,32 +514,29 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
               </button>
             </div>
           )}
-          <div className="flex items-center gap-2.5">
+          {/* Solda profil, sağda yalnızca yazı alanı; çerçeve yok. */}
+          <div className="flex items-start gap-3">
             <CampusAuthorAvatar
               author={isAnonymous ? "Anonim" : "@sen"}
               authorId={LOCAL_ACCOUNT_OWNER_ID}
               isAnonymous={isAnonymous}
-              size="sm"
+              className="shrink-0"
             />
-            <div>
+            <div className="min-w-0 flex-1">
               <label
                 htmlFor={`post-comment-input-${post.id}`}
-                className="text-sm font-black tracking-[-0.015em]"
+                className="sr-only"
               >
                 Yorumunu ekle
               </label>
-              <p
-                id={commentIdentityId}
-                className="mt-0.5 text-[11px] font-semibold text-white/55"
-              >
+              <p id={commentIdentityId} className="sr-only">
                 {isAnonymous
                   ? "Diğer öğrenciler seni anonim görecek."
                   : "Profilinle görünecek."}
               </p>
-            </div>
-          </div>
-          <textarea
+              <textarea
             ref={commentInputRef}
+            onFocus={() => setIsReplyExpanded(true)}
             id={`post-comment-input-${post.id}`}
             value={commentDraft}
             onChange={(event) => {
@@ -530,11 +544,28 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
               setFormMessage("");
             }}
             maxLength={500}
-            rows={4}
+            rows={1}
             placeholder="Ne düşünüyorsun?"
             aria-describedby={`${commentIdentityId} post-comment-help-${post.id}`}
-            className={`mt-3 min-h-28 w-full resize-y border border-white/12 bg-white/[0.02] px-3.5 py-3 text-sm leading-6 placeholder:text-white/45 ${focusRing}`}
-          />
+            /* Akıştaki konu alanıyla aynı dil: çerçevesiz, saydam, iri yazı. */
+            className={`max-h-48 min-h-12 w-full resize-none border-0 bg-transparent px-0 py-2 text-lg font-semibold leading-7 text-white outline-none ring-0 placeholder:font-medium placeholder:text-white/42 focus:outline-none focus:ring-0 focus-visible:ring-0 sm:text-xl`}
+              />
+            </div>
+
+            {/* Kapalıyken buton satırın sağında durur. */}
+            {!isReplyExpanded && (
+              <button
+                type="submit"
+                disabled={
+                  (!commentDraft.trim() && !selectedGif) ||
+                  isCommentSubmitting
+                }
+                className={`shrink-0 self-center ${campusButton.primary}`}
+              >
+                Yorum yap
+              </button>
+            )}
+          </div>
 
           {selectedGif && (
             <div className="relative">
@@ -550,7 +581,11 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
             </div>
           )}
 
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <div
+            className={`mt-3 flex-wrap items-center justify-between gap-3 ${
+              isReplyExpanded ? "flex" : "hidden"
+            }`}
+          >
             <div className="flex items-center gap-2">
               <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 border border-white/12 px-3 text-xs font-bold">
                 <input
@@ -559,7 +594,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                   onChange={(event) => setIsAnonymous(event.target.checked)}
                   className="size-4 accent-[#ff7a45]"
                 />
-                Anonim yorumla
+                Anonim
               </label>
 
               <div className="relative">
@@ -602,7 +637,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
               disabled={
                 (!commentDraft.trim() && !selectedGif) || isCommentSubmitting
               }
-              className={`inline-flex min-h-11 items-center justify-center bg-white px-5 text-xs font-bold text-[#12100e] transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
+              className={`${campusButton.primary} disabled:cursor-not-allowed disabled:opacity-45 `}
             >
               Yorum yap
             </button>
@@ -678,7 +713,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                         authorId={comment.authorId}
                         isAnonymous={comment.isAnonymous}
                         ariaLabel={`${comment.author} profilini aç`}
-                        linkClassName={`text-xs font-black transition-colors hover:text-[#ff7a45] ${focusRing}`}
+                        linkClassName={`text-[15px] font-black transition-colors hover:text-[#ff7a45] ${focusRing}`}
                       >
                         <span className="text-xs font-black">
                           {comment.author}
@@ -688,7 +723,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                         aria-hidden="true"
                         className="size-1 rounded-full bg-white/24"
                       />
-                      <time className="text-[11px] font-semibold text-white/55">
+                      <time className="text-sm text-white/50">
                         {comment.time}
                         {comment.edited && !comment.isDeleted
                           ? " · düzenlendi"
@@ -810,7 +845,7 @@ function MissingPost() {
         </p>
         <Link
           href="/akis"
-          className={`mt-7 inline-flex min-h-11 items-center justify-center bg-white px-5 text-sm font-bold text-[#12100e] transition-colors hover:bg-white/90 ${focusRing}`}
+          className={`mt-7 ${campusButton.primary} `}
         >
           Akışa dön
         </Link>

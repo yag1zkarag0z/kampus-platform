@@ -14,6 +14,7 @@ import {
 import { AuthClientError } from "@/auth/client";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
+import { campusButton } from "@/components/campusButtonStyles";
 import CampusAuthorProfileLink from "@/components/CampusAuthorProfileLink";
 import { useCampusData } from "@/components/CampusDataProvider";
 import CampusListingMeta from "@/components/CampusListingMeta";
@@ -493,7 +494,7 @@ function SavedPostsView({
                 aria-busy={isLoadingMore}
                 disabled={isLoadingMore}
                 onClick={onLoadMore}
-                className={`inline-flex min-h-12 items-center justify-center border border-white/12 bg-white/[0.035] px-5 text-sm font-black text-white transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 disabled:cursor-wait disabled:opacity-60 ${focusRing}`}
+                className={campusButton.secondary}
               >
                 {isLoadingMore
                   ? "Kayıtlar yükleniyor…"
@@ -669,7 +670,7 @@ function SavedPostsErrorState({ onReload }: { onReload?: () => void }) {
           <button
             type="button"
             onClick={onReload}
-            className={`mt-6 inline-flex min-h-11 items-center justify-center bg-white px-4 text-xs font-bold text-[#12100e] transition-colors hover:bg-white/90 ${focusRing}`}
+            className={`mt-6 ${campusButton.primary}`}
           >
             Yeniden dene
           </button>
@@ -699,13 +700,13 @@ function SavedPostsEmptyState() {
         <div className="mt-6 flex flex-col justify-center gap-2 min-[360px]:flex-row">
           <Link
             href="/akis"
-            className={`inline-flex min-h-11 items-center justify-center bg-white px-4 text-xs font-bold text-[#12100e] transition-colors hover:bg-white/90 ${focusRing}`}
+            className={campusButton.primary}
           >
             Akışa göz at
           </Link>
           <Link
             href="/kesfet"
-            className={`inline-flex min-h-11 items-center justify-center border border-white/12 px-4 text-xs font-bold transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+            className={campusButton.secondary}
           >
             Keşfet&apos;e git
           </Link>
