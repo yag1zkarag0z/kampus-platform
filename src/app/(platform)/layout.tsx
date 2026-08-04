@@ -1,4 +1,5 @@
 import AppNavigation from "@/components/AppNavigation";
+import CampusCalendarWidget from "@/components/CampusCalendarWidget";
 import { CampusAccountProvider } from "@/components/CampusAccountProvider";
 import { CampusDataProvider } from "@/components/CampusDataProvider";
 import { CampusFollowProvider } from "@/components/CampusFollowProvider";
@@ -38,8 +39,9 @@ export default function PlatformLayout({
                   {children}
                 </main>
                 <div className="hidden min-w-0 md:col-start-3 md:row-start-1 md:block">
-                  <div className="sticky top-0">
-                    <FollowSuggestions className="m-3" />
+                  <div className="sticky top-0 max-h-svh space-y-3 overflow-y-auto p-3">
+                    <FollowSuggestions />
+                    <CampusCalendarWidget />
                   </div>
                 </div>
               </div>

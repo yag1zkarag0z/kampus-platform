@@ -41,6 +41,7 @@ const post = {
     canDelete: true,
     liked: true,
     bookmarked: false,
+    hidden: false,
     selectedPollOptionId: null,
   },
 };

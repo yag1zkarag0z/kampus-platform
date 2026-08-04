@@ -39,6 +39,12 @@
     "sharp": "^0.35.3",
     "zod": "^4.4.3"
   },
+  "comments": {
+    "overrides": "Next kendi sharp'ını getiriyor. İki kopya kurulunca Windows aynı isimli libvips-42.dll'i ikinci kez yüklemediği için bir sürümün addon'u diğerinin libvips'ine bağlanıyor ve next/og PNG üretirken çöküyor. Tek sürüme sabitliyoruz."
+  },
+  "overrides": {
+    "sharp": "^0.35.3"
+  },
   "devDependencies": {
     "@playwright/test": "^1.62.0",
     "@tailwindcss/postcss": "^4",

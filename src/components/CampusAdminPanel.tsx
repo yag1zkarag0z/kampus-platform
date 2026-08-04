@@ -57,10 +57,17 @@ const resolutionLabels: Record<CampusModerationResolution, string> = {
 const historyLabels: Record<ModerationHistoryEntryDto["action"], string> = {
   report_dismissed: "Şikâyet reddedildi",
   content_removed: "İçerik kaldırıldı",
+  content_hidden: "İçerik otomatik gizlendi",
+  content_restored: "İçerik yeniden yayımlandı",
   user_suspended: "Kullanıcı askıya alındı",
   user_restored: "Kullanıcı yeniden etkinleştirildi",
   role_changed: "Kullanıcı rolü değiştirildi",
 };
+
+/** Otomatik gizlemede insan aktör yoktur. */
+function historyActorLabel(entry: ModerationHistoryEntryDto) {
+  return entry.actor ? `@${entry.actor.username}` : "Otomatik koruma";
+}
 
 const dateFormatter = new Intl.DateTimeFormat("tr-TR", {
   dateStyle: "medium",
@@ -510,7 +517,7 @@ export default function CampusAdminPanel() {
                 }
                 description={
                   moderationHistory[0]
-                    ? `@${moderationHistory[0].actor.username} · ${formatDate(
+                    ? `${historyActorLabel(moderationHistory[0])} · ${formatDate(
                         moderationHistory[0].createdAt,
                       )}`
                     : "İlk moderasyon kararın burada özetlenecek."
@@ -951,7 +958,7 @@ export default function CampusAdminPanel() {
                       </p>
                     )}
                     <p className="mt-3 font-mono text-[9px] uppercase tracking-[0.08em] text-white/45">
-                      İşlemi yapan · @{entry.actor.username}
+                      İşlemi yapan · {historyActorLabel(entry)}
                     </p>
                   </article>
                 </li>

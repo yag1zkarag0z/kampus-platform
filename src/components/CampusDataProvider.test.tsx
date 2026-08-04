@@ -116,6 +116,7 @@ function makePostDto(
     canDelete: false,
     liked: false,
     bookmarked: false,
+    hidden: false,
     selectedPollOptionId: null,
   };
 

@@ -77,6 +77,7 @@ const post = {
     canDelete: true,
     liked: false,
     bookmarked: false,
+    hidden: false,
     selectedPollOptionId: null,
   },
   comments: [],

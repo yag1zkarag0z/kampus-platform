@@ -20,6 +20,8 @@ export type ContentViewerStateDto = {
   canDelete: boolean;
   liked: boolean;
   bookmarked: boolean;
+  /** Şikâyet eşiği sonrası otomatik gizlendi; yalnızca yazarına görünür. */
+  hidden: boolean;
   selectedPollOptionId: string | null;
 };
 

@@ -91,6 +91,8 @@ export type ModerationHistoryEntryDto = {
   action:
     | "report_dismissed"
     | "content_removed"
+    | "content_hidden"
+    | "content_restored"
     | "user_suspended"
     | "user_restored"
     | "role_changed";
@@ -98,7 +100,7 @@ export type ModerationHistoryEntryDto = {
   reportId: string | null;
   postId: string | null;
   note: string | null;
-  actor: { username: string; displayName: string };
+  actor: { username: string; displayName: string } | null;
   target: { id: string; username: string; displayName: string } | null;
 };
 

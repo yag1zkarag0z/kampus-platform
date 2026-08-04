@@ -19,6 +19,7 @@ import { AuthError } from "@/server/auth/errors";
 import { getDatabase } from "@/server/db/client";
 import { blocks, follows, users } from "@/server/db/schema";
 import { recordFollowNotification } from "@/server/notifications/service";
+import { consumeRateLimit } from "@/server/rate-limit/service";
 import {
   buildCursorPage,
   decodeTimelineCursor,
@@ -170,6 +171,10 @@ export async function followUser(
   await assertNotBlocked(followerId, targetId);
 
   await getDatabase().transaction(async (transaction) => {
+    // Takip geri alınabildiği için follows tablosunu saymak sınırı
+    // uygulamaya yetmez; ayrı sayaç kullanılıyor.
+    await consumeRateLimit(transaction, followerId, "follow");
+
     const inserted = await transaction
       .insert(follows)
       .values({ followerId, followingId: targetId })

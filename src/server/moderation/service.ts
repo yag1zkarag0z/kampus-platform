@@ -3,13 +3,16 @@ import "server-only";
 import { alias } from "drizzle-orm/pg-core";
 import {
   and,
+  countDistinct,
   desc,
   eq,
   inArray,
+  isNotNull,
   isNull,
   lt,
   ne,
   or,
+  sql,
   type SQL,
 } from "drizzle-orm";
 
@@ -22,17 +25,38 @@ import {
   encodeTimelineCursor,
   sliceCursorPage,
 } from "@/server/pagination/cursor";
+import { consumeRateLimit } from "@/server/rate-limit/service";
 import {
   blocks,
   comments,
   follows,
   moderationActions,
+  postImages,
   posts,
   reports,
   users,
 } from "@/server/db/schema";
 
 const DEFAULT_LIST_LIMIT = 20;
+
+/**
+ * Otomatik gizleme eşiği.
+ *
+ * Yalnızca görsel/GIF içeren gönderilerde çalışır. Metin gönderileri asla
+ * otomatik gizlenmez: birkaç kullanıcının anlaşıp bir fikri susturması
+ * riski, çıplak fotoğrafın bir süre açık kalması riskinden daha ağır basar.
+ */
+const AUTO_HIDE_REPORT_THRESHOLD = 3;
+
+/**
+ * Şikâyetleri sürekli reddedilen kullanıcı eşiğe sayılmaz.
+ *
+ * Hesap yaşı kuralı bilerek yok: kayıt zaten öğrenci e-postası ve OTP
+ * istediği için tek kullanımlık hesap üretmek pahalı. Yaş şartı korumayı
+ * yalnızca lansman günlerinde, yani en çok gerektiği anda devre dışı
+ * bırakıyordu.
+ */
+const AUTO_HIDE_MAX_DISMISSED_REPORTS = 3;
 
 export type BlockedMemberSummary = {
   id: string;
@@ -91,6 +115,8 @@ export type ModerationHistoryEntry = {
   action:
     | "report_dismissed"
     | "content_removed"
+    | "content_hidden"
+    | "content_restored"
     | "user_suspended"
     | "user_restored"
     | "role_changed";
@@ -98,7 +124,8 @@ export type ModerationHistoryEntry = {
   reportId: string | null;
   postId: string | null;
   note: string | null;
-  actor: { username: string; displayName: string };
+  // Otomatik gizlemede insan aktör yoktur.
+  actor: { username: string; displayName: string } | null;
   target: { id: string; username: string; displayName: string } | null;
 };
 
@@ -210,6 +237,8 @@ export async function blockUser(
   }
 
   await getDatabase().transaction(async (transaction) => {
+    await consumeRateLimit(transaction, blockerId, "block");
+
     await transaction
       .insert(blocks)
       .values({ blockerId, blockedId: targetId })
@@ -319,6 +348,80 @@ async function resolveReportTarget(
   return row ?? null;
 }
 
+type ModerationDatabase = ReturnType<typeof getDatabase>;
+type ModerationTransaction = Parameters<
+  Parameters<ModerationDatabase["transaction"]>[0]
+>[0];
+
+/**
+ * Eşiği aşan görselli gönderiyi gizler. Silme değildir; moderatör şikâyeti
+ * reddettiğinde gönderi geri açılır.
+ */
+async function applyAutoHideThreshold(
+  transaction: ModerationTransaction,
+  postId: string,
+) {
+  const [candidate] = await transaction
+    .select({
+      id: posts.id,
+      hasImage: sql<boolean>`exists (
+        select 1 from ${postImages}
+        where ${postImages.postId} = ${posts.id}
+      )`,
+      gifId: posts.gifId,
+    })
+    .from(posts)
+    .where(
+      and(
+        eq(posts.id, postId),
+        isNull(posts.deletedAt),
+        isNull(posts.hiddenAt),
+      ),
+    )
+    .for("update")
+    .limit(1);
+
+  if (!candidate || (!candidate.hasImage && !candidate.gifId)) {
+    return;
+  }
+
+  const dismissedByReporter = sql<number>`(
+    select count(*)
+    from ${reports} as dismissed_reports
+    where dismissed_reports.reporter_id = ${reports.reporterId}
+      and dismissed_reports.resolution = 'dismissed'
+  )`;
+
+  const [usage] = await transaction
+    .select({ reporters: countDistinct(reports.reporterId) })
+    .from(reports)
+    .where(
+      and(
+        eq(reports.targetType, "post"),
+        eq(reports.targetId, postId),
+        eq(reports.status, "pending"),
+        lt(dismissedByReporter, AUTO_HIDE_MAX_DISMISSED_REPORTS),
+      ),
+    );
+
+  if ((usage?.reporters ?? 0) < AUTO_HIDE_REPORT_THRESHOLD) {
+    return;
+  }
+
+  await transaction
+    .update(posts)
+    .set({ hiddenAt: new Date() })
+    .where(and(eq(posts.id, postId), isNull(posts.hiddenAt)));
+
+  await transaction.insert(moderationActions).values({
+    // Otomatik koruma: insan aktör yok.
+    actorId: null,
+    action: "content_hidden",
+    postId,
+    note: `${AUTO_HIDE_REPORT_THRESHOLD} bağımsız şikâyet sonrası otomatik gizlendi.`,
+  });
+}
+
 export async function submitReport(
   reporterId: string,
   input: {
@@ -343,20 +446,28 @@ export async function submitReport(
     throw selfReportError();
   }
 
-  const inserted = await getDatabase()
-    .insert(reports)
-    .values({
-      reporterId,
-      targetType: input.targetType,
-      targetId: input.targetId,
-      postId: target.postId,
-      reason: input.reason,
-      detail: input.detail?.trim().slice(0, 300) ?? "",
-    })
-    .onConflictDoNothing()
-    .returning({ id: reports.id });
+  return getDatabase().transaction(async (transaction) => {
+    await consumeRateLimit(transaction, reporterId, "report_create");
 
-  return { created: inserted.length > 0 };
+    const inserted = await transaction
+      .insert(reports)
+      .values({
+        reporterId,
+        targetType: input.targetType,
+        targetId: input.targetId,
+        postId: target.postId,
+        reason: input.reason,
+        detail: input.detail?.trim().slice(0, 300) ?? "",
+      })
+      .onConflictDoNothing()
+      .returning({ id: reports.id });
+
+    if (inserted.length > 0 && input.targetType === "post") {
+      await applyAutoHideThreshold(transaction, input.targetId);
+    }
+
+    return { created: inserted.length > 0 };
+  });
 }
 
 export async function listReports(
@@ -612,6 +723,33 @@ export async function resolveReport(
 
     let targetUserId: string | null = null;
 
+    // Şikâyet haksız bulunduysa otomatik gizleme kalkar; gönderi geri yayına
+    // girer ve bu da denetim kaydına yazılır.
+    if (resolution === "dismissed" && report.targetType === "post") {
+      const restored = await transaction
+        .update(posts)
+        .set({ hiddenAt: null })
+        .where(
+          and(
+            eq(posts.id, report.targetId),
+            isNull(posts.deletedAt),
+            // Yalnızca gerçekten gizlenmiş gönderi için kayıt üret.
+            isNotNull(posts.hiddenAt),
+          ),
+        )
+        .returning({ id: posts.id });
+
+      if (restored.length > 0) {
+        await transaction.insert(moderationActions).values({
+          actorId: moderatorId,
+          action: "content_restored",
+          reportId: report.id,
+          postId: report.postId,
+          note: trimmedNote,
+        });
+      }
+    }
+
     if (resolution === "content_removed") {
       if (report.targetType === "post") {
         await transaction
@@ -864,7 +1002,9 @@ export async function getModerationHistory(
       targetDisplayName: target.displayName,
     })
     .from(moderationActions)
-    .innerJoin(actor, eq(actor.id, moderationActions.actorId))
+    // Otomatik gizlemenin aktörü yok; inner join olsaydı bu kayıtlar
+    // geçmişten tamamen düşerdi.
+    .leftJoin(actor, eq(actor.id, moderationActions.actorId))
     .leftJoin(target, eq(target.id, moderationActions.targetUserId))
     .where(filters.length > 0 ? and(...filters) : undefined)
     .orderBy(desc(moderationActions.createdAt), desc(moderationActions.id))
@@ -881,10 +1021,13 @@ export async function getModerationHistory(
       reportId: row.reportId,
       postId: row.postId,
       note: row.note,
-      actor: {
-        username: row.actorUsername,
-        displayName: row.actorDisplayName,
-      },
+      actor:
+        row.actorUsername && row.actorDisplayName
+          ? {
+              username: row.actorUsername,
+              displayName: row.actorDisplayName,
+            }
+          : null,
       target:
         row.targetUserId && row.targetUsername && row.targetDisplayName
           ? {

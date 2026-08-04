@@ -13,6 +13,7 @@ import {
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import { useFeedback } from "@/components/FeedbackProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
+import CampusHiddenNotice from "@/components/CampusHiddenNotice";
 import { normalizeCampusProfileUsername } from "@/components/CampusAuthorProfileLink";
 import { useCampusData } from "@/components/CampusDataProvider";
 import CampusFollowConnections from "@/components/CampusFollowConnections";
@@ -721,6 +722,7 @@ function MemberPosts({
                     {post.body}
                   </p>
                 )}
+                {post.isHidden && <CampusHiddenNotice compact />}
                 <div className="mt-3 flex items-center gap-4 text-xs font-bold text-white/55">
                   <span>{post.likes} beğeni</span>
                   <span>{getCampusPostCommentCount(post)} yorum</span>

@@ -84,6 +84,8 @@ export type CampusPost = {
   bookmarked: boolean;
   edited?: boolean;
   isDeleted?: boolean;
+  /** Şikâyet eşiği sonrası otomatik gizlendi; yalnızca yazarına görünür. */
+  isHidden?: boolean;
 };
 
 export type CampusAuthorReference = {

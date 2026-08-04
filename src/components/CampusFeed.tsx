@@ -22,6 +22,7 @@ import {
   type CampusCategoryFilter,
 } from "@/components/CampusCategoryNav";
 import { useCampusData } from "@/components/CampusDataProvider";
+import CampusHiddenNotice from "@/components/CampusHiddenNotice";
 import CampusListingMeta from "@/components/CampusListingMeta";
 import CampusPoll from "@/components/CampusPoll";
 import CampusPostActions from "@/components/CampusPostActions";
@@ -994,6 +995,8 @@ export default function CampusFeed() {
                         </Link>
                       </h2>
                     )}
+
+                    {post.isHidden && <CampusHiddenNotice />}
 
                     {post.listing && (
                       <CampusListingMeta listing={post.listing} />

@@ -1,17 +1,20 @@
 # KAMPÜS Backend Sözleşmesi
 
-Bu belge mevcut frontend davranışını PostgreSQL tabanlı gerçek backend’e
-taşırken kullanılacak veri modelini, API sınırlarını ve yetki kurallarını
-sabitler. Frontend’deki `localStorage` anahtarları production veri kaynağı
+Bu belge KAMPÜS backend'inin veri modelini, API sınırlarını, hata biçimlerini
+ve yetki kurallarını tanımlar. İçerik koddan türetilmiştir; kod ile belge
+çeliştiğinde kod esastır ve belge güncellenmelidir.
+
+Üye oturumunda bütün veri PostgreSQL'den gelir. Frontend'deki `localStorage`
+kullanımı yalnızca misafir görünümüne aittir ve production veri kaynağı
 değildir.
 
 ## 0. Güncel uygulama durumu
 
-Bu sözleşme tamamlanmış özelliklerin yanında hedeflenen veri modelini de içerir;
-aşağıda bir tablo veya endpoint'in yer alması tek başına onun uygulanmış olduğu
-anlamına gelmez.
+Bu bölüm dışındaki tablolar, endpoint'ler ve kurallar **uygulanmış durumu**
+tarif eder; belge koddan türetilmiştir. Henüz tamamlanmamış işler bu bölümün
+sonunda ayrıca listelenir.
 
-Şu anda PostgreSQL'e bağlı olan içerik kapsamı:
+Şu anda PostgreSQL'e bağlı olan kapsam:
 
 - `posts` ve `comments` tabloları, indeksleri ve migration'ları
 - Üye akışını listeleme, gönderi detayını yorumlarıyla okuma
@@ -59,25 +62,35 @@ anlamına gelmez.
   pagination'lı `GET /v1/me/bookmarks`. Silinmiş gönderiler ile silinmiş,
   askıya alınmış veya engellenmiş yazarların gönderileri listeden düşer;
   kayıt satırı veritabanında korunur.
+- Anket ve oy: iki ile dört seçenek, oy değiştirme mevcut satırı günceller,
+  `(poll_id, user_id)` tekildir.
+- İlan: `sale | wanted | free` tipi, durum ve fiyat doğrulaması. İlan anonim
+  olamaz, başlık ve açıklama zorunludur.
+- Medya: sunucuda yeniden kodlanan WebP görseller, `media_assets` +
+  `post_images` tabloları, S3 uyumlu object storage ve `GET /v1/media/:id`
+  üzerinden yetki kontrollü servis.
+- Takip, engelleme, şikâyet, bildirim ve admin/moderasyon akışlarının tamamı
+  PostgreSQL'e bağlıdır; moderasyon hareketleri `moderation_actions` tablosuna
+  yazılır.
+- Kötüye kullanım koruması: ortak hız sınırı katmanı (`rate_limit_hits`) ve
+  görselli gönderiler için otomatik gizleme eşiği. Ayrıntı §7'de.
 
-Kalıcı gönderi oluşturma şu temel kategorilerle sınırlıdır:
-`chat | confession | question | event | lost_found`.
-`poll` ve `listing` enum'da ayrılmış olsa da alt tabloları tamamlanana kadar
-oluşturma istekleri reddedilir.
+Kalıcı gönderi oluşturma yedi kategorinin tamamını destekler:
+`chat | confession | question | event | lost_found | poll | listing`.
 
 Misafir görünümü üye içerik API'sini çağırmaz. Yalnızca frontend paketindeki
 salt okunur, seçilmiş 20 KAMPÜS gönderisini gösterir; PostgreSQL'deki gerçek üye
-akışı misafire açılmaz.
+akışı misafire açılmaz. Bu bilinçli bir tasarım tercihidir, geçici bir durum
+değildir.
 
-Henüz kalıcı backend'e taşınmayan kapsam:
+Henüz tamamlanmamış kapsam:
 
-- Anket, anket oyu ve ilan ayrıntıları
-- Gönderi görseli, avatar yükleme ve object storage
-- Takip, engelleme, bildirim ve şikâyet akışları
-- Admin/moderator işlemleri ve moderasyon audit kayıtları
-
-Bu özelliklere ait mevcut frontend etkileşimleri demo veya yerel durum olabilir;
-sunucu kalıcılığı sağlanmış kabul edilmemelidir.
+- Yüklenen görsellerde otomatik NSFW taraması (AWS Rekognition planlı)
+- E-posta bildirimi gönderimi: `user_settings.email_notifications` alanı
+  saklanıyor ancak arkasında çalışan bir worker yok
+- Süresi dolmuş OTP, session, bağlanmamış medya ve eski `rate_limit_hits`
+  kayıtları için temizlik görevleri
+- Least-privileged PostgreSQL rolü ve RLS politikaları
 
 ## 1. Temel kararlar
 
@@ -104,8 +117,13 @@ sunucu kalıcılığı sağlanmış kabul edilmemelidir.
   `like | comment | reply | mention | follow | announcement`
 - `report_reason`:
   `spam | harassment | personal_information | misleading | other`
+- `report_target_type`: `post | comment`
 - `report_status`: `pending | resolved`
 - `report_resolution`: `dismissed | content_removed | user_suspended`
+- `moderation_action_type`:
+  `report_dismissed | content_removed | content_hidden | content_restored |
+  user_suspended | user_restored | role_changed`
+- `otp_delivery_status`: `pending | delivered | failed`
 
 ## 3. PostgreSQL tabloları
 
@@ -138,7 +156,13 @@ Kullanıcı adı:
 - `notify_replies boolean not null default true`
 - `notify_likes boolean not null default true`
 - `notify_announcements boolean not null default true`
+- `notify_comments boolean not null default true`
+- `notify_follows boolean not null default true`
+- `notify_mentions boolean not null default true`
 - `email_notifications boolean not null default true`
+
+`email_notifications` şu anda yalnızca saklanır; e-posta gönderen bir worker
+bulunmadığı için davranışa etkisi yoktur.
 
 `terms_acceptances`
 
@@ -205,18 +229,37 @@ kaydı oluşturulmaz; iki saatlik imzalı guest token yeterlidir.
 - `is_anonymous boolean`
 - `title varchar(100) not null default ''`
 - `body varchar(500) not null default ''`
+- `gif_id varchar(80)`, `gif_url varchar(2048)`, `gif_width integer`,
+  `gif_height integer`, `gif_alt varchar(160)`
 - `created_at timestamptz`
 - `edited_at timestamptz`
+- `hidden_at timestamptz`
 - `deleted_at timestamptz`
 
-`post_media`
+Başlık veya gövdeden en az biri boş olmayacak şekilde check kısıtı vardır.
+GIF alanları ya tamamen boş ya da tamamı dolu olmalıdır. `hidden_at` otomatik
+gizlemeyi taşır ve silme değildir; §7'ye bakınız.
+
+`media_assets`
 
 - `id uuid primary key`
-- `post_id uuid references posts(id)`
-- `object_key text`
-- `width integer`
-- `height integer`
-- `alt varchar(180)`
+- `owner_id uuid references users(id)`
+- `storage_key varchar(255) unique`
+- `mime_type varchar(32)` — yalnızca `image/webp`
+- `size_bytes integer`, `width integer`, `height integer`
+- `checksum varchar(64)`
+- `created_at timestamptz`
+
+`post_images`
+
+- `post_id uuid primary key references posts(id)`
+- `asset_id uuid unique references media_assets(id)`
+- `alt varchar(160) not null`
+- `created_at timestamptz`
+
+Bir gönderiye en fazla bir görsel bağlanır ve bir görsel yalnızca tek gönderide
+kullanılabilir. Dosyanın kendisi object storage'da tutulur, veritabanında
+yalnızca `storage_key` saklanır.
 
 `comments`
 
@@ -234,24 +277,27 @@ Yanıtın `parent_id` değeri aynı gönderide bulunan kök yorumu göstermelidi
 
 `post_likes` ve `post_bookmarks`
 
-- `user_id uuid`
 - `post_id uuid`
+- `user_id uuid`
 - `created_at timestamptz`
-- Bileşik primary key: `(user_id, post_id)`
+- Bileşik primary key: `(post_id, user_id)`
+- `(user_id, created_at desc)` indeksi kaydedilenler sayfalamasını besler.
 
 `polls`, `poll_options`, `poll_votes`
 
-- Bir ankette iki ile dört seçenek bulunabilir.
+- Bir ankette iki ile dört seçenek bulunabilir (`position` 0..3).
 - Seçenek metni en fazla 60 karakterdir.
-- `(poll_id, voter_id)` unique olmalıdır.
+- `poll_votes` primary key `(poll_id, user_id)`.
 - Oy değiştirme yeni satır açmak yerine mevcut seçimi günceller.
+- `(option_id, poll_id)` bileşik foreign key'i, oyun aynı ankete ait bir
+  seçeneği göstermesini veritabanı seviyesinde garanti eder.
 
 `listings`
 
 - `post_id uuid primary key references posts(id)`
 - `type listing_type`
 - `condition listing_condition`
-- `price numeric(12,2)`
+- `price integer`
 
 İlan anonim veya anket olamaz. `free` fiyatı sıfır, diğer tiplerin fiyatı
 `1..1_000_000` aralığında olmalıdır.
@@ -261,10 +307,10 @@ Yanıtın `parent_id` değeri aynı gönderide bulunan kök yorumu göstermelidi
 `follows`
 
 - `follower_id uuid`
-- `followed_id uuid`
+- `following_id uuid`
 - `created_at timestamptz`
-- Primary key: `(follower_id, followed_id)`
-- `check (follower_id <> followed_id)`
+- Primary key: `(follower_id, following_id)`
+- `check (follower_id <> following_id)`
 
 `blocks`
 
@@ -283,50 +329,67 @@ Engelleme transaction’ı iki yöndeki takip ilişkilerini de silmelidir.
 - `kind notification_kind`
 - `post_id uuid`
 - `comment_id uuid`
-- `preview varchar(240)`
-- `created_at timestamptz`
+- `like_count integer`
 - `read_at timestamptz`
+- `created_at timestamptz`
+
+Metin istemcide üretilir, veritabanında saklanmaz. `check` kısıtı türe göre
+alan şeklini zorlar: `follow` hedefsizdir, `like` gönderi ve `like_count >= 1`
+ister, `comment | reply | mention` hem gönderi hem yorum ister. Kendine
+bildirim üretilemez. `like` bildirimleri alıcı ve gönderi başına tekildir;
+tekrarlanan beğeniler sayacı günceller, yeni satır açmaz.
 
 `reports`
 
 - `id uuid primary key`
 - `reporter_id uuid`
-- `post_id uuid`
-- `comment_id uuid`
+- `target_type report_target_type`
+- `target_id uuid`
+- `post_id uuid references posts(id)`
 - `reason report_reason`
-- `detail varchar(300)`
-- `status report_status`
+- `detail varchar(300) not null default ''`
+- `status report_status not null default 'pending'`
 - `resolution report_resolution`
 - `resolution_note varchar(240)`
 - `resolved_by uuid`
-- `reported_at timestamptz`
 - `resolved_at timestamptz`
-
-Aynı kullanıcının aynı post veya yorumu açık durumdayken tekrar şikâyet
-etmesini engelleyen partial unique index bulunmalıdır.
-
-`moderation_audit`
-
-- `id uuid primary key`
-- `actor_id uuid`
-- `action text`
-- `target_user_id uuid`
-- `post_id uuid`
-- `comment_id uuid`
-- `note varchar(240)`
-- `metadata jsonb`
 - `created_at timestamptz`
 
-Bu tablo append-only olmalıdır.
+Hedef `target_type` + `target_id` ile gösterilir; `post_id` yorum
+şikâyetlerinde de yorumun ait olduğu gönderiyi taşır, böylece moderasyon
+listesi tek join ile bağlam kurar. `(reporter_id, target_type, target_id)`
+unique'tir. `check` kısıtı çözüm alanlarının durumla tutarlı olmasını zorlar.
+
+`moderation_actions`
+
+- `id uuid primary key`
+- `actor_id uuid references users(id)` — otomatik işlemlerde `null`
+- `action moderation_action_type`
+- `report_id uuid references reports(id)`
+- `target_user_id uuid references users(id)`
+- `post_id uuid references posts(id)`
+- `note varchar(240)`
+- `created_at timestamptz`
+
+Bu tablo append-only'dir. `actor_id` yalnızca otomatik gizlemede boştur; insan
+kararlarında her zaman doludur.
+
+`rate_limit_hits`
+
+- `id uuid primary key`
+- `user_id uuid references users(id)`
+- `action varchar(40)`
+- `created_at timestamptz`
+
+Yazma işlemlerinin hız sınırı sayaçları. Beğeni, kaydetme ve takip geri
+alınabildiği için kendi tablolarını saymak sınırı uygulamaya yetmez: kullanıcı
+satırı silip yeniden ekleyerek sayacı sıfırlardı. Tablo yalnızca eklenir;
+eski kayıtları temizlik görevi toplamalıdır.
 
 ## 4. API endpoint’leri
 
-Bu bölüm hedef endpoint setini gösterir. Gönderi/yorum grubunda şu anda
-`GET/POST /v1/posts`, `GET/PATCH/DELETE /v1/posts/:id`,
-`POST /v1/posts/:id/comments`, `PATCH/DELETE /v1/comments/:id`, idempotent
-like/bookmark endpoint'leri ve `GET /v1/me/bookmarks` uygulanmıştır. Poll ve
-vote endpoint'leri ile sonraki grupların sosyal/moderasyon endpoint'leri
-planlıdır.
+Aşağıdaki liste koddaki rotaların tamamıdır; method ve path'ler birebir
+eşleşir. Kullanıcıya göre adreslenen uçlar `:id` değil `:username` alır.
 
 ### Authentication
 
@@ -334,20 +397,24 @@ planlıdır.
 - `POST /v1/auth/code/verify`
 - `POST /v1/auth/register`
 - `POST /v1/auth/guest`
-- `GET /v1/session`
+- `POST /v1/auth/development` — yalnızca development ortamında
 - `POST /v1/auth/logout`
+- `GET /v1/session`
+- `GET /v1/health`
 
-### Profil
+### Profil ve hesap
 
 - `GET /v1/users/:username`
+- `GET /v1/users/:username/avatar`
 - `PATCH /v1/me/profile`
+- `DELETE /v1/me/profile` — hesap silme
 - `PATCH /v1/me/settings`
-- `POST /v1/me/avatar/upload-url`
+- `POST /v1/me/avatar` — multipart yükleme
 - `DELETE /v1/me/avatar`
 
 ### Gönderi ve yorum
 
-- `GET /v1/posts?category=&sort=&author=&cursor=`
+- `GET /v1/posts?q=&category=&sort=&author=&scope=&cursor=&limit=`
 - `POST /v1/posts`
 - `GET /v1/posts/:id`
 - `PATCH /v1/posts/:id`
@@ -355,35 +422,56 @@ planlıdır.
 - `POST /v1/posts/:id/comments`
 - `PATCH /v1/comments/:id`
 - `DELETE /v1/comments/:id`
-- `PUT /v1/posts/:id/like`
-- `DELETE /v1/posts/:id/like`
-- `PUT /v1/posts/:id/bookmark`
-- `DELETE /v1/posts/:id/bookmark`
-- `PUT /v1/polls/:pollId/vote`
-- `GET /v1/me/bookmarks`
+- `PUT /v1/posts/:id/like` · `DELETE /v1/posts/:id/like`
+- `PUT /v1/posts/:id/bookmark` · `DELETE /v1/posts/:id/bookmark`
+- `PUT /v1/polls/:id/vote`
+- `GET /v1/me/bookmarks?cursor=&limit=`
+
+`sort` değerleri: `newest | popular | trending`. `scope`: `global | following`.
+`q` 2-80 karakter olmalıdır.
+
+### Medya
+
+- `POST /v1/media` — multipart yükleme, WebP'ye yeniden kodlanır
+- `GET /v1/media/:id` — yetki kontrollü servis
+- `DELETE /v1/media/:id` — gönderiye bağlanmamış görseli siler
 
 ### Takip ve engelleme
 
-- `GET /v1/users/:id/followers?cursor=`
-- `GET /v1/users/:id/following?cursor=`
-- `PUT /v1/users/:id/follow`
-- `DELETE /v1/users/:id/follow`
-- `PUT /v1/users/:id/block`
-- `DELETE /v1/users/:id/block`
+- `GET /v1/users/:username/followers?cursor=&limit=`
+- `GET /v1/users/:username/following?cursor=&limit=`
+- `POST /v1/users/:username/follow` · `DELETE /v1/users/:username/follow`
+- `POST /v1/users/:username/block` · `DELETE /v1/users/:username/block`
+- `GET /v1/me/blocks?cursor=&limit=`
+- `GET /v1/me/suggested-follows`
 
-### Bildirim ve moderasyon
+### Bildirim
 
-- `GET /v1/notifications?cursor=&unread=`
-- `PATCH /v1/notifications/:id/read`
-- `POST /v1/notifications/read-all`
+- `GET /v1/me/notifications?cursor=&limit=`
+- `GET /v1/me/notifications/unread-count`
+- `PATCH /v1/me/notifications/:id/read`
+- `POST /v1/me/notifications/read-all`
+
+### Şikâyet ve moderasyon
+
 - `POST /v1/reports`
-- `GET /v1/admin/reports?status=&cursor=`
-- `PATCH /v1/admin/reports/:id/resolve`
-- `PATCH /v1/admin/users/:id/status`
-- `PATCH /v1/admin/users/:id/role`
-- `GET /v1/admin/audit?cursor=`
+- `GET /v1/moderation/reports?status=&cursor=&limit=`
+- `POST /v1/moderation/reports/:id/resolve`
+- `GET /v1/moderation/users?cursor=&limit=`
+- `PATCH /v1/moderation/users/:id/status`
+- `PATCH /v1/moderation/users/:id/role`
+- `GET /v1/moderation/history?cursor=&limit=`
 
 ## 5. Ortak yanıt biçimleri
+
+Başarılı yanıtların tamamı `data` zarfı taşır. Bütün endpoint'ler
+`Cache-Control: no-store` döner.
+
+Tekil kayıt:
+
+```json
+{ "data": { } }
+```
 
 Liste yanıtı:
 
@@ -397,31 +485,84 @@ Liste yanıtı:
 }
 ```
 
-Hata yanıtı:
+Cursor opaque'tir ve üretildiği sorguya bağlıdır: farklı filtre, sıralama veya
+kapsamla gönderilen cursor `INVALID_REQUEST` ile reddedilir. Varsayılan sayfa
+boyutu 20, en fazla 50.
 
-```json
-{
-  "error": {
-    "code": "POST_NOT_FOUND",
-    "message": "Gönderi bulunamadı.",
-    "fieldErrors": {}
-  }
-}
-```
-
-Post DTO’su sayaçları ve kullanıcıya özel durumu ayrı taşımalıdır:
+Post DTO'su sayaçları ve kullanıcıya özel durumu ayrı taşır:
 
 ```json
 {
   "likeCount": 42,
   "commentCount": 8,
   "viewerState": {
+    "isAuthor": false,
+    "canEdit": false,
+    "canDelete": false,
     "liked": false,
     "bookmarked": true,
+    "hidden": false,
     "selectedPollOptionId": null
   }
 }
 ```
+
+`viewerState.hidden` yalnızca yazarına `true` dönebilir; gizlenmiş gönderi
+başka hiçbir görüntüleyene servis edilmez.
+
+### Hata yanıtı
+
+```json
+{
+  "error": {
+    "code": "POST_NOT_FOUND",
+    "message": "Gönderi bulunamadı veya artık görüntülenemiyor.",
+    "fieldErrors": {},
+    "attemptsLeft": 2,
+    "retryAfterSeconds": 60
+  }
+}
+```
+
+`fieldErrors` her zaman bulunur (boş olabilir). `attemptsLeft` yalnızca OTP
+doğrulamasında, `retryAfterSeconds` yalnızca hız sınırı ve OTP bekleme
+durumlarında yer alır; `retryAfterSeconds` döndüğünde aynı değer `Retry-After`
+başlığına da yazılır.
+
+### Hata kodları
+
+| Kod | Tipik durum |
+| --- | --- |
+| `INVALID_REQUEST` | 400 — doğrulama, bilinmeyen alan, bozuk cursor |
+| `INVALID_ORIGIN` | 403 — same-origin kontrolü |
+| `AUTHENTICATION_REQUIRED` | 401 — oturum yok veya geçersiz |
+| `AUTHORIZATION_REQUIRED` | 403 — rol yetersiz |
+| `ACCOUNT_INACTIVE` | 403 — askıya alınmış hesap |
+| `ACCOUNT_NOT_FOUND` | 404 |
+| `USER_NOT_FOUND` | 404 — profil yok veya engel nedeniyle gizli |
+| `USERNAME_TAKEN` | 409 |
+| `EMAIL_ALREADY_REGISTERED` | 409 |
+| `POST_NOT_FOUND` | 404 — silinmiş, gizlenmiş veya engelli taraf |
+| `COMMENT_NOT_FOUND` | 404 |
+| `MEDIA_NOT_FOUND` | 404 |
+| `AVATAR_NOT_FOUND` | 404 |
+| `NOTIFICATION_NOT_FOUND` | 404 |
+| `CONTENT_FORBIDDEN` | 403 — sahiplik kontrolü |
+| `CONTENT_LIMIT_REACHED` | 409 — gönderi başına yorum tavanı |
+| `CONTENT_RATE_LIMITED` | 429 — hız sınırı, `retryAfterSeconds` taşır |
+| `OTP_RATE_LIMITED` | 429 — e-posta/IP kod isteği sınırı |
+| `OTP_COOLDOWN` | 429 — yeniden gönderme beklemesi |
+| `OTP_NOT_READY` | 409 — kod henüz gönderilmedi |
+| `OTP_NOT_FOUND` · `OTP_EXPIRED` · `OTP_USED` | 400/410 |
+| `OTP_INCORRECT` | 400 — `attemptsLeft` taşır |
+| `OTP_LOCKED` | 429 — deneme hakkı bitti |
+| `INVALID_REGISTRATION_GRANT` | 400 — kayıt bileti geçersiz |
+| `EMAIL_DELIVERY_FAILED` | 502 |
+| `SESSION_REVOCATION_FAILED` | 500 |
+| `AUTH_CONFIGURATION_ERROR` | 500 — beklenmeyen sunucu hatası |
+
+Hata gövdesi hiçbir zaman yığın izi, SQL metni veya iç kimlik sızdırmaz;
+beklenmeyen hatalar `AUTH_CONFIGURATION_ERROR` altında genel mesajla döner.
 
 ## 6. Yetki matrisi
 
@@ -449,27 +590,88 @@ hesabını yönetemez.
 - Session token yalnızca `httpOnly`, `secure`, `sameSite=lax` cookie ile
   taşınmalı.
 - CSRF koruması bütün state-changing cookie endpoint’lerinde uygulanmalı.
-- Sahiplik ve rol kontrolleri servis katmanı ile PostgreSQL policy/RLS
-  katmanında birlikte yapılmalı.
-- Mevcut temel gönderi/yorum kapsamındaki sahiplik kontrolleri servis
-  katmanındadır. Least-privileged uygulama rolü ve PostgreSQL RLS politikaları
-  production güvenlik sertleştirmesi olarak henüz uygulanmamıştır.
-- Upload MIME değeri sunucuda doğrulanmalı ve görsel yeniden kodlanmalı.
-- Post görseli kaynak limiti 5 MB, avatar kaynak limiti 2 MB olmalı.
-- Like, bookmark, follow, block ve vote endpoint’leri idempotent olmalı.
-- Moderasyon hareketleri değiştirilemez audit kaydı üretmeli.
+- Sahiplik ve rol kontrolleri servis katmanındadır. Least-privileged uygulama
+  rolü ve PostgreSQL RLS politikaları production sertleştirmesi olarak henüz
+  uygulanmamıştır.
+- Upload MIME değeri sunucuda doğrulanır ve görsel WebP'ye yeniden kodlanır.
+  Kaynak dosya en fazla 1 MB, çıktı en fazla 1 MB, en uzun kenar 1600 piksel,
+  giriş çözünürlüğü en fazla 20 megapiksel.
+- Like, bookmark, follow, block ve vote endpoint’leri idempotenttir.
+- Moderasyon hareketleri değiştirilemez `moderation_actions` kaydı üretir.
+
+### Hız sınırları
+
+Ortak katman `rate_limit_hits` tablosunu kayan pencereyle sayar ve kullanıcı
+bazında advisory lock alır. Sınıra takılan istek `CONTENT_RATE_LIMITED`, 429 ve
+`Retry-After` ile döner. Sayaç çağıranın transaction'ına yazılır: işlem geri
+alınırsa kullanım da sayılmaz.
+
+| İşlem | Sınır |
+| --- | --- |
+| Gönderi oluşturma | 10/saat, 30/gün |
+| Yorum oluşturma | 20/dakika |
+| Şikâyet | 10/gün |
+| Takip | 60/saat |
+| Engelleme | 30/saat |
+| Genel yazma tavanı | 120/dakika |
+
+Beğeni, kaydetme ve anket oyu `interaction` olarak sayılır; kendi sınırları
+yoktur çünkü kullanıcı ve gönderi başına tekildirler, ancak genel tavana
+dahildirler. Gönderi başına toplam yorum tavanı 500'dür ve soft-delete
+kayıtlarını da sayar.
+
+Medya yüklemesinin kendi sınırı vardır: saatte 20 yükleme ve aynı anda en fazla
+5 gönderiye bağlanmamış görsel.
+
+OTP: bir e-posta saatte en fazla beş, bir IP özeti saatte en fazla yirmi kod
+isteyebilir.
+
+### Otomatik gizleme
+
+Üç bağımsız şikâyet alan gönderi otomatik gizlenir: `posts.hidden_at` yazılır,
+gönderi listelerden ve doğrudan URL'den düşer, yalnızca yazarına
+`viewerState.hidden: true` ile görünmeye devam eder.
+
+Kuralın sınırları bilinçlidir:
+
+- Yalnızca görsel veya GIF içeren gönderilerde çalışır. Metin gönderisi asla
+  otomatik gizlenmez; birkaç kullanıcının anlaşıp bir fikri susturması riski,
+  görselin bir süre açık kalması riskinden ağır basar.
+- Şikâyetleri üç veya daha fazla kez haksız bulunmuş kullanıcılar eşiğe
+  sayılmaz.
+- Hesap yaşı şartı yoktur. Kayıt zaten öğrenci e-postası ve OTP istediği için
+  tek kullanımlık hesap üretmek pahalıdır; yaş şartı korumayı yalnızca herkesin
+  yeni olduğu lansman günlerinde devre dışı bırakırdı.
+- Gizleme silme değildir. Moderatör şikâyeti reddederse gönderi geri yayına
+  girer; her iki işlem de audit kaydı üretir, otomatik gizlemede `actor_id`
+  boştur.
 
 ## 8. Uygulama sırası ve ilerleme
 
-1. Tamamlandı: PostgreSQL temeli ve migration altyapısı
-2. Tamamlandı: Auth, OTP ve session
-3. Tamamlandı: Profil ve ayarlar (dosya yükleme hariç)
-4. Tamamlandı: Temel gönderi/yorum CRUD ve üye frontend entegrasyonu
-5. Tamamlandı: Like, bookmark ve popüler gönderi sıralaması
-6. Sırada: Poll, vote ve ilan
-7. Planlandı: Follow, block ve report
-8. Planlandı: Notifications
-9. Planlandı: Admin/moderation
-10. Planlandı: Upload/object storage
-11. Devam ediyor: Kalan frontend provider'larını API client ile değiştirme
-12. Devam ediyor: Entegrasyon ve E2E testlerini gerçek backend'e geçirme
+Tamamlandı:
+
+1. PostgreSQL temeli ve migration altyapısı
+2. Auth, OTP ve session
+3. Profil, ayarlar ve hesap silme
+4. Gönderi/yorum CRUD ve üye frontend entegrasyonu
+5. Like, bookmark, popüler ve trending sıralama
+6. Anket, oy ve ilan
+7. Medya yükleme ve object storage
+8. Takip, engelleme ve şikâyet
+9. Bildirimler
+10. Admin/moderasyon
+11. Arama ve profil gönderileri
+12. Çift yönlü engelleme görünürlüğü
+13. Bütün liste endpoint'lerinde cursor pagination
+14. Kaydedilenler listesi
+15. Hız sınırları ve otomatik gizleme
+16. Development/test için idempotent seed script'i (`npm run db:seed`)
+
+Kalan:
+
+17. Yüklenen görsellerde otomatik NSFW taraması
+18. Temizlik görevleri: süresi dolmuş OTP ve session, bağlanmamış medya, eski
+    bildirim ve `rate_limit_hits` kayıtları
+19. Production altyapısı: SMTP, S3, yedekleme, loglama, izleme
+20. Least-privileged PostgreSQL rolü ve migration/runtime ayrımı
+21. Tam kod güvenlik incelemesi

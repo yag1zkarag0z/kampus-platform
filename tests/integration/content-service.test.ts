@@ -1318,16 +1318,13 @@ describe("content service with PostgreSQL", () => {
       isAnonymous: false,
     });
 
+    // Sınır ortak hız sayacından okunuyor: yorum satırlarını saymak
+    // yeterli değil, çünkü silinen yorumlar sayacı sıfırlayabilirdi.
     await pool.query(
-      `insert into comments (
-         post_id,
-         author_id,
-         body,
-         created_at
-       )
-       select $1, $2, 'Recent comment ' || series, now()
-       from generate_series(1, 20) as series`,
-      [post.id, commentOwner.id],
+      `insert into rate_limit_hits (user_id, action, created_at)
+       select $1, 'comment_create', now()
+       from generate_series(1, 20)`,
+      [commentOwner.id],
     );
 
     const error = await expectAuthError(

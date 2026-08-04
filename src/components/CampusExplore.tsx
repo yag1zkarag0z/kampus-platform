@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
+import CampusCalendarStrip from "@/components/CampusCalendarStrip";
 import CampusAuthorProfileLink from "@/components/CampusAuthorProfileLink";
 import CampusCategoryNav, {
   type CampusCategoryFilter,
@@ -126,6 +127,9 @@ export default function CampusExplore() {
           </div>
         </div>
       </header>
+
+      {/* Takvim mobil alt menüde yer bulamadığı için giriş noktası burada. */}
+      <CampusCalendarStrip className="md:hidden" />
 
       <div className="border-b border-white/8">
         <CampusCategoryNav

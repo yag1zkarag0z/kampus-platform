@@ -9,7 +9,6 @@ import {
   desc,
   eq,
   exists,
-  gte,
   inArray,
   isNull,
   lt,
@@ -32,6 +31,7 @@ import { AuthError } from "@/server/auth/errors";
 import { getDatabase } from "@/server/db/client";
 import { getMediaStorage } from "@/server/media/storage";
 import { resolveGiphyGif } from "@/server/giphy/client";
+import { consumeRateLimit } from "@/server/rate-limit/service";
 import { noBlockBetween } from "@/server/social/blocking";
 import {
   recordCommentNotification,
@@ -75,7 +75,6 @@ const UUID_PATTERN =
 const CURSOR_VERSION = 4;
 const TRENDING_WINDOW_DAYS = 7;
 const BOOKMARK_CURSOR_VERSION = 1;
-const COMMENT_CREATION_MINUTE_LIMIT = 20;
 const POST_COMMENT_TOTAL_LIMIT = 500;
 
 type FeedCursor = {
@@ -111,6 +110,7 @@ type PostRow = {
   gifAlt: string | null;
   createdAt: Date;
   editedAt: Date | null;
+  hiddenAt: Date | null;
   username: string;
   displayName: string;
   commentCount: number;
@@ -198,17 +198,6 @@ function contentForbiddenError() {
   );
 }
 
-function contentRateLimitedError() {
-  return new AuthError(
-    "CONTENT_RATE_LIMITED",
-    "Çok kısa sürede fazla yorum gönderdin. Bir dakika sonra yeniden dene.",
-    {
-      retryAfterSeconds: 60,
-      status: 429,
-    },
-  );
-}
-
 function contentLimitReachedError() {
   return new AuthError(
     "CONTENT_LIMIT_REACHED",
@@ -266,6 +255,17 @@ async function assertActiveContentMember(
   }
 }
 
+/**
+ * Otomatik gizlenmiş gönderi listelerde ve doğrudan URL'de görünmez; yalnızca
+ * yazarı "inceleme altında" olarak görmeye devam eder. Kural tek yerde
+ * tanımlı ki yeni bir sorgu eklendiğinde atlanmasın.
+ */
+function notHiddenFromViewer(viewerId: string): SQL {
+  return sql`(
+    ${posts.hiddenAt} is null or ${posts.authorId} = ${viewerId}
+  )`;
+}
+
 async function assertActivePostForInteraction(
   transaction: ContentTransaction,
   postId: string,
@@ -281,6 +281,7 @@ async function assertActivePostForInteraction(
         isNull(posts.deletedAt),
         isNull(users.deletedAt),
         noBlockBetween(viewerId, posts.authorId),
+        notHiddenFromViewer(viewerId),
       ),
     )
     .for("share")
@@ -312,35 +313,18 @@ async function assertCommentCreationAllowed(
   postId: string,
   now: Date,
 ) {
-  await lockContentKeys(transaction, [
-    `content-comment-post:${postId}`,
-    `content-comment-user:${viewerId}`,
-  ]);
+  await lockContentKeys(transaction, [`content-comment-post:${postId}`]);
 
-  const oneMinuteAgo = new Date(now.getTime() - 60_000);
-  const [recentUsage, postUsage] = await Promise.all([
-    transaction
-      .select({ total: count() })
-      .from(comments)
-      .where(
-        and(
-          eq(comments.authorId, viewerId),
-          gte(comments.createdAt, oneMinuteAgo),
-        ),
-      ),
-    transaction
-      .select({ total: count() })
-      .from(comments)
-      .where(eq(comments.postId, postId)),
-  ]);
+  // Üye başına dakika sınırı ortak hız sınırı katmanından gelir; burada
+  // yalnızca gönderi başına toplam yorum tavanı kalıyor.
+  await consumeRateLimit(transaction, viewerId, "comment_create", now);
 
-  if (
-    (recentUsage[0]?.total ?? 0) >= COMMENT_CREATION_MINUTE_LIMIT
-  ) {
-    throw contentRateLimitedError();
-  }
+  const [postUsage] = await transaction
+    .select({ total: count() })
+    .from(comments)
+    .where(eq(comments.postId, postId));
 
-  if ((postUsage[0]?.total ?? 0) >= POST_COMMENT_TOTAL_LIMIT) {
+  if ((postUsage?.total ?? 0) >= POST_COMMENT_TOTAL_LIMIT) {
     throw contentLimitReachedError();
   }
 }
@@ -609,6 +593,9 @@ function serializePost(
       canDelete: row.authorId === viewerId,
       liked: row.liked,
       bookmarked: row.bookmarked,
+      // Gizlenmiş gönderiyi yalnızca yazarı görür; sessizce kaybolmaması
+      // için durum arayüze taşınıyor.
+      hidden: row.hiddenAt !== null,
       selectedPollOptionId: pollView?.selectedOptionId ?? null,
     },
   };
@@ -815,6 +802,7 @@ async function selectPost(
       gifAlt: posts.gifAlt,
       createdAt: posts.createdAt,
       editedAt: posts.editedAt,
+      hiddenAt: posts.hiddenAt,
       username: users.username,
       displayName: users.displayName,
       commentCount,
@@ -839,6 +827,7 @@ async function selectPost(
         isNull(users.deletedAt),
         // Doğrudan URL ile açılan gönderi de engellenmiş sayılır.
         noBlockBetween(viewerId, posts.authorId),
+        notHiddenFromViewer(viewerId),
       ),
     )
     .groupBy(posts.id, users.id)
@@ -889,6 +878,7 @@ export async function listContentPosts(
 ) {
   const filters: SQL[] = [
     isNull(posts.deletedAt),
+    notHiddenFromViewer(viewerId),
     isNull(users.deletedAt),
     eq(users.status, "active"),
     noBlockBetween(viewerId, posts.authorId),
@@ -1014,6 +1004,7 @@ export async function listContentPosts(
       gifAlt: posts.gifAlt,
       createdAt: posts.createdAt,
       editedAt: posts.editedAt,
+      hiddenAt: posts.hiddenAt,
       username: users.username,
       displayName: users.displayName,
       commentCount,
@@ -1079,6 +1070,7 @@ export async function listContentBookmarks(
   const filters: SQL[] = [
     eq(postBookmarks.userId, viewerId),
     isNull(posts.deletedAt),
+    notHiddenFromViewer(viewerId),
     isNull(users.deletedAt),
     eq(users.status, "active"),
     noBlockBetween(viewerId, posts.authorId),
@@ -1127,6 +1119,7 @@ export async function listContentBookmarks(
       gifAlt: posts.gifAlt,
       createdAt: posts.createdAt,
       editedAt: posts.editedAt,
+      hiddenAt: posts.hiddenAt,
       username: users.username,
       displayName: users.displayName,
       bookmarkedAt: postBookmarks.createdAt,
@@ -1237,6 +1230,7 @@ export async function setContentPostLike(
 
   return getDatabase().transaction(async (transaction) => {
     await assertActiveContentMember(transaction, viewerId);
+    await consumeRateLimit(transaction, viewerId, "interaction");
     const activePost = await assertActivePostForInteraction(
       transaction,
       postId,
@@ -1298,6 +1292,7 @@ export async function setContentPostBookmark(
 
   return getDatabase().transaction(async (transaction) => {
     await assertActiveContentMember(transaction, viewerId);
+    await consumeRateLimit(transaction, viewerId, "interaction");
     await assertActivePostForInteraction(transaction, postId, viewerId);
 
     if (bookmarked) {
@@ -1345,6 +1340,7 @@ export async function createContentPost(
   const created = await getDatabase().transaction(
     async (transaction) => {
       await assertActiveContentMember(transaction, viewerId);
+      await consumeRateLimit(transaction, viewerId, "post_create");
 
       if (input.imageId) {
         const [ownedImage] = await transaction
@@ -1452,6 +1448,7 @@ export async function voteInContentPoll(
 
   return getDatabase().transaction(async (transaction) => {
     await assertActiveContentMember(transaction, viewerId);
+    await consumeRateLimit(transaction, viewerId, "interaction");
     await assertActivePostForInteraction(transaction, pollId, viewerId);
 
     const [option] = await transaction

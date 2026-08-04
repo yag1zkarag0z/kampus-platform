@@ -74,6 +74,7 @@ const bookmarkedPost = {
     canDelete: true,
     liked: false,
     bookmarked: true,
+    hidden: false,
     selectedPollOptionId: null,
   },
 } satisfies ContentPostDto;

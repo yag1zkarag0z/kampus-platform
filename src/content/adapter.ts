@@ -242,5 +242,6 @@ export function toCampusPost(
         }
       : undefined,
     edited: dto.editedAt !== null,
+    isHidden: dto.viewerState.hidden,
   };
 }

@@ -15,6 +15,7 @@ type NavigationIconName =
   | "share"
   | "notifications"
   | "saved"
+  | "calendar"
   | "profile"
   | "admin"
   | "follow";
@@ -36,6 +37,7 @@ const navigationItems: readonly NavigationItem[] = [
     icon: "notifications",
   },
   { href: "/kaydedilenler", label: "Kaydedilenler", icon: "saved" },
+  { href: "/takvim", label: "Takvim", icon: "calendar" },
   { href: "/profil", label: "Profil", icon: "profile" },
   {
     href: "/admin",
@@ -92,6 +94,13 @@ function NavigationIconGlyph({ name }: { name: NavigationIconName }) {
       );
     case "saved":
       return <path d="M6.2 4.2h11.6v15.6L12 16.4l-5.8 3.4V4.2Z" />;
+    case "calendar":
+      return (
+        <>
+          <rect x="3.8" y="5.2" width="16.4" height="15" rx="2" />
+          <path d="M3.8 9.8h16.4M8.4 3.5v3.4M15.6 3.5v3.4" />
+        </>
+      );
     case "profile":
       return (
         <>

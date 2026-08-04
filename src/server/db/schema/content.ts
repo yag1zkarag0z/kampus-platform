@@ -64,6 +64,9 @@ export const posts = pgTable(
     gifAlt: varchar("gif_alt", { length: 160 }),
     createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
     editedAt: timestampWithTimezone("edited_at"),
+    // Şikâyet eşiği aşıldığında otomatik gizleme. Silme değildir: moderatör
+    // haksız bulursa geri açılır.
+    hiddenAt: timestampWithTimezone("hidden_at"),
     deletedAt: timestampWithTimezone("deleted_at"),
   },
   (table) => [
@@ -98,6 +101,11 @@ export const posts = pgTable(
       "posts_edited_at_order_check",
       sql`${table.editedAt} is null
         or ${table.editedAt} >= ${table.createdAt}`,
+    ),
+    check(
+      "posts_hidden_at_order_check",
+      sql`${table.hiddenAt} is null
+        or ${table.hiddenAt} >= ${table.createdAt}`,
     ),
     check(
       "posts_deleted_at_order_check",
@@ -453,6 +461,8 @@ export const reports = pgTable(
 export const moderationActionType = pgEnum("moderation_action_type", [
   "report_dismissed",
   "content_removed",
+  "content_hidden",
+  "content_restored",
   "user_suspended",
   "user_restored",
   "role_changed",
@@ -462,9 +472,10 @@ export const moderationActions = pgTable(
   "moderation_actions",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    actorId: uuid("actor_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+    // Otomatik gizlemede insan aktör yok; bu yüzden null olabilir.
+    actorId: uuid("actor_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
     action: moderationActionType("action").notNull(),
     reportId: uuid("report_id").references(() => reports.id, {
       onDelete: "set null",
@@ -482,6 +493,42 @@ export const moderationActions = pgTable(
     index("moderation_actions_created_at_idx").on(table.createdAt),
     index("moderation_actions_target_user_id_idx").on(
       table.targetUserId,
+    ),
+  ],
+);
+
+/**
+ * Yazma işlemlerinin hız sınırı sayaçları.
+ *
+ * Beğeni, kaydetme ve takip gibi işlemler geri alınabildiği için kendi
+ * tablolarını sayarak sınır uygulanamaz: kullanıcı satırı silip yeniden
+ * ekleyerek sınırı sıfırlar. Bu tablo yalnızca eklenir, hiç silinmez;
+ * eski kayıtları temizlik görevi toplar.
+ */
+export const rateLimitHits = pgTable(
+  "rate_limit_hits",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    action: varchar("action", { length: 40 }).notNull(),
+    createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("rate_limit_hits_user_action_created_at_idx").on(
+      table.userId,
+      table.action,
+      table.createdAt.desc(),
+    ),
+    index("rate_limit_hits_user_created_at_idx").on(
+      table.userId,
+      table.createdAt.desc(),
+    ),
+    index("rate_limit_hits_created_at_idx").on(table.createdAt),
+    check(
+      "rate_limit_hits_action_not_blank_check",
+      sql`char_length(btrim(${table.action})) > 0`,
     ),
   ],
 );
@@ -575,3 +622,4 @@ export type PollVote = typeof pollVotes.$inferSelect;
 export type Report = typeof reports.$inferSelect;
 export type ModerationAction = typeof moderationActions.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+export type RateLimitHit = typeof rateLimitHits.$inferSelect;

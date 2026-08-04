@@ -13,6 +13,7 @@ import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import CampusAuthorProfileLink from "@/components/CampusAuthorProfileLink";
 import CampusCommentActions from "@/components/CampusCommentActions";
 import { useCampusData } from "@/components/CampusDataProvider";
+import CampusHiddenNotice from "@/components/CampusHiddenNotice";
 import CampusListingMeta from "@/components/CampusListingMeta";
 import CampusPoll from "@/components/CampusPoll";
 import CampusPostActions from "@/components/CampusPostActions";
@@ -309,6 +310,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
             <time className="text-[11px] font-semibold text-white/55">
               {post.time}
               {post.edited && !post.isDeleted ? " · düzenlendi" : ""}
+              {post.isHidden ? " · inceleme altında" : ""}
             </time>
             <CampusPostActions
               post={post}
@@ -332,6 +334,8 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                 {post.title}
               </h1>
             )}
+
+            {post.isHidden && <CampusHiddenNotice />}
 
             {post.listing && (
               <CampusListingMeta listing={post.listing} variant="detail" />
