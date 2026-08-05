@@ -43,6 +43,7 @@ import {
   follows,
   listings,
   mediaAssets,
+  commentLikes,
   postBookmarks,
   postLikes,
   pollOptions,
@@ -141,6 +142,9 @@ type CommentRow = {
   username: string;
   displayName: string;
   authorDeletedAt: Date | null;
+  likeCount: number;
+  replyCount: number;
+  liked: boolean;
 };
 
 type PollView = {
@@ -756,10 +760,13 @@ function serializeComment(
     createdAt: row.createdAt.toISOString(),
     editedAt: row.editedAt?.toISOString() ?? null,
     gif: isDeleted ? null : gifFromRow(row),
+    likeCount: Number(row.likeCount),
+    replyCount: Number(row.replyCount),
     viewerState: {
       isAuthor,
       canEdit: isAuthor && !isDeleted,
       canDelete: isAuthor && !isDeleted,
+      liked: row.liked,
     },
   };
 }
@@ -860,6 +867,20 @@ async function selectPostComments(
       username: users.username,
       displayName: users.displayName,
       authorDeletedAt: users.deletedAt,
+      likeCount: sql<number>`(
+        select count(*)::int from ${commentLikes}
+        where ${commentLikes.commentId} = ${comments.id}
+      )`,
+      replyCount: sql<number>`(
+        select count(*)::int from comments as replies
+        where replies.parent_id = ${comments.id}
+          and replies.deleted_at is null
+      )`,
+      liked: sql<boolean>`exists (
+        select 1 from ${commentLikes}
+        where ${commentLikes.commentId} = ${comments.id}
+          and ${commentLikes.userId} = ${viewerId}
+      )`,
     })
     .from(comments)
     .innerJoin(users, eq(users.id, comments.authorId))
@@ -1652,6 +1673,7 @@ export async function deleteContentPost(
 
 async function selectComment(
   commentId: string,
+  viewerId: string,
 ): Promise<CommentRow | null> {
   const [row] = await getDatabase()
     .select({
@@ -1672,6 +1694,20 @@ async function selectComment(
       username: users.username,
       displayName: users.displayName,
       authorDeletedAt: users.deletedAt,
+      likeCount: sql<number>`(
+        select count(*)::int from ${commentLikes}
+        where ${commentLikes.commentId} = ${comments.id}
+      )`,
+      replyCount: sql<number>`(
+        select count(*)::int from comments as replies
+        where replies.parent_id = ${comments.id}
+          and replies.deleted_at is null
+      )`,
+      liked: sql<boolean>`exists (
+        select 1 from ${commentLikes}
+        where ${commentLikes.commentId} = ${comments.id}
+          and ${commentLikes.userId} = ${viewerId}
+      )`,
     })
     .from(comments)
     .innerJoin(users, eq(users.id, comments.authorId))
@@ -1679,6 +1715,64 @@ async function selectComment(
     .limit(1);
 
   return row ?? null;
+}
+
+/** Yorum beğenisi; gönderi beğenisiyle aynı idempotent desen. */
+export async function setContentCommentLike(
+  viewerId: string,
+  commentId: string,
+  liked: boolean,
+): Promise<ContentCommentDto> {
+  assertUuid(commentId, commentNotFoundError);
+
+  await getDatabase().transaction(async (transaction) => {
+    await assertActiveContentMember(transaction, viewerId);
+    await consumeRateLimit(transaction, viewerId, "interaction");
+
+    const [target] = await transaction
+      .select({ id: comments.id })
+      .from(comments)
+      .innerJoin(posts, eq(posts.id, comments.postId))
+      .innerJoin(users, eq(users.id, comments.authorId))
+      .where(
+        and(
+          eq(comments.id, commentId),
+          isNull(comments.deletedAt),
+          isNull(posts.deletedAt),
+          noBlockBetween(viewerId, comments.authorId),
+        ),
+      )
+      .for("share")
+      .limit(1);
+
+    if (!target) {
+      throw commentNotFoundError();
+    }
+
+    if (liked) {
+      await transaction
+        .insert(commentLikes)
+        .values({ commentId, userId: viewerId })
+        .onConflictDoNothing();
+    } else {
+      await transaction
+        .delete(commentLikes)
+        .where(
+          and(
+            eq(commentLikes.commentId, commentId),
+            eq(commentLikes.userId, viewerId),
+          ),
+        );
+    }
+  });
+
+  const updated = await selectComment(commentId, viewerId);
+
+  if (!updated) {
+    throw commentNotFoundError();
+  }
+
+  return serializeComment(updated, viewerId);
 }
 
 export async function createContentComment(
@@ -1818,7 +1912,7 @@ export async function createContentComment(
     },
   );
 
-  const createdComment = await selectComment(createdId);
+  const createdComment = await selectComment(createdId, viewerId);
 
   if (!createdComment) {
     throw commentNotFoundError();
@@ -1881,7 +1975,7 @@ export async function updateContentComment(
       );
   });
 
-  const updated = await selectComment(commentId);
+  const updated = await selectComment(commentId, viewerId);
 
   if (!updated) {
     throw commentNotFoundError();

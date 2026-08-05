@@ -72,10 +72,13 @@ function createCommentDto(
     },
     createdAt,
     editedAt: null,
+    likeCount: 0,
+    replyCount: 0,
     viewerState: {
       isAuthor: false,
       canEdit: false,
       canDelete: false,
+      liked: false,
     },
     ...overrides,
   };

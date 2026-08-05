@@ -214,6 +214,30 @@ export const postLikes = pgTable(
   ],
 );
 
+/** Yorum beğenileri; gönderi beğenileriyle aynı idempotent desen. */
+export const commentLikes = pgTable(
+  "comment_likes",
+  {
+    commentId: uuid("comment_id")
+      .notNull()
+      .references(() => comments.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "comment_likes_pk",
+      columns: [table.commentId, table.userId],
+    }),
+    index("comment_likes_user_created_at_idx").on(
+      table.userId,
+      table.createdAt.desc(),
+    ),
+  ],
+);
+
 export const postBookmarks = pgTable(
   "post_bookmarks",
   {
@@ -610,6 +634,7 @@ export type NewPost = typeof posts.$inferInsert;
 export type Comment = typeof comments.$inferSelect;
 export type NewComment = typeof comments.$inferInsert;
 export type PostLike = typeof postLikes.$inferSelect;
+export type CommentLike = typeof commentLikes.$inferSelect;
 export type NewPostLike = typeof postLikes.$inferInsert;
 export type PostBookmark = typeof postBookmarks.$inferSelect;
 export type NewPostBookmark = typeof postBookmarks.$inferInsert;

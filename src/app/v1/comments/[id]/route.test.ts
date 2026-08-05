@@ -71,10 +71,13 @@ const comment = {
   },
   createdAt: "2026-07-29T10:00:00.000Z",
   editedAt: "2026-07-29T10:05:00.000Z",
+  likeCount: 0,
+  replyCount: 0,
   viewerState: {
     isAuthor: true,
     canEdit: true,
     canDelete: true,
+    liked: false,
   },
 } satisfies ContentCommentDto;
 

@@ -30,12 +30,12 @@ html {
    * büyütmek yazıyı, boşlukları ve dokunma alanlarını birlikte büyütür.
    * Tek tek her bileşeni elden geçirmek yerine tek kaldıraç kullanılıyor.
    */
-  font-size: 17px;
+  font-size: 18px;
 }
 
 @media (min-width: 640px) {
   html {
-    font-size: 18px;
+    font-size: 19px;
   }
 }
 

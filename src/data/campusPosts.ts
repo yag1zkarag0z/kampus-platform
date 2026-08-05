@@ -11,6 +11,10 @@ export const LOCAL_ACCOUNT_OWNER_ID = "local-current-account";
 export const CAMPUS_OFFICIAL_AUTHOR_ID = "campus-official";
 
 export type CampusComment = {
+  createdAt?: number;
+  likes?: number;
+  liked?: boolean;
+  replyCount?: number;
   id: string;
   author: string;
   authorId?: string;

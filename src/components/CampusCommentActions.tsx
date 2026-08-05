@@ -43,7 +43,16 @@ export default function CampusCommentActions({
 }) {
   const router = useRouter();
   const { isGuest } = useCampusAccount();
-  const { updateComment, deleteComment } = useCampusData();
+  const { updateComment, deleteComment, toggleCommentLike } =
+    useCampusData();
+
+  const toggleLike = async () => {
+    if (isGuest) {
+      return;
+    }
+
+    await toggleCommentLike(postId, comment.id);
+  };
   const {
     blockUser,
     hasReportedComment,
@@ -305,13 +314,36 @@ export default function CampusCommentActions({
 
   return (
     <>
-      <div className="mt-2 flex min-h-10 items-center gap-1">
+      <div className="mt-2 flex min-h-11 items-center gap-1">
+        <button
+          type="button"
+          aria-pressed={Boolean(comment.liked)}
+          aria-label={
+            comment.liked
+              ? `Beğeniyi kaldır, ${comment.likes ?? 0} beğeni`
+              : `Yorumu beğen, ${comment.likes ?? 0} beğeni`
+          }
+          onClick={() => void toggleLike()}
+          className={`campus-pop-on-active inline-flex min-h-11 cursor-pointer items-center gap-1.5 px-2 text-sm font-bold transition-colors ${focusRing} ${
+            comment.liked
+              ? "text-[#df8b83]"
+              : "text-white/55 hover:text-[#df8b83]"
+          }`}
+        >
+          <CommentHeartIcon filled={Boolean(comment.liked)} />
+          {comment.likes ? <span>{comment.likes}</span> : null}
+        </button>
+
         <button
           type="button"
           onClick={openReply}
-          className={`inline-flex min-h-10 cursor-pointer items-center px-2 text-[11px] font-black text-white/55 transition-colors hover:text-[#ff7a45] ${focusRing}`}
+          className={`inline-flex min-h-11 cursor-pointer items-center gap-1.5 px-2 text-sm font-bold text-white/55 transition-colors hover:text-[#ff7a45] ${focusRing}`}
         >
-          Yanıtla
+          <CommentReplyIcon />
+          {comment.replyCount ? (
+            <span>{comment.replyCount}</span>
+          ) : null}
+          <span className="hidden min-[380px]:inline">Yanıtla</span>
         </button>
 
         <div ref={menuRef} className="relative">
@@ -540,6 +572,38 @@ function DialogButtons({
         {submitLabel}
       </button>
     </div>
+  );
+}
+
+function CommentReplyIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+      className="size-5"
+    >
+      <path d="M16.3 9.1c0 3.4-2.8 6-6.3 6a7 7 0 0 1-2.3-.4L4 16l1.1-3A5.8 5.8 0 0 1 3.7 9.1c0-3.4 2.8-6.1 6.3-6.1s6.3 2.7 6.3 6.1Z" />
+    </svg>
+  );
+}
+
+function CommentHeartIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+      className="size-5"
+    >
+      <path d="M10 16.2s-6-3.4-6-8.1A3.3 3.3 0 0 1 10 6a3.3 3.3 0 0 1 6 2.1c0 4.7-6 8.1-6 8.1Z" />
+    </svg>
   );
 }
 

@@ -200,6 +200,16 @@ export function updateContentComment(
   );
 }
 
+export function setContentCommentLike(
+  commentId: string,
+  liked: boolean,
+) {
+  return requestApi<ContentCommentDto>(
+    `/v1/comments/${commentId}/like`,
+    { method: liked ? "PUT" : "DELETE" },
+  );
+}
+
 export function deleteContentComment(commentId: string) {
   return requestApi<void>(`/v1/comments/${commentId}`, {
     method: "DELETE",

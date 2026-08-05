@@ -96,6 +96,25 @@ export function formatCampusRelativeTime(
   }).format(new Date(value));
 }
 
+const absoluteDateTimeFormatter = new Intl.DateTimeFormat("tr-TR", {
+  hour: "2-digit",
+  minute: "2-digit",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
+/** "00:33 · 5 Ağustos 2026" biçiminde mutlak zaman. */
+export function formatCampusAbsoluteDateTime(createdAt: number) {
+  const parts = absoluteDateTimeFormatter.formatToParts(
+    new Date(createdAt),
+  );
+  const pick = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+
+  return `${pick("hour")}:${pick("minute")} · ${pick("day")} ${pick("month")} ${pick("year")}`;
+}
+
 export function toContentCategory(
   category: CampusPostCategory,
 ) {
@@ -170,6 +189,10 @@ export function toCampusComment(
     isDeleted: dto.isDeleted,
     body: dto.body ?? "",
     time: formatCampusRelativeTime(dto.createdAt),
+    createdAt: parseTimestamp(dto.createdAt),
+    likes: dto.likeCount,
+    liked: dto.viewerState.liked,
+    replyCount: dto.replyCount,
     gif: dto.gif
       ? {
           id: dto.gif.id,

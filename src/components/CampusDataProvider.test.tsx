@@ -155,6 +155,7 @@ function makeCommentDto(
     isAuthor: false,
     canEdit: false,
     canDelete: false,
+    liked: false,
   };
 
   return {
@@ -166,6 +167,8 @@ function makeCommentDto(
     body: "Server comment",
     createdAt: CREATED_AT,
     editedAt: null,
+    likeCount: 0,
+    replyCount: 0,
     ...overrides,
     author: {
       ...author,

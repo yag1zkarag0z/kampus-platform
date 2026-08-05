@@ -155,6 +155,13 @@
       "when": 1785837618887,
       "tag": "0021_freezing_havok",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1785923550338,
+      "tag": "0022_curvy_maverick",
+      "breakpoints": true
     }
   ]
 }

@@ -93,10 +93,14 @@ export type ContentCommentDto = {
   createdAt: string;
   editedAt: string | null;
   gif?: ContentGifDto | null;
+  likeCount: number;
+  /** Bu köke verilen yanıt sayısı; yanıt satırlarında her zaman 0. */
+  replyCount: number;
   viewerState: {
     isAuthor: boolean;
     canEdit: boolean;
     canDelete: boolean;
+    liked: boolean;
   };
 };
 

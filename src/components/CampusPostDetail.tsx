@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   useEffect,
   useRef,
@@ -24,8 +25,10 @@ import {
 import CampusPostActions from "@/components/CampusPostActions";
 import CampusPostImage from "@/components/CampusPostImage";
 import CampusGif from "@/components/CampusGif";
+import CampusEmojiPicker from "@/components/CampusEmojiPicker";
 import GiphyPicker from "@/components/GiphyPicker";
 import { useFeedback } from "@/components/FeedbackProvider";
+import { formatCampusAbsoluteDateTime } from "@/content/adapter";
 import {
   isAnonymousCampusAuthor,
   isSameVisibleCampusAuthor,
@@ -33,48 +36,11 @@ import {
   type CampusGif as CampusGifData,
 } from "@/data/campusPosts";
 
-const quickEmojis = [
-  { value: "👍", label: "Beğeni" },
-  { value: "❤️", label: "Kalp" },
-  { value: "😂", label: "Kahkaha" },
-  { value: "🥲", label: "Duygulu yüz" },
-  { value: "🎉", label: "Kutlama" },
-  { value: "📚", label: "Kitaplar" },
-  { value: "📍", label: "Konum" },
-  { value: "❓", label: "Soru" },
-  { value: "💀", label: "Kuru kafa" },
-  { value: "🗿", label: "Moai" },
-  { value: "🤡", label: "Palyaço" },
-  { value: "🤨", label: "Şüpheli yüz" },
-  { value: "😭", label: "Ağlayan yüz" },
-  { value: "🫡", label: "Selam veren yüz" },
-  { value: "🔥", label: "Ateş" },
-  { value: "👀", label: "Gözler" },
-] as const;
-
 const focusRing =
   "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40";
 
-const absoluteDateTimeFormatter = new Intl.DateTimeFormat("tr-TR", {
-  hour: "2-digit",
-  minute: "2-digit",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
-
-/** "00:33 · 5 Ağustos 2026" biçiminde mutlak zaman. */
-function formatAbsoluteDateTime(createdAt: number) {
-  const parts = absoluteDateTimeFormatter.formatToParts(
-    new Date(createdAt),
-  );
-  const pick = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((part) => part.type === type)?.value ?? "";
-
-  return `${pick("hour")}:${pick("minute")} · ${pick("day")} ${pick("month")} ${pick("year")}`;
-}
-
 export default function CampusPostDetail({ postId }: { postId: string }) {
+  const router = useRouter();
   const { showToast } = useFeedback();
   const { isGuest } = useCampusAccount();
   const {
@@ -91,23 +57,18 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
   const [selectedGif, setSelectedGif] = useState<CampusGifData | undefined>();
   const [isGifPickerOpen, setIsGifPickerOpen] = useState(false);
   const [formMessage, setFormMessage] = useState("");
-  const [isCommentSubmitting, setIsCommentSubmitting] =
-    useState(false);
-  const [hasDetailRequestCompleted, setHasDetailRequestCompleted] =
-    useState(false);
-  const [replyTargetId, setReplyTargetId] = useState<string | null>(null);
+  const [isCommentSubmitting, setIsCommentSubmitting] = useState(false);
   // Kutu tek satır başlar; odaklanınca araçlar açılır.
   const [isReplyExpanded, setIsReplyExpanded] = useState(false);
+  const commentInputRef = useRef<HTMLTextAreaElement>(null);
+  const [hasDetailRequestCompleted, setHasDetailRequestCompleted] =
+    useState(false);
   const [isNotificationTarget, setIsNotificationTarget] = useState(false);
   const [targetCommentId, setTargetCommentId] = useState<string | null>(
     null,
   );
-  const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const commentsSectionRef = useRef<HTMLElement>(null);
   const post = posts.find((currentPost) => currentPost.id === postId);
-  const replyTarget = post?.comments.find(
-    (comment) => comment.id === replyTargetId && !comment.isDeleted,
-  );
 
   useEffect(() => {
     if (!isHydrated || isGuest) {
@@ -192,15 +153,13 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
     setCommentDraft((currentDraft) =>
       currentDraft.length + emoji.length <= 500
         ? `${currentDraft}${emoji}`
-        : currentDraft
+        : currentDraft,
     );
     setFormMessage("");
     setIsEmojiPickerOpen(false);
   };
 
-  const submitComment = async (
-    event: FormEvent<HTMLFormElement>,
-  ) => {
+  const submitComment = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (isGuest) {
@@ -225,13 +184,11 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
       await addComment(postId, {
         body,
         isAnonymous,
-        parentId: replyTarget?.id,
         gif: selectedGif,
       });
       setCommentDraft("");
       setSelectedGif(undefined);
       setIsGifPickerOpen(false);
-      setReplyTargetId(null);
       setIsEmojiPickerOpen(false);
       setFormMessage("");
       showToast({
@@ -285,7 +242,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
         </div>
       </header>
 
-      <article className="border-b border-white/10 px-4 py-6 sm:m-3 sm:border sm:bg-white/[0.015] sm:px-6 sm:py-7">
+      <article className="border-b border-white/10 px-4 py-6 sm:px-6 sm:py-7">
         <header className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-3">
             <CampusAuthorProfileLink
@@ -380,9 +337,9 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
 
             {/* Detayda göreli değil mutlak zaman: gönderiyi açan kişi tam
                 olarak ne zaman paylaşıldığını görmek ister. */}
-            <p className="mt-5 border-t border-white/8 pt-4 text-sm text-white/50">
+            <p className="mt-4 text-sm text-white/50">
               <time dateTime={new Date(post.createdAt).toISOString()}>
-                {formatAbsoluteDateTime(post.createdAt)}
+                {formatCampusAbsoluteDateTime(post.createdAt)}
               </time>
               {post.edited && !post.isDeleted ? " · düzenlendi" : ""}
               {post.isHidden ? " · inceleme altında" : ""}
@@ -413,7 +370,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                     : `Gönderiyi beğen, ${post.likes} beğeni`
                 }
                 onClick={() => toggleLike(post.id)}
-                className={`inline-flex min-h-11 items-center gap-2 px-2 text-xs font-bold transition-colors ${focusRing} ${
+                className={`campus-pop-on-active inline-flex min-h-12 items-center gap-2.5 px-3 text-base font-bold transition-colors ${focusRing} ${
                   post.liked
                     ? "text-[#df8b83]"
                     : "text-white/54 hover:text-[#df8b83]"
@@ -426,6 +383,17 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                 <span>beğeni</span>
               </button>
 
+              {/* Ayrı sayfada, dikkat dağılmadan yorum yazmak için. */}
+              <Link
+                href={`/gonderi/${post.id}/yorum-yaz`}
+                aria-label={`Yorum yaz, ${post.commentCount ?? post.comments.length} yorum`}
+                className={`campus-pop-on-active inline-flex min-h-12 items-center gap-2.5 px-3 text-base font-bold text-white/54 transition-colors hover:text-[#ff7a45] ${focusRing}`}
+              >
+                <CommentIcon />
+                <span>{post.commentCount ?? post.comments.length}</span>
+                <span className="hidden min-[380px]:inline">yorum</span>
+              </Link>
+
               <button
                 type="button"
                 aria-pressed={post.bookmarked}
@@ -435,7 +403,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                     : "Gönderiyi kaydet"
                 }
                 onClick={() => toggleBookmark(post.id)}
-                className={`grid size-11 shrink-0 place-items-center rounded-full transition-colors ${focusRing} ${
+                className={`campus-pop-on-active grid size-12 shrink-0 place-items-center rounded-full transition-colors ${focusRing} ${
                   post.bookmarked
                     ? "text-[#ff7a45]"
                     : "text-white/48 hover:bg-white/6 hover:text-[#ff7a45]"
@@ -491,177 +459,158 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
             onSubmit={submitComment}
             className="border-b border-white/8 py-5"
           >
-          {replyTarget && (
-            <div className="mb-3 flex min-h-11 items-center justify-between gap-3 border-l-2 border-[#ff7a45] bg-[#ff7a45]/8 px-3 text-xs">
-              <p className="min-w-0 truncate">
-                <CampusAuthorProfileLink
-                  author={replyTarget.author}
-                  authorId={replyTarget.authorId}
-                  isAnonymous={replyTarget.isAnonymous}
-                  ariaLabel={`${replyTarget.author} profilini aç`}
-                  linkClassName={`font-black transition-colors hover:text-[#ff7a45] ${focusRing}`}
-                >
-                  <span className="font-black">{replyTarget.author}</span>
-                </CampusAuthorProfileLink>{" "}
-                kullanıcısına yanıt yazıyorsun.
-              </p>
-              <button
-                type="button"
-                onClick={() => setReplyTargetId(null)}
-                className={`min-h-10 shrink-0 cursor-pointer px-2 font-black text-[#ff7a45] ${focusRing}`}
-              >
-                Vazgeç
-              </button>
-            </div>
-          )}
-          {/* Solda profil, sağda yalnızca yazı alanı; çerçeve yok. */}
-          <div className="flex items-start gap-3">
-            <CampusAuthorAvatar
-              author={isAnonymous ? "Anonim" : "@sen"}
-              authorId={LOCAL_ACCOUNT_OWNER_ID}
-              isAnonymous={isAnonymous}
-              className="shrink-0"
-            />
-            <div className="min-w-0 flex-1">
-              <label
-                htmlFor={`post-comment-input-${post.id}`}
-                className="sr-only"
-              >
-                Yorumunu ekle
-              </label>
-              <p id={commentIdentityId} className="sr-only">
-                {isAnonymous
-                  ? "Diğer öğrenciler seni anonim görecek."
-                  : "Profilinle görünecek."}
-              </p>
-              <textarea
-            ref={commentInputRef}
-            onFocus={() => setIsReplyExpanded(true)}
-            id={`post-comment-input-${post.id}`}
-            value={commentDraft}
-            onChange={(event) => {
-              setCommentDraft(event.target.value);
-              setFormMessage("");
-            }}
-            maxLength={500}
-            rows={1}
-            placeholder="Ne düşünüyorsun?"
-            aria-describedby={`${commentIdentityId} post-comment-help-${post.id}`}
-            /* Akıştaki konu alanıyla aynı dil: çerçevesiz, saydam, iri yazı. */
-            className={`max-h-48 min-h-12 w-full resize-none border-0 bg-transparent px-0 py-2 text-lg font-semibold leading-7 text-white outline-none ring-0 placeholder:font-medium placeholder:text-white/42 focus:outline-none focus:ring-0 focus-visible:ring-0 sm:text-xl`}
+            {/* Solda profil, sağda yalnızca yazı alanı; çerçeve yok. */}
+            <div className="flex items-start gap-3">
+              <CampusAuthorAvatar
+                author={isAnonymous ? "Anonim" : "@sen"}
+                authorId={LOCAL_ACCOUNT_OWNER_ID}
+                isAnonymous={isAnonymous}
+                className="shrink-0"
               />
+              <div className="min-w-0 flex-1">
+                <label
+                  htmlFor={`post-comment-input-${post.id}`}
+                  className="sr-only"
+                >
+                  Yorumunu ekle
+                </label>
+                <p id={commentIdentityId} className="sr-only">
+                  {isAnonymous
+                    ? "Diğer öğrenciler seni anonim görecek."
+                    : "Profilinle görünecek."}
+                </p>
+                <textarea
+                  ref={commentInputRef}
+                  onFocus={() => setIsReplyExpanded(true)}
+                  id={`post-comment-input-${post.id}`}
+                  value={commentDraft}
+                  onChange={(event) => {
+                    setCommentDraft(event.target.value);
+                    setFormMessage("");
+                  }}
+                  maxLength={500}
+                  rows={1}
+                  placeholder="Ne düşünüyorsun?"
+                  aria-describedby={`${commentIdentityId} post-comment-help-${post.id}`}
+                  /* Akıştaki konu alanıyla aynı dil: çerçevesiz, saydam, iri yazı. */
+                  className="max-h-48 min-h-12 w-full resize-none border-0 bg-transparent px-0 py-2 text-lg font-semibold leading-7 text-white outline-none ring-0 placeholder:font-medium placeholder:text-white/42 focus:outline-none focus:ring-0 focus-visible:ring-0 sm:text-xl"
+                />
+              </div>
+
+              {/* Kapalıyken buton satırın sağında durur. */}
+              {!isReplyExpanded && (
+                <button
+                  type="submit"
+                  disabled={
+                    (!commentDraft.trim() && !selectedGif) ||
+                    isCommentSubmitting
+                  }
+                  className={`shrink-0 self-center ${campusButton.primary}`}
+                >
+                  Yorum yap
+                </button>
+              )}
             </div>
 
-            {/* Kapalıyken buton satırın sağında durur. */}
-            {!isReplyExpanded && (
+            {selectedGif && (
+              <div className="relative">
+                <CampusGif gif={selectedGif} compact />
+                <button
+                  type="button"
+                  onClick={() => setSelectedGif(undefined)}
+                  aria-label="Seçilen GIF'i kaldır"
+                  className={`absolute top-2 right-2 grid size-9 place-items-center rounded-full bg-black/75 text-sm font-black text-white hover:bg-black ${focusRing}`}
+                >
+                  ×
+                </button>
+              </div>
+            )}
+
+            <div
+              className={`mt-3 flex-wrap items-center justify-between gap-3 ${
+                isReplyExpanded ? "flex" : "hidden"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 border border-white/12 px-3 text-xs font-bold">
+                  <input
+                    type="checkbox"
+                    checked={isAnonymous}
+                    onChange={(event) => setIsAnonymous(event.target.checked)}
+                    className="size-4 accent-[#ff7a45]"
+                  />
+                  Anonim
+                </label>
+
+                <div className="relative">
+                  <button
+                    type="button"
+                    aria-label="Yoruma emoji ekle"
+                    aria-expanded={isEmojiPickerOpen}
+                    onClick={() =>
+                      setIsEmojiPickerOpen((currentValue) => !currentValue)
+                    }
+                    className={`grid size-11 place-items-center border border-white/12 text-lg transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+                  >
+                    <span aria-hidden="true">☺</span>
+                  </button>
+
+                  {isEmojiPickerOpen && (
+                    <CampusEmojiPicker onSelect={appendEmoji} />
+                  )}
+                </div>
+                <div className="relative">
+                  <button
+                    type="button"
+                    aria-label="Yoruma GIF ekle"
+                    onClick={() => setIsGifPickerOpen((value) => !value)}
+                    aria-expanded={isGifPickerOpen}
+                    className={`grid size-11 place-items-center border border-white/12 text-[10px] font-black text-[#ff7a45] transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+                  >
+                    GIF
+                  </button>
+                  {isGifPickerOpen && (
+                    <GiphyPicker
+                      onClose={() => setIsGifPickerOpen(false)}
+                      onSelect={(gif) => {
+                        setSelectedGif(gif);
+                        setIsGifPickerOpen(false);
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+
               <button
                 type="submit"
                 disabled={
-                  (!commentDraft.trim() && !selectedGif) ||
-                  isCommentSubmitting
+                  (!commentDraft.trim() && !selectedGif) || isCommentSubmitting
                 }
-                className={`shrink-0 self-center ${campusButton.primary}`}
+                className={`${campusButton.primary} disabled:cursor-not-allowed disabled:opacity-45`}
               >
                 Yorum yap
               </button>
-            )}
-          </div>
+            </div>
 
-          {selectedGif && (
-            <div className="relative">
-              <CampusGif gif={selectedGif} compact />
-              <button
-                type="button"
-                onClick={() => setSelectedGif(undefined)}
-                aria-label="Seçilen GIF'i kaldır"
-                className={`absolute top-2 right-2 grid size-9 place-items-center rounded-full bg-black/75 text-sm font-black text-white hover:bg-black ${focusRing}`}
+            <div
+              id={`post-comment-help-${post.id}`}
+              className="mt-2 flex min-h-5 items-center justify-between gap-3 text-[11px] font-medium"
+            >
+              <p
+                role="status"
+                aria-live="polite"
+                className={
+                  formMessage === "Yorumun eklendi."
+                    ? "text-[#9fc5a3]"
+                    : "text-[#ffb199]"
+                }
               >
-                ×
-              </button>
+                {formMessage}
+              </p>
+              <span className="ml-auto shrink-0 font-mono text-white/42">
+                {commentDraft.length}/500
+              </span>
             </div>
-          )}
-
-          <div
-            className={`mt-3 flex-wrap items-center justify-between gap-3 ${
-              isReplyExpanded ? "flex" : "hidden"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 border border-white/12 px-3 text-xs font-bold">
-                <input
-                  type="checkbox"
-                  checked={isAnonymous}
-                  onChange={(event) => setIsAnonymous(event.target.checked)}
-                  className="size-4 accent-[#ff7a45]"
-                />
-                Anonim
-              </label>
-
-              <div className="relative">
-                <button
-                  type="button"
-                  aria-label="Yoruma emoji ekle"
-                  aria-expanded={isEmojiPickerOpen}
-                  onClick={() =>
-                    setIsEmojiPickerOpen((currentValue) => !currentValue)
-                  }
-                  className={`grid size-11 place-items-center border border-white/12 text-lg transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
-                >
-                  <span aria-hidden="true">☺</span>
-                </button>
-
-                {isEmojiPickerOpen && (
-                  <EmojiPicker onSelect={appendEmoji} />
-                )}
-              </div>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsGifPickerOpen((value) => !value)}
-                  aria-expanded={isGifPickerOpen}
-                  className={`grid size-11 place-items-center border border-white/12 text-[10px] font-black text-[#ff7a45] transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
-                >
-                  GIF
-                </button>
-                {isGifPickerOpen && (
-                  <GiphyPicker
-                    onClose={() => setIsGifPickerOpen(false)}
-                    onSelect={(gif) => { setSelectedGif(gif); setIsGifPickerOpen(false); }}
-                  />
-                )}
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={
-                (!commentDraft.trim() && !selectedGif) || isCommentSubmitting
-              }
-              className={`${campusButton.primary} disabled:cursor-not-allowed disabled:opacity-45 `}
-            >
-              Yorum yap
-            </button>
-          </div>
-
-          <div
-            id={`post-comment-help-${post.id}`}
-            className="mt-2 flex min-h-5 items-center justify-between gap-3 text-[11px] font-medium"
-          >
-            <p
-              role="status"
-              aria-live="polite"
-              className={
-                formMessage === "Yorumun eklendi."
-                  ? "text-[#9fc5a3]"
-                  : "text-[#ffb199]"
-              }
-            >
-              {formMessage}
-            </p>
-            <span className="ml-auto shrink-0 font-mono text-white/42">
-              {commentDraft.length}/500
-            </span>
-          </div>
           </form>
         )}
 
@@ -723,8 +672,19 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                         aria-hidden="true"
                         className="size-1 rounded-full bg-white/24"
                       />
-                      <time className="text-sm text-white/50">
-                        {comment.time}
+                      {/* Göreli değil tam zaman: yorumun ne zaman yazıldığı
+                          gönderi detayında da net görünsün. */}
+                      <time
+                        dateTime={
+                          comment.createdAt === undefined
+                            ? undefined
+                            : new Date(comment.createdAt).toISOString()
+                        }
+                        className="text-sm text-white/50"
+                      >
+                        {comment.createdAt === undefined
+                          ? comment.time
+                          : formatCampusAbsoluteDateTime(comment.createdAt)}
                         {comment.edited && !comment.isDeleted
                           ? " · düzenlendi"
                           : ""}
@@ -764,28 +724,25 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                     ) : (
                       <>
                         {comment.body && (
-                          <p className="mt-2 max-w-[78ch] whitespace-pre-wrap break-words text-sm leading-6 text-white/78 sm:text-[15px] sm:leading-7">
+                          /* Yoruma tıklayınca gönderi gibi kendi sayfası açılır. */
+                          <Link
+                            href={`/gonderi/${post.id}/yorum/${comment.id}`}
+                            className={`mt-2 block max-w-[78ch] whitespace-pre-wrap break-words text-base leading-7 tracking-[-0.01em] text-white/78 sm:text-[17px] sm:leading-8 ${focusRing}`}
+                          >
                             {comment.body}
-                          </p>
+                          </Link>
                         )}
                         {comment.gif && <CampusGif gif={comment.gif} compact />}
+                        {/* Yanıt, sayfayı yukarı kaydırmak yerine yorumun
+                            kendi sayfasında yazılır. */}
                         <CampusCommentActions
                           postId={post.id}
                           comment={comment}
-                          onReply={() => {
-                            setReplyTargetId(comment.id);
-                            window.setTimeout(() => {
-                              commentInputRef.current?.focus();
-                              commentInputRef.current?.scrollIntoView({
-                                behavior: window.matchMedia(
-                                  "(prefers-reduced-motion: reduce)",
-                                ).matches
-                                  ? "auto"
-                                  : "smooth",
-                                block: "center",
-                              });
-                            }, 0);
-                          }}
+                          onReply={() =>
+                            router.push(
+                              `/gonderi/${post.id}/yorum/${comment.id}`,
+                            )
+                          }
                         />
                       </>
                     )}
@@ -854,25 +811,19 @@ function MissingPost() {
   );
 }
 
-function EmojiPicker({ onSelect }: { onSelect: (emoji: string) => void }) {
+function CommentIcon() {
   return (
-    <div
-      role="group"
-      aria-label="Yorum emojileri"
-      className="absolute right-0 bottom-[calc(100%+0.5rem)] z-40 grid w-48 grid-cols-4 gap-1 border border-white/12 bg-[#17191c] p-2 shadow-[0_16px_42px_rgba(0,0,0,0.4)] sm:right-auto sm:left-0"
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+      className="size-6"
     >
-      {quickEmojis.map((emoji) => (
-        <button
-          key={emoji.value}
-          type="button"
-          aria-label={`${emoji.label} emojisini ekle`}
-          onClick={() => onSelect(emoji.value)}
-          className={`grid size-10 place-items-center rounded-lg text-xl transition-colors hover:bg-[#ff7a45]/10 ${focusRing}`}
-        >
-          <span aria-hidden="true">{emoji.value}</span>
-        </button>
-      ))}
-    </div>
+      <path d="M16.3 9.1c0 3.4-2.8 6-6.3 6a7 7 0 0 1-2.3-.4L4 16l1.1-3A5.8 5.8 0 0 1 3.7 9.1c0-3.4 2.8-6.1 6.3-6.1s6.3 2.7 6.3 6.1Z" />
+    </svg>
   );
 }
 
@@ -901,7 +852,7 @@ function HeartIcon({ filled }: { filled: boolean }) {
       aria-hidden="true"
       viewBox="0 0 20 20"
       fill={filled ? "currentColor" : "none"}
-      className="size-[18px]"
+      className="size-6"
     >
       <path
         d="M10 16.2s-6-3.4-6-8.1A3.3 3.3 0 0 1 10 6a3.3 3.3 0 0 1 6 2.1c0 4.7-6 8.1-6 8.1Z"
@@ -919,7 +870,7 @@ function BookmarkIcon({ filled }: { filled: boolean }) {
       aria-hidden="true"
       viewBox="0 0 20 20"
       fill={filled ? "currentColor" : "none"}
-      className="size-[18px]"
+      className="size-6"
     >
       <path
         d="M5.2 3.2h9.6v13.6L10 13.9l-4.8 2.9V3.2Z"

@@ -1,5 +1,4 @@
 import AppNavigation from "@/components/AppNavigation";
-import CampusCalendarWidget from "@/components/CampusCalendarWidget";
 import { CampusAccountProvider } from "@/components/CampusAccountProvider";
 import { CampusDataProvider } from "@/components/CampusDataProvider";
 import { CampusFollowProvider } from "@/components/CampusFollowProvider";
@@ -7,7 +6,7 @@ import { CampusModerationProvider } from "@/components/CampusModerationProvider"
 import { CampusNotificationProvider } from "@/components/CampusNotificationProvider";
 import CampusSessionGate from "@/components/CampusSessionGate";
 import { FeedbackProvider } from "@/components/FeedbackProvider";
-import FollowSuggestions from "@/components/FollowSuggestions";
+import PlatformRightRail from "@/components/PlatformRightRail";
 
 export default function PlatformLayout({
   children,
@@ -42,10 +41,7 @@ export default function PlatformLayout({
                   {children}
                 </main>
                 <div className="hidden min-w-0 lg:col-start-3 lg:row-start-1 lg:block">
-                  <div className="sticky top-0 max-h-svh space-y-3 overflow-y-auto p-3">
-                    <FollowSuggestions />
-                    <CampusCalendarWidget />
-                  </div>
+                  <PlatformRightRail />
                 </div>
               </div>
                   </div>

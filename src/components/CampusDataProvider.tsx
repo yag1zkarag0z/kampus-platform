@@ -31,6 +31,7 @@ import {
   deleteContentPost as deleteContentPostRequest,
   getContentPost as getContentPostRequest,
   listContentPosts as listContentPostsRequest,
+  setContentCommentLike as setContentCommentLikeRequest,
   setContentPostBookmark as setContentPostBookmarkRequest,
   setContentPostLike as setContentPostLikeRequest,
   voteInContentPoll as voteInContentPollRequest,
@@ -122,6 +123,7 @@ type CampusDataContextValue = {
   createPost: (input: CreateCampusPostInput) => Promise<string>;
   toggleLike: (postId: string) => void;
   toggleBookmark: (postId: string) => void;
+  toggleCommentLike: (postId: string, commentId: string) => Promise<void>;
   voteInPoll: (postId: string, optionId: string) => void;
   addComment: (
     postId: string,
@@ -809,6 +811,40 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         }
       });
   }, [retrySession, sessionMode, updatePosts]);
+
+  const toggleCommentLike = useCallback(
+    async (postId: string, commentId: string) => {
+      if (sessionMode !== "member") {
+        return;
+      }
+
+      const current = postsRef.current
+        .find((post) => post.id === postId)
+        ?.comments.find((comment) => comment.id === commentId);
+
+      if (!current) {
+        return;
+      }
+
+      const updated = toCampusComment(
+        await setContentCommentLikeRequest(commentId, !current.liked),
+      );
+
+      updatePosts((currentPosts) =>
+        currentPosts.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                comments: post.comments.map((comment) =>
+                  comment.id === commentId ? updated : comment,
+                ),
+              }
+            : post,
+        ),
+      );
+    },
+    [sessionMode, updatePosts],
+  );
 
   const voteInPoll = useCallback(
     (postId: string, optionId: string) => {
@@ -1504,6 +1540,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
       createPost,
       toggleLike,
       toggleBookmark,
+      toggleCommentLike,
       voteInPoll,
       addComment,
       updatePost,
@@ -1527,6 +1564,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
       createPost,
       toggleLike,
       toggleBookmark,
+      toggleCommentLike,
       voteInPoll,
       addComment,
       updatePost,
