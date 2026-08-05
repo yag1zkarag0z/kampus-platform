@@ -296,11 +296,8 @@ export default function CampusPostActions({
         return;
       }
 
+      // Pencere kapanıyor ve metin ekranda değişiyor; toast tekrar olurdu.
       setIsEditDialogOpen(false);
-      showToast({
-        message: "Gönderi güncellendi.",
-        tone: "success",
-      });
     } catch {
       setEditMessage("Gönderi güncellenemedi. Tekrar dene.");
     }

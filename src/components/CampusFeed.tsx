@@ -31,11 +31,16 @@ import CampusPostCardSurface from "@/components/CampusPostCardSurface";
 import CampusPostImage from "@/components/CampusPostImage";
 import CampusGif from "@/components/CampusGif";
 import GiphyPicker from "@/components/GiphyPicker";
+import { AuthClientError } from "@/auth/client";
 import {
   deleteUnattachedContentImage,
   uploadContentImage,
 } from "@/content/client";
-import { CAMPUS_POST_BODY_MAX_LENGTH } from "@/data/campusContentRules";
+import { useAutoGrowTextarea } from "@/components/useAutoGrowTextarea";
+import {
+  CAMPUS_POST_BODY_MAX_LENGTH,
+  CAMPUS_POST_TITLE_MAX_LENGTH,
+} from "@/data/campusContentRules";
 import {
   campusCategoryBadgeBase,
   campusCategoryStyles,
@@ -58,6 +63,32 @@ const feedViews: { id: FeedView; label: string }[] = [
 ];
 
 const COMPOSER_DRAFT_KEY = "kampus-composer-draft";
+
+/**
+ * Paylaşım hatasını kullanıcıya anlatır. Sunucunun gönderdiği Türkçe mesaj
+ * varsa o kullanılır; hız sınırında kalan süre de eklenir.
+ */
+function describeComposerError(error: unknown) {
+  if (!(error instanceof AuthClientError)) {
+    return "Gönderi paylaşılamadı. Tekrar dene.";
+  }
+
+  if (error.code !== "CONTENT_RATE_LIMITED") {
+    return error.message;
+  }
+
+  const seconds = error.retryAfterSeconds ?? 0;
+
+  if (seconds <= 0) {
+    return error.message;
+  }
+
+  const minutes = Math.ceil(seconds / 60);
+
+  return seconds < 60
+    ? `${error.message} (${seconds} saniye)`
+    : `${error.message} (${minutes} dakika)`;
+}
 
 const composerCategories: CampusPostCategory[] = [
   "Sohbet",
@@ -228,6 +259,8 @@ export default function CampusFeed() {
     useState<CampusCategoryFilter>("Tümü");
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
   const [quickPostBody, setQuickPostBody] = useState("");
+  // Başlık isteğe bağlı: kısa paylaşımlar başlıksız, konular başlıklı akar.
+  const [quickPostTitle, setQuickPostTitle] = useState("");
   const [quickPostMessage, setQuickPostMessage] = useState("");
   const [isQuickPostSubmitting, setIsQuickPostSubmitting] = useState(false);
   const [quickPostGif, setQuickPostGif] = useState<CampusGifData | undefined>();
@@ -289,6 +322,7 @@ export default function CampusFeed() {
         if (!stored) return;
 
         const draft = JSON.parse(stored) as {
+          title?: string;
           body?: string;
           category?: CampusPostCategory;
           isAnonymous?: boolean;
@@ -296,6 +330,12 @@ export default function CampusFeed() {
 
         if (draft.body) {
           setQuickPostBody(draft.body.slice(0, CAMPUS_POST_BODY_MAX_LENGTH));
+          setIsComposerExpanded(true);
+        }
+        if (draft.title) {
+          setQuickPostTitle(
+            draft.title.slice(0, CAMPUS_POST_TITLE_MAX_LENGTH),
+          );
           setIsComposerExpanded(true);
         }
         if (draft.category) setComposerCategory(draft.category);
@@ -313,10 +353,11 @@ export default function CampusFeed() {
   // Taslağı sakla.
   useEffect(() => {
     try {
-      if (quickPostBody.trim()) {
+      if (quickPostBody.trim() || quickPostTitle.trim()) {
         window.sessionStorage.setItem(
           COMPOSER_DRAFT_KEY,
           JSON.stringify({
+            title: quickPostTitle,
             body: quickPostBody,
             category: composerCategory,
             isAnonymous: isComposerAnonymous,
@@ -328,16 +369,14 @@ export default function CampusFeed() {
     } catch {
       // Depolama kapalıysa taslak korunmaz, akış etkilenmez.
     }
-  }, [composerCategory, isComposerAnonymous, quickPostBody]);
+  }, [
+    composerCategory,
+    isComposerAnonymous,
+    quickPostBody,
+    quickPostTitle,
+  ]);
 
-  // Yazı alanı içeriğe göre büyüsün.
-  useEffect(() => {
-    const textarea = quickPostBodyRef.current;
-    if (!textarea) return;
-
-    textarea.style.height = "auto";
-    textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [quickPostBody]);
+  useAutoGrowTextarea(quickPostBodyRef, quickPostBody);
 
   useEffect(() => {
     if (!isComposerExpanded) {
@@ -352,6 +391,7 @@ export default function CampusFeed() {
       // Yazılmış içerik veya ek varken kapatmak veri kaybı gibi hissettirir.
       const hasDraft =
         quickPostBody.trim().length > 0 ||
+        quickPostTitle.trim().length > 0 ||
         Boolean(quickPostImage) ||
         Boolean(quickPostGif) ||
         isPollEnabled;
@@ -372,6 +412,7 @@ export default function CampusFeed() {
     isComposerExpanded,
     isPollEnabled,
     quickPostBody,
+    quickPostTitle,
     quickPostGif,
     quickPostImage,
   ]);
@@ -597,6 +638,7 @@ export default function CampusFeed() {
       }
 
       await createPost({
+        title: isPollEnabled ? undefined : quickPostTitle.trim() || undefined,
         body,
         category: isPollEnabled ? "Anket" : composerCategory,
         isAnonymous: isComposerAnonymous,
@@ -605,6 +647,7 @@ export default function CampusFeed() {
         pollOptions: isPollEnabled ? normalizedPollOptions : undefined,
       });
       setQuickPostBody("");
+      setQuickPostTitle("");
       setComposerCategory("Sohbet");
       setIsComposerAnonymous(false);
       setIsComposerExpanded(false);
@@ -621,24 +664,30 @@ export default function CampusFeed() {
       setPollOptions(["", ""]);
       setPollError("");
       setQuickPostMessage("");
-      showToast({
-        message: "Gönderin akışta paylaşıldı.",
-        tone: "success",
-      });
       setFeedScope("global");
       setActiveCategory("Tümü");
-    } catch {
+      // Toast yerine sonucun kendisi: akış başa sarılır ve yeni gönderi
+      // görünür. Aşağı kaydırmışken paylaşan kullanıcı aksi halde hiçbir
+      // geri bildirim görmezdi.
+      window.scrollTo({
+        top: 0,
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+      });
+    } catch (error) {
       if (uploadedImageId) {
         await deleteUnattachedContentImage(uploadedImageId).catch(
           () => undefined,
         );
       }
 
-      setQuickPostMessage("Gönderi paylaşılamadı. Tekrar dene.");
-      showToast({
-        message: "Gönderi paylaşılamadı. Tekrar dene.",
-        tone: "error",
-      });
+      // Sunucu neden reddettiğini söylüyorsa onu göster: hız sınırına
+      // takılmakla sunucu hatası almak kullanıcı için aynı şey değil.
+      const message = describeComposerError(error);
+
+      setQuickPostMessage(message);
+      showToast({ message, tone: "error" });
     } finally {
       setIsQuickPostSubmitting(false);
     }
@@ -844,6 +893,27 @@ export default function CampusFeed() {
                 )}
               </div>
             )}
+          {/* Başlık yalnızca kutu açıkken ve anket dışında görünür. */}
+          {isComposerExpanded && !isPollEnabled && (
+            <>
+              <label htmlFor="campus-quick-post-title" className="sr-only">
+                Başlık (isteğe bağlı)
+              </label>
+              <input
+                id="campus-quick-post-title"
+                type="text"
+                value={quickPostTitle}
+                onChange={(event) => {
+                  setQuickPostTitle(event.target.value);
+                  setQuickPostMessage("");
+                }}
+                maxLength={CAMPUS_POST_TITLE_MAX_LENGTH}
+                placeholder="Başlık ekle (isteğe bağlı)"
+                className="w-full border-0 border-b border-white/10 bg-transparent px-0 py-2 text-xl font-black tracking-[-0.025em] text-white outline-none ring-0 placeholder:font-bold placeholder:text-white/38 focus:border-[#ff7a45]/45 focus:outline-none focus:ring-0 sm:text-2xl"
+              />
+            </>
+          )}
+
           <textarea
             ref={quickPostBodyRef}
             onFocus={() => setIsComposerExpanded(true)}
@@ -867,7 +937,8 @@ export default function CampusFeed() {
               isPollEnabled ? "Anket sorun ne?" : "Kampüste ne oluyor?"
             }
             aria-label="Gönderi metni"
-            className="max-h-48 min-h-14 w-full resize-none border-0 bg-transparent px-0 py-2 text-xl font-semibold leading-8 text-white outline-none ring-0 placeholder:font-medium placeholder:text-white/42 focus:outline-none focus:ring-0 sm:text-2xl"
+            /* Kapak yok: 500 karakterin tamamı yazarken görünür kalsın. */
+            className="min-h-14 w-full resize-none overflow-y-auto border-0 bg-transparent px-0 py-2 text-xl font-semibold leading-8 text-white outline-none ring-0 placeholder:font-medium placeholder:text-white/42 focus:outline-none focus:ring-0 sm:text-2xl"
           />
 
             {isComposerExpanded && (
@@ -1285,7 +1356,7 @@ export default function CampusFeed() {
                     )}
 
                     {post.body && (
-                      <p className="mt-2.5 max-w-[74ch] whitespace-pre-wrap break-words text-base leading-7 tracking-[-0.01em] text-white/78 [overflow-wrap:anywhere] sm:text-[17px] sm:leading-8">
+                      <p className="mt-2.5 max-w-[74ch] whitespace-pre-wrap break-words text-base leading-7 tracking-[-0.01em] text-white/78 [overflow-wrap:anywhere] sm:text-lg sm:leading-8">
                         {post.body}
                       </p>
                     )}

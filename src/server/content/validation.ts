@@ -92,12 +92,17 @@ function normalizeUrlCandidate(value: string) {
     .replace(/[\u3002\uFF0E\uFF61]/gu, ".")
     .replace(/&#(?:46|x0*2e);|&period;/giu, ".")
     .replace(/&#(?:47|x0*2f);/giu, "/")
+    // Gizleme kalıpları çevrelerindeki boşluğu da yutar; sonuç her zaman
+    // bitişik bir alan adı adayı olur.
     .replace(
-      /(?:\[|\(|\{)\s*(?:\.|dot|nokta)\s*(?:\]|\)|\})/giu,
+      /\s*(?:\[|\(|\{)\s*(?:\.|dot|nokta)\s*(?:\]|\)|\})\s*/giu,
       ".",
     )
     .replace(/\s+(?:dot|nokta)\s+/giu, ".")
-    .replace(/\s*([.:/\\])\s*/gu, "$1");
+    // Çıplak ayraç yalnızca ÖNCESİNDE boşluk varsa birleştirilir. Cümle sonu
+    // noktasından önce boşluk olmadığı için "gittik. Sonra" olduğu gibi kalır
+    // ve alan adı sanılmaz; "example . com" ise yine yakalanır.
+    .replace(/\s+([.:/\\])\s*/gu, "$1");
 }
 
 function containsBareDomain(value: string) {

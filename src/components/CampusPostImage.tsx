@@ -17,6 +17,7 @@ export default function CampusPostImage({
   const [failedImageSource, setFailedImageSource] = useState<string | null>(
     null,
   );
+  const [isLoaded, setIsLoaded] = useState(false);
   const hasImageError = failedImageSource === image.src;
   const heightClassName =
     variant === "detail"
@@ -26,7 +27,7 @@ export default function CampusPostImage({
         : "max-h-[32rem]";
 
   return (
-    <div className="mt-4 overflow-hidden border border-white/12 bg-[#141720]">
+    <div className="relative mt-4 overflow-hidden border border-white/12 bg-[#141720]">
       {hasImageError ? (
         <div
           role="img"
@@ -46,20 +47,31 @@ export default function CampusPostImage({
           </div>
         </div>
       ) : (
-        <Image
-          src={image.src}
-          alt={image.alt}
-          width={image.width}
-          height={image.height}
-          unoptimized={image.src.startsWith("/v1/media/")}
-          sizes={
-            variant === "compact"
-              ? "(max-width: 768px) 100vw, 560px"
-              : "(max-width: 768px) 100vw, 900px"
-          }
-          onError={() => setFailedImageSource(image.src)}
-          className={`h-auto w-full object-cover ${heightClassName}`}
-        />
+        <>
+          {!isLoaded && (
+            <span
+              aria-hidden="true"
+              className="absolute inset-0 animate-pulse bg-white/6 motion-reduce:animate-none"
+            />
+          )}
+          <Image
+            src={image.src}
+            alt={image.alt}
+            width={image.width}
+            height={image.height}
+            unoptimized={image.src.startsWith("/v1/media/")}
+            sizes={
+              variant === "compact"
+                ? "(max-width: 768px) 100vw, 560px"
+                : "(max-width: 768px) 100vw, 900px"
+            }
+            onLoad={() => setIsLoaded(true)}
+            onError={() => setFailedImageSource(image.src)}
+            className={`h-auto w-full object-cover transition-opacity duration-300 motion-reduce:transition-none ${heightClassName} ${
+              isLoaded ? "opacity-100" : "opacity-0"
+            }`}
+          />
+        </>
       )}
     </div>
   );

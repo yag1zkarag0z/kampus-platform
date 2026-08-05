@@ -23,6 +23,47 @@ function toCampusGif(result: GiphyResult): CampusGif | null {
   return { id: result.id, src, width, height, alt: (result.title?.trim() || "GIPHY GIF").slice(0, 160) };
 }
 
+/**
+ * Izgaradaki tek kare. Her karenin kendi yükleme durumu olması gerektiği için
+ * ayrı bileşen: 50 GIF aynı anda inerken kareler siyah kalmasın.
+ */
+function GiphyTile({
+  gif,
+  onSelect,
+}: {
+  gif: CampusGif;
+  onSelect: (gif: CampusGif) => void;
+}) {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  return (
+    <button
+      type="button"
+      aria-label={`${gif.alt} GIF'ini seç`}
+      onClick={() => onSelect(gif)}
+      className={`relative aspect-square overflow-hidden bg-black/30 transition-opacity hover:opacity-80 ${focusRing}`}
+    >
+      {!isLoaded && (
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 animate-pulse bg-white/6 motion-reduce:animate-none"
+        />
+      )}
+      <Image
+        src={gif.src}
+        alt=""
+        fill
+        sizes="112px"
+        unoptimized
+        onLoad={() => setIsLoaded(true)}
+        className={`object-cover transition-opacity duration-300 motion-reduce:transition-none ${
+          isLoaded ? "opacity-100" : "opacity-0"
+        }`}
+      />
+    </button>
+  );
+}
+
 export default function GiphyPicker({
   onClose,
   onSelect,
@@ -136,15 +177,7 @@ export default function GiphyPicker({
           </p>
           <div className="mt-2 grid max-h-[min(56svh,24rem)] grid-cols-3 gap-1.5 overflow-y-auto overscroll-contain pr-1 sm:grid-cols-4">
           {results.map((gif) => (
-            <button
-              key={gif.id}
-              type="button"
-              aria-label={`${gif.alt} GIF'ini seç`}
-              onClick={() => onSelect(gif)}
-              className={`relative aspect-square overflow-hidden bg-black/30 transition-opacity hover:opacity-80 ${focusRing}`}
-            >
-              <Image src={gif.src} alt="" fill sizes="112px" unoptimized className="object-cover" />
-            </button>
+            <GiphyTile key={gif.id} gif={gif} onSelect={onSelect} />
           ))}
           </div>
         </>

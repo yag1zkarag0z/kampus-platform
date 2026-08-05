@@ -143,13 +143,7 @@ function GuestFollowConnections({
       });
       return;
     }
-
-    showToast({
-      message: followed
-        ? `${member.displayName} artık takip edilmiyor.`
-        : `${member.displayName} takip edilmeye başlandı.`,
-      tone: "success",
-    });
+    // Buton durumu değiştiği için ayrıca toast göstermiyoruz.
   };
 
   return (
@@ -350,13 +344,7 @@ function MemberFollowConnections({
       } else {
         await state.follow();
       }
-
-      showToast({
-        message: wasFollowing
-          ? `${member.displayName} artık takip edilmiyor.`
-          : `${member.displayName} takip edilmeye başlandı.`,
-        tone: "success",
-      });
+      // Buton durumu değiştiği için ayrıca toast göstermiyoruz.
     } catch (error) {
       showToast({
         message:

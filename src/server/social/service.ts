@@ -45,6 +45,7 @@ export type FollowMemberSummary = {
 
 export type SuggestedMemberSummary = FollowMemberSummary & {
   department: string;
+  bio: string;
 };
 
 function userNotFoundError() {
@@ -260,8 +261,13 @@ function toSuggestedMemberSummary(row: {
   displayName: string;
   avatarObjectKey: string | null;
   department: string;
+  bio: string;
 }): SuggestedMemberSummary {
-  return { ...toFollowMemberSummary(row), department: row.department };
+  return {
+    ...toFollowMemberSummary(row),
+    department: row.department,
+    bio: row.bio,
+  };
 }
 
 export async function getSuggestedMembers(
@@ -286,6 +292,8 @@ export async function getSuggestedMembers(
     displayName: users.displayName,
     avatarObjectKey: users.avatarObjectKey,
     department: users.department,
+    // Biyografi öneri kartında ilk bakışta görünüyor.
+    bio: users.bio,
   };
 
   const baseFilters: SQL[] = [

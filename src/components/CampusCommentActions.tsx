@@ -229,11 +229,8 @@ export default function CampusCommentActions({
         return;
       }
 
+      // Pencere kapanıyor ve metin ekranda değişiyor; toast tekrar olurdu.
       setDialog(null);
-      showToast({
-        message: "Yorum güncellendi.",
-        tone: "success",
-      });
     } catch {
       setFormMessage("Yorum güncellenemedi. Tekrar dene.");
     }

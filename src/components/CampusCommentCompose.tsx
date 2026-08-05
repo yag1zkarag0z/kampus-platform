@@ -12,6 +12,7 @@ import CampusGif from "@/components/CampusGif";
 import { useFeedback } from "@/components/FeedbackProvider";
 import GiphyPicker from "@/components/GiphyPicker";
 import { campusButton } from "@/components/campusButtonStyles";
+import { useAutoGrowTextarea } from "@/components/useAutoGrowTextarea";
 import {
   LOCAL_ACCOUNT_OWNER_ID,
   type CampusGif as CampusGifData,
@@ -40,6 +41,8 @@ export default function CampusCommentCompose({
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useAutoGrowTextarea(inputRef, draft);
 
   // Sayfa yorum yazmak için açıldı; kutu doğrudan hazır olsun.
   useEffect(() => {
@@ -133,7 +136,7 @@ export default function CampusCommentCompose({
                 maxLength={500}
                 rows={4}
                 placeholder="Ne düşünüyorsun?"
-                className="max-h-80 min-h-32 w-full resize-none border-0 bg-transparent px-0 py-2 text-lg font-semibold leading-8 text-white outline-none ring-0 placeholder:font-medium placeholder:text-white/42 focus:outline-none focus:ring-0 focus-visible:ring-0 sm:text-xl"
+                className="min-h-32 w-full resize-none overflow-y-auto border-0 bg-transparent px-0 py-2 text-lg font-semibold leading-8 text-white outline-none ring-0 placeholder:font-medium placeholder:text-white/42 focus:outline-none focus:ring-0 focus-visible:ring-0 sm:text-xl"
               />
             </div>
           </div>

@@ -140,11 +140,8 @@ export default function CampusNotifications() {
       return;
     }
 
-    const readCount = await markAllAsRead();
-    showToast({
-      message: `${readCount} bildirim okundu olarak işaretlendi.`,
-      tone: "success",
-    });
+    // Rozetler ve okunmadı vurguları ekranda temizlendiği için toast yok.
+    await markAllAsRead();
   };
 
   const getFilterCount = (filter: NotificationFilter) => {

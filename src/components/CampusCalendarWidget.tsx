@@ -49,9 +49,12 @@ export default function CampusCalendarWidget({
   return (
     <section
       aria-labelledby="campus-calendar-title"
-      className={`rounded-[1.35rem] border border-white/10 bg-white/4 ${className}`}
+      className={`overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#151a26] to-[#10141d] shadow-[0_1px_0_rgba(255,255,255,0.05)_inset,0_18px_40px_-24px_rgba(0,0,0,0.9)] ${className}`}
     >
-      <div className="border-b border-white/8 px-5 py-4">
+      {/* Turuncu ince şerit: takvim kampüsün kimlik rengini taşısın. */}
+      <div className="h-px w-full bg-gradient-to-r from-transparent via-[#ff7a45]/55 to-transparent" />
+
+      <div className="px-5 pt-4 pb-3">
         <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
           Yaklaşan
         </p>
@@ -73,10 +76,10 @@ export default function CampusCalendarWidget({
             return (
               <li
                 key={event.id}
-                className="border-b border-white/8 px-5 py-4 last:border-0"
+                className="border-t border-white/6 px-5 py-4 transition-colors hover:bg-white/[0.03]"
               >
                 <div className="flex items-start gap-3">
-                  <div className="grid size-11 shrink-0 place-items-center border border-white/12 bg-white/6 text-center">
+                  <div className="grid size-11 shrink-0 place-items-center rounded-xl border border-[#ff7a45]/22 bg-[#ff7a45]/10 text-center">
                     <span className="block text-sm font-black leading-none">
                       {badge.day}
                     </span>
@@ -118,9 +121,10 @@ export default function CampusCalendarWidget({
 
       <Link
         href="/takvim"
-        className={`block border-t border-white/8 px-5 py-3.5 text-xs font-bold text-[#ff7a45] transition-colors hover:bg-white/5 ${calendarFocusRing}`}
+        className={`flex items-center justify-between border-t border-white/8 px-5 py-3.5 text-xs font-black text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/8 ${calendarFocusRing}`}
       >
         Tüm akademik takvim
+        <span aria-hidden="true">→</span>
       </Link>
     </section>
   );

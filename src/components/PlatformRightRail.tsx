@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import CampusCalendarWidget from "@/components/CampusCalendarWidget";
@@ -51,31 +52,41 @@ export default function PlatformRightRail() {
   };
 
   return (
-    <div className="sticky top-0 max-h-svh space-y-3 overflow-y-auto p-3">
-      <button
-        type="button"
-        aria-expanded={isOpen}
-        aria-controls="platform-right-rail-content"
-        onClick={toggle}
-        className="ml-auto flex min-h-11 cursor-pointer items-center gap-2 rounded-full px-3 text-xs font-bold text-white/55 outline-none transition-colors hover:bg-white/8 hover:text-white focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40"
-      >
-        {isOpen ? "Paneli gizle" : "Paneli göster"}
-        <span
-          aria-hidden="true"
-          className={`text-sm transition-transform ${
-            isOpen ? "" : "rotate-180"
-          }`}
-        >
-          ›
-        </span>
-      </button>
-
+    <div className="sticky top-0 space-y-3 p-3">
+      {/* Takvim önce: kayıt ve sınav tarihleri zamana duyarlı, kaçırılırsa
+          telafisi yok. Takip önerisi her zaman geçerli, altta kalabilir. */}
       <div id="platform-right-rail-content" hidden={!isOpen}>
         <div className="space-y-3">
-          <FollowSuggestions />
           <CampusCalendarWidget />
+          <FollowSuggestions />
         </div>
       </div>
+
+      <footer className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 pb-2">
+        <Link
+          href="/sozlesme"
+          className="min-h-9 py-2 text-[11px] font-semibold text-white/40 outline-none transition-colors hover:text-white/70 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40"
+        >
+          Kullanım sözleşmesi
+        </Link>
+
+        {/* Panel kapatma en dikkat çekici öğe olmamalı; içeriğin altında. */}
+        <button
+          type="button"
+          aria-expanded={isOpen}
+          aria-controls="platform-right-rail-content"
+          onClick={toggle}
+          className="flex min-h-9 cursor-pointer items-center gap-1.5 py-2 text-[11px] font-semibold text-white/40 outline-none transition-colors hover:text-white/70 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40"
+        >
+          {isOpen ? "Paneli gizle" : "Paneli göster"}
+          <span
+            aria-hidden="true"
+            className={`transition-transform ${isOpen ? "" : "rotate-180"}`}
+          >
+            ›
+          </span>
+        </button>
+      </footer>
     </div>
   );
 }

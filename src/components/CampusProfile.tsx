@@ -159,18 +159,18 @@ export default function CampusProfile() {
       className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
     >
       <header className="sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl">
-        <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 sm:px-6">
-          <span aria-hidden="true" />
-          <div className="min-w-0 justify-self-center text-center">
-            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
-              {isGuest ? "Misafir hesabı" : "Hesabın"}
-            </p>
+        {/* X'teki gibi sola yaslı: ad ve altında gönderi sayısı. */}
+        <div className="flex min-h-16 items-center gap-3 px-4 sm:px-6">
+          <div className="min-w-0 flex-1">
             <h1
               id="profile-title"
-              className="mt-0.5 truncate text-2xl font-black tracking-[-0.04em] sm:text-3xl"
+              className="truncate text-xl font-black tracking-[-0.04em]"
             >
-              Profil
+              {isGuest ? "Misafir hesabı" : profile.displayName}
             </h1>
+            <p className="truncate text-xs font-semibold text-white/55">
+              {authoredTopics.length} gönderi
+            </p>
           </div>
 
           {isGuest ? (
@@ -193,103 +193,91 @@ export default function CampusProfile() {
         {/* Kapak alanı: banner yüklemesi yok, kimliği KAMPÜS logosu taşıyor. */}
         <div
           aria-hidden="true"
-          className="grid h-28 w-full place-items-center overflow-hidden border-b border-white/10 bg-[#12151d] sm:h-40"
+          className="grid h-32 w-full place-items-center overflow-hidden bg-[#12151d] sm:h-48"
         >
           <CampusLogo
             idPrefix="profile-cover-lockup"
-            wordmarkClassName="text-3xl sm:text-4xl"
+            wordmarkClassName="text-3xl opacity-40 sm:text-4xl"
           />
         </div>
 
-        <div className="px-4 pb-6 sm:px-6 sm:pb-8">
-          <div className="-mt-12 flex flex-col gap-5 min-[400px]:flex-row min-[400px]:items-start sm:-mt-16">
-            <span className="inline-flex shrink-0 rounded-full ring-4 ring-[#0a0d16]">
+        <div className="px-4 pb-6 sm:px-6">
+          {/* Avatar kapağa taşar, işlemler sağ üstte durur. */}
+          <div className="flex items-start justify-between gap-3">
+            <span className="-mt-14 inline-flex shrink-0 rounded-full ring-4 ring-[#0a0d16] sm:-mt-20">
               <Avatar
                 avatarUrl={profile.avatarUrl}
                 displayName={profile.displayName}
               />
             </span>
 
-            <div className="min-w-0 flex-1 min-[400px]:pt-14 sm:pt-[4.5rem]">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="min-w-0">
-                  <h2 className="break-words text-2xl font-black tracking-[-0.045em] sm:text-3xl">
-                    {profile.displayName}
-                  </h2>
-                  <p className="mt-1 break-all text-sm font-bold text-white/55">
-                    @{profile.username}
-                  </p>
-
-                  {settings.showDepartment && departmentLine && (
-                    <p className="mt-3 flex items-start gap-2 text-sm font-semibold text-white/66">
-                      <DepartmentIcon />
-                      <span>{departmentLine}</span>
-                    </p>
-                  )}
-
-                  <p className="mt-2 flex items-center gap-2 text-xs font-semibold text-white/55">
-                    <CalendarIcon />
-                    <span>{profile.joinedLabel}</span>
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-2 min-[360px]:flex-row lg:shrink-0">
-                  {isGuest ? (
-                    <>
-                      <Link
-                        href="/giris"
-                        className={`${campusButton.primary} `}
-                      >
-                        Giriş yap
-                      </Link>
-                      <Link
-                        href="/kayit"
-                        className={`${campusButton.secondary} `}
-                      >
-                        Kayıt ol
-                      </Link>
-                    </>
-                  ) : (
-                    <>
-                      <Link
-                        href="/profil/duzenle"
-                        className={`${campusButton.primary} `}
-                      >
-                        Profili düzenle
-                      </Link>
-                      <Link
-                        href="/ayarlar"
-                        className={`${campusButton.secondary} `}
-                      >
-                        Ayarlar
-                      </Link>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {profile.bio ? (
-                <p className="mt-5 max-w-2xl whitespace-pre-wrap break-words text-sm leading-6 text-white/78 [overflow-wrap:anywhere]">
-                  {profile.bio}
-                </p>
+            <div className="flex shrink-0 flex-col gap-2 pt-3 min-[360px]:flex-row">
+              {isGuest ? (
+                <>
+                  <Link href="/giris" className={campusButton.primary}>
+                    Giriş yap
+                  </Link>
+                  <Link href="/kayit" className={campusButton.secondary}>
+                    Kayıt ol
+                  </Link>
+                </>
               ) : (
-                <p className="mt-5 max-w-2xl text-sm leading-6 text-white/55">
-                  Kendinden ve kampüste ilgilendiğin konulardan kısaca
-                  bahsedebilirsin.
-                </p>
-              )}
-              {!isGuest && (
-                <CampusFollowConnections
-                  member={{
-                    authorId: LOCAL_ACCOUNT_OWNER_ID,
-                    username: normalizeAuthor(profile.username),
-                    author: `@${profile.username}`,
-                    displayName: profile.displayName,
-                  }}
-                  isSelf
-                />
+                <>
+                  <Link
+                    href="/profil/duzenle"
+                    className={campusButton.secondary}
+                  >
+                    Profili düzenle
+                  </Link>
+                </>
               )}
             </div>
+          </div>
+
+          {/* Ad, kullanıcı adı ve künye avatarın altında dikey akar. */}
+          <div className="mt-3 min-w-0">
+            <h2 className="break-words text-2xl font-black tracking-[-0.045em] sm:text-3xl">
+              {profile.displayName}
+            </h2>
+            <p className="mt-0.5 break-all text-sm font-bold text-white/55">
+              @{profile.username}
+            </p>
+
+            {profile.bio ? (
+              <p className="mt-3 max-w-2xl whitespace-pre-wrap break-words text-[15px] leading-6 text-white/78 [overflow-wrap:anywhere]">
+                {profile.bio}
+              </p>
+            ) : (
+              <p className="mt-3 max-w-2xl text-[15px] leading-6 text-white/55">
+                Kendinden ve kampüste ilgilendiğin konulardan kısaca
+                bahsedebilirsin.
+              </p>
+            )}
+
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/55">
+              {settings.showDepartment && departmentLine && (
+                <span className="inline-flex items-center gap-1.5">
+                  <DepartmentIcon />
+                  {departmentLine}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1.5">
+                <CalendarIcon />
+                {profile.joinedLabel}
+              </span>
+            </div>
+
+            {!isGuest && (
+              <CampusFollowConnections
+                member={{
+                  authorId: LOCAL_ACCOUNT_OWNER_ID,
+                  username: normalizeAuthor(profile.username),
+                  author: `@${profile.username}`,
+                  displayName: profile.displayName,
+                }}
+                isSelf
+              />
+            )}
           </div>
         </div>
 
@@ -489,13 +477,13 @@ function Avatar({
   displayName: string;
 }) {
   return (
-    <div className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-full border border-white/11 bg-[#22252a] text-2xl font-black text-[#ff7a45] sm:size-28">
+    <div className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-full border border-white/11 bg-[#22252a] text-2xl font-black text-[#ff7a45] sm:size-32 sm:text-3xl">
       {avatarUrl ? (
         <Image
           src={avatarUrl}
           alt={`${displayName} profil fotoğrafı`}
           fill
-          sizes="(min-width: 640px) 112px, 96px"
+          sizes="(min-width: 640px) 128px, 96px"
           unoptimized
           className="object-cover"
         />

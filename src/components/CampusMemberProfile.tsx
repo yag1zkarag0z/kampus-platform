@@ -337,43 +337,29 @@ export default function CampusMemberProfile({
       aria-labelledby="member-profile-title"
       className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
     >
+      {/* X'teki gibi sola yaslı: geri oku, ad ve altında gönderi sayısı. */}
       <header className="sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl">
-        <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 sm:px-6">
+        <div className="flex min-h-16 items-center gap-5 px-3 sm:px-6">
           <Link
             href="/akis"
             aria-label="Akışa dön"
-            className={`grid size-11 place-items-center rounded-full text-white/55 transition-colors hover:bg-white/8 hover:text-white ${focusRing}`}
+            className={`grid size-11 shrink-0 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/8 hover:text-white ${focusRing}`}
           >
             <BackIcon />
           </Link>
-          <div className="min-w-0 text-center">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
-              Topluluk profili
-            </p>
+          <div className="min-w-0">
             <h1
               id="member-profile-title"
-              className="mt-0.5 truncate text-xl font-black tracking-[-0.04em]"
+              className="truncate text-xl font-black tracking-[-0.04em]"
             >
               {displayName}
             </h1>
+            {!isSuspended && !isBlocked && (
+              <p className="truncate text-xs font-semibold text-white/55">
+                {authoredPosts.length} gönderi
+              </p>
+            )}
           </div>
-          {isSelf ? (
-            <Link
-              href="/profil"
-              className={`inline-flex min-h-11 items-center justify-center justify-self-end px-3 text-xs font-black text-[#ff7a45] hover:bg-[#ff7a45]/8 ${focusRing}`}
-            >
-              Profilim
-            </Link>
-          ) : sessionMode === "member" && resolvedAuthorId ? (
-            <MemberProfileActions
-              authorId={resolvedAuthorId}
-              author={author}
-              displayName={displayName}
-              isBlocked={isBlocked}
-            />
-          ) : (
-            <span aria-hidden="true" />
-          )}
         </div>
       </header>
 
@@ -381,17 +367,18 @@ export default function CampusMemberProfile({
         {/* Kapak alanı: kullanıcıya ait veri değil, her profilde aynı. */}
         <div
           aria-hidden="true"
-          className="grid h-28 w-full place-items-center overflow-hidden border-b border-white/10 bg-[#12151d] sm:h-40"
+          className="grid h-32 w-full place-items-center overflow-hidden bg-[#12151d] sm:h-48"
         >
           <CampusLogo
             idPrefix="member-profile-cover-lockup"
-            wordmarkClassName="text-3xl sm:text-4xl"
+            wordmarkClassName="text-3xl opacity-40 sm:text-4xl"
           />
         </div>
 
-        <div className="border-b border-white/12 px-4 pb-7 sm:px-6 sm:pb-9">
-          <div className="-mt-12 flex flex-col gap-5 min-[420px]:flex-row min-[420px]:items-start sm:-mt-16">
-            <span className="inline-flex shrink-0 rounded-full ring-4 ring-[#0a0d16]">
+        <div className="border-b border-white/12 px-4 pb-6 sm:px-6">
+          {/* Avatar kapağa taşar, işlemler sağ üstte durur. */}
+          <div className="flex items-start justify-between gap-3">
+            <span className="-mt-14 inline-flex shrink-0 rounded-full ring-4 ring-[#0a0d16] sm:-mt-20">
               <CampusAuthorAvatar
                 author={author}
                 authorId={resolvedAuthorId}
@@ -401,67 +388,86 @@ export default function CampusMemberProfile({
                     : managedUser?.avatarUrl ?? suggestedMember?.avatarDataUrl
                 }
                 size="md"
-                className="size-20 text-xl min-[420px]:size-24 min-[420px]:text-2xl"
+                className="size-24 text-2xl sm:size-32 sm:text-3xl"
               />
             </span>
-            <div className="min-w-0 flex-1 min-[420px]:pt-14 sm:pt-[4.5rem]">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="break-words text-2xl font-black tracking-[-0.045em] sm:text-3xl">
-                      {displayName}
-                    </h2>
-                    {managedUser?.role &&
-                      managedUser.role !== "member" && (
-                        <RoleBadge role={managedUser.role} />
-                      )}
-                  </div>
-                  <p className="mt-1 break-all text-sm font-bold text-white/55">
-                    @{username}
-                  </p>
-                </div>
-                {isOfficial && (
-                  <span className="bg-[#8fba9b]/12 px-2.5 py-1.5 font-mono text-[9px] font-black uppercase tracking-[0.1em] text-[#b5d8bd]">
-                    Doğrulanmış
-                  </span>
-                )}
-              </div>
-
-              {department && (
-                <p className="mt-4 text-sm font-semibold text-white/68">
-                  {department}
-                </p>
-              )}
-              <p className="mt-2 text-xs font-semibold text-white/55">
-                {joinedLabel}
-              </p>
-              {!isSuspended && !isBlocked && (
-                <>
-                  <p className="mt-4 max-w-2xl whitespace-pre-wrap text-sm leading-6 text-white/70">
-                    {bio}
-                  </p>
-                  <CampusFollowConnections
-                    member={{
-                      authorId:
-                        resolvedAuthorId ?? `profile-${username}`,
-                      username,
-                      author,
-                      displayName,
-                      detail: department || undefined,
-                      avatarDataUrl:
-                        managedUser?.avatarUrl ??
-                        suggestedMember?.avatarDataUrl ??
-                        undefined,
-                    }}
-                    isSelf={isSelf}
-                  />
-                </>
-              )}
+            <div className="flex shrink-0 items-center gap-2 pt-3">
+              {isSelf ? (
+                <Link
+                  href="/profil"
+                  className={`inline-flex min-h-11 items-center justify-center rounded-full border border-white/15 px-4 text-xs font-black transition-colors hover:bg-white/8 ${focusRing}`}
+                >
+                  Profilim
+                </Link>
+              ) : sessionMode === "member" && resolvedAuthorId ? (
+                <MemberProfileActions
+                  authorId={resolvedAuthorId}
+                  author={author}
+                  displayName={displayName}
+                  isBlocked={isBlocked}
+                />
+              ) : null}
             </div>
           </div>
 
+          {/* Ad, kullanıcı adı ve künye avatarın altında dikey akar. */}
+          <div className="mt-3 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="break-words text-2xl font-black tracking-[-0.045em] sm:text-3xl">
+                {displayName}
+              </h2>
+              {managedUser?.role && managedUser.role !== "member" && (
+                <RoleBadge role={managedUser.role} />
+              )}
+              {isOfficial && (
+                <span className="bg-[#8fba9b]/12 px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-[0.1em] text-[#b5d8bd]">
+                  Doğrulanmış
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 break-all text-sm font-bold text-white/55">
+              @{username}
+            </p>
+
+            {!isSuspended && !isBlocked && (
+              <p className="mt-3 max-w-2xl whitespace-pre-wrap text-[15px] leading-6 text-white/78">
+                {bio}
+              </p>
+            )}
+
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/55">
+              {department && (
+                <span className="inline-flex items-center gap-1.5">
+                  <DepartmentIcon />
+                  {department}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1.5">
+                <CalendarIcon />
+                {joinedLabel}
+              </span>
+            </div>
+
+            {!isSuspended && !isBlocked && (
+              <CampusFollowConnections
+                member={{
+                  authorId: resolvedAuthorId ?? `profile-${username}`,
+                  username,
+                  author,
+                  displayName,
+                  detail: department || undefined,
+                  avatarDataUrl:
+                    managedUser?.avatarUrl ??
+                    suggestedMember?.avatarDataUrl ??
+                    undefined,
+                }}
+                isSelf={isSelf}
+              />
+            )}
+          </div>
+
           {!isSuspended && !isBlocked && (
-            <dl className="mt-6 grid grid-cols-3 border-y border-white/12">
+            <dl className="mt-5 grid grid-cols-3 border-y border-white/12">
               <ProfileStat label="Gönderi" value={authoredPosts.length} />
               <ProfileStat
                 label="Yorum"
@@ -991,6 +997,42 @@ function BlockIcon() {
         strokeWidth="1.6"
         strokeLinecap="round"
       />
+    </svg>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-[18px] shrink-0"
+    >
+      <rect x="3" y="4.8" width="14" height="12.2" rx="1.6" />
+      <path d="M3 8.6h14M6.8 3v3.2M13.2 3v3.2" />
+    </svg>
+  );
+}
+
+function DepartmentIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-[18px] shrink-0"
+    >
+      <path d="M10 3.2 18 7l-8 3.8L2 7l8-3.8Z" />
+      <path d="M5.4 9.1v4.2c0 .9 2.1 2.1 4.6 2.1s4.6-1.2 4.6-2.1V9.1" />
     </svg>
   );
 }

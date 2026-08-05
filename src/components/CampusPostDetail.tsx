@@ -28,7 +28,13 @@ import CampusGif from "@/components/CampusGif";
 import CampusEmojiPicker from "@/components/CampusEmojiPicker";
 import GiphyPicker from "@/components/GiphyPicker";
 import { useFeedback } from "@/components/FeedbackProvider";
+import { useAutoGrowTextarea } from "@/components/useAutoGrowTextarea";
 import { formatCampusAbsoluteDateTime } from "@/content/adapter";
+import {
+  commentSortOptions,
+  sortCampusComments,
+  type CommentSort,
+} from "@/content/commentSort";
 import {
   isAnonymousCampusAuthor,
   isSameVisibleCampusAuthor,
@@ -38,6 +44,7 @@ import {
 
 const focusRing =
   "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40";
+
 
 export default function CampusPostDetail({ postId }: { postId: string }) {
   const router = useRouter();
@@ -60,7 +67,9 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
   const [isCommentSubmitting, setIsCommentSubmitting] = useState(false);
   // Kutu tek satır başlar; odaklanınca araçlar açılır.
   const [isReplyExpanded, setIsReplyExpanded] = useState(false);
+  const [commentSort, setCommentSort] = useState<CommentSort>("oldest");
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
+  useAutoGrowTextarea(commentInputRef, commentDraft);
   const [hasDetailRequestCompleted, setHasDetailRequestCompleted] =
     useState(false);
   const [isNotificationTarget, setIsNotificationTarget] = useState(false);
@@ -69,6 +78,11 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
   );
   const commentsSectionRef = useRef<HTMLElement>(null);
   const post = posts.find((currentPost) => currentPost.id === postId);
+  const comments = post?.comments;
+
+  const sortedComments = comments
+    ? sortCampusComments(comments, commentSort)
+    : [];
 
   useEffect(() => {
     if (!isHydrated || isGuest) {
@@ -191,10 +205,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
       setIsGifPickerOpen(false);
       setIsEmojiPickerOpen(false);
       setFormMessage("");
-      showToast({
-        message: "Yorumun gönderiye eklendi.",
-        tone: "success",
-      });
+      // Yorum kutunun hemen altındaki listede beliriyor; toast tekrar olurdu.
     } catch {
       setFormMessage("Yorum gönderilemedi. Tekrar dene.");
       showToast({
@@ -322,7 +333,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
             )}
 
             {post.body && (
-              <p className="mt-4 max-w-[78ch] whitespace-pre-wrap break-words text-[17px] leading-8 tracking-[-0.01em] text-white/85 sm:text-lg sm:leading-8">
+              <p className="mt-4 max-w-[78ch] whitespace-pre-wrap break-words text-base leading-8 tracking-[-0.01em] text-white/85 sm:text-lg sm:leading-8">
                 {post.body}
               </p>
             )}
@@ -493,7 +504,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                   placeholder="Ne düşünüyorsun?"
                   aria-describedby={`${commentIdentityId} post-comment-help-${post.id}`}
                   /* Akıştaki konu alanıyla aynı dil: çerçevesiz, saydam, iri yazı. */
-                  className="max-h-48 min-h-12 w-full resize-none border-0 bg-transparent px-0 py-2 text-lg font-semibold leading-7 text-white outline-none ring-0 placeholder:font-medium placeholder:text-white/42 focus:outline-none focus:ring-0 focus-visible:ring-0 sm:text-xl"
+                  className="min-h-12 w-full resize-none overflow-y-auto border-0 bg-transparent px-0 py-2 text-lg font-semibold leading-7 text-white outline-none ring-0 placeholder:font-medium placeholder:text-white/42 focus:outline-none focus:ring-0 focus-visible:ring-0 sm:text-xl"
                 />
               </div>
 
@@ -614,11 +625,34 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
           </form>
         )}
 
-        {post.comments.length > 0 ? (
+        {/* Sıralama yalnızca görünümü değiştirir; hiçbir yorumu gizlemez. */}
+        <div
+          role="group"
+          aria-label="Yorum sıralaması"
+          className="flex flex-wrap items-center gap-1 border-b border-white/8 py-3"
+        >
+          {commentSortOptions.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              aria-pressed={commentSort === option.id}
+              onClick={() => setCommentSort(option.id)}
+              className={`min-h-11 cursor-pointer rounded-full px-3.5 text-sm font-black transition-colors ${focusRing} ${
+                commentSort === option.id
+                  ? "bg-[#ff7a45]/14 text-[#ff7a45]"
+                  : "text-white/55 hover:bg-white/6 hover:text-white"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        {sortedComments.length > 0 ? (
           <ol className="divide-y divide-white/8">
-            {post.comments.map((comment) => {
+            {sortedComments.map((comment) => {
               const parentComment = comment.parentId
-                ? post.comments.find(
+                ? sortedComments.find(
                     (candidate) => candidate.id === comment.parentId,
                   )
                 : undefined;
@@ -630,7 +664,9 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                 className="scroll-mt-40"
               >
                 <article
-                  className={`flex items-start gap-3 py-5 sm:py-6 ${
+                  className={`relative flex items-start gap-3 py-5 transition-colors sm:py-6 ${
+                    comment.isDeleted ? "" : "hover:bg-white/[0.035]"
+                  } ${
                     comment.parentId
                       ? "ml-7 border-l-2 border-[#ff7a45]/18 pl-3 sm:ml-12 sm:pl-4"
                       : ""
@@ -640,12 +676,22 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                       : ""
                   }`}
                 >
+                  {/* Kartın tamamı tıklanabilir olsun diye kaplama bağlantı:
+                      GIF'li ve metinsiz yorumlar da yorum sayfasını açar.
+                      İç kontroller aşağıda z-10 ile üste alınıyor. */}
+                  {!comment.isDeleted && (
+                    <Link
+                      href={`/gonderi/${post.id}/yorum/${comment.id}`}
+                      aria-label={`${comment.author} yorumunu aç`}
+                      className={`absolute inset-0 ${focusRing}`}
+                    />
+                  )}
                   <CampusAuthorProfileLink
                     author={comment.author}
                     authorId={comment.authorId}
                     isAnonymous={comment.isAnonymous}
                     ariaLabel={`${comment.author} profilini aç`}
-                    className="shrink-0"
+                    className="relative z-10 shrink-0"
                     linkClassName={`rounded-full transition-opacity hover:opacity-80 ${focusRing}`}
                   >
                     <CampusAuthorAvatar
@@ -662,6 +708,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                         authorId={comment.authorId}
                         isAnonymous={comment.isAnonymous}
                         ariaLabel={`${comment.author} profilini aç`}
+                        className="relative z-10"
                         linkClassName={`text-[15px] font-black transition-colors hover:text-[#ff7a45] ${focusRing}`}
                       >
                         <span className="text-xs font-black">
@@ -706,6 +753,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                               authorId={parentComment.authorId}
                               isAnonymous={parentComment.isAnonymous}
                               ariaLabel={`${parentComment.author} profilini aç`}
+                              className="relative z-10"
                               linkClassName={`transition-colors hover:text-[#ff7a45] ${focusRing}`}
                             >
                               <span>{parentComment.author}</span>
@@ -723,27 +771,27 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                       </div>
                     ) : (
                       <>
+                        {/* Bağlantı değil: satırın tamamını kaplayan
+                            bağlantı yukarıda, iç içe bağlantı geçersiz olurdu. */}
                         {comment.body && (
-                          /* Yoruma tıklayınca gönderi gibi kendi sayfası açılır. */
-                          <Link
-                            href={`/gonderi/${post.id}/yorum/${comment.id}`}
-                            className={`mt-2 block max-w-[78ch] whitespace-pre-wrap break-words text-base leading-7 tracking-[-0.01em] text-white/78 sm:text-[17px] sm:leading-8 ${focusRing}`}
-                          >
+                          <p className="mt-2 max-w-[78ch] whitespace-pre-wrap break-words text-base leading-7 tracking-[-0.01em] text-white/78 sm:leading-8">
                             {comment.body}
-                          </Link>
+                          </p>
                         )}
                         {comment.gif && <CampusGif gif={comment.gif} compact />}
                         {/* Yanıt, sayfayı yukarı kaydırmak yerine yorumun
                             kendi sayfasında yazılır. */}
-                        <CampusCommentActions
-                          postId={post.id}
-                          comment={comment}
-                          onReply={() =>
-                            router.push(
-                              `/gonderi/${post.id}/yorum/${comment.id}`,
-                            )
-                          }
-                        />
+                        <div className="relative z-10">
+                          <CampusCommentActions
+                            postId={post.id}
+                            comment={comment}
+                            onReply={() =>
+                              router.push(
+                                `/gonderi/${post.id}/yorum/${comment.id}`,
+                              )
+                            }
+                          />
+                        </div>
                       </>
                     )}
                   </div>

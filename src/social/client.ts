@@ -30,6 +30,7 @@ export type FollowMemberDto = {
 
 export type SuggestedMemberDto = FollowMemberDto & {
   department: string;
+  bio: string;
 };
 
 export function getMemberProfile(username: string) {

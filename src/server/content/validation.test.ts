@@ -182,6 +182,9 @@ describe("content validation", () => {
     "example ( dot ) zip",
     "example nokta com",
     "example nokta ru",
+    "example . com",
+    "example .com",
+    "duyuru burada: example . com",
     "example&#46;zip",
     "subdomain.example.photography",
     "https%3A%2F%2Fexample.com",
@@ -210,6 +213,12 @@ describe("content validation", () => {
     "Dosya adı package.json olarak kalsın.",
     "Bileşen App.tsx, stil dosyası globals.css.",
     "Rapor.pdf dosyasını daha sonra yükleyeceğim.",
+    // Cümle sonu noktası bir alan adı değildir. Uzun gönderiler birden çok
+    // cümle içerdiği için bu durum en çok onları vururdu.
+    "Sınavdan sonra kantine gittik. Sonra eve döndüm.",
+    "Ders bitti. Ama sınav haftası başlıyor.",
+    "bugün kütüphanedeydim. sonra eve gittim.",
+    "Kayıt formunu doldurdum. Kulüp panosunda asılıydı.",
   ])("allows ordinary non-link text: %s", (value) => {
     expect(containsBlockedUrl(value)).toBe(false);
   });

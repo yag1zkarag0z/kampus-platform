@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
+import FollowSuggestionDeck from "@/components/FollowSuggestionDeck";
 import { useCampusFollow } from "@/components/CampusFollowProvider";
 import { useFeedback } from "@/components/FeedbackProvider";
 import {
@@ -26,6 +27,7 @@ type SuggestionEntry = {
   displayName: string;
   avatarUrl: string | null;
   detail?: string;
+  bio?: string;
 };
 
 const focusRing =
@@ -38,6 +40,7 @@ function toEntryFromMock(member: CampusFollowMember): SuggestionEntry {
     displayName: member.displayName,
     avatarUrl: member.avatarDataUrl ?? null,
     detail: member.detail,
+    bio: member.bio,
   };
 }
 
@@ -48,6 +51,7 @@ function toEntryFromDto(member: SuggestedMemberDto): SuggestionEntry {
     displayName: member.displayName,
     avatarUrl: member.avatarUrl,
     detail: member.department,
+    bio: member.bio,
   };
 }
 
@@ -115,22 +119,32 @@ function useRealSuggestedMembers(
   return { isHydrated, suggestions, removeSuggestion };
 }
 
+/**
+ * Takip edildikten sonra kart listeden düşmez; buton "Takip edildi"ye döner.
+ * Kaybolan kart, kullanıcının kimi takip ettiğini doğrulamasını engelliyordu.
+ */
 function FollowButton({
   entry,
   compact = false,
   sessionMode,
+  isFollowed,
   onFollowed,
 }: {
   entry: SuggestionEntry;
   compact?: boolean;
   sessionMode: CampusSessionMode;
-  onFollowed?: () => void;
+  isFollowed: boolean;
+  onFollowed: () => void;
 }) {
   const router = useRouter();
   const { showToast } = useFeedback();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleFollowClick = async () => {
+    if (isFollowed || isSubmitting) {
+      return;
+    }
+
     if (sessionMode !== "member") {
       showToast({
         message: "Takip etmek için giriş yapmalısın.",
@@ -147,11 +161,8 @@ function FollowButton({
 
     try {
       await followMember(entry.username);
-      showToast({
-        message: `${entry.displayName} takip edilmeye başlandı.`,
-        tone: "success",
-      });
-      onFollowed?.();
+      // Buton durumu değiştiği için ayrıca toast göstermiyoruz.
+      onFollowed();
     } catch {
       showToast({
         message: "Takip işlemi şu anda tamamlanamadı.",
@@ -162,35 +173,81 @@ function FollowButton({
     }
   };
 
+  const label = isFollowed ? "Takip edildi" : "Takip et";
+
   return (
     <button
       type="button"
-      disabled={isSubmitting}
-      aria-label={`${entry.displayName} kullanıcısını takip et`}
+      disabled={isSubmitting || isFollowed}
+      aria-label={`${entry.displayName} kullanıcısını ${label.toLocaleLowerCase("tr-TR")}`}
       onClick={() => void handleFollowClick()}
       className={
         compact
-          ? `inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-[#ff7a45]/25 bg-[#ff7a45]/8 px-3 text-[11px] font-black text-[#ff9a72] transition-colors hover:border-[#ff7a45]/45 hover:bg-[#ff7a45]/14 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`
-          : `inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-black text-[#12100e] transition-colors hover:bg-[#ffede6] disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`
+          ? `inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border px-3 text-[11px] font-black transition-colors disabled:cursor-default ${focusRing} ${
+              isFollowed
+                ? "border-[#7fd9a3]/30 bg-[#7fd9a3]/10 text-[#9fe0bb]"
+                : "border-[#ff7a45]/25 bg-[#ff7a45]/8 text-[#ff9a72] hover:border-[#ff7a45]/45 hover:bg-[#ff7a45]/14 disabled:opacity-50"
+            }`
+          : `inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-black transition-colors disabled:cursor-default ${focusRing} ${
+              isFollowed
+                ? "border border-[#7fd9a3]/30 bg-[#7fd9a3]/10 text-[#9fe0bb]"
+                : "bg-white text-[#12100e] hover:bg-[#ffede6] disabled:opacity-50"
+            }`
       }
     >
-      {!compact && <PersonPlusIcon />}
-      Takip et
+      {!compact && (isFollowed ? <CheckIcon /> : <PersonPlusIcon />)}
+      {label}
     </button>
+  );
+}
+
+function CardsIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinejoin="round"
+      className="size-4 shrink-0"
+    >
+      <rect x="6.4" y="3.4" width="10.2" height="13.2" rx="2" />
+      <path d="M4 5.6A2 2 0 0 0 3.4 7v8.2a2 2 0 0 0 2 2h6.2" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-4 shrink-0"
+    >
+      <path d="m4.5 10.5 3.5 3.5 7.5-8" />
+    </svg>
   );
 }
 
 function CompactSuggestionItem({
   entry,
   sessionMode,
+  isFollowed,
   onFollowed,
 }: {
   entry: SuggestionEntry;
   sessionMode: CampusSessionMode;
-  onFollowed?: () => void;
+  isFollowed: boolean;
+  onFollowed: () => void;
 }) {
   return (
-    <li className="flex min-w-0 items-center gap-2.5 px-4 py-3.5 transition-colors hover:bg-white/[0.025]">
+    <li className="flex min-w-0 items-center gap-2.5 px-5 py-3.5 transition-colors hover:bg-white/[0.03]">
       <Link
         href={`/profil/${entry.username}`}
         aria-label={`${entry.displayName} profilini aç`}
@@ -215,6 +272,7 @@ function CompactSuggestionItem({
         entry={entry}
         compact
         sessionMode={sessionMode}
+        isFollowed={isFollowed}
         onFollowed={onFollowed}
       />
     </li>
@@ -224,11 +282,13 @@ function CompactSuggestionItem({
 function SuggestionCard({
   entry,
   sessionMode,
+  isFollowed,
   onFollowed,
 }: {
   entry: SuggestionEntry;
   sessionMode: CampusSessionMode;
-  onFollowed?: () => void;
+  isFollowed: boolean;
+  onFollowed: () => void;
 }) {
   return (
     <li className="group relative isolate flex min-w-0 flex-col items-center overflow-hidden rounded-[1.35rem] border border-white/10 bg-[#141720] p-5 text-center shadow-[0_14px_40px_rgba(0,0,0,0.16)] transition-[border-color,transform,background-color] duration-200 hover:-translate-y-0.5 hover:border-[#ff7a45]/24 hover:bg-[#171a24] motion-reduce:transform-none sm:p-6">
@@ -263,8 +323,15 @@ function SuggestionCard({
         <p className="mt-1 truncate text-sm font-bold text-[#ff9a72]">
           @{entry.username}
         </p>
-        <p className="mt-3 min-h-12 text-sm leading-6 text-white/62">
-          {entry.detail || "KAMPÜS topluluğu üyesi"}
+        {entry.detail && (
+          <p className="mt-2 truncate text-xs font-bold text-white/50">
+            {entry.detail}
+          </p>
+        )}
+        {/* Biyografi ilk bakışta görünsün: kimi takip edeceğine karar
+            vermek için bölüm adı tek başına yeterli değil. */}
+        <p className="mt-3 line-clamp-3 min-h-[3.75rem] text-sm leading-5 text-white/68">
+          {entry.bio?.trim() || "Henüz biyografi eklememiş."}
         </p>
       </div>
 
@@ -279,12 +346,26 @@ function SuggestionCard({
           <FollowButton
             entry={entry}
             sessionMode={sessionMode}
+            isFollowed={isFollowed}
             onFollowed={onFollowed}
           />
         </div>
       </div>
     </li>
   );
+}
+
+/** Takip edilenler listeden düşmediği için durumları burada tutuluyor. */
+function useFollowedIds() {
+  const [followedIds, setFollowedIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+
+  const markFollowed = (id: string) => {
+    setFollowedIds((current) => new Set(current).add(id));
+  };
+
+  return { followedIds, markFollowed };
 }
 
 export default function FollowSuggestions({
@@ -298,35 +379,35 @@ export default function FollowSuggestions({
   const real = useRealSuggestedMembers(4, sessionMode);
   const isMember = sessionMode === "member";
   const { isHydrated, suggestions } = isMember ? real : guest;
+  const { followedIds, markFollowed } = useFollowedIds();
 
   if (pathname === "/takip" || !isHydrated) {
     return null;
   }
 
+  // Takvim kartıyla aynı yüzey dili: sağ sütun tek bir sistem gibi dursun.
   return (
     <aside
       aria-labelledby="follow-suggestions-title"
-      className={`overflow-hidden rounded-[1.35rem] border border-white/10 bg-[#141720] shadow-[0_16px_45px_rgba(0,0,0,0.2)] ${className}`}
+      className={`overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#151a26] to-[#10141d] shadow-[0_1px_0_rgba(255,255,255,0.05)_inset,0_18px_40px_-24px_rgba(0,0,0,0.9)] ${className}`}
     >
-      <div className="relative overflow-hidden border-b border-white/8 px-4 py-4">
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_88%_10%,rgba(255,122,69,0.14),transparent_48%)]"
-        />
-        <div className="relative flex items-center gap-3">
+      <div className="h-px w-full bg-gradient-to-r from-transparent via-[#ff7a45]/55 to-transparent" />
+
+      <div className="px-5 pt-4 pb-3">
+        <div className="flex items-center gap-3">
           <span
             aria-hidden="true"
-            className="grid size-9 shrink-0 place-items-center rounded-full border border-[#ff7a45]/22 bg-[#ff7a45]/9 text-[#ff9a72]"
+            className="grid size-9 shrink-0 place-items-center rounded-xl border border-[#ff7a45]/22 bg-[#ff7a45]/10 text-[#ff9a72]"
           >
             <PeopleIcon />
           </span>
           <div className="min-w-0">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.13em] text-[#ff9a72]">
+            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
               Topluluk
             </p>
             <h2
               id="follow-suggestions-title"
-              className="mt-0.5 text-base font-black tracking-[-0.025em]"
+              className="mt-0.5 text-lg font-black tracking-[-0.035em]"
             >
               Takip önerileri
             </h2>
@@ -335,23 +416,20 @@ export default function FollowSuggestions({
       </div>
       {suggestions.length > 0 ? (
         <>
-          <ul className="divide-y divide-white/8">
+          <ul className="divide-y divide-white/6 border-t border-white/6">
             {suggestions.map((entry) => (
               <CompactSuggestionItem
                 key={entry.id}
                 entry={entry}
                 sessionMode={sessionMode}
-                onFollowed={
-                  isMember
-                    ? () => real.removeSuggestion(entry.id)
-                    : undefined
-                }
+                isFollowed={followedIds.has(entry.id)}
+                onFollowed={() => markFollowed(entry.id)}
               />
             ))}
           </ul>
           <Link
             href="/takip"
-            className={`group flex min-h-12 items-center justify-between border-t border-white/8 px-4 text-xs font-black text-[#ff9a72] transition-colors hover:bg-[#ff7a45]/7 ${focusRing}`}
+            className={`group flex min-h-12 items-center justify-between border-t border-white/8 px-5 text-xs font-black text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/8 ${focusRing}`}
           >
             Tüm önerileri gör
             <ArrowIcon />
@@ -367,11 +445,37 @@ export default function FollowSuggestions({
 }
 
 export function FollowSuggestionsPage() {
+  const router = useRouter();
+  const { showToast } = useFeedback();
   const { sessionMode } = useCampusAccount();
   const guest = useGuestSuggestedMembers(20);
   const real = useRealSuggestedMembers(20, sessionMode);
   const isMember = sessionMode === "member";
   const { isHydrated, suggestions } = isMember ? real : guest;
+  const { followedIds, markFollowed } = useFollowedIds();
+  const [isDeckOpen, setIsDeckOpen] = useState(false);
+
+  // Destede jest anında karar verdiği için takip isteği burada yürütülür.
+  const followFromDeck = async (entry: SuggestionEntry) => {
+    if (sessionMode !== "member") {
+      showToast({
+        message: "Takip etmek için giriş yapmalısın.",
+        tone: "info",
+        action: { label: "Giriş yap", onClick: () => router.push("/giris") },
+      });
+      return;
+    }
+
+    try {
+      await followMember(entry.username);
+      markFollowed(entry.id);
+    } catch {
+      showToast({
+        message: "Takip işlemi şu anda tamamlanamadı.",
+        tone: "error",
+      });
+    }
+  };
 
   return (
     <section
@@ -434,18 +538,14 @@ export function FollowSuggestionsPage() {
             </p>
           </div>
 
-          <ul className="mt-5 grid gap-3 sm:grid-cols-2 sm:gap-4">
-            {suggestions.map((entry) => (
-              <SuggestionCard
-                key={entry.id}
-                entry={entry}
-                sessionMode={sessionMode}
-                onFollowed={
-                  isMember ? () => real.removeSuggestion(entry.id) : undefined
-                }
-              />
-            ))}
-          </ul>
+          {/* Izgara yok: öneriler yalnızca tek tek gözden geçirilir. */}
+          <div className="mt-6">
+            <FollowSuggestionDeck
+              entries={suggestions}
+              followedIds={followedIds}
+              onFollow={followFromDeck}
+            />
+          </div>
 
           {!isMember && (
             <div className="mt-6 flex flex-col items-center justify-center gap-4 rounded-[1.35rem] border border-white/9 bg-white/[0.025] px-5 py-6 text-center sm:px-6">

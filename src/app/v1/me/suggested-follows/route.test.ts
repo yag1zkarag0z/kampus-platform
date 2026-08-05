@@ -27,6 +27,7 @@ const suggestions = [
     displayName: "Suggested User",
     avatarUrl: null,
     department: "Yazılım Mühendisliği",
+    bio: "Kampüste kod yazıyorum.",
   },
 ];
 

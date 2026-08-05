@@ -13,6 +13,7 @@ import CampusGif from "@/components/CampusGif";
 import { useFeedback } from "@/components/FeedbackProvider";
 import GiphyPicker from "@/components/GiphyPicker";
 import { campusButton } from "@/components/campusButtonStyles";
+import { useAutoGrowTextarea } from "@/components/useAutoGrowTextarea";
 import { formatCampusAbsoluteDateTime } from "@/content/adapter";
 import {
   LOCAL_ACCOUNT_OWNER_ID,
@@ -47,6 +48,7 @@ export default function CampusCommentThread({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  useAutoGrowTextarea(inputRef, draft);
 
   const appendEmoji = (emoji: string) => {
     setDraft((currentDraft) =>
@@ -113,7 +115,7 @@ export default function CampusCommentThread({
       setSelectedGif(undefined);
       setIsGifPickerOpen(false);
       setIsEmojiPickerOpen(false);
-      showToast({ message: "Yanıtın eklendi.", tone: "success" });
+      // Yanıt aşağıdaki listede beliriyor; ayrıca haber vermeye gerek yok.
     } catch {
       showToast({ message: "Yanıt gönderilemedi.", tone: "error" });
     } finally {
@@ -161,7 +163,7 @@ export default function CampusCommentThread({
           </div>
         </div>
 
-        <p className="mt-4 max-w-[78ch] whitespace-pre-wrap break-words text-[17px] leading-8 text-white/85 sm:text-lg">
+        <p className="mt-4 max-w-[78ch] whitespace-pre-wrap break-words text-base leading-8 text-white/85 sm:text-lg">
           {comment.body}
         </p>
 
@@ -206,7 +208,7 @@ export default function CampusCommentThread({
             rows={1}
             placeholder="Yanıtını yaz"
             aria-label="Yanıt metni"
-            className="max-h-48 min-h-12 w-full resize-none border-0 bg-transparent px-0 py-2 text-lg font-semibold leading-7 text-white outline-none placeholder:font-medium placeholder:text-white/42 focus:outline-none focus:ring-0 sm:text-xl"
+            className="min-h-12 w-full resize-none overflow-y-auto border-0 bg-transparent px-0 py-2 text-lg font-semibold leading-7 text-white outline-none placeholder:font-medium placeholder:text-white/42 focus:outline-none focus:ring-0 sm:text-xl"
           />
           <button
             type="submit"
@@ -317,7 +319,7 @@ export default function CampusCommentThread({
                       )}
                     </span>
                   </p>
-                  <p className="mt-2 max-w-[78ch] whitespace-pre-wrap break-words text-base leading-7 text-white/78 sm:text-[17px] sm:leading-8">
+                  <p className="mt-2 max-w-[78ch] whitespace-pre-wrap break-words text-base leading-7 text-white/78 sm:leading-8">
                     {reply.body}
                   </p>
                   {reply.gif && <CampusGif gif={reply.gif} compact />}
