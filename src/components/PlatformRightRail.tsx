@@ -56,7 +56,7 @@ export default function PlatformRightRail() {
       {/* Takvim önce: kayıt ve sınav tarihleri zamana duyarlı, kaçırılırsa
           telafisi yok. Takip önerisi her zaman geçerli, altta kalabilir. */}
       <div id="platform-right-rail-content" hidden={!isOpen}>
-        <div className="space-y-3">
+        <div className="space-y-12">
           <CampusCalendarWidget />
           <FollowSuggestions />
         </div>

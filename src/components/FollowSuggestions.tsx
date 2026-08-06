@@ -183,10 +183,12 @@ function FollowButton({
       onClick={() => void handleFollowClick()}
       className={
         compact
-          ? `inline-flex min-h-10 shrink-0 items-center justify-center gap-1 rounded-full border px-3 text-[11px] font-black transition-colors disabled:cursor-default ${focusRing} ${
+          ? // Buton değil, düz metin bağlantısı: X'teki gibi kutusuz, yalnızca
+            // renkle ayrışıyor.
+            `inline-flex min-h-10 shrink-0 items-center justify-center px-1 text-sm font-black transition-colors disabled:cursor-default ${focusRing} ${
               isFollowed
-                ? "border-[#ff7a45]/45 bg-[#ff7a45]/16 text-[#ffb695]"
-                : "border-[#ff7a45]/25 bg-[#ff7a45]/8 text-[#ff9a72] hover:border-[#ff7a45]/45 hover:bg-[#ff7a45]/14 disabled:opacity-50"
+                ? "text-white/40"
+                : "text-[#ff7a45] hover:text-[#ff8d5e]"
             }`
           : `inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-black transition-colors disabled:cursor-default ${focusRing} ${
               isFollowed
@@ -230,23 +232,23 @@ function CompactSuggestionItem({
   onFollowed: () => void;
 }) {
   return (
-    <li className="flex min-w-0 items-center gap-2.5 px-5 py-3.5 transition-colors hover:bg-white/[0.03]">
+    <li className="flex min-w-0 items-center gap-3">
       <Link
         href={`/profil/${entry.username}`}
         aria-label={`${entry.displayName} profilini aç`}
-        className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-lg ${focusRing}`}
+        className={`flex min-w-0 flex-1 items-center gap-3 rounded-lg ${focusRing}`}
       >
         <CampusAuthorAvatar
           author={`@${entry.username}`}
           authorId={entry.id}
           avatarUrl={entry.avatarUrl}
-          size="sm"
+          size="md"
         />
         <span className="min-w-0">
           <span className="block truncate text-sm font-black tracking-[-0.01em]">
             {entry.displayName}
           </span>
-          <span className="mt-0.5 block truncate text-[11px] font-semibold text-white/55">
+          <span className="mt-0.5 block truncate text-[13px] font-semibold text-white/55">
             @{entry.username}
           </span>
         </span>
@@ -292,58 +294,44 @@ export default function FollowSuggestions({
     return null;
   }
 
-  // Takvim kartıyla aynı yüzey dili: sağ sütun tek bir sistem gibi dursun.
+  // Kart yok: kutu, kenarlık ve arka plan olmadan sağ sütuna doğrudan
+  // oturuyor; sadece başlık ve düz bir satır listesi.
   return (
     <aside
       aria-labelledby="follow-suggestions-title"
-      className={`overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#151a26] to-[#10141d] shadow-[0_1px_0_rgba(255,255,255,0.05)_inset,0_18px_40px_-24px_rgba(0,0,0,0.9)] ${className}`}
+      className={className}
     >
-      <div className="h-px w-full bg-gradient-to-r from-transparent via-[#ff7a45]/55 to-transparent" />
-
-      <div className="px-5 pt-4 pb-3">
-        <div className="flex items-center gap-3">
-          <span
-            aria-hidden="true"
-            className="grid size-9 shrink-0 place-items-center rounded-xl border border-[#ff7a45]/22 bg-[#ff7a45]/10 text-[#ff9a72]"
-          >
-            <PeopleIcon />
-          </span>
-          <div className="min-w-0">
-            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
-              Topluluk
-            </p>
-            <h2
-              id="follow-suggestions-title"
-              className="mt-0.5 text-lg font-black tracking-[-0.035em]"
-            >
-              Takip önerileri
-            </h2>
-          </div>
-        </div>
-      </div>
-      {suggestions.length > 0 ? (
-        <>
-          <ul className="divide-y divide-white/6 border-t border-white/6">
-            {suggestions.map((entry) => (
-              <CompactSuggestionItem
-                key={entry.id}
-                entry={entry}
-                sessionMode={sessionMode}
-                isFollowed={followedIds.has(entry.id)}
-                onFollowed={() => markFollowed(entry.id)}
-              />
-            ))}
-          </ul>
+      <div className="flex items-center justify-between gap-3 px-1">
+        <h2
+          id="follow-suggestions-title"
+          className="text-lg font-black tracking-[-0.035em]"
+        >
+          Takip önerileri
+        </h2>
+        {suggestions.length > 0 && (
           <Link
             href="/takip"
-            className={`group flex min-h-12 items-center justify-between border-t border-white/8 px-5 text-xs font-black text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/8 ${focusRing}`}
+            className={`shrink-0 text-sm font-bold text-[#ff7a45] transition-colors hover:text-[#ff8d5e] ${focusRing}`}
           >
-            Tüm önerileri gör
-            <ArrowIcon />
+            Tümünü gör
           </Link>
-        </>
+        )}
+      </div>
+
+      {suggestions.length > 0 ? (
+        <ul className="mt-4 flex flex-col gap-4 px-1">
+          {suggestions.map((entry) => (
+            <CompactSuggestionItem
+              key={entry.id}
+              entry={entry}
+              sessionMode={sessionMode}
+              isFollowed={followedIds.has(entry.id)}
+              onFollowed={() => markFollowed(entry.id)}
+            />
+          ))}
+        </ul>
       ) : (
-        <p className="px-4 py-6 text-center text-xs leading-5 text-white/50">
+        <p className="mt-3 px-1 text-sm leading-6 text-white/50">
           Şu an önerebileceğimiz yeni bir kullanıcı yok.
         </p>
       )}
@@ -509,31 +497,6 @@ function PersonPlusIcon() {
   );
 }
 
-function PeopleIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 20 20"
-      fill="none"
-      className="size-4"
-    >
-      <circle
-        cx="7.2"
-        cy="6.4"
-        r="2.6"
-        stroke="currentColor"
-        strokeWidth="1.45"
-      />
-      <path
-        d="M3.2 15.5c.4-2.9 1.9-4.4 4-4.4s3.6 1.5 4 4.4M12.5 4.5a2.5 2.5 0 0 1 0 4.8m1.2 2c1.7.4 2.7 1.8 3 4.2"
-        stroke="currentColor"
-        strokeWidth="1.45"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
 function SparkIcon() {
   return (
     <svg
@@ -552,21 +515,3 @@ function SparkIcon() {
   );
 }
 
-function ArrowIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 20 20"
-      fill="none"
-      className="size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none"
-    >
-      <path
-        d="M4 10h11m-4-4 4 4-4 4"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}

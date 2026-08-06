@@ -144,6 +144,13 @@ type CampusDataContextValue = {
     commentId: string,
   ) => Promise<boolean>;
   loadPostDetail: (postId: string) => Promise<boolean>;
+  /**
+   * Başka bir sorgudan (ör. Keşfet araması) gelen gönderileri ağ isteği
+   * atmadan paylaşılan listeye ekler. `toggleLike`/`toggleBookmark` yalnızca
+   * bu listede bulunan gönderiler için çalışır; kayıtlı olmayan bir gönderi
+   * üzerinde beğeni/kaydetme sessizce hiçbir şey yapmaz.
+   */
+  registerPosts: (posts: CampusPost[]) => void;
   moderateDeletePost: (postId: string) => boolean;
   moderateDeleteComment: (
     postId: string,
@@ -1292,6 +1299,19 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
     [retrySession, sessionMode, updatePosts],
   );
 
+  const registerPosts = useCallback(
+    (incomingPosts: CampusPost[]) => {
+      if (sessionMode !== "member" || incomingPosts.length === 0) {
+        return;
+      }
+
+      updatePosts((currentPosts) =>
+        appendUniqueCampusPosts(currentPosts, incomingPosts),
+      );
+    },
+    [sessionMode, updatePosts],
+  );
+
   const moderateDeletePost = useCallback(
     (postId: string) => {
       if (sessionMode !== "member" || role === "member") {
@@ -1548,6 +1568,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
       updateComment,
       deleteComment,
       loadPostDetail,
+      registerPosts,
       moderateDeletePost,
       moderateDeleteComment,
       renameAuthoredContent,
@@ -1572,6 +1593,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
       updateComment,
       deleteComment,
       loadPostDetail,
+      registerPosts,
       moderateDeletePost,
       moderateDeleteComment,
       renameAuthoredContent,

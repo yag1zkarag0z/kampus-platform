@@ -129,6 +129,18 @@ export function isSameVisibleCampusAuthor(
   return first.author === second.author;
 }
 
+/**
+ * Sabit gönderilerin `time` etiketi ("8 dk", "Dün") elle yazılmış gerçekçi
+ * metin; `createdAt` ise onunla eşleşen gerçek bir epoch değeri olmalı.
+ * Önceden `createdAt` yalnızca azalan bir sıra numarasıydı (200, 199, ...) —
+ * gerçek tarihe çevrilince (`new Date(200)`) gönderi detayında "1 Ocak 1970"
+ * gibi anlamsız bir tarih çıkıyordu. Bu yardımcılar `time` etiketiyle
+ * tutarlı, gerçek zamana dayalı bir `createdAt` üretir.
+ */
+const minutesAgo = (n: number) => Date.now() - n * 60_000;
+const hoursAgo = (n: number) => Date.now() - n * 60 * 60_000;
+const daysAgo = (n: number) => Date.now() - n * 24 * 60 * 60_000;
+
 type OfficialCampusPostSeed = Omit<
   CampusPost,
   | "author"
@@ -170,7 +182,7 @@ export const guestCampusPosts: CampusPost[] = [
       alt: "Güneşli bir günde modern bir üniversite kampüsü",
     },
     time: "Şimdi",
-    createdAt: 200,
+    createdAt: minutesAgo(0),
     likes: 84,
   }),
   createOfficialCampusPost({
@@ -186,7 +198,7 @@ export const guestCampusPosts: CampusPost[] = [
       alt: "Ağaçların arasındaki kampüs yolunda yürüyen öğrenciler",
     },
     time: "8 dk",
-    createdAt: 199,
+    createdAt: minutesAgo(8),
     likes: 46,
   }),
   createOfficialCampusPost({
@@ -202,7 +214,7 @@ export const guestCampusPosts: CampusPost[] = [
       alt: "Kütüphanede bilgisayarlarıyla çalışan öğrenciler",
     },
     time: "19 dk",
-    createdAt: 198,
+    createdAt: minutesAgo(19),
     likes: 61,
     comments: [
       {
@@ -211,6 +223,7 @@ export const guestCampusPosts: CampusPost[] = [
         authorId: "ece-yilmaz",
         body: "Notları PDF olarak da paylaşabilir misin? Çok işime yarar.",
         time: "4 dk",
+        createdAt: minutesAgo(4),
       },
     ],
   }),
@@ -229,7 +242,7 @@ export const guestCampusPosts: CampusPost[] = [
       ],
     },
     time: "31 dk",
-    createdAt: 197,
+    createdAt: minutesAgo(31),
     likes: 93,
   }),
   createOfficialCampusPost({
@@ -245,7 +258,7 @@ export const guestCampusPosts: CampusPost[] = [
       alt: "Kampüs binasının önünde konuşan iki öğrenci",
     },
     time: "47 dk",
-    createdAt: 196,
+    createdAt: minutesAgo(47),
     likes: 72,
   }),
   createOfficialCampusPost({
@@ -255,7 +268,7 @@ export const guestCampusPosts: CampusPost[] = [
     title: "Topluluktan küçük bir teşekkür",
     body: "Kütüphanede unutulan notları danışmaya bırakan kişiye teşekkürler. Final haftasında böyle küçük yardımlar gerçekten fark yaratıyor.",
     time: "1 sa",
-    createdAt: 195,
+    createdAt: hoursAgo(1),
     likes: 128,
     gif: {
       id: "26ufdipQqU2lhNA4g",
@@ -278,7 +291,7 @@ export const guestCampusPosts: CampusPost[] = [
       alt: "Bilgisayarlarıyla kodlama atölyesinde çalışan öğrenciler",
     },
     time: "1 sa",
-    createdAt: 194,
+    createdAt: hoursAgo(1),
     likes: 65,
     comments: [
       {
@@ -287,6 +300,7 @@ export const guestCampusPosts: CampusPost[] = [
         authorId: "technology-club",
         body: "Kontenjan 40 kişiye çıkarıldı; kayıt formu akşama kadar açık.",
         time: "3 sa",
+        createdAt: hoursAgo(3),
       },
     ],
   }),
@@ -308,7 +322,7 @@ export const guestCampusPosts: CampusPost[] = [
       price: 180,
     },
     time: "2 sa",
-    createdAt: 193,
+    createdAt: hoursAgo(2),
     likes: 24,
   }),
   createOfficialCampusPost({
@@ -324,7 +338,7 @@ export const guestCampusPosts: CampusPost[] = [
       alt: "Aynı sınıfta ders çalışan bir grup öğrenci",
     },
     time: "2 sa",
-    createdAt: 192,
+    createdAt: hoursAgo(2),
     likes: 97,
   }),
   createOfficialCampusPost({
@@ -334,7 +348,7 @@ export const guestCampusPosts: CampusPost[] = [
     title: "Bu hafta birlikte çalışmak isteyen var mı?",
     body: "Aynı derse çalışan öğrencilerin birbirini bulabilmesi için dersin adını ve uygun olduğun saati yazabilirsin.",
     time: "3 sa",
-    createdAt: 191,
+    createdAt: hoursAgo(3),
     likes: 42,
     comments: [
       {
@@ -343,6 +357,7 @@ export const guestCampusPosts: CampusPost[] = [
         authorId: "deniz-ari",
         body: "@sen geçen hafta bu hocanın kaynaklarını bulmuştun, değil mi?",
         time: "18 dk",
+        createdAt: minutesAgo(18),
         gif: {
           id: "l0MYt5jPR6QX5pnqM",
           src: "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif",
@@ -366,7 +381,7 @@ export const guestCampusPosts: CampusPost[] = [
       alt: "Elektronik proje üzerinde çalışan öğrenciler",
     },
     time: "3 sa",
-    createdAt: 190,
+    createdAt: hoursAgo(3),
     likes: 88,
   }),
   createOfficialCampusPost({
@@ -382,7 +397,7 @@ export const guestCampusPosts: CampusPost[] = [
       alt: "Kafede kitap ve bilgisayarlarıyla çalışan öğrenciler",
     },
     time: "4 sa",
-    createdAt: 189,
+    createdAt: hoursAgo(4),
     likes: 53,
     comments: [
       {
@@ -391,6 +406,7 @@ export const guestCampusPosts: CampusPost[] = [
         authorId: "bora-demir",
         body: "Üst kattaki masalarda priz de varmış, bugün denedim.",
         time: "Dün",
+        createdAt: daysAgo(1),
       },
     ],
   }),
@@ -401,7 +417,7 @@ export const guestCampusPosts: CampusPost[] = [
     title: "Mavi matara güvenliğe teslim edildi",
     body: "C blok ikinci kattaki oturma alanında bulundu. Üzerindeki küçük etiketi tarif eden kişi güvenlikten teslim alabilir.",
     time: "4 sa",
-    createdAt: 188,
+    createdAt: hoursAgo(4),
     likes: 31,
     comments: [
       {
@@ -410,6 +426,7 @@ export const guestCampusPosts: CampusPost[] = [
         authorId: "selin-kaya",
         body: "Evet, danışmaya bıraktım. Öğrenci kartını göstererek alabilirsin.",
         time: "1 sa",
+        createdAt: hoursAgo(1),
       },
     ],
   }),
@@ -428,7 +445,7 @@ export const guestCampusPosts: CampusPost[] = [
       ],
     },
     time: "5 sa",
-    createdAt: 187,
+    createdAt: hoursAgo(5),
     likes: 112,
   }),
   createOfficialCampusPost({
@@ -444,7 +461,7 @@ export const guestCampusPosts: CampusPost[] = [
       alt: "Sonbaharda kampüs yolunda yürüyen bir öğrenci",
     },
     time: "6 sa",
-    createdAt: 186,
+    createdAt: hoursAgo(6),
     likes: 68,
     comments: [
       {
@@ -453,6 +470,7 @@ export const guestCampusPosts: CampusPost[] = [
         authorId: "irem-ozturk",
         body: "@sen geçen seferki rotayı biliyorsun, bize de katılır mısın?",
         time: "5 sa",
+        createdAt: hoursAgo(5),
       },
     ],
   }),
@@ -468,7 +486,7 @@ export const guestCampusPosts: CampusPost[] = [
       price: 0,
     },
     time: "7 sa",
-    createdAt: 185,
+    createdAt: hoursAgo(7),
     likes: 39,
   }),
   createOfficialCampusPost({
@@ -478,7 +496,7 @@ export const guestCampusPosts: CampusPost[] = [
     title: "Mezunlara tek bir soru sorabilsen ne sorardın?",
     body: "Staj, dersler, yurt dışı veya ilk iş… En çok merak ettiğin soruyu yaz. Öne çıkanları mezun buluşmasında yönelteceğiz.",
     time: "8 sa",
-    createdAt: 184,
+    createdAt: hoursAgo(8),
     likes: 76,
   }),
   createOfficialCampusPost({
@@ -488,7 +506,7 @@ export const guestCampusPosts: CampusPost[] = [
     title: "Şarj kablosunu bırakan gizli kahraman",
     body: "Ortak çalışma alanına herkes kullansın diye bir şarj kablosu bırakan kişiye topluluk adına teşekkürler.",
     time: "9 sa",
-    createdAt: 183,
+    createdAt: hoursAgo(9),
     likes: 104,
   }),
   createOfficialCampusPost({
@@ -498,7 +516,7 @@ export const guestCampusPosts: CampusPost[] = [
     title: "Burada herkes için yer var",
     body: "Kişisel bilgi paylaşmadan, hakaret etmeden ve kampüs topluluğuna saygı göstererek konuş. Üye olduğunda konu açabilir, yorum yapabilir ve gönderileri kaydedebilirsin.",
     time: "11 sa",
-    createdAt: 182,
+    createdAt: hoursAgo(11),
     likes: 55,
   }),
   createOfficialCampusPost({
@@ -508,7 +526,7 @@ export const guestCampusPosts: CampusPost[] = [
     title: "Bugünün akışından bu kadar",
     body: "Kampüs sakinleşirken günün duyurularını burada kapatıyoruz. Yeni etkinlikler ve öğrenci gündemiyle yarın görüşürüz.",
     time: "Dün",
-    createdAt: 181,
+    createdAt: daysAgo(1),
     likes: 89,
   }),
 ];
@@ -522,7 +540,7 @@ const memberSeedPosts: CampusPost[] = [
     title: "Notlarımı teslim eden kişiye teşekkür",
     body: "Bugün kütüphanede masada unuttuğum notları danışmaya bırakan kişiye teşekkür ederim. Final haftasında böyle küçük iyilikler gerçekten iyi geliyor.",
     time: "12 dk",
-    createdAt: 3,
+    createdAt: minutesAgo(12),
     likes: 27,
     liked: false,
     comments: [
@@ -533,6 +551,7 @@ const memberSeedPosts: CampusPost[] = [
         isAnonymous: false,
         body: "Notları danışmada görünce sahibi mutlaka arar diye düşündüm. Sana ulaştığına sevindim.",
         time: "8 dk",
+        createdAt: minutesAgo(8),
       },
       {
         id: "library-comment-2",
@@ -540,6 +559,7 @@ const memberSeedPosts: CampusPost[] = [
         isAnonymous: true,
         body: "Final haftasında ihtiyacımız olan kampüs ruhu tam olarak bu.",
         time: "4 dk",
+        createdAt: minutesAgo(4),
       },
     ],
     bookmarked: false,
@@ -554,7 +574,7 @@ const memberSeedPosts: CampusPost[] = [
     title: "Mikroekonomi finali için çalışma grubu",
     body: "Mikroekonomi finali için birlikte soru çözmek isteyen var mı? Yarın öğleden sonra kütüphanede çalışacağım.",
     time: "34 dk",
-    createdAt: 2,
+    createdAt: minutesAgo(34),
     likes: 11,
     liked: false,
     comments: [
@@ -565,6 +585,7 @@ const memberSeedPosts: CampusPost[] = [
         isAnonymous: false,
         body: "Saat 14.00 gibi gelebilirim. Özellikle esneklik konusuna çalışmam gerekiyor.",
         time: "20 dk",
+        createdAt: minutesAgo(20),
       },
       {
         id: "economics-comment-2",
@@ -573,6 +594,7 @@ const memberSeedPosts: CampusPost[] = [
         isAnonymous: false,
         body: "Ben de katılırım, grup olursa daha verimli olur.",
         time: "11 dk",
+        createdAt: minutesAgo(11),
       },
       {
         id: "economics-comment-3",
@@ -581,6 +603,7 @@ const memberSeedPosts: CampusPost[] = [
         isAnonymous: false,
         body: "14.00'te kütüphanenin girişindeki masalarda buluşalım.",
         time: "6 dk",
+        createdAt: minutesAgo(6),
       },
     ],
     bookmarked: false,
@@ -595,7 +618,7 @@ const memberSeedPosts: CampusPost[] = [
     title: "C blokta siyah termos bulundu",
     body: "C blok ikinci kattaki prizlerin yanında siyah bir termos buldum. Güvenliğe teslim ettim.",
     time: "1 sa",
-    createdAt: 1,
+    createdAt: hoursAgo(1),
     likes: 18,
     liked: false,
     comments: [
@@ -606,6 +629,7 @@ const memberSeedPosts: CampusPost[] = [
         isAnonymous: false,
         body: "Üzerinde küçük beyaz bir çıkartma varsa arkadaşımın olabilir, haber veriyorum.",
         time: "42 dk",
+        createdAt: minutesAgo(42),
       },
     ],
     bookmarked: false,

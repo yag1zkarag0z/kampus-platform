@@ -31,7 +31,7 @@ type NavigationItem = {
 };
 
 const navigationItems: readonly NavigationItem[] = [
-  { href: "/akis", label: "Akış", icon: "feed" },
+  { href: "/akis", label: "Home", icon: "feed" },
   { href: "/kesfet", label: "Keşfet", icon: "discover" },
   {
     href: "/bildirimler",
@@ -50,14 +50,11 @@ const navigationItems: readonly NavigationItem[] = [
 ];
 
 const mobileNavigationItems: readonly NavigationItem[] = [
-  { href: "/akis", label: "Akış", icon: "feed" },
+  { href: "/akis", label: "Home", icon: "feed" },
   { href: "/kesfet", label: "Keşfet", icon: "discover" },
   { href: "/konu-olustur", label: "Konu", icon: "share", primary: true },
-  {
-    href: "/bildirimler",
-    label: "Bildirim",
-    icon: "notifications",
-  },
+  // Bildirimler üst bara (kalp simgesi) taşındı; burada öneriler var.
+  { href: "/takip", label: "Öneriler", icon: "follow" },
   // Profil, üst bardaki hesap menüsüne taşındı; alt sırada kaydedilenler var.
   { href: "/kaydedilenler", label: "Kayıtlar", icon: "saved" },
 ];
@@ -89,11 +86,10 @@ function NavigationIconGlyph({ name }: { name: NavigationIconName }) {
     case "share":
       return <path d="M12 5v14M5 12h14" />;
     case "notifications":
+      // Instagram tarzı kalp: bildirim çanı yerine, akıştaki beğeni
+      // ikonuyla aynı aile.
       return (
-        <>
-          <path d="M6.7 10.3a5.3 5.3 0 0 1 10.6 0c0 5 2 5.4 2 6.5H4.7c0-1.1 2-1.5 2-6.5Z" />
-          <path d="M9.5 19a2.8 2.8 0 0 0 5 0" />
-        </>
+        <path d="M12 19.4s-7.2-4.3-7.2-9.6a4.2 4.2 0 0 1 7.2-2.9 4.2 4.2 0 0 1 7.2 2.9c0 5.3-7.2 9.6-7.2 9.6Z" />
       );
     case "saved":
       return <path d="M6.2 4.2h11.6v15.6L12 16.4l-5.8 3.4V4.2Z" />;
@@ -185,14 +181,15 @@ function SignInIcon({ className = "size-5" }: { className?: string }) {
   );
 }
 
-function NotificationBadge({ count }: { count: number }) {
+// Instagram tarzı: sayı yok, yalnızca "okunmamış var" noktası. Gerçek sayı
+// ekran okuyucular için yine de kayboluyor değil — çağıran yerlerdeki
+// aria-label'lar unreadCount'u sözel olarak veriyor.
+function NotificationBadge() {
   return (
     <span
       aria-hidden="true"
-      className="absolute -right-2 -top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#ff7a45] px-1 font-mono text-[8px] font-black leading-none text-[#12100e] ring-2 ring-[#0a0d16]"
-    >
-      {count > 9 ? "9+" : count}
-    </span>
+      className="absolute -right-0.5 -top-0.5 size-2.5 animate-[campus-pop_320ms_cubic-bezier(0.16,1,0.3,1)] rounded-full bg-[#ff7a45] ring-2 ring-[#0a0d16] motion-reduce:animate-none"
+    />
   );
 }
 
@@ -375,14 +372,18 @@ export default function AppNavigation() {
               >
                 Profilim
               </Link>
-              <Link
-                href="/ayarlar"
-                role="menuitem"
-                onClick={() => setIsAccountMenuOpen(false)}
-                className="block px-4 py-3 text-sm font-bold outline-none transition-colors hover:bg-white/7"
-              >
-                Ayarlar
-              </Link>
+              {/* Ayarlar gerçek bir hesabı varsayıyor (bildirim tercihi,
+                  görünürlük vb.); misafirde bağlanacak gerçek veri yok. */}
+              {!isGuest && (
+                <Link
+                  href="/ayarlar"
+                  role="menuitem"
+                  onClick={() => setIsAccountMenuOpen(false)}
+                  className="block px-4 py-3 text-sm font-bold outline-none transition-colors hover:bg-white/7"
+                >
+                  Ayarlar
+                </Link>
+              )}
               <button
                 type="button"
                 role="menuitem"
@@ -427,29 +428,32 @@ export default function AppNavigation() {
               <NavigationIcon name="admin" className="size-6" />
             </Link>
           )}
+          {/* Öneriler alt menüye taşındı; üst bar Instagram'daki gibi
+              bildirimleri kalp simgesiyle taşıyor. */}
           <Link
-            href="/takip"
-            aria-label="Takip önerilerini aç"
-            aria-current={
-              isActivePath(pathname, "/takip") ? "page" : undefined
+            href="/bildirimler"
+            aria-label={
+              areNotificationsHydrated && unreadCount > 0
+                ? `Bildirimler, ${unreadCount} okunmamış`
+                : "Bildirimleri aç"
             }
-            className={`grid size-12 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 ${
-              isActivePath(pathname, "/takip")
+            aria-current={
+              isActivePath(pathname, "/bildirimler") ? "page" : undefined
+            }
+            className={`relative grid size-12 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 ${
+              isActivePath(pathname, "/bildirimler")
                 ? "bg-[#ff7a45]/12 text-[#ff7a45]"
                 : "text-white/58 hover:bg-white/8 hover:text-white"
             }`}
           >
-            <NavigationIcon name="follow" className="size-6" />
+            <NavigationIcon name="notifications" className="size-6" />
+            {areNotificationsHydrated && unreadCount > 0 && (
+              // key={unreadCount}: sayı gerçekten değişince (backend'den
+              // geliyor, bkz. CampusNotificationProvider) rozet yeniden
+              // takılıp pop animasyonu tekrar oynar.
+              <NotificationBadge key={unreadCount} />
+            )}
           </Link>
-          {isGuest && (
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full px-3 text-xs font-black text-[#ffb199] outline-none transition-colors hover:bg-[#ffb199]/9 focus-visible:ring-3 focus-visible:ring-[#ffb199]/35"
-            >
-              Çıkış
-            </button>
-          )}
         </div>
       </header>
 
@@ -565,9 +569,7 @@ export default function AppNavigation() {
                             {item.icon === "notifications" &&
                               areNotificationsHydrated &&
                               unreadCount > 0 && (
-                                <NotificationBadge
-                                  count={unreadCount}
-                                />
+                                <NotificationBadge key={unreadCount} />
                               )}
                           </span>
                           <span className="max-w-full truncate">
@@ -609,12 +611,10 @@ export default function AppNavigation() {
                 {isGuest ? (
                   <Link
                     href="/giris"
-                    className="
-                  flex min-h-14 w-m items-center justify-center gap-3 rounded-full bg-[#ff7a45]  text-sm font-black text-[#12100e] outline-none transition-colors hover:bg-[#ff8d5e] focus-visible:ring-3 focus-visible:ring-[#ff7a45]/45 l:min-h-16 min:text-base
-
-"
+                    title="Giriş yap"
+                    className="mx-auto flex size-13 items-center justify-center gap-2 rounded-full bg-[#ff7a45] text-sm font-black text-[#12100e] outline-none transition-colors hover:bg-[#ff8d5e] focus-visible:ring-3 focus-visible:ring-[#ff7a45]/45 xl:h-12 xl:w-fit xl:px-4"
                   >
-                    <SignInIcon className="size-5 shrink-0" />
+                    <SignInIcon className="size-4 shrink-0" />
                     <span className="hidden xl:inline">Giriş yap</span>
                   </Link>
                 ) : (
@@ -747,7 +747,7 @@ export default function AppNavigation() {
                     {item.icon === "notifications" &&
                       areNotificationsHydrated &&
                       unreadCount > 0 && (
-                        <NotificationBadge count={unreadCount} />
+                        <NotificationBadge key={unreadCount} />
                       )}
                   </span>
                   <span className="max-w-full truncate">{item.label}</span>

@@ -46,86 +46,74 @@ export default function CampusCalendarWidget({
     };
   }, [limit]);
 
+  // Öneriler listesiyle aynı dil: kart yok, kenarlık yok, sağ sütuna
+  // doğrudan oturan düz bir liste.
   return (
-    <section
-      aria-labelledby="campus-calendar-title"
-      className={`overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#151a26] to-[#10141d] shadow-[0_1px_0_rgba(255,255,255,0.05)_inset,0_18px_40px_-24px_rgba(0,0,0,0.9)] ${className}`}
-    >
-      {/* Turuncu ince şerit: takvim kampüsün kimlik rengini taşısın. */}
-      <div className="h-px w-full bg-gradient-to-r from-transparent via-[#ff7a45]/55 to-transparent" />
-
-      <div className="px-5 pt-4 pb-3">
-        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
-          Yaklaşan
-        </p>
+    <section aria-labelledby="campus-calendar-title" className={className}>
+      <div className="flex items-center justify-between gap-3 px-1">
         <h2
           id="campus-calendar-title"
-          className="mt-1 text-lg font-black tracking-[-0.035em]"
+          className="text-lg font-black tracking-[-0.035em]"
         >
           Kampüs takvimi
         </h2>
+        {events.length > 0 && (
+          <Link
+            href="/takvim"
+            className={`shrink-0 text-sm font-bold text-[#ff7a45] transition-colors hover:text-[#ff8d5e] ${calendarFocusRing}`}
+          >
+            Tümünü gör
+          </Link>
+        )}
       </div>
 
       {events.length > 0 ? (
-        <ol>
+        <ol className="mt-4 flex flex-col gap-4 px-1">
           {events.map((event) => {
             const badge = formatEventBadge(event);
             const timing = getEventTiming(event);
             const style = calendarCategoryStyles[event.category];
 
             return (
-              <li
-                key={event.id}
-                className="border-t border-white/6 px-5 py-4 transition-colors hover:bg-white/[0.03]"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="grid size-11 shrink-0 place-items-center rounded-xl border border-[#ff7a45]/22 bg-[#ff7a45]/10 text-center">
-                    <span className="block text-sm font-black leading-none">
-                      {badge.day}
+              <li key={event.id} className="flex items-start gap-3">
+                <div className="grid size-11 shrink-0 place-items-center rounded-xl border border-[#ff7a45]/22 bg-[#ff7a45]/10 text-center">
+                  <span className="block text-sm font-black leading-none">
+                    {badge.day}
+                  </span>
+                  <span className="mt-0.5 block font-mono text-[9px] font-bold tracking-[0.1em] text-[#ff7a45]">
+                    {badge.month}
+                  </span>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold leading-5">
+                    {event.title}
+                  </p>
+                  <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-4 text-white/58">
+                    <span
+                      className={`inline-flex items-center gap-1 border px-1.5 py-px font-mono text-[9px] font-bold uppercase tracking-[0.08em] ${style.badge}`}
+                    >
+                      {style.label}
                     </span>
-                    <span className="mt-0.5 block font-mono text-[9px] font-bold tracking-[0.1em] text-[#ff7a45]">
-                      {badge.month}
-                    </span>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold leading-5">
-                      {event.title}
-                    </p>
-                    <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-4 text-white/58">
-                      <span
-                        className={`inline-flex items-center gap-1 border px-1.5 py-px font-mono text-[9px] font-bold uppercase tracking-[0.08em] ${style.badge}`}
-                      >
-                        {style.label}
-                      </span>
-                      <span>{formatEventTiming(timing)}</span>
-                    </p>
-                    <CampusAudienceTags
-                      audiences={event.audiences}
-                      size="sm"
-                      className="mt-1.5"
-                    />
-                    <p className="mt-1.5 text-[11px] leading-4 text-white/45">
-                      {formatEventDate(event)}
-                    </p>
-                  </div>
+                    <span>{formatEventTiming(timing)}</span>
+                  </p>
+                  <CampusAudienceTags
+                    audiences={event.audiences}
+                    size="sm"
+                    className="mt-1.5"
+                  />
+                  <p className="mt-1.5 text-[11px] leading-4 text-white/45">
+                    {formatEventDate(event)}
+                  </p>
                 </div>
               </li>
             );
           })}
         </ol>
       ) : (
-        <p className="px-5 py-6 text-xs leading-5 text-white/55">
+        <p className="mt-3 px-1 text-sm leading-6 text-white/50">
           Takvim yükleniyor…
         </p>
       )}
-
-      <Link
-        href="/takvim"
-        className={`flex items-center justify-between border-t border-white/8 px-5 py-3.5 text-xs font-black text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/8 ${calendarFocusRing}`}
-      >
-        Tüm akademik takvim
-        <span aria-hidden="true">→</span>
-      </Link>
     </section>
   );
 }

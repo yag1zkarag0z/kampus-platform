@@ -61,7 +61,7 @@ describe("FollowSuggestions", () => {
     ).toBeInTheDocument();
     expect(screen.getAllByTestId("avatar")).toHaveLength(4);
     expect(
-      screen.getByRole("link", { name: "Tüm önerileri gör" }),
+      screen.getByRole("link", { name: "Tümünü gör" }),
     ).toHaveAttribute("href", "/takip");
   });
 

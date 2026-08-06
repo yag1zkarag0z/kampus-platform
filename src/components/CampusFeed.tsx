@@ -249,6 +249,20 @@ export default function CampusFeed() {
     toggleLike,
     toggleBookmark,
   } = useCampusData();
+  // Misafirin beğeni/kaydetme tıklaması mutasyon yerine giriş daveti açar;
+  // düzen herkes için aynı kalır, yalnızca sonuç farklıdır.
+  const requireMember = () => {
+    if (!isGuest) {
+      return false;
+    }
+
+    showToast({
+      message: "Bu işlem için giriş yap veya kayıt ol.",
+      tone: "info",
+      action: { label: "Giriş yap", onClick: () => router.push("/giris") },
+    });
+    return true;
+  };
   const categoryMenuRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
   const quickPostBodyRef = useRef<HTMLTextAreaElement>(null);
@@ -1367,74 +1381,73 @@ export default function CampusFeed() {
                       <CampusPoll postId={post.id} poll={post.poll} />
                     )}
 
-                    {isGuest ? (
-                  <footer className="mt-5 flex min-h-11 items-center justify-between gap-3 text-sm font-bold text-white/60 sm:mt-6 sm:text-base">
-                    <span className="inline-flex items-center gap-2">
-                      <HeartIcon filled={false} />
-                      {post.likes} beğeni
-                    </span>
-                    <Link
-                      href={`/gonderi/${post.id}`}
-                      className={`inline-flex min-h-11 items-center px-2 text-[#ff7a45] ${focusRing}`}
-                    >
-                      Görüntüle
-                    </Link>
-                  </footer>
-                ) : (
-                  <footer className="mt-5 flex items-center justify-between gap-2 sm:mt-6">
-                  <div className="flex min-w-0 items-center gap-1">
-                    <button
-                      type="button"
-                      aria-pressed={post.liked}
-                      aria-label={
-                        post.liked
-                          ? `${post.title || "Gönderi"} gönderisindeki beğeniyi kaldır, ${post.likes} beğeni`
-                          : `${post.title || "Gönderi"} gönderisini beğen, ${post.likes} beğeni`
-                      }
-                      onClick={() => toggleLike(post.id)}
-                      className={`campus-pop-on-active inline-flex min-h-11 items-center gap-2 px-2 text-sm font-bold transition-colors sm:text-base ${focusRing} ${
-                        post.liked
-                          ? "bg-[#ff7a45]/10 text-[#ff7a45]"
-                          : "text-white/55 hover:bg-white/4 hover:text-[#ff7a45]"
-                      }`}
-                    >
-                      <HeartIcon filled={post.liked} />
-                      <span aria-live="polite" aria-atomic="true">
-                        {post.likes}
-                      </span>
-                      <span className="hidden min-[430px]:inline">beğeni</span>
-                    </button>
+                    {/* Düzen misafir/üye için birebir aynı; misafirin
+                        tıklaması yalnızca giriş daveti açar. */}
+                    <footer className="mt-5 flex items-center justify-between gap-2 sm:mt-6">
+                      <div className="flex min-w-0 items-center gap-1">
+                        <button
+                          type="button"
+                          aria-pressed={post.liked}
+                          aria-label={
+                            post.liked
+                              ? `${post.title || "Gönderi"} gönderisindeki beğeniyi kaldır, ${post.likes} beğeni`
+                              : `${post.title || "Gönderi"} gönderisini beğen, ${post.likes} beğeni`
+                          }
+                          onClick={() => {
+                            if (!requireMember()) {
+                              toggleLike(post.id);
+                            }
+                          }}
+                          className={`campus-pop-on-active inline-flex min-h-11 items-center gap-2 px-2 text-sm font-bold transition-colors sm:text-base ${focusRing} ${
+                            post.liked
+                              ? "bg-[#ff7a45]/10 text-[#ff7a45]"
+                              : "text-white/55 hover:bg-white/4 hover:text-[#ff7a45]"
+                          }`}
+                        >
+                          <HeartIcon filled={post.liked} />
+                          <span aria-live="polite" aria-atomic="true">
+                            {post.likes}
+                          </span>
+                          <span className="hidden min-[430px]:inline">
+                            beğeni
+                          </span>
+                        </button>
 
-                    <Link
-                      href={`/gonderi/${post.id}#yorumlar`}
-                      aria-label={`${post.title || "Gönderi"} konusunun ${getCampusPostCommentCount(post)} yorumunu aç`}
-                      className={`inline-flex min-h-11 items-center gap-2 px-2 text-sm font-bold text-white/60 transition-colors hover:text-[#ff7a45] sm:text-base ${focusRing}`}
-                    >
-                      <CommentIcon />
-                      <span>{getCampusPostCommentCount(post)}</span>
-                      <span className="hidden min-[430px]:inline">yorum</span>
-                    </Link>
-                  </div>
+                        <Link
+                          href={`/gonderi/${post.id}#yorumlar`}
+                          aria-label={`${post.title || "Gönderi"} konusunun ${getCampusPostCommentCount(post)} yorumunu aç`}
+                          className={`inline-flex min-h-11 items-center gap-2 px-2 text-sm font-bold text-white/60 transition-colors hover:text-[#ff7a45] sm:text-base ${focusRing}`}
+                        >
+                          <CommentIcon />
+                          <span>{getCampusPostCommentCount(post)}</span>
+                          <span className="hidden min-[430px]:inline">
+                            yorum
+                          </span>
+                        </Link>
+                      </div>
 
-                  <button
-                    type="button"
-                    aria-pressed={post.bookmarked}
-                    aria-label={
-                      post.bookmarked
-                        ? "Kaydedilenlerden çıkar"
-                        : "Gönderiyi kaydet"
-                    }
-                    onClick={() => toggleBookmark(post.id)}
-                    className={`campus-pop-on-active grid size-12 shrink-0 place-items-center transition-colors ${focusRing} ${
-                      post.bookmarked
-                        ? "text-[#ff7a45]"
-                        : "text-white/55 hover:text-[#ff7a45]"
-                    }`}
-                  >
-                    <BookmarkIcon filled={post.bookmarked} />
-                  </button>
-                  </footer>
-                    )}
+                      <button
+                        type="button"
+                        aria-pressed={post.bookmarked}
+                        aria-label={
+                          post.bookmarked
+                            ? "Kaydedilenlerden çıkar"
+                            : "Gönderiyi kaydet"
+                        }
+                        onClick={() => {
+                          if (!requireMember()) {
+                            toggleBookmark(post.id);
+                          }
+                        }}
+                        className={`campus-pop-on-active grid size-12 shrink-0 place-items-center transition-colors ${focusRing} ${
+                          post.bookmarked
+                            ? "text-[#ff7a45]"
+                            : "text-white/55 hover:text-[#ff7a45]"
+                        }`}
+                      >
+                        <BookmarkIcon filled={post.bookmarked} />
+                      </button>
+                    </footer>
                   </>
                 )}
               </CampusPostCardSurface>

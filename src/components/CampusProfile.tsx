@@ -324,9 +324,15 @@ export default function CampusProfile() {
                         />
                       )}
 
-                      <p className="mt-3 text-xs font-bold text-white/55">
-                        {post.likes} beğeni ·{" "}
-                        {getCampusPostCommentCount(post)} yorum
+                      <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-bold text-white/55">
+                        <span className="inline-flex items-center gap-1.5">
+                          <HeartIcon />
+                          {post.likes} beğeni
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <CommentIcon />
+                          {getCampusPostCommentCount(post)} yorum
+                        </span>
                       </p>
                     </CampusPostCardSurface>
                   </li>
@@ -509,6 +515,42 @@ function ProfileLoading() {
         <span className="sr-only">Profil yükleniyor…</span>
       </div>
     </section>
+  );
+}
+
+function HeartIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      className="size-[17px]"
+    >
+      <path
+        d="M10 16.2s-6-3.4-6-8.1A3.3 3.3 0 0 1 10 6a3.3 3.3 0 0 1 6 2.1c0 4.7-6 8.1-6 8.1Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CommentIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      className="size-[17px]"
+    >
+      <path
+        d="M16.3 9.1c0 3.4-2.8 6-6.3 6a7 7 0 0 1-2.3-.4L4 16l1.1-3A5.8 5.8 0 0 1 3.7 9.1c0-3.4 2.8-6.1 6.3-6.1s6.3 2.7 6.3 6.1Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

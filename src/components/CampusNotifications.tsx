@@ -64,6 +64,58 @@ function formatRelativeTime(isoDate: string) {
   }).format(new Date(isoDate));
 }
 
+/** Gün başlangıcı: yerel saat diliminde 00:00. */
+function startOfLocalDay(value: Date) {
+  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+}
+
+type NotificationDateGroupId = "today" | "yesterday" | "week" | "older";
+
+const dateGroupLabels: Record<NotificationDateGroupId, string> = {
+  today: "Bugün",
+  yesterday: "Dün",
+  week: "Bu hafta",
+  older: "Daha eski",
+};
+
+/**
+ * Bildirimleri okunma durumuna değil tarihe göre gruplar. Liste zaten
+ * `createdAt` azalan sırayla geldiği için her kova kendi içinde de
+ * kronolojik kalır.
+ */
+function groupNotificationsByDate(notifications: NotificationDto[]) {
+  const today = startOfLocalDay(new Date());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const weekStart = new Date(today);
+  weekStart.setDate(weekStart.getDate() - 6);
+
+  const buckets: Record<NotificationDateGroupId, NotificationDto[]> = {
+    today: [],
+    yesterday: [],
+    week: [],
+    older: [],
+  };
+
+  for (const notification of notifications) {
+    const createdAt = startOfLocalDay(new Date(notification.createdAt));
+
+    if (createdAt.getTime() === today.getTime()) {
+      buckets.today.push(notification);
+    } else if (createdAt.getTime() === yesterday.getTime()) {
+      buckets.yesterday.push(notification);
+    } else if (createdAt.getTime() >= weekStart.getTime()) {
+      buckets.week.push(notification);
+    } else {
+      buckets.older.push(notification);
+    }
+  }
+
+  return (["today", "yesterday", "week", "older"] as const)
+    .map((id) => ({ id, label: dateGroupLabels[id], items: buckets[id] }))
+    .filter((group) => group.items.length > 0);
+}
+
 function getNotificationHref(notification: NotificationDto) {
   if (notification.kind === "follow") {
     return `/profil/${encodeURIComponent(notification.actor.username)}`;
@@ -123,17 +175,10 @@ export default function CampusNotifications() {
     return notifications;
   }, [activeFilter, notifications]);
 
-  // Okunmamışlar üstte ayrı blokta dursun; geri dönen kullanıcı neyi
-  // kaçırdığını tek bakışta görsün.
-  const notificationSections = useMemo(() => {
-    const unread = visibleNotifications.filter((item) => !item.isRead);
-    const read = visibleNotifications.filter((item) => item.isRead);
-
-    return [
-      { id: "unread", label: "Yeni", items: unread },
-      { id: "read", label: "Daha önce", items: read },
-    ].filter((section) => section.items.length > 0);
-  }, [visibleNotifications]);
+  const notificationSections = useMemo(
+    () => groupNotificationsByDate(visibleNotifications),
+    [visibleNotifications],
+  );
 
   const handleMarkAllAsRead = async () => {
     if (unreadCount === 0) {
@@ -162,29 +207,23 @@ export default function CampusNotifications() {
       aria-busy={!isNotificationsHydrated}
       className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
     >
-      <header className="sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl">
-        <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-3 sm:gap-3 sm:px-6">
-          <span aria-hidden="true" />
-          <div className="min-w-0 justify-self-center text-center">
-            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-[#ff7a45] sm:text-xs">
-              Güncellemeler
-            </p>
-            <h1
-              ref={titleRef}
-              id="notifications-title"
-              tabIndex={-1}
-              className="mt-0.5 truncate text-2xl font-black tracking-[-0.04em] outline-none sm:text-3xl"
-            >
-              Bildirimler
-            </h1>
-          </div>
+      <header className="sticky top-0 z-30 border-b border-white/8 bg-[#0a0d16]/95 backdrop-blur-xl">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-3.5">
+          <h1
+            ref={titleRef}
+            id="notifications-title"
+            tabIndex={-1}
+            className="truncate text-xl font-black tracking-[-0.03em] outline-none sm:text-2xl"
+          >
+            Bildirimler
+          </h1>
 
           <button
             type="button"
             disabled={!isNotificationsHydrated || unreadCount === 0}
             onClick={() => void handleMarkAllAsRead()}
             aria-label="Tüm bildirimleri okundu olarak işaretle"
-            className={`inline-flex min-h-11 min-w-11 items-center justify-center justify-self-end gap-1.5 px-1.5 text-xs font-black text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/8 disabled:cursor-not-allowed disabled:opacity-38 sm:px-3 sm:text-sm ${focusRing}`}
+            className={`inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-full px-2.5 text-xs font-black text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/8 disabled:cursor-not-allowed disabled:opacity-38 sm:px-3 sm:text-sm ${focusRing}`}
           >
             <ReadAllIcon />
             <span className="hidden min-[460px]:inline">Tümünü oku</span>
@@ -194,7 +233,7 @@ export default function CampusNotifications() {
         <div
           role="group"
           aria-label="Bildirimleri filtrele"
-          className="grid grid-cols-3 border-t border-white/10 px-2 py-2 sm:px-5"
+          className="grid grid-cols-3 border-t border-white/8 px-4 sm:px-6"
         >
           {filterOptions.map((filter) => {
             const isActive = activeFilter === filter.id;
@@ -206,19 +245,19 @@ export default function CampusNotifications() {
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => setActiveFilter(filter.id)}
-                className={`relative min-h-12 px-2 text-xs font-black transition-colors sm:text-sm ${focusRing} ${
+                className={`relative flex min-h-10 items-center justify-center gap-1.5 border-b-2 text-xs font-black transition-colors sm:text-sm ${focusRing} ${
                   isActive
-                    ? "bg-[#ff7a45]/12 text-[#ff7a45]"
-                    : "text-white/55 hover:bg-white/8 hover:text-white"
+                    ? "border-[#ff7a45] text-[#ff7a45]"
+                    : "border-transparent text-white/55 hover:text-white"
                 }`}
               >
                 {filter.label}
                 <span
                   aria-label={`${count} bildirim`}
-                  className={`ml-1.5 inline-flex min-w-5 justify-center rounded-full px-1.5 py-0.5 font-mono text-[9px] ${
+                  className={`inline-flex min-w-5 justify-center rounded-full px-1.5 py-0.5 font-mono text-[9px] ${
                     isActive
-                      ? "bg-[#ff7a45] text-[#12100e]"
-                      : "bg-white/10 text-white/55"
+                      ? "bg-[#ff7a45]/14 text-[#ff7a45]"
+                      : "bg-white/8 text-white/50"
                   }`}
                 >
                   {count}
@@ -254,7 +293,7 @@ export default function CampusNotifications() {
               {notificationSections.length > 1 && (
                 <h2
                   id={`notifications-${section.id}`}
-                  className="border-b border-white/8 bg-white/[0.02] px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-[0.13em] text-white/62 sm:px-6"
+                  className="px-4 pt-4 pb-1 text-[11px] font-bold uppercase tracking-wide text-white/40 sm:px-6"
                 >
                   {section.label}
                 </h2>
@@ -316,89 +355,56 @@ function NotificationItem({
   const time = formatRelativeTime(notification.createdAt);
 
   return (
-    <li
-      className={`relative border-b border-white/10 transition-colors last:border-b-0 ${
-        isRead ? "bg-transparent" : "bg-[#ff7a45]/[0.065]"
-      }`}
-    >
-      {!isRead && (
-        <span
-          aria-hidden="true"
-          className="absolute inset-y-0 left-0 w-0.5 bg-[#ff7a45]"
-        />
-      )}
-
-      <article className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3.5 px-4 py-5 sm:px-6 sm:py-6">
-        {/* Gruplanan beğenilerde yığılmış avatar: kimlerin beğendiği tek
-            bakışta görünsün. */}
-        <span className="mt-0.5 flex shrink-0 items-center -space-x-3">
+    <li className="border-b border-white/5 last:border-b-0">
+      <Link
+        href={getNotificationHref(notification)}
+        onClick={() => void onMarkAsRead(notification.id)}
+        aria-label={`${copy.actorLabel} ${copy.action} ${copy.preview}. ${
+          isRead ? "" : "Okunmamış. "
+        }${time}. ${targetLabel}`}
+        className={`flex min-h-19 items-center gap-3 px-4 py-3 transition-colors hover:bg-white/3 sm:px-6 ${focusRing}`}
+      >
+        <span className="relative shrink-0">
           <CampusAuthorAvatar
             author={`@${notification.actor.username}`}
             authorId={notification.actor.id}
             avatarUrl={notification.actor.avatarUrl}
             size="md"
-            className="ring-2 ring-[#0a0d16]"
           />
-          {notification.otherActors.slice(0, 2).map((actor) => (
-            <CampusAuthorAvatar
-              key={actor.id}
-              author={`@${actor.username}`}
-              authorId={actor.id}
-              avatarUrl={actor.avatarUrl}
-              size="sm"
-              className="ring-2 ring-[#0a0d16]"
-            />
-          ))}
+          <NotificationKindIcon kind={notification.kind} />
         </span>
 
-        <Link
-          href={getNotificationHref(notification)}
-          onClick={() => void onMarkAsRead(notification.id)}
-          aria-label={`${copy.actorLabel} ${copy.action} ${copy.preview}. ${time}. ${targetLabel}`}
-          className={`min-w-0 rounded-sm ${focusRing}`}
-        >
-          <p className="text-[15px] leading-6 sm:text-base">
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm sm:text-[15px]">
             <span className="font-black">{copy.actorLabel}</span>{" "}
-            <span className="font-medium text-white/70">{copy.action}</span>
-          </p>
-          <p
-            className={`mt-1 line-clamp-2 text-[15px] leading-6 sm:text-base ${
-              isRead ? "text-white/55" : "font-semibold text-white/80"
-            }`}
-          >
-            {copy.preview}
-          </p>
-          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-[#ff7a45]/80">
-            {copy.postTitle && (
-              <>
-                <span className="max-w-full truncate">{copy.postTitle}</span>
-                <span aria-hidden="true">·</span>
-              </>
-            )}
-            <time dateTime={notification.createdAt}>{time}</time>
-          </p>
-        </Link>
-
-        <div className="flex min-w-10 flex-col items-end gap-1">
-          <NotificationKindIcon kind={notification.kind} />
-          {!isRead && (
-            <>
-              <span className="sr-only">Okunmamış bildirim.</span>
-              <button
-                type="button"
-                onClick={() => void onMarkAsRead(notification.id)}
-                aria-label={`${copy.actorLabel} bildirimini okundu olarak işaretle`}
-                className={`grid size-10 place-items-center rounded-full text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/10 hover:text-[#ffb18c] ${focusRing}`}
-              >
-                <span
-                  aria-hidden="true"
-                  className="size-2.5 rounded-full bg-current"
-                />
-              </button>
-            </>
+            <span className="font-medium text-white/65">{copy.action}</span>
+          </span>
+          {copy.preview && (
+            <span
+              className={`mt-0.5 block truncate text-sm ${
+                isRead ? "text-white/45" : "text-white/62"
+              }`}
+            >
+              {copy.preview}
+            </span>
           )}
-        </div>
-      </article>
+        </span>
+
+        <span className="flex shrink-0 flex-col items-end gap-1.5">
+          <time
+            dateTime={notification.createdAt}
+            className="text-xs text-white/45"
+          >
+            {time}
+          </time>
+          {!isRead && (
+            <span
+              aria-hidden="true"
+              className="size-2 rounded-full bg-[#ff7a45]"
+            />
+          )}
+        </span>
+      </Link>
     </li>
   );
 }
@@ -408,13 +414,13 @@ function NotificationsLoading() {
     <div
       role="status"
       aria-label="Bildirimler yükleniyor"
-      className="divide-y divide-white/10"
+      className="divide-y divide-white/5"
     >
       {Array.from({ length: 5 }, (_, index) => (
         <div
           key={index}
           aria-hidden="true"
-          className="flex animate-pulse items-start gap-3 px-4 py-5 motion-reduce:animate-none sm:px-6"
+          className="flex animate-pulse items-center gap-3 px-4 py-3 motion-reduce:animate-none sm:px-6"
         >
           <span className="size-10 shrink-0 rounded-full bg-white/8" />
           <span className="min-w-0 flex-1 space-y-2 pt-0.5">
@@ -448,24 +454,24 @@ function NotificationsEmptyState({
               "Birisi seni bir yorumda etiketlediğinde veya yanıtladığında burada göreceksin.",
           }
         : {
-            title: "Bildirim kutun sessiz",
+            title: "Henüz bildirim yok",
             description:
-              "Topluluktaki etkileşimlerin ve önemli KAMPÜS duyuruları burada toplanacak.",
+              "Yeni etkileşimlerin ve önemli kampüs duyuruların burada görünecek.",
           };
 
   return (
-    <div className="grid min-h-[28rem] place-items-center px-5 py-14 text-center sm:px-8">
-      <div className="max-w-sm">
+    <div className="flex flex-col items-center px-6 pt-14 pb-10 text-center">
+      <div className="max-w-88">
         <span
           aria-hidden="true"
-          className="mx-auto grid size-12 place-items-center rounded-full border border-white/12 text-[#ff7a45]"
+          className="mx-auto grid size-11 place-items-center rounded-full border border-white/10 text-[#ff7a45]"
         >
-          <BellIcon />
+          <HeartIcon className="size-5" />
         </span>
-        <h2 className="mt-5 text-lg font-black tracking-[-0.03em]">
+        <h2 className="mt-4 text-base font-black tracking-[-0.03em]">
           {content.title}
         </h2>
-        <p className="mt-2 text-sm leading-6 text-white/55">
+        <p className="mt-1.5 text-sm leading-6 text-white/55">
           {content.description}
         </p>
       </div>
@@ -483,43 +489,26 @@ function NotificationKindIcon({ kind }: { kind: NotificationKindDto }) {
     announcement: "Duyuru",
   };
 
+  // Avatarın sağ alt köşesine oturan küçük tür rozeti; kart ağırlığı
+  // katmadan bildirimin türünü tek bakışta gösterir.
   return (
     <span
       role="img"
       aria-label={labelByKind[kind]}
-      className="grid size-8 place-items-center rounded-full bg-white/8 text-[#ff7a45]"
+      className="absolute -right-1 -bottom-1 grid size-5 place-items-center rounded-full bg-[#12151d] text-[#ff7a45] ring-2 ring-[#0a0d16]"
     >
       {kind === "like" ? (
-        <HeartIcon />
+        <HeartIcon className="size-2.5" />
       ) : kind === "follow" ? (
-        <PersonPlusIcon />
+        <PersonPlusIcon className="size-2.5" />
       ) : kind === "announcement" ? (
-        <MegaphoneIcon />
+        <HeartIcon className="size-2.5" />
       ) : kind === "mention" ? (
-        <MentionIcon />
+        <MentionIcon className="size-2.5" />
       ) : (
-        <CommentIcon />
+        <CommentIcon className="size-2.5" />
       )}
     </span>
-  );
-}
-
-function BellIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 20 20"
-      fill="none"
-      className="size-5"
-    >
-      <path
-        d="M5.1 8.2a4.9 4.9 0 0 1 9.8 0c0 5 1.8 5.4 1.8 5.4H3.3s1.8-.4 1.8-5.4Zm2.9 7.4a2.2 2.2 0 0 0 4 0"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
 
@@ -542,13 +531,13 @@ function ReadAllIcon() {
   );
 }
 
-function HeartIcon() {
+function HeartIcon({ className = "size-4" }: { className?: string }) {
   return (
     <svg
       aria-hidden="true"
       viewBox="0 0 20 20"
       fill="none"
-      className="size-4"
+      className={className}
     >
       <path
         d="M10 16.2s-6-3.4-6-8.1A3.3 3.3 0 0 1 10 6a3.3 3.3 0 0 1 6 2.1c0 4.7-6 8.1-6 8.1Z"
@@ -560,13 +549,13 @@ function HeartIcon() {
   );
 }
 
-function PersonPlusIcon() {
+function PersonPlusIcon({ className = "size-4" }: { className?: string }) {
   return (
     <svg
       aria-hidden="true"
       viewBox="0 0 20 20"
       fill="none"
-      className="size-4"
+      className={className}
     >
       <circle
         cx="8"
@@ -585,13 +574,13 @@ function PersonPlusIcon() {
   );
 }
 
-function CommentIcon() {
+function CommentIcon({ className = "size-4" }: { className?: string }) {
   return (
     <svg
       aria-hidden="true"
       viewBox="0 0 20 20"
       fill="none"
-      className="size-4"
+      className={className}
     >
       <path
         d="M16.3 9.1c0 3.4-2.8 6-6.3 6a7 7 0 0 1-2.3-.4L4 16l1.1-3A5.8 5.8 0 0 1 3.7 9.1c0-3.4 2.8-6.1 6.3-6.1s6.3 2.7 6.3 6.1Z"
@@ -603,13 +592,13 @@ function CommentIcon() {
   );
 }
 
-function MentionIcon() {
+function MentionIcon({ className = "size-4" }: { className?: string }) {
   return (
     <svg
       aria-hidden="true"
       viewBox="0 0 20 20"
       fill="none"
-      className="size-4"
+      className={className}
     >
       <path
         d="M13.1 7.3v4a1.8 1.8 0 1 0 3.6 0V10a6.7 6.7 0 1 0-2.6 5.3"
@@ -628,27 +617,3 @@ function MentionIcon() {
   );
 }
 
-function MegaphoneIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 20 20"
-      fill="none"
-      className="size-4"
-    >
-      <path
-        d="M4 8.2v3.6h2.3l5.5 3.2V5L6.3 8.2H4Zm2.5 3.6.7 3"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M14.2 7.2a4 4 0 0 1 0 5.6"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}

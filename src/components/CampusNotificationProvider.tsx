@@ -13,6 +13,7 @@ import {
 } from "react";
 
 import { useCampusAccount } from "@/components/CampusAccountProvider";
+import { guestNotifications } from "@/data/campusNotifications";
 import {
   getMyNotifications,
   getMyUnreadNotificationCount,
@@ -60,12 +61,16 @@ export function CampusNotificationProvider({
     let isCancelled = false;
 
     if (sessionMode !== "member") {
+      // Misafirde sabit veri kullanılıyor; ağ isteği yok, anında hazır.
       queueMicrotask(() => {
         if (isCancelled) {
           return;
         }
 
-        setUnreadCount(0);
+        setUnreadCount(
+          guestNotifications.filter((notification) => !notification.isRead)
+            .length,
+        );
         setIsUnreadCountHydrated(true);
       });
 
@@ -119,8 +124,24 @@ export function CampusNotificationProvider({
 
   useEffect(() => {
     let isCancelled = false;
-    const shouldLoadList =
-      sessionMode === "member" && (pathname?.startsWith("/bildirimler") ?? false);
+
+    if (sessionMode !== "member") {
+      // Misafirde sabit veri kullanılıyor; yol koşuluna gerek yok, anında
+      // hazır — /bildirimler'e hiç uğramadan da rozet doğru sayıyı gösterir.
+      queueMicrotask(() => {
+        if (!isCancelled) {
+          setNotifications(guestNotifications);
+          setNextCursor(null);
+          setIsNotificationsHydrated(true);
+        }
+      });
+
+      return () => {
+        isCancelled = true;
+      };
+    }
+
+    const shouldLoadList = pathname?.startsWith("/bildirimler") ?? false;
 
     if (!shouldLoadList) {
       return () => {
@@ -183,10 +204,6 @@ export function CampusNotificationProvider({
 
   const markAsRead = useCallback(
     async (notificationId: string) => {
-      if (sessionMode !== "member") {
-        return;
-      }
-
       const target = notifications.find(
         (notification) => notification.id === notificationId,
       );
@@ -204,6 +221,12 @@ export function CampusNotificationProvider({
       );
       setUnreadCount((current) => Math.max(0, current - 1));
 
+      // Misafirde bu yalnızca yerel state; sabit veri için kalıcı bir
+      // sunucu tarafı yok.
+      if (sessionMode !== "member") {
+        return;
+      }
+
       try {
         await markNotificationRead(notificationId);
       } catch {
@@ -214,16 +237,20 @@ export function CampusNotificationProvider({
   );
 
   const markAllAsRead = useCallback(async () => {
-    if (sessionMode !== "member") {
-      return 0;
-    }
-
     const unreadNotifications = notifications.filter(
       (notification) => !notification.isRead,
     );
 
     if (unreadNotifications.length === 0) {
       return 0;
+    }
+
+    if (sessionMode !== "member") {
+      setNotifications((current) =>
+        current.map((notification) => ({ ...notification, isRead: true })),
+      );
+      setUnreadCount(0);
+      return unreadNotifications.length;
     }
 
     setNotifications((current) =>
