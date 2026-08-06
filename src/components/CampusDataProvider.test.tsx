@@ -915,7 +915,7 @@ describe("CampusDataProvider", () => {
     });
   });
 
-  it("uses the static 20-post guest feed without requesting member content", async () => {
+  it("uses the static guest feed without requesting member content", async () => {
     Object.assign(dataState.account, {
       accountId: null,
       isGuest: true,
@@ -925,8 +925,7 @@ describe("CampusDataProvider", () => {
     const { result } = renderHook(() => useCampusData(), { wrapper });
     await waitFor(() => expect(result.current.isHydrated).toBe(true));
 
-    expect(guestCampusPosts).toHaveLength(20);
-    expect(result.current.posts).toHaveLength(20);
+    expect(result.current.posts).toHaveLength(guestCampusPosts.length);
     expect(result.current.hasMore).toBe(false);
     expect(contentClientMocks.listContentPosts).not.toHaveBeenCalled();
 

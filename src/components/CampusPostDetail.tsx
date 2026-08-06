@@ -267,6 +267,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
               <CampusAuthorAvatar
                 author={post.author}
                 authorId={post.authorId}
+                avatarUrl={post.avatarUrl}
                 isAnonymous={post.isAnonymous}
               />
             </CampusAuthorProfileLink>
@@ -697,6 +698,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                     <CampusAuthorAvatar
                       author={comment.author}
                       authorId={comment.authorId}
+                      avatarUrl={comment.avatarUrl}
                       isAnonymous={comment.isAnonymous}
                       size="sm"
                     />

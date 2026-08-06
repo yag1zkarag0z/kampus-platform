@@ -76,7 +76,7 @@ export default function CampusCalendarWidget({
 
             return (
               <li key={event.id} className="flex items-start gap-3">
-                <div className="grid size-11 shrink-0 place-items-center rounded-xl border border-[#ff7a45]/22 bg-[#ff7a45]/10 text-center">
+                <div className="grid size-11 shrink-0 place-items-center rounded-xl border border-[#ff7a45]/18 bg-[#ff7a45]/5 text-center">
                   <span className="block text-sm font-black leading-none">
                     {badge.day}
                   </span>

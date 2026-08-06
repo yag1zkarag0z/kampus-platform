@@ -536,6 +536,7 @@ function SavedPostCard({
           <CampusAuthorAvatar
             author={post.author}
             authorId={post.authorId}
+            avatarUrl={post.avatarUrl}
             isAnonymous={post.isAnonymous}
             size="sm"
           />

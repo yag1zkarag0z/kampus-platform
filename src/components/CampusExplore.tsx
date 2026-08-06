@@ -268,6 +268,7 @@ export default function CampusExplore() {
                       <CampusAuthorAvatar
                         author={post.author}
                         authorId={post.authorId}
+                        avatarUrl={post.avatarUrl}
                         isAnonymous={post.isAnonymous}
                         size="lg"
                       />

@@ -18,6 +18,7 @@ export type CampusComment = {
   id: string;
   author: string;
   authorId?: string;
+  avatarUrl?: string;
   isAnonymous?: boolean;
   parentId?: string;
   edited?: boolean;
@@ -70,6 +71,7 @@ export type CampusPost = {
   id: string;
   author: string;
   authorId?: string;
+  avatarUrl?: string;
   isAnonymous?: boolean;
   detail?: string;
   category: CampusPostCategory;
@@ -141,10 +143,47 @@ const minutesAgo = (n: number) => Date.now() - n * 60_000;
 const hoursAgo = (n: number) => Date.now() - n * 60 * 60_000;
 const daysAgo = (n: number) => Date.now() - n * 24 * 60 * 60_000;
 
-type OfficialCampusPostSeed = Omit<
+/** Herkese aynı çizgi-roman tarzı, gerçek kişi olmayan avatar üretir. */
+function seedAvatar(seed: string) {
+  return `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
+}
+
+/** Misafir akışındaki kurgusal öğrenciler — resmî KAMPÜS hesabı değil. */
+const guestAuthors = {
+  ecearslan: { author: "@ecearslan", authorId: "seed-ecearslan", avatarUrl: seedAvatar("ecearslan") },
+  deniz: { author: "@deniz", authorId: "seed-deniz", avatarUrl: seedAvatar("deniz-akin") },
+  mertcan: { author: "@mertcan", authorId: "seed-mertcan", avatarUrl: seedAvatar("mertcan") },
+  selin: { author: "@selin", authorId: "seed-selin", avatarUrl: seedAvatar("selin-yilmaz") },
+  canberk: { author: "@canberk", authorId: "seed-canberk", avatarUrl: seedAvatar("canberk") },
+  beril: { author: "@beril", authorId: "seed-beril", avatarUrl: seedAvatar("beril-aydin") },
+  eceyilmaz: { author: "@eceyilmaz", authorId: "ece-yilmaz", avatarUrl: seedAvatar("ece-yilmaz") },
+  teknolojitoplulugu: {
+    author: "@teknolojitoplulugu",
+    authorId: "technology-club",
+    avatarUrl: seedAvatar("teknoloji-toplulugu"),
+  },
+  denizari: { author: "@denizari", authorId: "deniz-ari", avatarUrl: seedAvatar("deniz-ari") },
+  borademir: { author: "@borademir", authorId: "bora-demir", avatarUrl: seedAvatar("bora-demir") },
+  selinkaya: { author: "@selinkaya", authorId: "selin-kaya", avatarUrl: seedAvatar("selin-kaya") },
+  iremozturk: { author: "@iremozturk", authorId: "irem-ozturk", avatarUrl: seedAvatar("irem-ozturk") },
+} as const;
+
+type GuestAuthorKey = keyof typeof guestAuthors;
+
+/** Bir yorumun `author`'una göre avatarı otomatik eşler. */
+function withCommentAvatar(comment: CampusComment): CampusComment {
+  const match = Object.values(guestAuthors).find(
+    (candidate) => candidate.author === comment.author,
+  );
+
+  return match ? { ...comment, avatarUrl: match.avatarUrl } : comment;
+}
+
+type GuestCampusPostSeed = Omit<
   CampusPost,
   | "author"
   | "authorId"
+  | "avatarUrl"
   | "isAnonymous"
   | "liked"
   | "comments"
@@ -153,44 +192,72 @@ type OfficialCampusPostSeed = Omit<
   comments?: CampusComment[];
 };
 
-function createOfficialCampusPost({
-  comments = [],
-  ...post
-}: OfficialCampusPostSeed): CampusPost {
+/**
+ * Misafir akışındaki her gönderi gerçek bir öğrenci kimliğine (avatarıyla
+ * birlikte) ait — resmî bir KAMPÜS hesabı yok, hepsi "biri paylaştı" hissi
+ * versin diye.
+ */
+function createGuestCampusPost(
+  authorKey: GuestAuthorKey,
+  { comments = [], ...post }: GuestCampusPostSeed,
+): CampusPost {
+  const author = guestAuthors[authorKey];
+
   return {
     ...post,
-    author: "KAMPÜS",
-    authorId: CAMPUS_OFFICIAL_AUTHOR_ID,
+    author: author.author,
+    authorId: author.authorId,
+    avatarUrl: author.avatarUrl,
     isAnonymous: false,
     liked: false,
-    comments,
+    comments: comments.map(withCommentAvatar),
     bookmarked: false,
   };
 }
 
 export const guestCampusPosts: CampusPost[] = [
-  createOfficialCampusPost({
+  createGuestCampusPost("ecearslan", {
     id: "campus-welcome",
-    detail: "Platform duyurusu",
-    category: "Etkinlik",
-    title: "KAMPÜS’e hoş geldin",
-    body: "Kampüste konuşulanları, öğrenci duyurularını ve günün öne çıkanlarını burada bulabilirsin. Misafir görünümünde akışı inceleyebilir, üye olduğunda sohbete katılabilirsin.",
+    detail: "Yeni başlayan",
+    category: "Sohbet",
+    title: "Yeni döneme 'merhaba' demenin en iyi yolu neymiş",
+    body: "Bugün ilk kez kampüse geldim, hâlâ hangi asansörün çalıştığını çözmeye uğraşıyorum. Yardımsever biri yol tarifi yapar mı?",
     image: {
-      src: "/images/campus-feed/campus-courtyard.jpg",
+      src: "/images/campus-feed/yasar-university-entrance.jpg",
       width: 1200,
       height: 750,
-      alt: "Güneşli bir günde modern bir üniversite kampüsü",
+      alt: "Yaşar Üniversitesi giriş tabelası ve Türk bayrağı",
     },
     time: "Şimdi",
     createdAt: minutesAgo(0),
     likes: 84,
   }),
-  createOfficialCampusPost({
+  createGuestCampusPost("mertcan", {
+    id: "printer-emergency",
+    detail: "Kampüs SOS",
+    category: "Sohbet",
+    title: "Kütüphane yazıcısı yine bozuldu",
+    body: "Ödev teslimine 20 dakika kala yazıcı sıkışırsa ne yapılır diye bir el kitabı yazılmalı artık. Yakında çalışan bir yazıcı bilen var mı?",
+    time: "5 dk",
+    createdAt: minutesAgo(5),
+    likes: 34,
+    comments: [
+      {
+        id: "comment-printer-emergency-selin",
+        author: "@selin",
+        authorId: "seed-selin",
+        body: "B blok girişindeki hâlâ çalışıyor, az önce oradan çıktım.",
+        time: "2 dk",
+        createdAt: minutesAgo(2),
+      },
+    ],
+  }),
+  createGuestCampusPost("selin", {
     id: "campus-today",
     detail: "Günün karesi",
-    category: "Etkinlik",
-    title: "Bugün kampüsten kısa bir kare",
-    body: "Ders arası kampüs yolu her zamanki gibi hareketli. Gün içinde yakaladığın kareleri üye olduğunda toplulukla paylaşabilirsin.",
+    category: "Sohbet",
+    title: "Ders arası kampüs yolu yine tıklım tıklım",
+    body: "Bu ışıkta çekilen her fotoğraf oluyor resmen. Kampüste bugün en sevdiğiniz kare neresi oldu?",
     image: {
       src: "/images/campus-feed/campus-walkway.jpg",
       width: 1200,
@@ -201,7 +268,7 @@ export const guestCampusPosts: CampusPost[] = [
     createdAt: minutesAgo(8),
     likes: 46,
   }),
-  createOfficialCampusPost({
+  createGuestCampusPost("canberk", {
     id: "best-study-spot",
     detail: "Kampüs rehberi",
     category: "Soru",
@@ -227,7 +294,27 @@ export const guestCampusPosts: CampusPost[] = [
       },
     ],
   }),
-  createOfficialCampusPost({
+  createGuestCampusPost("beril", {
+    id: "found-headphones",
+    detail: "Kayıp eşya",
+    category: "Kayıp Eşya",
+    title: "Amfi C'de kulaklık bulundu",
+    body: "Ders sonrası sıralarda siyah kablosuz kulaklık buldum. Kutusu üzerinde 'D.A.' yazıyordu, danışmaya bıraktım.",
+    time: "26 dk",
+    createdAt: minutesAgo(26),
+    likes: 22,
+    comments: [
+      {
+        id: "comment-found-headphones-denizari",
+        author: "@denizari",
+        authorId: "deniz-ari",
+        body: "Bu benimkiler olabilir, hemen danışmaya bakıyorum. Çok teşekkürler!",
+        time: "14 dk",
+        createdAt: minutesAgo(14),
+      },
+    ],
+  }),
+  createGuestCampusPost("iremozturk", {
     id: "break-place-poll",
     detail: "Topluluk anketi",
     category: "Anket",
@@ -245,12 +332,12 @@ export const guestCampusPosts: CampusPost[] = [
     createdAt: minutesAgo(31),
     likes: 93,
   }),
-  createOfficialCampusPost({
+  createGuestCampusPost("deniz", {
     id: "club-meetups",
-    detail: "Kulüp duyurusu",
-    category: "Etkinlik",
-    title: "Kulüp tanışmalarına uğramayı unutma",
-    body: "Yeni insanlarla tanışmak ve dönem boyunca yapılacak etkinlikleri görmek için kulüp buluşmalarına göz atabilirsin.",
+    detail: "Kulüp günü",
+    category: "Sohbet",
+    title: "Kulüp standı gezmek plandan çok daha uzun sürdü",
+    body: "Avluda kulüp tanışma gününe uğradım, üç standta oyalanıp iki kulübe birden yazıldım resmen. Siz bugün hangi standa takıldınız?",
     image: {
       src: "/images/campus-feed/campus-conversation.jpg",
       width: 1200,
@@ -260,13 +347,64 @@ export const guestCampusPosts: CampusPost[] = [
     time: "47 dk",
     createdAt: minutesAgo(47),
     likes: 72,
+    comments: [
+      {
+        id: "comment-club-meetups-canberk",
+        author: "@canberk",
+        authorId: "seed-canberk",
+        body: "Fotoğrafçılık kulübü de bu sene stant açtı, ona da uğrayın.",
+        time: "30 dk",
+        createdAt: minutesAgo(30),
+      },
+    ],
   }),
-  createOfficialCampusPost({
+  createGuestCampusPost("selin", {
+    id: "weekend-hiking-plan",
+    detail: "Hafta sonu planı",
+    category: "Etkinlik",
+    title: "Cumartesi kısa bir yürüyüşe ne dersiniz?",
+    body: "Hava da güzel gidiyor, kampüs yakınındaki patikada sakin bir yürüyüş yapıp kahve molası vermek isteyenler yazabilir.",
+    image: {
+      src: "/images/campus-feed/campus-autumn.jpg",
+      width: 1200,
+      height: 750,
+      alt: "Sonbaharda kampüs yolunda yürüyen bir öğrenci",
+    },
+    time: "55 dk",
+    createdAt: minutesAgo(55),
+    likes: 47,
+    comments: [
+      {
+        id: "comment-weekend-hiking-irem",
+        author: "@iremozturk",
+        authorId: "irem-ozturk",
+        body: "Kesinlikle varım, saat kaçta buluşuyoruz?",
+        time: "40 dk",
+        createdAt: minutesAgo(40),
+        gif: {
+          id: "26ufdipQqU2lhNA4g",
+          src: "https://media.giphy.com/media/26ufdipQqU2lhNA4g/giphy.gif",
+          width: 480,
+          height: 270,
+          alt: "Şaşkınlık ve mutluluk tepki GIF'i",
+        },
+      },
+      {
+        id: "comment-weekend-hiking-bora",
+        author: "@borademir",
+        authorId: "bora-demir",
+        body: "10.00 gibi ana kapıda buluşalım, geç kalmayalım.",
+        time: "30 dk",
+        createdAt: minutesAgo(30),
+      },
+    ],
+  }),
+  createGuestCampusPost("beril", {
     id: "community-thanks",
-    detail: "Topluluktan",
+    detail: "Küçük bir teşekkür",
     category: "İtiraf",
-    title: "Topluluktan küçük bir teşekkür",
-    body: "Kütüphanede unutulan notları danışmaya bırakan kişiye teşekkürler. Final haftasında böyle küçük yardımlar gerçekten fark yaratıyor.",
+    title: "Kütüphanede notlarımı bulup bırakan kişiye teşekkürler",
+    body: "Bugün masada unuttuğum ders notlarımı danışmaya teslim eden kim olduysa gerçekten hayatımı kurtardın. Final haftasında böyle küçük iyilikler resmen moral oluyor.",
     time: "1 sa",
     createdAt: hoursAgo(1),
     likes: 128,
@@ -278,12 +416,12 @@ export const guestCampusPosts: CampusPost[] = [
       alt: "Şaşkınlık ve mutluluk tepki GIF'i",
     },
   }),
-  createOfficialCampusPost({
+  createGuestCampusPost("teknolojitoplulugu", {
     id: "coding-workshop",
     detail: "Atölye",
     category: "Etkinlik",
-    title: "Kodlama atölyesinde bu hafta arayüz geliştiriyoruz",
-    body: "Temel HTML ve CSS bilgisi yeterli. Bilgisayarını getirmen iyi olur; ilk kez katılacaklar için başlangıç masası da olacak.",
+    title: "Bu hafta atölyede arayüz tasarımına giriyoruz, gelmek isteyen?",
+    body: "HTML ve CSS bilmen yeterli, bilgisayarını getirmen yeter. İlk kez gelecekler için de rahat bir başlangıç köşesi ayarlıyoruz, çekinmeden gelin.",
     image: {
       src: "/images/campus-feed/coding-workshop.jpg",
       width: 1200,
@@ -296,20 +434,20 @@ export const guestCampusPosts: CampusPost[] = [
     comments: [
       {
         id: "comment-coding-workshop-club",
-        author: "@teknolojitoplulugu",
-        authorId: "technology-club",
-        body: "Kontenjan 40 kişiye çıkarıldı; kayıt formu akşama kadar açık.",
+        author: "@denizari",
+        authorId: "deniz-ari",
+        body: "Kontenjanda hâlâ yer var mı, ben de yazılmak istiyorum.",
         time: "3 sa",
         createdAt: hoursAgo(3),
       },
     ],
   }),
-  createOfficialCampusPost({
+  createGuestCampusPost("canberk", {
     id: "design-book-listing",
     detail: "Öğrenci ilanı",
     category: "İlan",
     title: "Temel Tasarım kitabı yeni sahibini arıyor",
-    body: "Kitap temiz durumda. Yalnızca birkaç sayfada kurşun kalemle küçük notlar var.",
+    body: "Kitabım temiz durumda, sadece birkaç sayfada kurşun kalemle notlarım var. İhtiyacı olan yazsın.",
     image: {
       src: "/images/campus-feed/library-group.jpg",
       width: 1200,
@@ -324,13 +462,23 @@ export const guestCampusPosts: CampusPost[] = [
     time: "2 sa",
     createdAt: hoursAgo(2),
     likes: 24,
+    comments: [
+      {
+        id: "comment-design-book-listing-beril",
+        author: "@beril",
+        authorId: "seed-beril",
+        body: "Notların fotoğrafını atabilir misin, kapak durumu nasıl merak ettim.",
+        time: "1 sa",
+        createdAt: hoursAgo(1),
+      },
+    ],
   }),
-  createOfficialCampusPost({
+  createGuestCampusPost("mertcan", {
     id: "open-study-session",
-    detail: "Açık çalışma",
+    detail: "Çalışma daveti",
     category: "Etkinlik",
-    title: "Öğleden sonra ortak çalışma oturumu var",
-    body: "Konu fark etmiyor; aynı masada sessizce çalışıp mola saatlerini birlikte ayarlayacağız. Katılmak isteyenler 14.00’te çalışma salonunda buluşabilir.",
+    title: "Öğleden sonra birlikte çalışacak biri arıyorum",
+    body: "Konu fark etmez, aynı masada sessizce çalışıp mola saatlerini birlikte ayarlarız. 14.00'te çalışma salonundayım, gelmek isteyen yazsın.",
     image: {
       src: "/images/campus-feed/classroom-study.jpg",
       width: 1200,
@@ -340,8 +488,18 @@ export const guestCampusPosts: CampusPost[] = [
     time: "2 sa",
     createdAt: hoursAgo(2),
     likes: 97,
+    comments: [
+      {
+        id: "comment-open-study-session-selin",
+        author: "@selin",
+        authorId: "seed-selin",
+        body: "Ben geliyorum, kulaklıksız çalışma sözü veriyorum bu sefer.",
+        time: "1 sa",
+        createdAt: hoursAgo(1),
+      },
+    ],
   }),
-  createOfficialCampusPost({
+  createGuestCampusPost("ecearslan", {
     id: "study-buddy",
     detail: "Çalışma grubu",
     category: "Soru",
@@ -368,12 +526,12 @@ export const guestCampusPosts: CampusPost[] = [
       },
     ],
   }),
-  createOfficialCampusPost({
+  createGuestCampusPost("teknolojitoplulugu", {
     id: "technology-club",
-    detail: "Kulüp duyurusu",
+    detail: "Proje masası",
     category: "Etkinlik",
-    title: "Teknoloji kulübünde proje masası kuruluyor",
-    body: "Devre, yazılım veya tasarım fark etmez. Üzerinde çalıştığın fikri getir; ekip arayanlarla proje arayanları aynı masada buluşturacağız.",
+    title: "Proje masasına ne üzerinde çalışıyorsan getir",
+    body: "Devre, yazılım, tasarım fark etmez; uğraştığın fikri getir. Ekip arayanlarla proje arayanları bu hafta aynı masada buluşturuyoruz.",
     image: {
       src: "/images/campus-feed/technology-workshop.jpg",
       width: 1200,
@@ -383,8 +541,18 @@ export const guestCampusPosts: CampusPost[] = [
     time: "3 sa",
     createdAt: hoursAgo(3),
     likes: 88,
+    comments: [
+      {
+        id: "comment-technology-club-eceyilmaz",
+        author: "@eceyilmaz",
+        authorId: "ece-yilmaz",
+        body: "Tasarım tarafından katılmak istiyorum, arayüz için ekip lazım mı?",
+        time: "2 sa",
+        createdAt: hoursAgo(2),
+      },
+    ],
   }),
-  createOfficialCampusPost({
+  createGuestCampusPost("iremozturk", {
     id: "campus-cafe-spots",
     detail: "Kampüs rehberi",
     category: "Soru",
@@ -410,12 +578,12 @@ export const guestCampusPosts: CampusPost[] = [
       },
     ],
   }),
-  createOfficialCampusPost({
+  createGuestCampusPost("borademir", {
     id: "lost-blue-bottle",
     detail: "Kayıp eşya",
     category: "Kayıp Eşya",
-    title: "Mavi matara güvenliğe teslim edildi",
-    body: "C blok ikinci kattaki oturma alanında bulundu. Üzerindeki küçük etiketi tarif eden kişi güvenlikten teslim alabilir.",
+    title: "C blok 2. katta mavi bir matara buldum",
+    body: "Oturma alanındaki koltuklardan birinde duruyordu, üzerinde küçük bir etiket var. Güvenliğe teslim ettim, tarif edebilen sahibine ulaşsın.",
     time: "4 sa",
     createdAt: hoursAgo(4),
     likes: 31,
@@ -424,13 +592,13 @@ export const guestCampusPosts: CampusPost[] = [
         id: "comment-lost-blue-bottle-selin",
         author: "@selinkaya",
         authorId: "selin-kaya",
-        body: "Evet, danışmaya bıraktım. Öğrenci kartını göstererek alabilirsin.",
+        body: "Bu benim olabilir, hemen güvenliğe gidiyorum. Çok teşekkürler!",
         time: "1 sa",
         createdAt: hoursAgo(1),
       },
     ],
   }),
-  createOfficialCampusPost({
+  createGuestCampusPost("selinkaya", {
     id: "final-week-poll",
     detail: "Topluluk anketi",
     category: "Anket",
@@ -447,18 +615,28 @@ export const guestCampusPosts: CampusPost[] = [
     time: "5 sa",
     createdAt: hoursAgo(5),
     likes: 112,
+    comments: [
+      {
+        id: "comment-final-week-poll-mertcan",
+        author: "@mertcan",
+        authorId: "seed-mertcan",
+        body: "Son gece kesin kaybediyor ama her sene aynı hataya düşüyorum.",
+        time: "4 sa",
+        createdAt: hoursAgo(4),
+      },
+    ],
   }),
-  createOfficialCampusPost({
+  createGuestCampusPost("eceyilmaz", {
     id: "campus-photo-walk",
-    detail: "Topluluk etkinliği",
-    category: "Etkinlik",
-    title: "Kampüs fotoğraf yürüyüşü",
-    body: "Telefon ya da fotoğraf makinesi fark etmez. Kampüsün gözden kaçan köşelerini birlikte çekmek isteyenleri bekliyoruz.",
+    detail: "Hafta sonu planı",
+    category: "Sohbet",
+    title: "Bu hafta sonu kampüsün gözden kaçan köşelerini çekelim mi",
+    body: "Telefon ya da makine fark etmez, birlikte gezip fotoğraf çekmek isteyenler yazsın, rotayı beraber belirleriz.",
     image: {
-      src: "/images/campus-feed/campus-autumn.jpg",
+      src: "/images/campus-feed/yasar-university-campus.jpg",
       width: 1200,
       height: 750,
-      alt: "Sonbaharda kampüs yolunda yürüyen bir öğrenci",
+      alt: "Yaşar Üniversitesi kampüsünden bir köşe",
     },
     time: "6 sa",
     createdAt: hoursAgo(6),
@@ -474,12 +652,12 @@ export const guestCampusPosts: CampusPost[] = [
       },
     ],
   }),
-  createOfficialCampusPost({
+  createGuestCampusPost("denizari", {
     id: "calculator-pool",
-    detail: "Dayanışma ilanı",
+    detail: "Küçük bir yardım",
     category: "İlan",
-    title: "Hesap makinesi emanet havuzu",
-    body: "Sınav haftasında kısa süreliğine bilimsel hesap makinesine ihtiyacı olanlar kullanabilir. İşin bitince başka bir öğrenciye bırakman yeterli.",
+    title: "Sınav haftası için ihtiyacı olana hesap makinesi bırakıyorum",
+    body: "Kullanan işi bitince bir sonraki ihtiyacı olana bıraksın, böylece kimse hesap makinesiz sınava girmesin.",
     listing: {
       type: "Ücretsiz",
       condition: "Kullanılmış",
@@ -488,8 +666,18 @@ export const guestCampusPosts: CampusPost[] = [
     time: "7 sa",
     createdAt: hoursAgo(7),
     likes: 39,
+    comments: [
+      {
+        id: "comment-calculator-pool-canberk",
+        author: "@canberk",
+        authorId: "seed-canberk",
+        body: "Aynı ihtiyaçtan geçen sene ben de geçtim, süper fikir.",
+        time: "5 sa",
+        createdAt: hoursAgo(5),
+      },
+    ],
   }),
-  createOfficialCampusPost({
+  createGuestCampusPost("beril", {
     id: "question-for-graduates",
     detail: "Mezun ağı",
     category: "Soru",
@@ -498,36 +686,98 @@ export const guestCampusPosts: CampusPost[] = [
     time: "8 sa",
     createdAt: hoursAgo(8),
     likes: 76,
+    comments: [
+      {
+        id: "comment-question-for-graduates-selinkaya",
+        author: "@selinkaya",
+        authorId: "selin-kaya",
+        body: "Staj başvurusunda ne sizi öne çıkardı, onu çok merak ediyorum.",
+        time: "6 sa",
+        createdAt: hoursAgo(6),
+      },
+    ],
   }),
-  createOfficialCampusPost({
+  createGuestCampusPost("canberk", {
     id: "shared-space-note",
-    detail: "Ortak alan notu",
+    detail: "Küçük bir iyilik",
     category: "Sohbet",
-    title: "Şarj kablosunu bırakan gizli kahraman",
-    body: "Ortak çalışma alanına herkes kullansın diye bir şarj kablosu bırakan kişiye topluluk adına teşekkürler.",
+    title: "Ortak alanda bırakılan şarj kablosu tam da ihtiyacım olan anda buldum",
+    body: "Telefonum bitmek üzereydi, birisi masaya bir şarj kablosu bırakmış olmalı ki tam zamanında yetişti. Kim bıraktıysa gerçekten teşekkürler.",
     time: "9 sa",
     createdAt: hoursAgo(9),
     likes: 104,
+    comments: [
+      {
+        id: "comment-shared-space-note-beril",
+        author: "@beril",
+        authorId: "seed-beril",
+        body: "Az kalsın ben de böyle bir şey bırakacaktım, aynı fikirdeymişiz.",
+        time: "7 sa",
+        createdAt: hoursAgo(7),
+      },
+    ],
   }),
-  createOfficialCampusPost({
+  createGuestCampusPost("iremozturk", {
     id: "campus-rules",
-    detail: "Topluluk notu",
-    category: "Etkinlik",
-    title: "Burada herkes için yer var",
-    body: "Kişisel bilgi paylaşmadan, hakaret etmeden ve kampüs topluluğuna saygı göstererek konuş. Üye olduğunda konu açabilir, yorum yapabilir ve gönderileri kaydedebilirsin.",
+    detail: "Kampüs gözlemi",
+    category: "Sohbet",
+    title: "Kütüphanede sınav öncesi sessizlik krizi",
+    body: "Herkes fısıltıyla konuşuyor ama klavye sesleri resital gibi yankılanıyor. Final stresinin gizli bir belirtisi olmalı bu.",
     time: "11 sa",
     createdAt: hoursAgo(11),
-    likes: 55,
+    likes: 71,
+    comments: [
+      {
+        id: "comment-campus-rules-mert",
+        author: "@mertcan",
+        authorId: "seed-mertcan",
+        body: "Ben de klavyemi sessiz moda aldım ama parmaklarım dinlemiyor.",
+        time: "9 sa",
+        createdAt: hoursAgo(9),
+      },
+    ],
   }),
-  createOfficialCampusPost({
+  createGuestCampusPost("selin", {
     id: "see-you-tomorrow",
-    detail: "Gün sonu",
-    category: "Etkinlik",
-    title: "Bugünün akışından bu kadar",
-    body: "Kampüs sakinleşirken günün duyurularını burada kapatıyoruz. Yeni etkinlikler ve öğrenci gündemiyle yarın görüşürüz.",
+    detail: "Kampüs sorusu",
+    category: "Soru",
+    title: "Yemekhanede bugün ne vardı bilen var mı?",
+    body: "Derse yetişeyim derken kaçırdım, sıra hâlâ var mı acaba? Kampüs yemek saatleri gerçekten yeniden düşünülmeli.",
     time: "Dün",
     createdAt: daysAgo(1),
-    likes: 89,
+    likes: 63,
+    gif: {
+      id: "3o7aCVRXjjTaLBOtvS",
+      src: "https://media.giphy.com/media/3o7aCVRXjjTaLBOtvS/giphy.gif",
+      width: 480,
+      height: 270,
+      alt: "Açlıktan bekleyen komik tepki GIF'i",
+    },
+    comments: [
+      {
+        id: "comment-see-you-tomorrow-beril",
+        author: "@beril",
+        authorId: "seed-beril",
+        body: "Mercimek çorbası vardı, azıcık kaldıysa acele et.",
+        time: "20 sa",
+        createdAt: hoursAgo(20),
+      },
+      {
+        id: "comment-see-you-tomorrow-canberk",
+        author: "@canberk",
+        authorId: "seed-canberk",
+        body: "Ben tam kapanırken yetiştim, tabak bile zor buldum.",
+        time: "18 sa",
+        createdAt: hoursAgo(18),
+        gif: {
+          id: "l0MYt5jPR6QX5pnqM",
+          src: "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif",
+          width: 480,
+          height: 270,
+          alt: "Eğlenceli tepki GIF'i",
+        },
+      },
+    ],
   }),
 ];
 
@@ -548,6 +798,7 @@ const memberSeedPosts: CampusPost[] = [
         id: "library-comment-1",
         author: "@deniz",
         authorId: "seed-deniz",
+        avatarUrl: guestAuthors.deniz.avatarUrl,
         isAnonymous: false,
         body: "Notları danışmada görünce sahibi mutlaka arar diye düşündüm. Sana ulaştığına sevindim.",
         time: "8 dk",
@@ -568,6 +819,7 @@ const memberSeedPosts: CampusPost[] = [
     id: "economics-study",
     author: "@ecearslan",
     authorId: "seed-ecearslan",
+    avatarUrl: guestAuthors.ecearslan.avatarUrl,
     isAnonymous: false,
     detail: "İşletme",
     category: "Soru",
@@ -582,6 +834,7 @@ const memberSeedPosts: CampusPost[] = [
         id: "economics-comment-1",
         author: "@mertcan",
         authorId: "seed-mertcan",
+        avatarUrl: guestAuthors.mertcan.avatarUrl,
         isAnonymous: false,
         body: "Saat 14.00 gibi gelebilirim. Özellikle esneklik konusuna çalışmam gerekiyor.",
         time: "20 dk",
@@ -591,6 +844,7 @@ const memberSeedPosts: CampusPost[] = [
         id: "economics-comment-2",
         author: "@selin",
         authorId: "seed-selin",
+        avatarUrl: guestAuthors.selin.avatarUrl,
         isAnonymous: false,
         body: "Ben de katılırım, grup olursa daha verimli olur.",
         time: "11 dk",
@@ -600,6 +854,7 @@ const memberSeedPosts: CampusPost[] = [
         id: "economics-comment-3",
         author: "@ecearslan",
         authorId: "seed-ecearslan",
+        avatarUrl: guestAuthors.ecearslan.avatarUrl,
         isAnonymous: false,
         body: "14.00'te kütüphanenin girişindeki masalarda buluşalım.",
         time: "6 dk",
@@ -612,6 +867,7 @@ const memberSeedPosts: CampusPost[] = [
     id: "black-thermos",
     author: "@canberk",
     authorId: "seed-canberk",
+    avatarUrl: guestAuthors.canberk.avatarUrl,
     isAnonymous: false,
     detail: "Kampüs",
     category: "Kayıp Eşya",
@@ -626,6 +882,7 @@ const memberSeedPosts: CampusPost[] = [
         id: "thermos-comment-1",
         author: "@beril",
         authorId: "seed-beril",
+        avatarUrl: guestAuthors.beril.avatarUrl,
         isAnonymous: false,
         body: "Üzerinde küçük beyaz bir çıkartma varsa arkadaşımın olabilir, haber veriyorum.",
         time: "42 dk",

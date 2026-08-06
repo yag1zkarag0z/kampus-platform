@@ -153,6 +153,7 @@ export default function CampusCommentThread({
             <CampusAuthorAvatar
               author={comment.author}
               authorId={comment.authorId}
+              avatarUrl={comment.avatarUrl}
               isAnonymous={comment.isAnonymous}
             />
           </CampusAuthorProfileLink>
@@ -301,6 +302,7 @@ export default function CampusCommentThread({
                 <CampusAuthorAvatar
                   author={reply.author}
                   authorId={reply.authorId}
+                  avatarUrl={reply.avatarUrl}
                   isAnonymous={reply.isAnonymous}
                   className="shrink-0"
                 />

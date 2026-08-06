@@ -14,15 +14,21 @@ export type CampusFollowMember = {
   avatarDataUrl?: string;
 };
 
+/** Herkese aynı çizgi-roman tarzı, gerçek kişi olmayan avatar üretir. */
+function seedAvatar(seed: string) {
+  return `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
+}
+
 export const campusFollowMembers: CampusFollowMember[] = [
   {
     authorId: LOCAL_ACCOUNT_OWNER_ID,
-    author: "@yagizkaragoz",
-    displayName: "Yağız Karagöz",
-    username: "yagizkaragoz",
+    author: "@kayaozturk",
+    displayName: "Kaya Öztürk",
+    username: "kayaozturk",
     detail: "Yazılım Mühendisliği",
     bio: "Yazılım, ürün geliştirme ve kampüs projeleriyle ilgileniyor.",
     joinedLabel: "Temmuz 2026",
+    avatarDataUrl: seedAvatar("kayaozturk"),
   },
   {
     authorId: CAMPUS_OFFICIAL_AUTHOR_ID,
@@ -41,6 +47,7 @@ export const campusFollowMembers: CampusFollowMember[] = [
     detail: "İşletme",
     bio: "Girişimcilik, öğrenci kulüpleri ve kampüs etkinlikleriyle ilgileniyor.",
     joinedLabel: "Haziran 2026",
+    avatarDataUrl: seedAvatar("ecearslan"),
   },
   {
     authorId: "seed-deniz",
@@ -50,6 +57,7 @@ export const campusFollowMembers: CampusFollowMember[] = [
     detail: "Endüstriyel Tasarım",
     bio: "Tasarım, üretim ve yaratıcı kampüs projelerini takip ediyor.",
     joinedLabel: "Haziran 2026",
+    avatarDataUrl: seedAvatar("deniz-akin"),
   },
   {
     authorId: "seed-mertcan",
@@ -59,6 +67,7 @@ export const campusFollowMembers: CampusFollowMember[] = [
     detail: "Ekonomi",
     bio: "Ekonomi, finans ve öğrenci toplulukları üzerine paylaşımlar yapıyor.",
     joinedLabel: "Temmuz 2026",
+    avatarDataUrl: seedAvatar("mertcan"),
   },
   {
     authorId: "seed-selin",
@@ -68,6 +77,7 @@ export const campusFollowMembers: CampusFollowMember[] = [
     detail: "Psikoloji",
     bio: "Psikoloji, kitaplar ve kampüs yaşamı hakkında konuşmayı seviyor.",
     joinedLabel: "Temmuz 2026",
+    avatarDataUrl: seedAvatar("selin-yilmaz"),
   },
   {
     authorId: "seed-canberk",
@@ -77,6 +87,7 @@ export const campusFollowMembers: CampusFollowMember[] = [
     detail: "Mimarlık",
     bio: "Mimarlık, kent kültürü ve fotoğrafçılıkla ilgileniyor.",
     joinedLabel: "Mayıs 2026",
+    avatarDataUrl: seedAvatar("canberk"),
   },
   {
     authorId: "seed-beril",
@@ -86,6 +97,7 @@ export const campusFollowMembers: CampusFollowMember[] = [
     detail: "Görsel İletişim Tasarımı",
     bio: "İllüstrasyon, görsel tasarım ve yaratıcı etkinlikleri takip ediyor.",
     joinedLabel: "Temmuz 2026",
+    avatarDataUrl: seedAvatar("beril-aydin"),
   },
   {
     authorId: "ece-yilmaz",
@@ -95,6 +107,7 @@ export const campusFollowMembers: CampusFollowMember[] = [
     detail: "İletişim Tasarımı",
     bio: "Tasarım, fotoğraf ve kampüs etkinlikleriyle ilgileniyor.",
     joinedLabel: "Haziran 2026",
+    avatarDataUrl: seedAvatar("ece-yilmaz"),
   },
   {
     authorId: "technology-club",
@@ -104,6 +117,7 @@ export const campusFollowMembers: CampusFollowMember[] = [
     detail: "Öğrenci topluluğu",
     bio: "Yazılım, yapay zekâ ve teknoloji etkinliklerini kampüsle buluşturuyor.",
     joinedLabel: "Topluluk hesabı",
+    avatarDataUrl: seedAvatar("teknoloji-toplulugu"),
   },
   {
     authorId: "deniz-ari",
@@ -113,6 +127,7 @@ export const campusFollowMembers: CampusFollowMember[] = [
     detail: "Bilgisayar Mühendisliği",
     bio: "Açık kaynak, mobil uygulamalar ve teknoloji buluşmalarıyla ilgileniyor.",
     joinedLabel: "Mayıs 2026",
+    avatarDataUrl: seedAvatar("deniz-ari"),
   },
   {
     authorId: "bora-demir",
@@ -122,6 +137,7 @@ export const campusFollowMembers: CampusFollowMember[] = [
     detail: "Endüstri Mühendisliği",
     bio: "Kariyer etkinlikleri, spor ve kampüs yaşamını takip ediyor.",
     joinedLabel: "Haziran 2026",
+    avatarDataUrl: seedAvatar("bora-demir"),
   },
   {
     authorId: "selin-kaya",
@@ -131,6 +147,7 @@ export const campusFollowMembers: CampusFollowMember[] = [
     detail: "Hukuk",
     bio: "Hukuk, öğrenci hakları ve sosyal sorumluluk projeleriyle ilgileniyor.",
     joinedLabel: "Temmuz 2026",
+    avatarDataUrl: seedAvatar("selin-kaya"),
   },
   {
     authorId: "irem-ozturk",
@@ -140,6 +157,7 @@ export const campusFollowMembers: CampusFollowMember[] = [
     detail: "Yeni Medya ve İletişim",
     bio: "Yeni medya, içerik üretimi ve kampüs etkinliklerini paylaşıyor.",
     joinedLabel: "Temmuz 2026",
+    avatarDataUrl: seedAvatar("irem-ozturk"),
   },
 ];
 

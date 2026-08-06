@@ -846,3 +846,16 @@ export function getEventsByTerm(
       .sort(compareEvents),
   }));
 }
+
+/** Verilen tarihte devam eden (başlamış ve bitmemiş) etkinlikler. */
+export function getEventsOnDate(events: AcademicEvent[], date: Date) {
+  const day = startOfDay(date);
+
+  return events
+    .filter((event) => {
+      const start = parseCalendarDate(event.start);
+      const end = getEventEndDate(event);
+      return day >= start && day <= end;
+    })
+    .sort(compareEvents);
+}

@@ -22,8 +22,8 @@ export const campusAdminRoleLabels: Record<CampusAdminRole, string> = {
 export const seedCampusManagedUsers: CampusManagedUser[] = [
   {
     authorId: "local-current-account",
-    author: "@yagizkaragoz",
-    displayName: "Yağız Karagöz",
+    author: "@kayaozturk",
+    displayName: "Kaya Öztürk",
     department: "Yazılım Mühendisliği",
     joinedLabel: "Temmuz 2026",
     role: "admin",

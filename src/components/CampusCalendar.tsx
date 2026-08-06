@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 
 import CampusAudienceTags from "@/components/CampusAudienceTags";
+import CampusCalendarMonthGrid, {
+  addMonths,
+  startOfMonth,
+} from "@/components/CampusCalendarMonthGrid";
 import {
   calendarCategoryStyles,
   calendarFocusRing,
@@ -21,11 +25,19 @@ import {
   formatEventTiming,
   getEventTiming,
   getEventsByTerm,
+  getEventsOnDate,
   getUpcomingEvents,
+  startOfDay,
   type AcademicAudience,
   type AcademicEvent,
   type EventTiming,
 } from "@/data/academicCalendar";
+
+const selectedDayFormatter = new Intl.DateTimeFormat("tr-TR", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+});
 
 type AudienceFilter = AcademicAudience | "all";
 
@@ -41,6 +53,10 @@ export default function CampusCalendar() {
   // Gün hesapları istemcide yapılır; sunucu render'ında "kaç gün kaldı"
   // bilgisi üretilirse hydration uyuşmazlığı oluşur.
   const [isReady, setIsReady] = useState(false);
+  // Masaüstü ay grid'i için de aynı sebeple: "bugün" sunucu ve istemcide
+  // farklı gün olabilir, o yüzden ilk render'da null kalır.
+  const [displayedMonth, setDisplayedMonth] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
@@ -48,6 +64,7 @@ export default function CampusCalendar() {
     queueMicrotask(() => {
       if (!isCancelled) {
         setIsReady(true);
+        setDisplayedMonth(startOfMonth(new Date()));
       }
     });
 
@@ -65,6 +82,21 @@ export default function CampusCalendar() {
       getEventsByTerm(audience).filter((group) => group.events.length > 0),
     [audience],
   );
+  const audienceEvents = useMemo(
+    () => filterByAudience(academicCalendar, audience),
+    [audience],
+  );
+  const selectedDateEvents = useMemo(
+    () =>
+      selectedDate ? getEventsOnDate(audienceEvents, selectedDate) : [],
+    [audienceEvents, selectedDate],
+  );
+
+  const jumpToToday = () => {
+    const today = startOfDay(new Date());
+    setDisplayedMonth(startOfMonth(today));
+    setSelectedDate(today);
+  };
 
   return (
     <section
@@ -127,26 +159,98 @@ export default function CampusCalendar() {
         </p>
       </header>
 
-      {upcoming.length > 0 && (
-        <section
-          aria-labelledby="calendar-upcoming-title"
-          className="border-b border-white/9 px-3 py-4 sm:px-5 lg:px-6"
-        >
-          <h2
-            id="calendar-upcoming-title"
-            className="px-1 font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-white/55"
-          >
-            Sırada ne var
-          </h2>
-          <ol className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            {upcoming.map((event) => (
-              <li key={event.id}>
-                <UpcomingCard event={event} />
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
+      <section
+        aria-label="Sırada ne var ve takvim"
+        className="border-b border-white/9 px-3 py-4 sm:px-5 lg:px-6"
+      >
+        {/* Mobilde: mevcut kronolojik kart listesi, değişmedi. */}
+        {upcoming.length > 0 && (
+          <div className="md:hidden">
+            <h2 className="px-1 font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-white/55">
+              Sırada ne var
+            </h2>
+            <ol className="mt-3 grid gap-2 sm:grid-cols-2">
+              {upcoming.map((event) => (
+                <li key={event.id}>
+                  <UpcomingCard event={event} />
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+
+        {/* Masaüstünde: mini ay grid'i + seçili günün/yaklaşanların ajandası. */}
+        <div className="hidden md:flex md:items-start md:gap-4">
+          {displayedMonth ? (
+            <CampusCalendarMonthGrid
+              month={displayedMonth}
+              onMonthChange={setDisplayedMonth}
+              onJumpToToday={jumpToToday}
+              events={audienceEvents}
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              className="w-64 shrink-0"
+            />
+          ) : (
+            <div
+              className={`w-64 shrink-0 p-3.5 text-sm text-white/50 ${calendarTile}`}
+            >
+              Takvim yükleniyor…
+            </div>
+          )}
+
+          <div className="min-w-0 flex-1">
+            {selectedDate ? (
+              <>
+                <div className="flex items-center justify-between gap-2 px-1">
+                  <h2 className="text-sm font-black tracking-[-0.02em] capitalize">
+                    {selectedDayFormatter.format(selectedDate)}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDate(null)}
+                    className={`shrink-0 text-[11px] font-bold text-white/50 transition-colors hover:text-white ${calendarFocusRing}`}
+                  >
+                    Temizle
+                  </button>
+                </div>
+                {selectedDateEvents.length > 0 ? (
+                  <ol className="mt-3 space-y-2">
+                    {selectedDateEvents.map((event) => (
+                      <li key={event.id}>
+                        <UpcomingCard event={event} />
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="mt-3 px-1 text-sm leading-6 text-white/50">
+                    Bu tarihte etkinlik yok.
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <h2 className="px-1 font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-white/55">
+                  Sırada ne var
+                </h2>
+                {upcoming.length > 0 ? (
+                  <ol className="mt-3 space-y-2">
+                    {upcoming.map((event) => (
+                      <li key={event.id}>
+                        <UpcomingCard event={event} />
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="mt-3 px-1 text-sm leading-6 text-white/50">
+                    Yaklaşan etkinlik yok.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </section>
 
       {groups.map((group) => (
         <section

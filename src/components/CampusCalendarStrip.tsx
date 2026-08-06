@@ -25,7 +25,8 @@ export default function CampusCalendarStrip({
   className?: string;
 }) {
   const [events, setEvents] = useState<AcademicEvent[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
+  // Varsayılan açık: kullanıcı Keşfet'e girer girmez takvim görünsün.
+  const [isOpen, setIsOpen] = useState(true);
 
   useEffect(() => {
     let isCancelled = false;
