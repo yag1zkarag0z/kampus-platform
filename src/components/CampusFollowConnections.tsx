@@ -503,10 +503,12 @@ function FollowConnectionsView({
             disabled={!isHydrated || isSubmitting || isBlocked || isSuspended}
             aria-pressed={followed}
             onClick={onFollowToggle}
-            className={`inline-flex min-h-11 cursor-pointer items-center justify-center px-5 text-xs font-black transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${focusRing} ${
+            /* Öneri destesiyle aynı dil: hap biçim, dolu turuncu; takip
+               edildiğinde aynı turuncunun soluk çerçeveli hali. */
+            className={`inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full px-5 text-xs font-black transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${focusRing} ${
               followed
-                ? "border border-white/12 bg-transparent text-white hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8"
-                : "bg-white text-[#12100e] hover:bg-white/90"
+                ? "border border-[#ff7a45]/45 bg-[#ff7a45]/16 text-[#ffb695] hover:bg-[#ff7a45]/22"
+                : "bg-[#ff7a45] text-[#12100e] hover:bg-[#ff8d5e]"
             }`}
           >
             {followed ? "Takip ediliyor" : "Takip et"}

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import FollowSuggestions, {
@@ -73,36 +73,61 @@ describe("FollowSuggestions", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("renders the full guest discovery experience from seed data", () => {
+  it("reviews guest suggestions one card at a time", () => {
     render(<FollowSuggestionsPage />);
 
-    expect(
-      screen.getByRole("heading", { name: "Kampüs topluluğunu keşfet" }),
-    ).toBeInTheDocument();
-    expect(screen.getAllByTestId("avatar")).toHaveLength(
-      campusFollowMembers.length,
-    );
     expect(screen.getByText("Kampüsten kişiler")).toBeInTheDocument();
+
+    // Deste tek kart gösterir; ızgara yok.
+    expect(screen.getAllByTestId("avatar")).toHaveLength(1);
+    expect(
+      screen.getByRole("heading", {
+        name: campusFollowMembers[0].displayName,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(`1 / ${campusFollowMembers.length}`),
+    ).toBeInTheDocument();
   });
 
-  it("offers login instead of following in guest mode", () => {
+  it("advances to the next card when the current one is skipped", async () => {
     render(<FollowSuggestionsPage />);
 
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: `${campusFollowMembers[0].displayName} kullanıcısını takip et`,
-      }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Geç" }));
 
-    expect(followSuggestionsState.showToast).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: "Takip etmek için giriş yapmalısın.",
-        tone: "info",
-      }),
+    // Kart çıkış animasyonunu bitirdikten sonra sıradaki karta geçilir.
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", {
+          name: campusFollowMembers[1].displayName,
+        }),
+      ).toBeInTheDocument(),
     );
+  });
 
-    const toast = followSuggestionsState.showToast.mock.calls[0][0];
-    toast.action.onClick();
+  it("shows the same follow button to a guest and routes it to login", () => {
+    render(<FollowSuggestionsPage />);
+
+    // Misafir üyeyle aynı düğmeyi görür; fark yalnızca tıklama sonucunda.
+    const followButton = screen.getByRole("button", { name: "Takip et" });
+
+    fireEvent.click(followButton);
+
     expect(followSuggestionsState.push).toHaveBeenCalledWith("/giris");
+  });
+
+  it("keeps the guest on the same card after being sent to login", async () => {
+    render(<FollowSuggestionsPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Takip et" }));
+
+    // Deste tükenmemeli: misafir giriş yapıp geri döndüğünde aynı kart durur.
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", {
+          name: campusFollowMembers[0].displayName,
+        }),
+      ).toBeInTheDocument(),
+    );
   });
 });

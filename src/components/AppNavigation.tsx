@@ -168,6 +168,23 @@ function ShareIcon({ className = "size-5" }: { className?: string }) {
   );
 }
 
+function SignInIcon({ className = "size-5" }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M10 17l5-5-5-5M15 12H3M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5" />
+    </svg>
+  );
+}
+
 function NotificationBadge({ count }: { count: number }) {
   return (
     <span
@@ -582,8 +599,25 @@ export default function AppNavigation() {
               </Link>
 
               {/* X'teki gibi hesap çipi: geniş menüde ad ve kullanıcı adı,
-                  dar menüde yalnızca avatar. Çıkış bu menünün içine girer. */}
+                  dar menüde yalnızca avatar. Çıkış bu menünün içine girer.
+
+                  Misafirde çip yerine giriş bağlantısı var: "İsimsiz
+                  Kullanıcı" gerçek bir hesap değil, adı kırpılıp anlamsız
+                  görünüyordu ve altındaki menü (Profilim, Çıkış yap) da
+                  misafir için işlevsizdi. */}
               <div className="mt-auto pt-3">
+                {isGuest ? (
+                  <Link
+                    href="/giris"
+                    className="
+                  flex min-h-14 w-m items-center justify-center gap-3 rounded-full bg-[#ff7a45]  text-sm font-black text-[#12100e] outline-none transition-colors hover:bg-[#ff8d5e] focus-visible:ring-3 focus-visible:ring-[#ff7a45]/45 l:min-h-16 min:text-base
+
+"
+                  >
+                    <SignInIcon className="size-5 shrink-0" />
+                    <span className="hidden xl:inline">Giriş yap</span>
+                  </Link>
+                ) : (
                 <div data-account-menu className="relative">
                   <button
                     type="button"
@@ -651,6 +685,7 @@ export default function AppNavigation() {
                     </div>
                   )}
                 </div>
+                )}
               </div>
             </div>
           </aside>

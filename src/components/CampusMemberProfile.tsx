@@ -13,9 +13,8 @@ import {
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import { campusButton } from "@/components/campusButtonStyles";
 import { useFeedback } from "@/components/FeedbackProvider";
-import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import CampusHiddenNotice from "@/components/CampusHiddenNotice";
-import CampusLogo from "@/components/CampusLogo";
+import CampusProfileHero from "@/components/CampusProfileHero";
 import {
   campusCategoryBadgeBase,
   campusCategoryStyles,
@@ -363,121 +362,75 @@ export default function CampusMemberProfile({
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-6xl">
-        {/* Kapak alanı: kullanıcıya ait veri değil, her profilde aynı. */}
-        <div
-          aria-hidden="true"
-          className="grid h-32 w-full place-items-center overflow-hidden bg-[#12151d] sm:h-48"
-        >
-          <CampusLogo
-            idPrefix="member-profile-cover-lockup"
-            wordmarkClassName="text-3xl opacity-40 sm:text-4xl"
-          />
-        </div>
-
-        <div className="border-b border-white/12 px-4 pb-6 sm:px-6">
-          {/* Avatar kapağa taşar, işlemler sağ üstte durur. */}
-          <div className="flex items-start justify-between gap-3">
-            <span className="-mt-14 inline-flex shrink-0 rounded-full ring-4 ring-[#0a0d16] sm:-mt-20">
-              <CampusAuthorAvatar
-                author={author}
-                authorId={resolvedAuthorId}
-                avatarUrl={
-                  isSelf
-                    ? profile.avatarUrl
-                    : managedUser?.avatarUrl ?? suggestedMember?.avatarDataUrl
-                }
-                size="md"
-                className="size-24 text-2xl sm:size-32 sm:text-3xl"
-              />
-            </span>
-            <div className="flex shrink-0 items-center gap-2 pt-3">
-              {isSelf ? (
-                <Link
-                  href="/profil"
-                  className={`inline-flex min-h-11 items-center justify-center rounded-full border border-white/15 px-4 text-xs font-black transition-colors hover:bg-white/8 ${focusRing}`}
-                >
-                  Profilim
-                </Link>
-              ) : sessionMode === "member" && resolvedAuthorId ? (
-                <MemberProfileActions
-                  authorId={resolvedAuthorId}
-                  author={author}
-                  displayName={displayName}
-                  isBlocked={isBlocked}
-                />
-              ) : null}
-            </div>
-          </div>
-
-          {/* Ad, kullanıcı adı ve künye avatarın altında dikey akar. */}
-          <div className="mt-3 min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="break-words text-2xl font-black tracking-[-0.045em] sm:text-3xl">
-                {displayName}
-              </h2>
-              {managedUser?.role && managedUser.role !== "member" && (
-                <RoleBadge role={managedUser.role} />
-              )}
-              {isOfficial && (
-                <span className="bg-[#8fba9b]/12 px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-[0.1em] text-[#b5d8bd]">
-                  Doğrulanmış
-                </span>
-              )}
-            </div>
-            <p className="mt-0.5 break-all text-sm font-bold text-white/55">
-              @{username}
-            </p>
-
-            {!isSuspended && !isBlocked && (
-              <p className="mt-3 max-w-2xl whitespace-pre-wrap text-[15px] leading-6 text-white/78">
-                {bio}
-              </p>
+      <CampusProfileHero
+        coverIdPrefix="member-profile-cover-lockup"
+        author={author}
+        authorId={resolvedAuthorId}
+        avatarUrl={
+          isSelf
+            ? profile.avatarUrl
+            : managedUser?.avatarUrl ?? suggestedMember?.avatarDataUrl
+        }
+        displayName={displayName}
+        username={username}
+        bio={isSuspended || isBlocked ? undefined : bio}
+        department={department || null}
+        joinedLabel={joinedLabel}
+        badges={
+          <>
+            {managedUser?.role && managedUser.role !== "member" && (
+              <RoleBadge role={managedUser.role} />
             )}
-
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/55">
-              {department && (
-                <span className="inline-flex items-center gap-1.5">
-                  <DepartmentIcon />
-                  {department}
-                </span>
-              )}
-              <span className="inline-flex items-center gap-1.5">
-                <CalendarIcon />
-                {joinedLabel}
+            {isOfficial && (
+              <span className="bg-[#8fba9b]/12 px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-[0.1em] text-[#b5d8bd]">
+                Doğrulanmış
               </span>
-            </div>
-
-            {!isSuspended && !isBlocked && (
-              <CampusFollowConnections
-                member={{
-                  authorId: resolvedAuthorId ?? `profile-${username}`,
-                  username,
-                  author,
-                  displayName,
-                  detail: department || undefined,
-                  avatarDataUrl:
-                    managedUser?.avatarUrl ??
-                    suggestedMember?.avatarDataUrl ??
-                    undefined,
-                }}
-                isSelf={isSelf}
-              />
             )}
-          </div>
+          </>
+        }
+        actions={
+          isSelf ? (
+            <Link href="/profil" className={campusButton.secondary}>
+              Profilim
+            </Link>
+          ) : sessionMode === "member" && resolvedAuthorId ? (
+            <MemberProfileActions
+              authorId={resolvedAuthorId}
+              author={author}
+              displayName={displayName}
+              isBlocked={isBlocked}
+            />
+          ) : null
+        }
+        stats={
+          isSuspended || isBlocked
+            ? undefined
+            : [
+                { label: "Gönderi", value: authoredPosts.length },
+                { label: "Yorum", value: authoredComments.length },
+                { label: "Beğeni", value: receivedLikes },
+              ]
+        }
+      >
+        {!isSuspended && !isBlocked && (
+          <CampusFollowConnections
+            member={{
+              authorId: resolvedAuthorId ?? `profile-${username}`,
+              username,
+              author,
+              displayName,
+              detail: department || undefined,
+              avatarDataUrl:
+                managedUser?.avatarUrl ??
+                suggestedMember?.avatarDataUrl ??
+                undefined,
+            }}
+            isSelf={isSelf}
+          />
+        )}
+      </CampusProfileHero>
 
-          {!isSuspended && !isBlocked && (
-            <dl className="mt-5 grid grid-cols-3 border-y border-white/12">
-              <ProfileStat label="Gönderi" value={authoredPosts.length} />
-              <ProfileStat
-                label="Yorum"
-                value={authoredComments.length}
-                bordered
-              />
-              <ProfileStat label="Beğeni" value={receivedLikes} />
-            </dl>
-          )}
-        </div>
+      <div className="mx-auto w-full max-w-6xl">
 
         {isSuspended ? (
           <RestrictedProfileState
@@ -835,31 +788,6 @@ function MemberComments({
   );
 }
 
-function ProfileStat({
-  label,
-  value,
-  bordered = false,
-}: {
-  label: string;
-  value: number;
-  bordered?: boolean;
-}) {
-  return (
-    <div
-      className={`py-4 text-center ${
-        bordered
-          ? "border-x border-white/12"
-          : ""
-      }`}
-    >
-      <dd className="text-xl font-black tracking-[-0.04em]">{value}</dd>
-      <dt className="mt-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.11em] text-white/55">
-        {label}
-      </dt>
-    </div>
-  );
-}
-
 function RoleBadge({ role }: { role: CampusAdminRole }) {
   return (
     <span className="bg-[#ff7a45]/12 px-2 py-1 font-mono text-[8px] font-black uppercase tracking-[0.09em] text-[#ff7a45]">
@@ -997,42 +925,6 @@ function BlockIcon() {
         strokeWidth="1.6"
         strokeLinecap="round"
       />
-    </svg>
-  );
-}
-
-function CalendarIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="size-[18px] shrink-0"
-    >
-      <rect x="3" y="4.8" width="14" height="12.2" rx="1.6" />
-      <path d="M3 8.6h14M6.8 3v3.2M13.2 3v3.2" />
-    </svg>
-  );
-}
-
-function DepartmentIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="size-[18px] shrink-0"
-    >
-      <path d="M10 3.2 18 7l-8 3.8L2 7l8-3.8Z" />
-      <path d="M5.4 9.1v4.2c0 .9 2.1 2.1 4.6 2.1s4.6-1.2 4.6-2.1V9.1" />
     </svg>
   );
 }
