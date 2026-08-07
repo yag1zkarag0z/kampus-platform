@@ -71,7 +71,7 @@ const guestProfile: CampusProfile = {
   displayName: "İsimsiz Kullanıcı",
   department: "",
   year: "",
-  avatarUrl: null,
+  avatarUrl: "https://api.dicebear.com/9.x/avataaars/svg?seed=misafir",
   bio: "KAMPÜS’ü misafir olarak görüntülüyorsun.",
   joinedLabel: "Misafir hesap",
 };

@@ -19,6 +19,7 @@ import type { CampusPost } from "@/data/campusPosts";
 export type CampusPostQueryInput = {
   q?: string;
   category?: CoreContentPostCategory;
+  hasDocument?: boolean;
   author?: string;
   sort?: ContentPostSort;
   limit?: number;
@@ -34,6 +35,7 @@ export type CampusPostQueryInput = {
 export function useCampusPostQuery({
   q,
   category,
+  hasDocument,
   author,
   sort = "newest",
   limit = 20,
@@ -92,7 +94,7 @@ export function useCampusPostQuery({
       }
     });
 
-    listContentPosts({ q, category, author, sort, limit })
+    listContentPosts({ q, category, hasDocument, author, sort, limit })
       .then((response) => {
         if (isCancelled || requestVersion !== requestVersionRef.current) {
           return;
@@ -123,6 +125,7 @@ export function useCampusPostQuery({
   }, [
     author,
     category,
+    hasDocument,
     enabled,
     handleExpiredSession,
     limit,
@@ -145,6 +148,7 @@ export function useCampusPostQuery({
       const response = await listContentPosts({
         q,
         category,
+        hasDocument,
         author,
         sort,
         limit,
@@ -174,6 +178,7 @@ export function useCampusPostQuery({
   }, [
     author,
     category,
+    hasDocument,
     handleExpiredSession,
     limit,
     nextCursor,

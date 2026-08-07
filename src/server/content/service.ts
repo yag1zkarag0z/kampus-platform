@@ -20,6 +20,7 @@ import {
 import type {
   ContentAuthorDto,
   ContentCommentDto,
+  ContentDocumentDto,
   ContentGifDto,
   ContentImageDto,
   ContentListingDto,
@@ -40,11 +41,13 @@ import {
 } from "@/server/notifications/service";
 import {
   comments,
+  documentAssets,
   follows,
   listings,
   mediaAssets,
   commentLikes,
   postBookmarks,
+  postDocuments,
   postLikes,
   pollOptions,
   polls,
@@ -73,7 +76,9 @@ export type {
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
-const CURSOR_VERSION = 4;
+// hasDocument filtresi eklendi; eski biçimli cursor'lar burada geçersiz
+// sayılır (sayfalama baştan başlar), sessizce yanlış yorumlanmaz.
+const CURSOR_VERSION = 5;
 const TRENDING_WINDOW_DAYS = 7;
 const BOOKMARK_CURSOR_VERSION = 1;
 const POST_COMMENT_TOTAL_LIMIT = 500;
@@ -82,6 +87,7 @@ type FeedCursor = {
   version: typeof CURSOR_VERSION;
   sort: FeedQueryInput["sort"];
   category: FeedQueryInput["category"] | null;
+  hasDocument: boolean;
   author: string | null;
   scope: FeedQueryInput["scope"];
   q: string | null;
@@ -335,7 +341,7 @@ async function assertCommentCreationAllowed(
 
 type FeedCursorBinding = Pick<
   FeedQueryInput,
-  "author" | "category" | "q" | "sort" | "scope"
+  "author" | "category" | "hasDocument" | "q" | "sort" | "scope"
 >;
 
 function feedRowRank(
@@ -364,6 +370,7 @@ function encodeFeedCursor(
       version: CURSOR_VERSION,
       sort: query.sort,
       category: query.category ?? null,
+      hasDocument: query.hasDocument ?? false,
       author: query.author ?? null,
       scope: query.scope,
       q: query.q ?? null,
@@ -396,6 +403,8 @@ function decodeFeedCursor(
       !("category" in decoded) ||
       (decoded.category !== null &&
         typeof decoded.category !== "string") ||
+      !("hasDocument" in decoded) ||
+      typeof decoded.hasDocument !== "boolean" ||
       !("author" in decoded) ||
       (decoded.author !== null && typeof decoded.author !== "string") ||
       !("scope" in decoded) ||
@@ -418,6 +427,7 @@ function decodeFeedCursor(
 
     if (
       decoded.category !== (query.category ?? null) ||
+      decoded.hasDocument !== (query.hasDocument ?? false) ||
       decoded.author !== (query.author ?? null) ||
       decoded.sort !== query.sort ||
       decoded.scope !== query.scope ||
@@ -440,6 +450,7 @@ function decodeFeedCursor(
       version: CURSOR_VERSION,
       sort: decoded.sort,
       category: decoded.category as FeedQueryInput["category"] | null,
+      hasDocument: decoded.hasDocument,
       author: decoded.author,
       scope: decoded.scope,
       q: decoded.q,
@@ -569,6 +580,7 @@ function serializePost(
   pollView?: PollView,
   listing?: ContentListingDto,
   image?: ContentImageDto,
+  document?: ContentDocumentDto,
 ): ContentPostDto {
   return {
     id: row.id,
@@ -591,6 +603,7 @@ function serializePost(
     listing: listing ?? null,
     image: image ?? null,
     gif: gifFromRow(row),
+    document: document ?? null,
     viewerState: {
       isAuthor: row.authorId === viewerId,
       canEdit: row.authorId === viewerId,
@@ -632,6 +645,37 @@ async function selectPostImages(
       width: row.width,
       height: row.height,
       alt: row.alt,
+    });
+  }
+
+  return result;
+}
+
+async function selectPostDocuments(
+  executor: ContentReadExecutor,
+  postIds: string[],
+) {
+  const result = new Map<string, ContentDocumentDto>();
+
+  if (postIds.length === 0) return result;
+
+  const rows = await executor
+    .select({
+      postId: postDocuments.postId,
+      assetId: postDocuments.assetId,
+      fileName: documentAssets.fileName,
+      sizeBytes: documentAssets.sizeBytes,
+    })
+    .from(postDocuments)
+    .innerJoin(documentAssets, eq(documentAssets.id, postDocuments.assetId))
+    .where(inArray(postDocuments.postId, postIds));
+
+  for (const row of rows) {
+    result.set(row.postId, {
+      id: row.assetId,
+      name: row.fileName,
+      sizeBytes: row.sizeBytes,
+      src: `/v1/media/documents/${row.assetId}`,
     });
   }
 
@@ -943,6 +987,17 @@ export async function listContentPosts(
     filters.push(eq(posts.category, query.category));
   }
 
+  if (query.hasDocument) {
+    filters.push(
+      exists(
+        getDatabase()
+          .select({ postId: postDocuments.postId })
+          .from(postDocuments)
+          .where(eq(postDocuments.postId, posts.id)),
+      ),
+    );
+  }
+
   if (query.author) {
     filters.push(
       eq(users.username, query.author),
@@ -1058,11 +1113,13 @@ export async function listContentPosts(
   const visibleRows = hasMore ? rows.slice(0, query.limit) : rows;
   const lastVisibleRow = visibleRows.at(-1);
   const visiblePostIds = visibleRows.map((row) => row.id);
-  const [pollViews, listingViews, imageViews] = await Promise.all([
-    selectPostPolls(database, visiblePostIds, viewerId),
-    selectPostListings(database, visiblePostIds),
-    selectPostImages(database, visiblePostIds),
-  ]);
+  const [pollViews, listingViews, imageViews, documentViews] =
+    await Promise.all([
+      selectPostPolls(database, visiblePostIds, viewerId),
+      selectPostListings(database, visiblePostIds),
+      selectPostImages(database, visiblePostIds),
+      selectPostDocuments(database, visiblePostIds),
+    ]);
 
   return {
     data: visibleRows.map((row) =>
@@ -1072,6 +1129,7 @@ export async function listContentPosts(
         pollViews.get(row.id),
         listingViews.get(row.id),
         imageViews.get(row.id),
+        documentViews.get(row.id),
       ),
     ),
     page: {
@@ -1171,11 +1229,13 @@ export async function listContentBookmarks(
   const visibleRows = hasMore ? rows.slice(0, query.limit) : rows;
   const lastVisibleRow = visibleRows.at(-1);
   const visiblePostIds = visibleRows.map((row) => row.id);
-  const [pollViews, listingViews, imageViews] = await Promise.all([
-    selectPostPolls(database, visiblePostIds, viewerId),
-    selectPostListings(database, visiblePostIds),
-    selectPostImages(database, visiblePostIds),
-  ]);
+  const [pollViews, listingViews, imageViews, documentViews] =
+    await Promise.all([
+      selectPostPolls(database, visiblePostIds, viewerId),
+      selectPostListings(database, visiblePostIds),
+      selectPostImages(database, visiblePostIds),
+      selectPostDocuments(database, visiblePostIds),
+    ]);
 
   return {
     data: visibleRows.map((row) =>
@@ -1185,6 +1245,7 @@ export async function listContentBookmarks(
         pollViews.get(row.id),
         listingViews.get(row.id),
         imageViews.get(row.id),
+        documentViews.get(row.id),
       ),
     ),
     page: {
@@ -1216,11 +1277,13 @@ export async function getContentPost(
         postId,
         viewerId,
       );
-      const [pollViews, listingViews, imageViews] = await Promise.all([
-        selectPostPolls(transaction, [postId], viewerId),
-        selectPostListings(transaction, [postId]),
-        selectPostImages(transaction, [postId]),
-      ]);
+      const [pollViews, listingViews, imageViews, documentViews] =
+        await Promise.all([
+          selectPostPolls(transaction, [postId], viewerId),
+          selectPostListings(transaction, [postId]),
+          selectPostImages(transaction, [postId]),
+          selectPostDocuments(transaction, [postId]),
+        ]);
 
       return {
         ...serializePost(
@@ -1229,6 +1292,7 @@ export async function getContentPost(
           pollViews.get(postId),
           listingViews.get(postId),
           imageViews.get(postId),
+          documentViews.get(postId),
         ),
         comments: commentRows.map((comment) =>
           serializeComment(comment, viewerId),
@@ -1289,17 +1353,20 @@ export async function setContentPostLike(
       throw postNotFoundError();
     }
 
-    const [pollViews, listingViews, imageViews] = await Promise.all([
-      selectPostPolls(transaction, [postId], viewerId),
-      selectPostListings(transaction, [postId]),
-      selectPostImages(transaction, [postId]),
-    ]);
+    const [pollViews, listingViews, imageViews, documentViews] =
+      await Promise.all([
+        selectPostPolls(transaction, [postId], viewerId),
+        selectPostListings(transaction, [postId]),
+        selectPostImages(transaction, [postId]),
+        selectPostDocuments(transaction, [postId]),
+      ]);
     return serializePost(
       post,
       viewerId,
       pollViews.get(postId),
       listingViews.get(postId),
       imageViews.get(postId),
+      documentViews.get(postId),
     );
   });
 }
@@ -1338,17 +1405,20 @@ export async function setContentPostBookmark(
       throw postNotFoundError();
     }
 
-    const [pollViews, listingViews, imageViews] = await Promise.all([
-      selectPostPolls(transaction, [postId], viewerId),
-      selectPostListings(transaction, [postId]),
-      selectPostImages(transaction, [postId]),
-    ]);
+    const [pollViews, listingViews, imageViews, documentViews] =
+      await Promise.all([
+        selectPostPolls(transaction, [postId], viewerId),
+        selectPostListings(transaction, [postId]),
+        selectPostImages(transaction, [postId]),
+        selectPostDocuments(transaction, [postId]),
+      ]);
     return serializePost(
       post,
       viewerId,
       pollViews.get(postId),
       listingViews.get(postId),
       imageViews.get(postId),
+      documentViews.get(postId),
     );
   });
 }
@@ -1389,6 +1459,41 @@ export async function createContentPost(
             {
               fieldErrors: {
                 imageId: ["Görsel bulunamadı veya başka bir gönderide kullanılıyor."],
+              },
+              status: 400,
+            },
+          );
+        }
+      }
+
+      if (input.documentId) {
+        const [ownedDocument] = await transaction
+          .select({ id: documentAssets.id })
+          .from(documentAssets)
+          .where(
+            and(
+              eq(documentAssets.id, input.documentId),
+              eq(documentAssets.ownerId, viewerId),
+            ),
+          )
+          .for("update")
+          .limit(1);
+
+        const [existingDocumentLink] = await transaction
+          .select({ postId: postDocuments.postId })
+          .from(postDocuments)
+          .where(eq(postDocuments.assetId, input.documentId))
+          .limit(1);
+
+        if (!ownedDocument || existingDocumentLink) {
+          throw new AuthError(
+            "INVALID_REQUEST",
+            "Bu doküman gönderiye eklenemiyor. Lütfen yeniden yükle.",
+            {
+              fieldErrors: {
+                documentId: [
+                  "Doküman bulunamadı veya başka bir gönderide kullanılıyor.",
+                ],
               },
               status: 400,
             },
@@ -1441,6 +1546,13 @@ export async function createContentPost(
           postId: inserted.id,
           assetId: input.imageId,
           alt,
+        });
+      }
+
+      if (inserted && input.documentId) {
+        await transaction.insert(postDocuments).values({
+          postId: inserted.id,
+          assetId: input.documentId,
         });
       }
 
@@ -1600,8 +1712,8 @@ export async function deleteContentPost(
   assertUuid(postId, postNotFoundError);
   const deletedAt = new Date();
 
-  const deletedImageStorageKey = await getDatabase().transaction(
-    async (transaction) => {
+  const { deletedImageStorageKey, deletedDocumentStorageKey } =
+    await getDatabase().transaction(async (transaction) => {
       await assertActiveContentMember(transaction, viewerId);
 
       const [current] = await transaction
@@ -1644,6 +1756,29 @@ export async function deleteContentPost(
           .where(eq(mediaAssets.id, attachedImage.assetId));
       }
 
+      const [attachedDocument] = await transaction
+        .select({
+          assetId: postDocuments.assetId,
+          storageKey: documentAssets.storageKey,
+        })
+        .from(postDocuments)
+        .innerJoin(
+          documentAssets,
+          eq(documentAssets.id, postDocuments.assetId),
+        )
+        .where(eq(postDocuments.postId, postId))
+        .for("update")
+        .limit(1);
+
+      if (attachedDocument) {
+        await transaction
+          .delete(postDocuments)
+          .where(eq(postDocuments.postId, postId));
+        await transaction
+          .delete(documentAssets)
+          .where(eq(documentAssets.id, attachedDocument.assetId));
+      }
+
       await transaction
         .update(posts)
         .set({ deletedAt })
@@ -1655,13 +1790,21 @@ export async function deleteContentPost(
           ),
         );
 
-      return attachedImage?.storageKey;
-    },
-  );
+      return {
+        deletedImageStorageKey: attachedImage?.storageKey,
+        deletedDocumentStorageKey: attachedDocument?.storageKey,
+      };
+    });
 
   if (deletedImageStorageKey) {
     await getMediaStorage()
       .delete(deletedImageStorageKey)
+      .catch(() => undefined);
+  }
+
+  if (deletedDocumentStorageKey) {
+    await getMediaStorage()
+      .delete(deletedDocumentStorageKey)
       .catch(() => undefined);
   }
 

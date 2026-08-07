@@ -16,7 +16,9 @@ import { campusButton } from "@/components/campusButtonStyles";
 import CampusGif from "@/components/CampusGif";
 import GiphyPicker from "@/components/GiphyPicker";
 import {
+  deleteUnattachedContentDocument,
   deleteUnattachedContentImage,
+  uploadContentDocument,
   uploadContentImage,
 } from "@/content/client";
 import {
@@ -117,6 +119,15 @@ const acceptedImageTypes = new Set([
   "image/png",
   "image/webp",
 ]);
+const MAX_DOCUMENT_SIZE = 8 * 1024 * 1024;
+
+function formatFileSize(bytes: number) {
+  const megabytes = bytes / (1024 * 1024);
+
+  return megabytes >= 0.1
+    ? `${megabytes.toFixed(1)} MB`
+    : `${Math.ceil(bytes / 1024)} KB`;
+}
 
 function getDataUrlSize(dataUrl: string) {
   const base64 = dataUrl.split(",", 2)[1] ?? "";
@@ -170,6 +181,7 @@ export default function CreateCampusPost() {
   const titleInputRef = useRef<HTMLInputElement>(null);
   const bodyInputRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
   const listingPriceInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -184,6 +196,10 @@ export default function CreateCampusPost() {
   >();
   const [imageError, setImageError] = useState("");
   const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [documentPreview, setDocumentPreview] = useState<
+    { file: File; name: string; sizeBytes: number } | undefined
+  >();
+  const [documentError, setDocumentError] = useState("");
   const [isPollEnabled, setIsPollEnabled] = useState(false);
   const [pollOptions, setPollOptions] = useState(["", ""]);
   const [pollError, setPollError] = useState("");
@@ -270,6 +286,7 @@ export default function CreateCampusPost() {
     try {
       setImagePreview(await createPostImage(file));
       setSelectedGif(undefined);
+      removeDocument();
     } catch {
       setImageError(
         "Fotoğraf işlenemedi. Daha küçük veya farklı bir görsel deneyebilirsin.",
@@ -286,6 +303,42 @@ export default function CreateCampusPost() {
 
     if (imageInputRef.current) {
       imageInputRef.current.value = "";
+    }
+  };
+
+  const handleDocumentChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    setDocumentError("");
+    setStatusMessage("");
+
+    if (file.type !== "application/pdf") {
+      setDocumentError("Yalnızca PDF dosyası ekleyebilirsin.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_DOCUMENT_SIZE) {
+      setDocumentError("Doküman en fazla 8 MB olabilir.");
+      event.target.value = "";
+      return;
+    }
+
+    setDocumentPreview({ file, name: file.name, sizeBytes: file.size });
+    setSelectedGif(undefined);
+    removeImage();
+  };
+
+  const removeDocument = () => {
+    setDocumentPreview(undefined);
+    setDocumentError("");
+
+    if (documentInputRef.current) {
+      documentInputRef.current.value = "";
     }
   };
 
@@ -412,6 +465,7 @@ export default function CreateCampusPost() {
     setIsSubmitting(true);
 
     let uploadedImageId: string | undefined;
+    let uploadedDocumentId: string | undefined;
 
     try {
       if (imagePreview) {
@@ -431,6 +485,19 @@ export default function CreateCampusPost() {
         );
       }
 
+      if (documentPreview) {
+        setStatusMessage("Doküman güvenli biçimde yükleniyor…");
+
+        const uploadedDocument = await uploadContentDocument(
+          documentPreview.file,
+          documentPreview.name,
+        );
+        uploadedDocumentId = uploadedDocument.id;
+        setStatusMessage(
+          isListing ? "İlan yayımlanıyor…" : "Konu yayımlanıyor…",
+        );
+      }
+
       const postId = await createPost({
         title: normalizedTitle,
         body: normalizedBody,
@@ -438,6 +505,7 @@ export default function CreateCampusPost() {
         isAnonymous,
         imageId: uploadedImageId,
         gif: selectedGif,
+        documentId: uploadedDocumentId,
         pollOptions: isPollEnabled ? normalizedPollOptions : undefined,
         listing: isListing
           ? {
@@ -458,6 +526,12 @@ export default function CreateCampusPost() {
     } catch {
       if (uploadedImageId) {
         await deleteUnattachedContentImage(uploadedImageId).catch(
+          () => undefined,
+        );
+      }
+
+      if (uploadedDocumentId) {
+        await deleteUnattachedContentDocument(uploadedDocumentId).catch(
           () => undefined,
         );
       }
@@ -907,7 +981,7 @@ export default function CreateCampusPost() {
                 {isGifPickerOpen && (
                   <GiphyPicker
                     onClose={() => setIsGifPickerOpen(false)}
-                    onSelect={(gif) => { setSelectedGif(gif); removeImage(); setIsGifPickerOpen(false); }}
+                    onSelect={(gif) => { setSelectedGif(gif); removeImage(); removeDocument(); setIsGifPickerOpen(false); }}
                   />
                 )}
               </div>
@@ -1009,6 +1083,76 @@ export default function CreateCampusPost() {
               <p className="mt-3 border-l-2 border-[#ff7a45]/45 pl-3 text-[11px] leading-5 text-white/60">
                 Anonim paylaşımda fotoğraftaki yüz, plaka veya belgeler seni
                 belli edebilir.
+              </p>
+            )}
+          </div>
+
+          <div className="mt-7 border-t border-white/10 pt-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-black tracking-[-0.015em]">
+                  Doküman{" "}
+                  <span className="font-medium text-white/55">
+                    (isteğe bağlı)
+                  </span>
+                </p>
+                <p className="mt-1 text-[11px] leading-5 text-white/55">
+                  Ders notu veya belge · yalnızca PDF · en fazla 8 MB
+                </p>
+              </div>
+
+              <input
+                ref={documentInputRef}
+                id="campus-post-document"
+                type="file"
+                accept="application/pdf"
+                onChange={handleDocumentChange}
+                className="sr-only"
+              />
+
+              {!documentPreview && (
+                <button
+                  type="button"
+                  onClick={() => documentInputRef.current?.click()}
+                  className={campusButton.secondary}
+                >
+                  PDF ekle
+                </button>
+              )}
+            </div>
+
+            {documentPreview && (
+              <div className="mt-4 flex items-center gap-3 border border-white/12 bg-[#141720] p-3">
+                <span
+                  aria-hidden="true"
+                  className="grid size-11 shrink-0 place-items-center border border-white/12 bg-white/6 text-[10px] font-black uppercase tracking-[0.06em] text-[#ff7a45]"
+                >
+                  PDF
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-bold">
+                    {documentPreview.name}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-white/55">
+                    {formatFileSize(documentPreview.sizeBytes)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={removeDocument}
+                  className={`inline-flex min-h-11 shrink-0 items-center justify-center px-4 text-xs font-black text-[#ffb199] transition-colors hover:bg-[#ffb199]/8 ${focusRing}`}
+                >
+                  Kaldır
+                </button>
+              </div>
+            )}
+
+            {documentError && (
+              <p
+                role="alert"
+                className="mt-3 text-xs font-semibold text-[#ffb199]"
+              >
+                {documentError}
               </p>
             )}
           </div>

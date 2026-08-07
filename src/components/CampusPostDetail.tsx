@@ -23,6 +23,7 @@ import {
   campusCategoryStyles,
 } from "@/data/campusCategoryStyles";
 import CampusPostActions from "@/components/CampusPostActions";
+import CampusPostDocument from "@/components/CampusPostDocument";
 import CampusPostImage from "@/components/CampusPostImage";
 import CampusGif from "@/components/CampusGif";
 import CampusEmojiPicker from "@/components/CampusEmojiPicker";
@@ -343,6 +344,9 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
               <CampusPostImage image={post.image} variant="detail" />
             )}
             {post.gif && <CampusGif gif={post.gif} />}
+            {post.document && (
+              <CampusPostDocument document={post.document} variant="detail" />
+            )}
             {post.poll && (
               <CampusPoll postId={post.id} poll={post.poll} />
             )}

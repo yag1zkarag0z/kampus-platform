@@ -216,7 +216,7 @@ export default function CampusCalendar() {
                 </div>
                 {selectedDateEvents.length > 0 ? (
                   <ol className="mt-3 space-y-2">
-                    {selectedDateEvents.map((event) => (
+                    {selectedDateEvents.slice(0, 2).map((event) => (
                       <li key={event.id}>
                         <UpcomingCard event={event} />
                       </li>
@@ -235,7 +235,7 @@ export default function CampusCalendar() {
                 </h2>
                 {upcoming.length > 0 ? (
                   <ol className="mt-3 space-y-2">
-                    {upcoming.map((event) => (
+                    {upcoming.slice(0, 2).map((event) => (
                       <li key={event.id}>
                         <UpcomingCard event={event} />
                       </li>

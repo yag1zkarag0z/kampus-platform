@@ -338,6 +338,54 @@ export const postImages = pgTable(
   ],
 );
 
+/**
+ * `mediaAssets`'ten ayrı: o tablonun check constraint'i mimeType'ı
+ * 'image/webp' ve width/height'ı zorunlu kılıyor, PDF'e gevşetmek mevcut
+ * görsel kısıtını riske atardı. Aynı desenin PDF'e özel paralel kopyası.
+ */
+export const documentAssets = pgTable(
+  "document_assets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    storageKey: varchar("storage_key", { length: 255 }).notNull().unique(),
+    mimeType: varchar("mime_type", { length: 32 }).notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    fileName: varchar("file_name", { length: 160 }).notNull(),
+    checksum: varchar("checksum", { length: 64 }).notNull(),
+    createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("document_assets_owner_created_at_idx").on(
+      table.ownerId,
+      table.createdAt.desc(),
+    ),
+    check(
+      "document_assets_pdf_metadata_check",
+      sql`${table.mimeType} = 'application/pdf'
+        and ${table.sizeBytes} between 1 and 8388608
+        and char_length(btrim(${table.fileName})) > 0
+        and ${table.checksum} ~ '^[0-9a-f]{64}$'`,
+    ),
+  ],
+);
+
+export const postDocuments = pgTable(
+  "post_documents",
+  {
+    postId: uuid("post_id")
+      .primaryKey()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    assetId: uuid("asset_id")
+      .notNull()
+      .unique()
+      .references(() => documentAssets.id, { onDelete: "restrict" }),
+    createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
+  },
+);
+
 export const polls = pgTable("polls", {
   postId: uuid("post_id")
     .primaryKey()
@@ -641,6 +689,8 @@ export type NewPostBookmark = typeof postBookmarks.$inferInsert;
 export type Listing = typeof listings.$inferSelect;
 export type MediaAsset = typeof mediaAssets.$inferSelect;
 export type PostImage = typeof postImages.$inferSelect;
+export type DocumentAsset = typeof documentAssets.$inferSelect;
+export type PostDocument = typeof postDocuments.$inferSelect;
 export type Poll = typeof polls.$inferSelect;
 export type PollOption = typeof pollOptions.$inferSelect;
 export type PollVote = typeof pollVotes.$inferSelect;

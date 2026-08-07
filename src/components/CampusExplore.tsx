@@ -19,6 +19,7 @@ import CampusListingMeta from "@/components/CampusListingMeta";
 import CampusPoll from "@/components/CampusPoll";
 import CampusPostActions from "@/components/CampusPostActions";
 import CampusPostCardSurface from "@/components/CampusPostCardSurface";
+import CampusPostDocument from "@/components/CampusPostDocument";
 import CampusPostImage from "@/components/CampusPostImage";
 import CampusGif from "@/components/CampusGif";
 import {
@@ -76,6 +77,7 @@ export default function CampusExplore() {
     useState<CampusCategoryFilter>("Tümü");
   const [activeSort, setActiveSort] =
     useState<ContentPostSort>("trending");
+  const [hasDocumentOnly, setHasDocumentOnly] = useState(false);
   const debouncedQuery = useDebouncedValue(query.trim());
   const searchTerm =
     debouncedQuery.length >= SEARCH_MIN_LENGTH ? debouncedQuery : undefined;
@@ -94,6 +96,7 @@ export default function CampusExplore() {
       activeCategory === "Tümü"
         ? undefined
         : toContentCategory(activeCategory),
+    hasDocument: hasDocumentOnly || undefined,
     sort: activeSort,
     // Misafirin oturumu yok; gerçek /v1/posts isteği atmak yerine aşağıda
     // sabit misafir verisi üzerinde aynı arama/kategori/sıralama uygulanır.
@@ -122,6 +125,10 @@ export default function CampusExplore() {
         return false;
       }
 
+      if (hasDocumentOnly && !post.document) {
+        return false;
+      }
+
       if (!normalizedQuery) {
         return true;
       }
@@ -137,13 +144,21 @@ export default function CampusExplore() {
         ? second.likes - first.likes
         : second.createdAt - first.createdAt,
     );
-  }, [activeCategory, activeSort, dataPosts, isGuest, searchTerm]);
+  }, [
+    activeCategory,
+    activeSort,
+    dataPosts,
+    hasDocumentOnly,
+    isGuest,
+    searchTerm,
+  ]);
 
   const visiblePosts = isGuest ? guestVisiblePosts : queriedPosts;
 
   const clearFilters = () => {
     setQuery("");
     setActiveCategory("Tümü");
+    setHasDocumentOnly(false);
   };
 
   return (
@@ -210,16 +225,10 @@ export default function CampusExplore() {
       <CampusCalendarStrip className="md:hidden" />
 
       <div className="border-b border-white/8">
-        <CampusCategoryNav
-          activeCategory={activeCategory}
-          ariaLabel="Keşfet kategorileri"
-          onCategoryChange={setActiveCategory}
-        />
-
         <div
           role="group"
-          aria-label="Arama sonuçlarını sırala"
-          className="flex flex-wrap gap-1 px-3 py-2 sm:px-5 lg:px-6"
+          aria-label="Arama sonuçlarını sırala ve filtrele"
+          className="flex flex-nowrap items-center gap-1 overflow-x-auto px-3 py-2 sm:px-5 lg:px-6 scrollbar-none [&::-webkit-scrollbar]:hidden"
         >
           {sortOptions.map((sort) => {
             const isActive = activeSort === sort.id;
@@ -230,7 +239,7 @@ export default function CampusExplore() {
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => setActiveSort(sort.id)}
-                className={`min-h-11 rounded-full px-4 text-xs font-bold transition-colors sm:px-5 sm:text-sm ${focusRing} ${
+                className={`min-h-11 shrink-0 rounded-full px-4 text-xs font-bold whitespace-nowrap transition-colors sm:px-5 sm:text-sm ${focusRing} ${
                   isActive
                     ? "bg-white text-[#12100e]"
                     : "text-white/55 hover:bg-white/5 hover:text-white"
@@ -240,6 +249,15 @@ export default function CampusExplore() {
               </button>
             );
           })}
+          <CampusCategoryNav
+            activeCategory={activeCategory}
+            ariaLabel="Keşfet kategorileri"
+            onCategoryChange={setActiveCategory}
+            hasDocumentOnly={hasDocumentOnly}
+            onToggleDocumentOnly={() =>
+              setHasDocumentOnly((value) => !value)
+            }
+          />
         </div>
       </div>
 
@@ -362,6 +380,9 @@ export default function CampusExplore() {
 
                     {post.image && <CampusPostImage image={post.image} />}
                     {post.gif && <CampusGif gif={post.gif} />}
+                    {post.document && (
+                      <CampusPostDocument document={post.document} />
+                    )}
                     {post.poll && (
                       <CampusPoll postId={post.id} poll={post.poll} />
                     )}

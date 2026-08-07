@@ -162,6 +162,13 @@
       "when": 1785923550338,
       "tag": "0022_curvy_maverick",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1786108791603,
+      "tag": "0023_lowly_mister_sinister",
+      "breakpoints": true
     }
   ]
 }

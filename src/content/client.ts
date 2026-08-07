@@ -5,6 +5,7 @@ import { requestApi, requestApiPayload } from "@/auth/client";
 import type {
   ContentCommentDto,
   ContentPostCategory,
+  ContentDocumentDto,
   ContentListingDto,
   ContentImageUploadDto,
   ContentPostDetailDto,
@@ -19,6 +20,7 @@ export type ContentPostSort = "newest" | "popular" | "trending";
 export function listContentPosts({
   q,
   category,
+  hasDocument,
   author,
   cursor,
   limit = 50,
@@ -27,6 +29,7 @@ export function listContentPosts({
 }: {
   q?: string;
   category?: CoreContentPostCategory;
+  hasDocument?: boolean;
   author?: string;
   cursor?: string;
   limit?: number;
@@ -45,6 +48,10 @@ export function listContentPosts({
 
   if (category) {
     searchParams.set("category", category);
+  }
+
+  if (hasDocument) {
+    searchParams.set("hasDocument", "true");
   }
 
   if (author) {
@@ -102,6 +109,7 @@ export function createContentPost(input: {
   listing?: ContentListingDto;
   imageId?: string;
   gifId?: string;
+  documentId?: string;
 }) {
   return requestApi<ContentPostDetailDto>("/v1/posts", {
     method: "POST",
@@ -121,6 +129,22 @@ export function uploadContentImage(image: Blob) {
 
 export function deleteUnattachedContentImage(imageId: string) {
   return requestApi<void>(`/v1/media/${imageId}`, {
+    method: "DELETE",
+  });
+}
+
+export function uploadContentDocument(file: Blob, fileName: string) {
+  const formData = new FormData();
+  formData.set("document", file, fileName);
+
+  return requestApi<ContentDocumentDto>("/v1/media/documents", {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export function deleteUnattachedContentDocument(documentId: string) {
+  return requestApi<void>(`/v1/media/documents/${documentId}`, {
     method: "DELETE",
   });
 }

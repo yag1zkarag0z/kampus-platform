@@ -53,6 +53,55 @@ describe("content validation", () => {
     );
   });
 
+  it("accepts one valid uploaded document id and rejects malformed ids", () => {
+    const documentId = "8f6f8f5e-2b8a-4b34-9a7d-6a6f1a7a3d10";
+
+    expect(
+      parseContentInput(createPostSchema, {
+        category: "chat",
+        body: "Ders notlarım",
+        documentId,
+      }),
+    ).toMatchObject({ documentId });
+
+    captureInvalidInput(() =>
+      parseContentInput(createPostSchema, {
+        category: "chat",
+        body: "Ders notlarım",
+        documentId: "not-an-id",
+      }),
+    );
+  });
+
+  it("rejects a document combined with an image or a GIF", () => {
+    const documentId = "8f6f8f5e-2b8a-4b34-9a7d-6a6f1a7a3d10";
+    const imageId = "d9955ee1-2c9c-49fe-9d45-6a94fe89b880";
+
+    const withImageError = captureInvalidInput(() =>
+      parseContentInput(createPostSchema, {
+        category: "chat",
+        body: "Ders notlarım",
+        documentId,
+        imageId,
+      }),
+    );
+    expect(withImageError.fieldErrors.documentId).toContain(
+      "Aynı gönderiye hem doküman hem fotoğraf ekleyemezsin.",
+    );
+
+    const withGifError = captureInvalidInput(() =>
+      parseContentInput(createPostSchema, {
+        category: "chat",
+        body: "Ders notlarım",
+        documentId,
+        gifId: "happyReaction123",
+      }),
+    );
+    expect(withGifError.fieldErrors.documentId).toContain(
+      "Aynı gönderiye hem doküman hem GIF ekleyemezsin.",
+    );
+  });
+
   it("accepts valid listings and enforces price and identity rules", () => {
     expect(
       parseContentInput(createPostSchema, {
@@ -332,6 +381,15 @@ describe("content validation", () => {
       author: "campus.user",
       cursor: "eyJpZCI6IjEyMyJ9",
       limit: 50,
+    });
+
+    expect(
+      parseContentInput(feedQuerySchema, { hasDocument: "true" }),
+    ).toEqual({
+      sort: "newest",
+      scope: "global",
+      limit: 20,
+      hasDocument: true,
     });
 
     for (const invalidQuery of [

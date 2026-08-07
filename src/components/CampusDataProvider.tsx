@@ -19,6 +19,7 @@ import {
   type CampusPost,
   type CampusGif,
   type CampusPostCategory,
+  type CampusPostDocument,
   type CampusPostImage,
   type CampusPostListing,
   type CampusPostPoll,
@@ -94,6 +95,7 @@ export type CreateCampusPostInput = {
   isAnonymous: boolean;
   imageId?: string;
   gif?: CampusGif;
+  documentId?: string;
   pollOptions?: string[];
   listing?: CampusPostListing;
 };
@@ -262,6 +264,23 @@ function isStoredPostPoll(value: unknown): value is CampusPostPoll {
   );
 }
 
+function isStoredPostDocument(value: unknown): value is CampusPostDocument {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.id === "string" &&
+    typeof value.name === "string" &&
+    value.name.length > 0 &&
+    typeof value.sizeBytes === "number" &&
+    Number.isInteger(value.sizeBytes) &&
+    value.sizeBytes > 0 &&
+    typeof value.src === "string" &&
+    value.src.startsWith("/v1/media/documents/")
+  );
+}
+
 function isStoredPostListing(value: unknown): value is CampusPostListing {
   if (!isRecord(value)) {
     return false;
@@ -304,6 +323,8 @@ function isStoredPost(value: unknown): value is CampusPost {
     typeof value.title === "string" &&
     typeof value.body === "string" &&
     (value.image === undefined || isStoredPostImage(value.image)) &&
+    (value.document === undefined ||
+      isStoredPostDocument(value.document)) &&
     (value.poll === undefined || isStoredPostPoll(value.poll)) &&
     (value.listing === undefined ||
       isStoredPostListing(value.listing)) &&
@@ -647,6 +668,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
         isAnonymous: input.isAnonymous,
         imageId: input.imageId,
         gifId: input.gif?.id,
+        documentId: input.documentId,
         pollOptions,
         listing: input.listing
           ? {

@@ -64,6 +64,13 @@ export type ContentGifDto = {
   alt: string;
 };
 
+export type ContentDocumentDto = {
+  id: string;
+  name: string;
+  sizeBytes: number;
+  src: string;
+};
+
 export type ContentPostDto = {
   id: string;
   category: ContentPostCategory;
@@ -79,6 +86,7 @@ export type ContentPostDto = {
   listing?: ContentListingDto | null;
   image?: ContentImageDto | null;
   gif?: ContentGifDto | null;
+  document?: ContentDocumentDto | null;
   viewerState: ContentViewerStateDto;
 };
 

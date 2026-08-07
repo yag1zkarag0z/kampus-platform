@@ -20,6 +20,7 @@ import { useCampusData } from "@/components/CampusDataProvider";
 import CampusListingMeta from "@/components/CampusListingMeta";
 import CampusPoll from "@/components/CampusPoll";
 import CampusPostCardSurface from "@/components/CampusPostCardSurface";
+import CampusPostDocument from "@/components/CampusPostDocument";
 import CampusPostImage from "@/components/CampusPostImage";
 import CampusGif from "@/components/CampusGif";
 import { useFeedback } from "@/components/FeedbackProvider";
@@ -601,6 +602,7 @@ function SavedPostCard({
         <CampusPostImage image={post.image} variant="compact" />
       )}
       {post.gif && <CampusGif gif={post.gif} compact />}
+      {post.document && <CampusPostDocument document={post.document} />}
       {post.poll && (
         <CampusPoll
           postId={post.id}

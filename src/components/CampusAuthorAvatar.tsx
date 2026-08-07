@@ -75,7 +75,7 @@ export default function CampusAuthorAvatar({
     isAnonymous: isAnonymousProp,
   });
   const isLocalAccount =
-    sessionMode === "member" &&
+    (sessionMode === "member" || sessionMode === "guest") &&
     !isAnonymous &&
     (authorId === LOCAL_ACCOUNT_OWNER_ID || author === "@sen");
   const avatarUrl =

@@ -19,6 +19,7 @@ import {
   campusCategoryStyles,
 } from "@/data/campusCategoryStyles";
 import CampusPostCardSurface from "@/components/CampusPostCardSurface";
+import CampusPostDocument from "@/components/CampusPostDocument";
 import CampusPostImage from "@/components/CampusPostImage";
 import CampusGif from "@/components/CampusGif";
 import {
@@ -316,6 +317,9 @@ export default function CampusProfile() {
                         />
                       )}
                       {post.gif && <CampusGif gif={post.gif} compact />}
+                      {post.document && (
+                        <CampusPostDocument document={post.document} />
+                      )}
                       {post.poll && (
                         <CampusPoll
                           postId={post.id}

@@ -258,6 +258,7 @@ export const createPostSchema = z
     listing: listingSchema.optional(),
     imageId: z.uuid("Görsel kimliği geçersiz.").optional(),
     gifId: gifIdSchema.optional(),
+    documentId: z.uuid("Doküman kimliği geçersiz.").optional(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -268,6 +269,22 @@ export const createPostSchema = z
         code: "custom",
         message: "Aynı gönderiye hem fotoğraf hem GIF ekleyemezsin.",
         path: ["gifId"],
+      });
+    }
+
+    if (value.documentId && value.imageId) {
+      context.addIssue({
+        code: "custom",
+        message: "Aynı gönderiye hem doküman hem fotoğraf ekleyemezsin.",
+        path: ["documentId"],
+      });
+    }
+
+    if (value.documentId && value.gifId) {
+      context.addIssue({
+        code: "custom",
+        message: "Aynı gönderiye hem doküman hem GIF ekleyemezsin.",
+        path: ["documentId"],
       });
     }
 
@@ -426,10 +443,19 @@ const searchQuerySchema = z
   .min(2, "Arama için en az 2 karakter yazmalısın.")
   .max(80, "Arama metni en fazla 80 karakter olabilir.");
 
+const hasDocumentQuerySchema = z.preprocess((value) => {
+  if (typeof value === "string") {
+    if (value.toLowerCase() === "true") return true;
+    if (value.toLowerCase() === "false") return false;
+  }
+  return value;
+}, z.boolean());
+
 export const feedQuerySchema = z
   .object({
     q: searchQuerySchema.optional(),
     category: postCategorySchema.optional(),
+    hasDocument: hasDocumentQuerySchema.optional(),
     sort: z
       .enum(POST_SORTS, {
         error: "Sıralama newest, popular veya trending olmalıdır.",

@@ -102,6 +102,23 @@ describe("content DTO adapter", () => {
     });
   });
 
+  it("maps a persisted document into the campus post model", () => {
+    const document = {
+      id: "8f6f8f5e-2b8a-4b34-9a7d-6a6f1a7a3d10",
+      name: "mikroekonomi-final-notlari.pdf",
+      sizeBytes: 2_150_000,
+      src: "/v1/media/documents/8f6f8f5e-2b8a-4b34-9a7d-6a6f1a7a3d10",
+    };
+
+    expect(toCampusPost(createPostDto({ document })).document).toEqual(
+      document,
+    );
+  });
+
+  it("leaves the campus post's document field undefined when absent", () => {
+    expect(toCampusPost(createPostDto()).document).toBeUndefined();
+  });
+
   it("maps persisted listing values to campus labels", () => {
     expect(
       toCampusPost(

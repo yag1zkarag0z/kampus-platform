@@ -67,7 +67,7 @@ export type MediaStorage = {
 const UUID_FRAGMENT =
   "[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
 const STORAGE_KEY_PATTERN = new RegExp(
-  `^images/${UUID_FRAGMENT}/${UUID_FRAGMENT}\\.webp$`,
+  `^(?:images/${UUID_FRAGMENT}/${UUID_FRAGMENT}\\.webp|documents/${UUID_FRAGMENT}/${UUID_FRAGMENT}\\.pdf)$`,
   "iu",
 );
 
@@ -75,6 +75,10 @@ function assertStorageKey(key: string) {
   if (!STORAGE_KEY_PATTERN.test(key)) {
     throw new Error("Invalid media storage key.");
   }
+}
+
+function contentTypeForKey(key: string) {
+  return key.toLowerCase().endsWith(".pdf") ? "application/pdf" : "image/webp";
 }
 
 function localStorage(): MediaStorage {
@@ -114,7 +118,7 @@ function localStorage(): MediaStorage {
       try {
         return {
           body: await readFile(objectPath(key)),
-          contentType: "image/webp",
+          contentType: contentTypeForKey(key),
         };
       } catch (error) {
         if (
@@ -167,7 +171,7 @@ function s3Storage(): MediaStorage {
 
         return {
           body: Buffer.from(await result.Body.transformToByteArray()),
-          contentType: result.ContentType ?? "image/webp",
+          contentType: result.ContentType ?? contentTypeForKey(key),
         };
       } catch (error) {
         if (

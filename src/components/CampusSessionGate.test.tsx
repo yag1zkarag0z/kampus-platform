@@ -146,6 +146,25 @@ describe("CampusSessionGate", () => {
     expect(screen.getByText("Takip önerileri")).toBeInTheDocument();
   });
 
+  it("lets a guest open the campus calendar", () => {
+    gateState.pathname = "/takvim";
+    Object.assign(gateState.account, {
+      isSignedIn: true,
+      isGuest: true,
+    });
+
+    render(
+      <CampusSessionGate>
+        <p>Kampüs takvimi</p>
+      </CampusSessionGate>,
+    );
+
+    act(() => vi.advanceTimersByTime(1_280));
+
+    expect(gateState.replace).not.toHaveBeenCalled();
+    expect(screen.getByText("Kampüs takvimi")).toBeInTheDocument();
+  });
+
   it("does not let a regular member open the admin panel", () => {
     gateState.pathname = "/admin";
 

@@ -67,6 +67,13 @@ export type CampusPostListing = {
   price: number;
 };
 
+export type CampusPostDocument = {
+  id: string;
+  name: string;
+  sizeBytes: number;
+  src: string;
+};
+
 export type CampusPost = {
   id: string;
   author: string;
@@ -81,6 +88,7 @@ export type CampusPost = {
   gif?: CampusGif;
   poll?: CampusPostPoll;
   listing?: CampusPostListing;
+  document?: CampusPostDocument;
   time: string;
   createdAt: number;
   likes: number;
@@ -149,7 +157,7 @@ function seedAvatar(seed: string) {
 }
 
 /** Misafir akışındaki kurgusal öğrenciler — resmî KAMPÜS hesabı değil. */
-const guestAuthors = {
+export const guestAuthors = {
   ecearslan: { author: "@ecearslan", authorId: "seed-ecearslan", avatarUrl: seedAvatar("ecearslan") },
   deniz: { author: "@deniz", authorId: "seed-deniz", avatarUrl: seedAvatar("deniz-akin") },
   mertcan: { author: "@mertcan", authorId: "seed-mertcan", avatarUrl: seedAvatar("mertcan") },
@@ -231,6 +239,24 @@ export const guestCampusPosts: CampusPost[] = [
     time: "Şimdi",
     createdAt: minutesAgo(0),
     likes: 84,
+    comments: [
+      {
+        id: "comment-campus-welcome-deniz",
+        author: "@deniz",
+        authorId: "seed-deniz",
+        body: "B blok asansörü hep arızalı, merdivenler daha garanti. Hoş geldin!",
+        time: "Şimdi",
+        createdAt: minutesAgo(0),
+      },
+      {
+        id: "comment-campus-welcome-canberk",
+        author: "@canberk",
+        authorId: "seed-canberk",
+        body: "Ben de ilk hafta tam bu haldeydim, danışmaya sorarsan hemen yardımcı oluyorlar.",
+        time: "Şimdi",
+        createdAt: minutesAgo(0),
+      },
+    ],
   }),
   createGuestCampusPost("mertcan", {
     id: "printer-emergency",
@@ -267,6 +293,24 @@ export const guestCampusPosts: CampusPost[] = [
     time: "8 dk",
     createdAt: minutesAgo(8),
     likes: 46,
+    comments: [
+      {
+        id: "comment-campus-today-mertcan",
+        author: "@mertcan",
+        authorId: "seed-mertcan",
+        body: "Kütüphanenin önündeki merdivenler bence, akşamüstü ışığı müthiş oluyor.",
+        time: "5 dk",
+        createdAt: minutesAgo(5),
+      },
+      {
+        id: "comment-campus-today-beril",
+        author: "@beril",
+        authorId: "seed-beril",
+        body: "Ben avludaki büyük ağacın altını seçerim, hep gölgeli ve sakin.",
+        time: "3 dk",
+        createdAt: minutesAgo(3),
+      },
+    ],
   }),
   createGuestCampusPost("canberk", {
     id: "best-study-spot",
@@ -311,6 +355,13 @@ export const guestCampusPosts: CampusPost[] = [
         body: "Bu benimkiler olabilir, hemen danışmaya bakıyorum. Çok teşekkürler!",
         time: "14 dk",
         createdAt: minutesAgo(14),
+        gif: {
+          id: "xUPGcguWZHRC2HyBRS",
+          src: "https://media.giphy.com/media/xUPGcguWZHRC2HyBRS/giphy.gif",
+          width: 480,
+          height: 270,
+          alt: "Kutlama tepki GIF'i",
+        },
       },
     ],
   }),
@@ -331,6 +382,31 @@ export const guestCampusPosts: CampusPost[] = [
     time: "31 dk",
     createdAt: minutesAgo(31),
     likes: 93,
+    comments: [
+      {
+        id: "comment-break-place-poll-eceyilmaz",
+        author: "@eceyilmaz",
+        authorId: "ece-yilmaz",
+        body: "Kahve kesin kazanır, ben oy verdim bile.",
+        time: "22 dk",
+        createdAt: minutesAgo(22),
+        gif: {
+          id: "l0MYGb1LuZ3n7dRnO",
+          src: "https://media.giphy.com/media/l0MYGb1LuZ3n7dRnO/giphy.gif",
+          width: 480,
+          height: 270,
+          alt: "Şaşırtıcı tepki GIF'i",
+        },
+      },
+      {
+        id: "comment-break-place-poll-denizari",
+        author: "@denizari",
+        authorId: "deniz-ari",
+        body: "Kütüphane biraz haksız yere önde, sadece sessiz köşesi yüzünden oy alıyor bence.",
+        time: "15 dk",
+        createdAt: minutesAgo(15),
+      },
+    ],
   }),
   createGuestCampusPost("deniz", {
     id: "club-meetups",
@@ -399,6 +475,32 @@ export const guestCampusPosts: CampusPost[] = [
       },
     ],
   }),
+  createGuestCampusPost("ecearslan", {
+    id: "microeconomics-notes",
+    detail: "Ders notu",
+    category: "Sohbet",
+    title: "Mikroekonomi final notlarımı paylaşıyorum",
+    body: "Bütün dönemi özetledim, final için gayet toparlayıcı oldu. İhtiyacı olan indirebilir.",
+    document: {
+      id: "guest-microeconomics-notes",
+      name: "mikroekonomi-final-notlari.pdf",
+      sizeBytes: 2_150_000,
+      src: "#",
+    },
+    time: "50 dk",
+    createdAt: minutesAgo(50),
+    likes: 57,
+    comments: [
+      {
+        id: "comment-microeconomics-notes-mertcan",
+        author: "@mertcan",
+        authorId: "seed-mertcan",
+        body: "Tam da ihtiyacım vardı, çok teşekkürler!",
+        time: "35 dk",
+        createdAt: minutesAgo(35),
+      },
+    ],
+  }),
   createGuestCampusPost("beril", {
     id: "community-thanks",
     detail: "Küçük bir teşekkür",
@@ -415,6 +517,31 @@ export const guestCampusPosts: CampusPost[] = [
       height: 270,
       alt: "Şaşkınlık ve mutluluk tepki GIF'i",
     },
+    comments: [
+      {
+        id: "comment-community-thanks-canberk",
+        author: "@canberk",
+        authorId: "seed-canberk",
+        body: "Böyle anlar gerçekten kampüsü sevdiriyor.",
+        time: "45 dk",
+        createdAt: minutesAgo(45),
+      },
+      {
+        id: "comment-community-thanks-selin",
+        author: "@selin",
+        authorId: "seed-selin",
+        body: "Bunu okuyunca gülümsedim, kim yaptıysa helal olsun.",
+        time: "30 dk",
+        createdAt: minutesAgo(30),
+        gif: {
+          id: "26ufdipQqU2lhNA4g",
+          src: "https://media.giphy.com/media/26ufdipQqU2lhNA4g/giphy.gif",
+          width: 480,
+          height: 270,
+          alt: "Şaşkınlık ve mutluluk tepki GIF'i",
+        },
+      },
+    ],
   }),
   createGuestCampusPost("teknolojitoplulugu", {
     id: "coding-workshop",
@@ -496,6 +623,13 @@ export const guestCampusPosts: CampusPost[] = [
         body: "Ben geliyorum, kulaklıksız çalışma sözü veriyorum bu sefer.",
         time: "1 sa",
         createdAt: hoursAgo(1),
+        gif: {
+          id: "3oriO0OEd9QIDdllqo",
+          src: "https://media.giphy.com/media/3oriO0OEd9QIDdllqo/giphy.gif",
+          width: 480,
+          height: 270,
+          alt: "Heyecan tepki GIF'i",
+        },
       },
     ],
   }),
@@ -595,6 +729,13 @@ export const guestCampusPosts: CampusPost[] = [
         body: "Bu benim olabilir, hemen güvenliğe gidiyorum. Çok teşekkürler!",
         time: "1 sa",
         createdAt: hoursAgo(1),
+        gif: {
+          id: "xT9IgG50Fb7Mi0prBC",
+          src: "https://media.giphy.com/media/xT9IgG50Fb7Mi0prBC/giphy.gif",
+          width: 480,
+          height: 270,
+          alt: "Onay tepki GIF'i",
+        },
       },
     ],
   }),
@@ -623,6 +764,13 @@ export const guestCampusPosts: CampusPost[] = [
         body: "Son gece kesin kaybediyor ama her sene aynı hataya düşüyorum.",
         time: "4 sa",
         createdAt: hoursAgo(4),
+        gif: {
+          id: "xT0xezQGU5xCDJuCPe",
+          src: "https://media.giphy.com/media/xT0xezQGU5xCDJuCPe/giphy.gif",
+          width: 480,
+          height: 270,
+          alt: "Çaresizlik tepki GIF'i",
+        },
       },
     ],
   }),
@@ -674,6 +822,13 @@ export const guestCampusPosts: CampusPost[] = [
         body: "Aynı ihtiyaçtan geçen sene ben de geçtim, süper fikir.",
         time: "5 sa",
         createdAt: hoursAgo(5),
+        gif: {
+          id: "l0MYt5jPR6QX5pnqM",
+          src: "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif",
+          width: 480,
+          height: 270,
+          alt: "Eğlenceli tepki GIF'i",
+        },
       },
     ],
   }),
@@ -714,6 +869,13 @@ export const guestCampusPosts: CampusPost[] = [
         body: "Az kalsın ben de böyle bir şey bırakacaktım, aynı fikirdeymişiz.",
         time: "7 sa",
         createdAt: hoursAgo(7),
+        gif: {
+          id: "3o6ZtpxSZbQRRnwCKQ",
+          src: "https://media.giphy.com/media/3o6ZtpxSZbQRRnwCKQ/giphy.gif",
+          width: 480,
+          height: 270,
+          alt: "Gülüşme tepki GIF'i",
+        },
       },
     ],
   }),
@@ -734,6 +896,13 @@ export const guestCampusPosts: CampusPost[] = [
         body: "Ben de klavyemi sessiz moda aldım ama parmaklarım dinlemiyor.",
         time: "9 sa",
         createdAt: hoursAgo(9),
+        gif: {
+          id: "3o7abKhOpu0NwenH3O",
+          src: "https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif",
+          width: 480,
+          height: 270,
+          alt: "Gülme tepki GIF'i",
+        },
       },
     ],
   }),
@@ -747,8 +916,8 @@ export const guestCampusPosts: CampusPost[] = [
     createdAt: daysAgo(1),
     likes: 63,
     gif: {
-      id: "3o7aCVRXjjTaLBOtvS",
-      src: "https://media.giphy.com/media/3o7aCVRXjjTaLBOtvS/giphy.gif",
+      id: "3o7abKhOpu0NwenH3O",
+      src: "https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif",
       width: 480,
       height: 270,
       alt: "Açlıktan bekleyen komik tepki GIF'i",
@@ -803,6 +972,13 @@ const memberSeedPosts: CampusPost[] = [
         body: "Notları danışmada görünce sahibi mutlaka arar diye düşündüm. Sana ulaştığına sevindim.",
         time: "8 dk",
         createdAt: minutesAgo(8),
+        gif: {
+          id: "l3q2K5jinAlChoCLS",
+          src: "https://media.giphy.com/media/l3q2K5jinAlChoCLS/giphy.gif",
+          width: 480,
+          height: 270,
+          alt: "Rahatlama tepki GIF'i",
+        },
       },
       {
         id: "library-comment-2",

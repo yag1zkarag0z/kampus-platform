@@ -264,6 +264,14 @@ export function toCampusPost(
           alt: dto.gif.alt,
         }
       : undefined,
+    document: dto.document
+      ? {
+          id: dto.document.id,
+          name: dto.document.name,
+          sizeBytes: dto.document.sizeBytes,
+          src: dto.document.src,
+        }
+      : undefined,
     edited: dto.editedAt !== null,
     isHidden: dto.viewerState.hidden,
   };

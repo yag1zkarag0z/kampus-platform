@@ -28,6 +28,7 @@ import CampusListingMeta from "@/components/CampusListingMeta";
 import CampusPoll from "@/components/CampusPoll";
 import CampusPostActions from "@/components/CampusPostActions";
 import CampusPostCardSurface from "@/components/CampusPostCardSurface";
+import CampusPostDocument from "@/components/CampusPostDocument";
 import CampusPostImage from "@/components/CampusPostImage";
 import CampusGif from "@/components/CampusGif";
 import GiphyPicker from "@/components/GiphyPicker";
@@ -1378,6 +1379,9 @@ export default function CampusFeed() {
 
                     {post.image && <CampusPostImage image={post.image} />}
                     {post.gif && <CampusGif gif={post.gif} />}
+                    {post.document && (
+                      <CampusPostDocument document={post.document} />
+                    )}
                     {post.poll && (
                       <CampusPoll postId={post.id} poll={post.poll} />
                     )}
@@ -1505,7 +1509,7 @@ export default function CampusFeed() {
               setFeedScope("global");
               setActiveCategory("Tümü");
             }}
-            className={`mt-3 inline-flex min-h-11 items-center text-sm font-bold text-[#ff7a45] underline decoration-[#ff7a45]/40 underline-offset-4 sm:text-base ${focusRing}`}
+            className={`mt-6 inline-flex min-h-11 items-center text-sm font-bold text-[#ff7a45] underline decoration-[#ff7a45]/40 underline-offset-4 sm:text-base ${focusRing}`}
           >
             Ana akışa dön
           </button>
