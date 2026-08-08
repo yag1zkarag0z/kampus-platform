@@ -20,13 +20,13 @@ export default function PlatformFeedSkeleton() {
       role="status"
       aria-live="polite"
       aria-busy="true"
-      className="min-h-[calc(100svh-4rem)] bg-[#0a0d16] md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] bg-canvas md:min-h-svh"
     >
       <span className="sr-only">Sayfa yükleniyor</span>
 
       <div
         aria-hidden="true"
-        className="sticky top-0 z-20 flex min-h-16 items-center justify-between border-b border-white/10 bg-[#0a0d16]/88 px-4 backdrop-blur-xl sm:px-5"
+        className="sticky top-0 z-20 flex min-h-16 items-center justify-between border-b border-white/10 bg-canvas/88 px-4 backdrop-blur-xl sm:px-5"
       >
         <SkeletonBlock className="h-4 w-28" />
         <SkeletonBlock className="size-9" />

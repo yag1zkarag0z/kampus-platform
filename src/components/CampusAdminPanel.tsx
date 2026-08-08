@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import ActionStatusText from "@/components/ActionStatusText";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import { campusButton } from "@/components/campusButtonStyles";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
@@ -12,6 +13,7 @@ import {
   useCampusModeration,
 } from "@/components/CampusModerationProvider";
 import { useFeedback } from "@/components/FeedbackProvider";
+import { useActionStatus } from "@/components/useActionStatus";
 import {
   campusAdminRoleLabels,
   type CampusAdminRole,
@@ -26,7 +28,7 @@ type AdminView = "overview" | "reports" | "users" | "history";
 type ReportFilter = "pending" | "resolved" | "all";
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
+  "outline-none focus-visible:ring-3 focus-visible:ring-brand/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 const adminViews: { id: AdminView; label: string }[] = [
   { id: "overview", label: "Genel bakış" },
@@ -98,13 +100,18 @@ export default function CampusAdminPanel() {
     suspendUser,
     restoreUser,
   } = useCampusModeration();
-  const { confirm: confirmAction, showToast } = useFeedback();
+  const { confirm: confirmAction } = useFeedback();
   const [activeView, setActiveView] =
     useState<AdminView>("overview");
   const [reportFilter, setReportFilter] =
     useState<ReportFilter>("pending");
   const [selectedReportId, setSelectedReportId] = useState<string>();
   const [userQuery, setUserQuery] = useState("");
+  const [reportStatus, setReportStatus] = useActionStatus();
+  const [userActionStatus, setUserActionStatus] = useActionStatus();
+  const [userActionAnchor, setUserActionAnchor] = useState<string | null>(
+    null,
+  );
 
   const isHydrated = isAccountHydrated && isModerationHydrated;
   const sortedReports = useMemo(
@@ -169,9 +176,9 @@ export default function CampusAdminPanel() {
     (role !== "admin" && role !== "moderator")
   ) {
     return (
-      <section className="grid min-h-[calc(100svh-4rem)] place-items-center bg-[#0a0d16] px-4 py-16 text-white md:min-h-svh">
-        <div className="w-full max-w-lg border border-white/12 bg-[#141720] p-6 text-center sm:p-8">
-          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-[#ffb199]">
+      <section className="grid min-h-[calc(100svh-4rem)] place-items-center bg-canvas px-4 py-16 text-white md:min-h-svh">
+        <div className="w-full max-w-lg border border-white/12 bg-surface-raised p-6 text-center sm:p-8">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-danger">
             Yetkili alanı
           </p>
           <h1 className="mt-2 text-2xl font-black tracking-[-0.045em]">
@@ -208,7 +215,7 @@ export default function CampusAdminPanel() {
     };
 
     if (resolution === "user_suspended" && !report.target.authorId) {
-      showToast({
+      setReportStatus({
         message: "Anonim veya kimliği belirlenemeyen hesap askıya alınamaz.",
         tone: "error",
       });
@@ -239,7 +246,7 @@ export default function CampusAdminPanel() {
         : undefined,
     );
 
-    showToast({
+    setReportStatus({
       message: wasResolved
         ? `${resolutionLabels[resolution]}.`
         : "Şikâyet çözülemedi. Lütfen yeniden dene.",
@@ -252,7 +259,8 @@ export default function CampusAdminPanel() {
     nextRole: CampusAdminRole,
   ) => {
     const wasUpdated = await setUserRole(user.id, nextRole);
-    showToast({
+    setUserActionAnchor(user.id);
+    setUserActionStatus({
       message: wasUpdated
         ? `@${user.username} artık ${campusAdminRoleLabels[nextRole].toLocaleLowerCase("tr-TR")}.`
         : "Rol değiştirilemedi.",
@@ -277,7 +285,8 @@ export default function CampusAdminPanel() {
       user.id,
       "Kullanıcı yönetiminden askıya alındı.",
     );
-    showToast({
+    setUserActionAnchor(user.id);
+    setUserActionStatus({
       message: wasSuspended
         ? `@${user.username} askıya alındı.`
         : "Kullanıcı askıya alınamadı.",
@@ -298,7 +307,8 @@ export default function CampusAdminPanel() {
     }
 
     const wasRestored = await restoreUser(user.id);
-    showToast({
+    setUserActionAnchor(user.id);
+    setUserActionStatus({
       message: wasRestored
         ? `@${user.username} yeniden etkinleştirildi.`
         : "Hesap durumu değiştirilemedi.",
@@ -309,17 +319,17 @@ export default function CampusAdminPanel() {
   return (
     <section
       aria-labelledby="admin-panel-title"
-      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] min-w-0 bg-canvas text-white md:min-h-svh"
     >
-      <header className="border-b border-white/10 bg-[#141720]">
+      <header className="border-b border-white/10 bg-surface-raised">
         <div className="flex min-h-24 flex-col justify-center gap-3 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
             <div className="flex items-center gap-2">
               <span
                 aria-hidden="true"
-                className="size-2 rounded-full bg-[#8fba9b] shadow-[0_0_0_4px_rgba(143,186,155,0.14)]"
+                className="size-2 rounded-full bg-[#69c990] shadow-[0_0_0_4px_rgba(143,186,155,0.14)]"
               />
-              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-[#ff7a45]">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-brand">
                 Yönetim merkezi
               </p>
             </div>
@@ -330,7 +340,7 @@ export default function CampusAdminPanel() {
               KAMPÜS Moderasyon
             </h1>
           </div>
-          <div className="flex items-center gap-3 border-l-2 border-[#ff7a45]/35 pl-3">
+          <div className="flex items-center gap-3 border-l-2 border-brand/35 pl-3">
             <div className="text-right">
               <p className="text-xs font-black">{profile.displayName}</p>
               <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-white/55">
@@ -368,13 +378,13 @@ export default function CampusAdminPanel() {
                   onClick={() => setActiveView(view.id)}
                   className={`min-h-11 cursor-pointer px-3 text-xs font-black transition-colors ${focusRing} ${
                     isActive
-                      ? "bg-[#ff7a45]/12 text-[#ff7a45]"
+                      ? "bg-brand/12 text-brand"
                       : "text-white/55 hover:bg-white/5 hover:text-white"
                   }`}
                 >
                   {view.label}
                   {count !== undefined && count > 0 && (
-                    <span className="ml-2 inline-flex min-w-5 justify-center rounded-full bg-[#ffb199] px-1.5 py-0.5 font-mono text-[9px] text-[#0a0d16]">
+                    <span className="ml-2 inline-flex min-w-5 justify-center rounded-full bg-danger px-1.5 py-0.5 font-mono text-[9px] text-[#0b0b0c]">
                       {count}
                     </span>
                   )}
@@ -428,7 +438,7 @@ export default function CampusAdminPanel() {
                     setReportFilter("pending");
                     setActiveView("reports");
                   }}
-                  className={`min-h-11 px-3 text-xs font-black text-[#ff7a45] hover:bg-[#ff7a45]/8 ${focusRing}`}
+                  className={`min-h-11 px-3 text-xs font-black text-brand hover:bg-brand/8 ${focusRing}`}
                 >
                   Tümünü incele
                 </button>
@@ -542,7 +552,7 @@ export default function CampusAdminPanel() {
         <div className="grid min-w-0 gap-4 p-3 sm:p-6">
           <div className="flex flex-col gap-3 border-b border-white/9 pb-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-brand">
                 Moderasyon kuyruğu
               </p>
               <h2 className="mt-1 text-xl font-black tracking-[-0.04em]">
@@ -571,7 +581,7 @@ export default function CampusAdminPanel() {
                     onClick={() => setReportFilter(filter.id)}
                     className={`min-h-11 px-2 text-[11px] font-black transition-colors sm:px-3 sm:text-xs ${focusRing} ${
                       isActive
-                        ? "bg-[#ff7a45]/12 text-[#ff7a45]"
+                        ? "bg-brand/12 text-brand"
                         : "text-white/55 hover:bg-white/5"
                     }`}
                   >
@@ -587,7 +597,7 @@ export default function CampusAdminPanel() {
 
           {filteredReports.length > 0 && selectedReport ? (
             <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(15rem,0.76fr)_minmax(0,1.24fr)]">
-              <div className="border border-white/9 bg-[#141720]">
+              <div className="border border-white/9 bg-surface-raised">
                 <ul className="divide-y divide-white/8">
                   {filteredReports.map((report) => {
                     const isSelected = report.id === selectedReport.id;
@@ -600,7 +610,7 @@ export default function CampusAdminPanel() {
                           onClick={() => setSelectedReportId(report.id)}
                           className={`flex min-h-24 w-full cursor-pointer gap-3 border-l-3 px-3 py-3 text-left transition-colors ${focusRing} ${
                             isSelected
-                              ? "border-[#ff7a45] bg-[#ff7a45]/9"
+                              ? "border-brand bg-brand/9"
                               : "border-transparent hover:bg-white/4"
                           }`}
                         >
@@ -629,7 +639,7 @@ export default function CampusAdminPanel() {
 
               <article
                 aria-label="Seçili şikâyet ayrıntıları"
-                className="min-w-0 border border-white/10 bg-[#141720] p-4 sm:p-5"
+                className="min-w-0 border border-white/10 bg-surface-raised p-4 sm:p-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -653,8 +663,8 @@ export default function CampusAdminPanel() {
                 </div>
 
                 <div className="mt-5 grid gap-4">
-                  <div className="border-l-3 border-[#ff7a45]/48 bg-[#ff7a45]/7 px-4 py-3">
-                    <p className="text-[10px] font-black uppercase tracking-[0.11em] text-[#ff7a45]">
+                  <div className="border-l-3 border-brand/48 bg-brand/7 px-4 py-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.11em] text-brand">
                       Şikâyet açıklaması
                     </p>
                     <p className="mt-2 text-sm leading-6 text-white/72">
@@ -667,7 +677,7 @@ export default function CampusAdminPanel() {
                     <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-white/55">
                       İncelenen içerik
                     </p>
-                    <div className="mt-2 border border-white/9 bg-[#17191c]/72 p-4">
+                    <div className="mt-2 border border-white/9 bg-surface-raised/72 p-4">
                       <div className="flex items-center gap-2">
                         <CampusAuthorAvatar
                           author={
@@ -719,7 +729,7 @@ export default function CampusAdminPanel() {
                           "content_removed",
                         )
                       }
-                      className={`min-h-11 border border-[#ffb199]/38 px-3 text-xs font-black text-[#ffb199] transition-colors hover:bg-[#ffb199]/9 ${focusRing}`}
+                      className={`min-h-11 border border-danger/38 px-3 text-xs font-black text-danger transition-colors hover:bg-danger/9 ${focusRing}`}
                     >
                       İçeriği kaldır
                     </button>
@@ -732,14 +742,20 @@ export default function CampusAdminPanel() {
                           "user_suspended",
                         )
                       }
-                      className={`min-h-11 bg-[#ffb199] px-3 text-xs font-black text-[#0a0d16] transition-colors hover:bg-[#ffb199]/85 disabled:cursor-not-allowed disabled:bg-[#ffb199]/25 disabled:text-white/38 ${focusRing}`}
+                      className={`min-h-11 bg-danger px-3 text-xs font-black text-[#0b0b0c] transition-colors hover:bg-danger/85 disabled:cursor-not-allowed disabled:bg-danger/25 disabled:text-white/38 ${focusRing}`}
                     >
                       Kullanıcıyı askıya al
                     </button>
                   </div>
-                ) : (
-                  <div className="mt-5 border border-[#8fba9b]/22 bg-[#8fba9b]/7 px-4 py-3">
-                    <p className="text-xs font-black text-[#b5d8bd]">
+                ) : null}
+
+                {reportStatus && (
+                  <ActionStatusText status={reportStatus} className="mt-3" />
+                )}
+
+                {selectedReport.status !== "pending" && (
+                  <div className="mt-5 border border-[#69c990]/22 bg-[#69c990]/7 px-4 py-3">
+                    <p className="text-xs font-black text-[#9be4b4]">
                       {selectedReport.resolution
                         ? resolutionLabels[selectedReport.resolution]
                         : "Şikâyet çözüldü"}
@@ -774,7 +790,7 @@ export default function CampusAdminPanel() {
         <div className="grid gap-4 p-3 sm:p-6">
           <div className="flex flex-col gap-3 border-b border-white/9 pb-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-brand">
                 Hesaplar ve roller
               </p>
               <h2 className="mt-1 text-xl font-black tracking-[-0.04em]">
@@ -847,7 +863,7 @@ export default function CampusAdminPanel() {
                               event.target.value as CampusAdminRole,
                             )
                           }
-                          className={`min-h-11 w-full border border-white/12 bg-[#17191c] px-3 text-xs font-black disabled:cursor-not-allowed disabled:opacity-55 ${focusRing}`}
+                          className={`min-h-11 w-full border border-white/12 bg-surface-raised px-3 text-xs font-black disabled:cursor-not-allowed disabled:opacity-55 ${focusRing}`}
                         >
                           {(
                             [
@@ -870,7 +886,7 @@ export default function CampusAdminPanel() {
                         <button
                           type="button"
                           onClick={() => void handleSuspendUser(user)}
-                          className={`min-h-11 border border-[#ffb199]/35 px-3 text-xs font-black text-[#ffb199] transition-colors hover:bg-[#ffb199]/8 ${focusRing}`}
+                          className={`min-h-11 border border-danger/35 px-3 text-xs font-black text-danger transition-colors hover:bg-danger/8 ${focusRing}`}
                         >
                           Askıya al
                         </button>
@@ -878,12 +894,19 @@ export default function CampusAdminPanel() {
                         <button
                           type="button"
                           onClick={() => void handleRestoreUser(user)}
-                          className={`min-h-11 border border-[#8fba9b]/32 px-3 text-xs font-black text-[#b5d8bd] transition-colors hover:bg-[#8fba9b]/8 ${focusRing}`}
+                          className={`min-h-11 border border-[#69c990]/32 px-3 text-xs font-black text-[#9be4b4] transition-colors hover:bg-[#69c990]/8 ${focusRing}`}
                         >
                           Etkinleştir
                         </button>
                       )}
                     </div>
+
+                    {userActionStatus && userActionAnchor === user.id && (
+                      <ActionStatusText
+                        status={userActionStatus}
+                        className="sm:col-span-2"
+                      />
+                    )}
                   </li>
                 );
               })}
@@ -900,7 +923,7 @@ export default function CampusAdminPanel() {
       {activeView === "history" && (
         <div className="grid gap-4 p-3 sm:p-6">
           <div className="border-b border-white/9 pb-4">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-brand">
               Denetim kaydı
             </p>
             <h2 className="mt-1 text-xl font-black tracking-[-0.04em]">
@@ -919,17 +942,17 @@ export default function CampusAdminPanel() {
                   key={entry.id}
                   className="relative grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3"
                 >
-                  <span className="relative z-10 mt-4 grid size-10 place-items-center rounded-full border border-white/12 bg-[#17191c]">
+                  <span className="relative z-10 mt-4 grid size-10 place-items-center rounded-full border border-white/12 bg-surface-raised">
                     <span
                       aria-hidden="true"
                       className={`size-2.5 rounded-full ${
                         entry.action === "content_removed" ||
                         entry.action === "user_suspended"
-                          ? "bg-[#ffb199]"
+                          ? "bg-danger"
                           : entry.action === "report_dismissed" ||
                               entry.action === "user_restored"
-                            ? "bg-[#8fba9b]"
-                            : "bg-[#ff7a45]"
+                            ? "bg-[#69c990]"
+                            : "bg-brand"
                       }`}
                     />
                   </span>
@@ -954,7 +977,7 @@ export default function CampusAdminPanel() {
                       </time>
                     </div>
                     {entry.note && (
-                      <p className="mt-3 border-l-2 border-[#ff7a45]/38 pl-3 text-xs leading-5 text-white/55">
+                      <p className="mt-3 border-l-2 border-brand/38 pl-3 text-xs leading-5 text-white/55">
                         {entry.note}
                       </p>
                     )}
@@ -989,9 +1012,9 @@ function StatCard({
   tone?: "default" | "alert" | "team" | "muted";
 }) {
   const toneClasses = {
-    default: "border-[#8fba9b]/18 bg-[#8fba9b]/5",
-    alert: "border-[#ffb199]/22 bg-[#ffb199]/6",
-    team: "border-[#ff7a45]/20 bg-[#ff7a45]/6",
+    default: "border-[#69c990]/18 bg-[#69c990]/5",
+    alert: "border-danger/22 bg-danger/6",
+    team: "border-brand/20 bg-brand/6",
     muted: "border-white/10 bg-white/[0.02]",
   };
 
@@ -1027,7 +1050,7 @@ function AdminCard({
     <section className="min-w-0 border border-white/9 bg-white/[0.018] p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.13em] text-[#ff7a45]">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.13em] text-brand">
             {eyebrow}
           </p>
           <h2 className="mt-1 text-lg font-black tracking-[-0.035em]">
@@ -1053,8 +1076,8 @@ function TargetTypeBadge({
     <span
       className={`inline-flex min-h-6 shrink-0 items-center px-2 font-mono text-[9px] font-black uppercase tracking-[0.08em] ${
         type === "post"
-          ? "bg-[#ff7a45]/12 text-[#ff7a45]"
-          : "bg-[#8fba9b]/11 text-[#b5d8bd]"
+          ? "bg-brand/12 text-brand"
+          : "bg-[#69c990]/11 text-[#9be4b4]"
       }`}
     >
       {type === "post" ? "Gönderi" : "Yorum"}
@@ -1075,8 +1098,8 @@ function ReportStatusBadge({
         compact ? "min-h-5 px-1.5 text-[8px]" : "min-h-6 px-2 text-[9px]"
       } ${
         report.status === "pending"
-          ? "bg-[#ffb199]/12 text-[#ffb199]"
-          : "bg-[#8fba9b]/11 text-[#b5d8bd]"
+          ? "bg-danger/12 text-danger"
+          : "bg-[#69c990]/11 text-[#9be4b4]"
       }`}
     >
       {report.status === "pending" ? "Bekliyor" : "Çözüldü"}
@@ -1093,8 +1116,8 @@ function AccountStatusBadge({
     <span
       className={`inline-flex min-h-5 items-center rounded-full px-2 font-mono text-[8px] font-black uppercase tracking-[0.07em] ${
         status === "active"
-          ? "bg-[#8fba9b]/11 text-[#b5d8bd]"
-          : "bg-[#ffb199]/12 text-[#ffb199]"
+          ? "bg-[#69c990]/11 text-[#9be4b4]"
+          : "bg-danger/12 text-danger"
       }`}
     >
       {status === "active" ? "Aktif" : "Askıda"}
@@ -1130,7 +1153,7 @@ function AdminPanelSkeleton() {
     <section
       aria-busy="true"
       aria-label="Yönetim paneli yükleniyor"
-      className="min-h-[calc(100svh-4rem)] bg-[#0a0d16] p-3 sm:p-6 md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] bg-canvas p-3 sm:p-6 md:min-h-svh"
     >
       <div className="h-24 animate-pulse bg-white/6 motion-reduce:animate-none" />
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">

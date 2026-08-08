@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import CampusAudienceTags from "@/components/CampusAudienceTags";
 import CampusCalendarMonthGrid, {
-  addMonths,
   startOfMonth,
 } from "@/components/CampusCalendarMonthGrid";
 import {
@@ -101,11 +100,11 @@ export default function CampusCalendar() {
   return (
     <section
       aria-labelledby="academic-calendar-title"
-      className="min-h-[calc(100svh-4rem)] min-w-0 overflow-x-hidden bg-[#0a0d16] text-white md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] min-w-0 overflow-x-hidden bg-canvas text-white md:min-h-svh"
     >
       <header className={`sticky top-0 z-30 border-b border-white/12 ${calendarHeaderSurface}`}>
         <div className="px-4 py-4 sm:px-6">
-          <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-[#ff7a45]">
+          <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-brand">
             Akademik yıl {ACADEMIC_YEAR_LABEL}
           </p>
           <h1
@@ -136,14 +135,14 @@ export default function CampusCalendar() {
                 onClick={() => setAudience(filter.id)}
                 className={`inline-flex min-h-11 shrink-0 snap-start items-center gap-1.5 rounded-full px-3.5 text-[11px] font-bold whitespace-nowrap transition-colors sm:text-xs ${calendarFocusRing} ${
                   isActive
-                    ? "bg-white text-[#12100e]"
+                    ? "bg-white text-[#101012]"
                     : "text-white/55 hover:bg-white/5 hover:text-white"
                 }`}
               >
                 {filter.label}
                 <span
                   className={`text-[10px] ${
-                    isActive ? "text-[#12100e]/55" : "text-white/40"
+                    isActive ? "text-[#101012]/55" : "text-white/40"
                   }`}
                 >
                   {total}
@@ -260,7 +259,7 @@ export default function CampusCalendar() {
         >
           <h2
             id={`calendar-term-${group.term}`}
-            className={`sticky top-[8.5rem] z-20 border-b border-white/8 px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-[#ff7a45] sm:px-6 md:top-[7.5rem] ${calendarHeaderSurface}`}
+            className={`sticky top-[8.5rem] z-20 border-b border-white/8 px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-brand sm:px-6 md:top-[7.5rem] ${calendarHeaderSurface}`}
           >
             {academicTermLabels[group.term]}
           </h2>
@@ -295,7 +294,7 @@ export default function CampusCalendar() {
 function TimingBadge({ timing }: { timing: EventTiming }) {
   const tone =
     timing.state === "today" || timing.state === "ongoing"
-      ? "border-[#ff7a45]/40 bg-[#ff7a45]/12 text-[#ffb694]"
+      ? "border-brand/40 bg-brand/12 text-[#ffa082]"
       : timing.state === "past"
         ? "border-white/12 bg-white/4 text-white/45"
         : "border-white/14 bg-white/6 text-white/70";
@@ -315,13 +314,13 @@ function UpcomingCard({ event }: { event: AcademicEvent }) {
   const timing = getEventTiming(event);
 
   return (
-    <article className={`flex h-full min-w-0 flex-col p-3.5 transition-colors hover:border-[#ff7a45]/30 ${calendarTile}`}>
+    <article className={`flex h-full min-w-0 flex-col p-3.5 transition-colors hover:border-brand/30 ${calendarTile}`}>
       <div className="flex min-w-0 items-start gap-3">
         <div className="grid size-12 shrink-0 place-items-center border border-white/12 bg-white/6 text-center">
           <span className="block text-base font-black leading-none text-white">
             {badge.day}
           </span>
-          <span className="mt-0.5 block font-mono text-[9px] font-bold tracking-[0.1em] text-[#ff7a45]">
+          <span className="mt-0.5 block font-mono text-[9px] font-bold tracking-[0.1em] text-brand">
             {badge.month}
           </span>
         </div>
@@ -370,7 +369,7 @@ function CalendarRow({
       <span
         aria-hidden="true"
         className={`absolute inset-y-1 left-0 w-0.5 ${
-          isActive ? "bg-[#ff7a45]" : "bg-transparent"
+          isActive ? "bg-brand" : "bg-transparent"
         }`}
       />
       <span

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { NextRequest } from "next/server";
-import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { Pool } from "pg";
 import sharp from "sharp";
 
@@ -157,9 +157,9 @@ function createAvatarUploadRequest(
       ...(cookie ? { Cookie: `kampus_session=${cookie}` } : {}),
       Origin: origin,
     },
+    body: formData,
   });
 
-  vi.spyOn(request, "formData").mockResolvedValue(formData);
   return request;
 }
 
@@ -577,6 +577,65 @@ describe("POST/DELETE /v1/me/avatar", () => {
     } finally {
       await pool.query("delete from users where id = $1", [account.id]);
       testEmails.delete(account.email);
+    }
+  });
+
+  it("hides an avatar from a viewer blocked by the profile owner", async () => {
+    const owner = await insertAccount();
+    const viewer = await insertAccount();
+    const ownerCookie = await createMemberCookie(owner.id);
+    const viewerCookie = await createMemberCookie(viewer.id);
+    const formData = new FormData();
+    formData.set("image", await createTestAvatarFile("#d26f45"));
+
+    const uploadResponse = await postAvatar(
+      createAvatarUploadRequest(formData, { cookie: ownerCookie }),
+    );
+    expect(uploadResponse.status).toBe(200);
+
+    const stored = await pool.query<{ avatar_object_key: string | null }>(
+      "select avatar_object_key from users where id = $1",
+      [owner.id],
+    );
+    const storageKey = stored.rows[0]?.avatar_object_key;
+    expect(storageKey).toBeTruthy();
+
+    try {
+      await pool.query(
+        "insert into blocks (blocker_id, blocked_id) values ($1, $2)",
+        [owner.id, viewer.id],
+      );
+
+      const blockedResponse = await getMemberAvatar(
+        new NextRequest(
+          new URL(`/v1/users/${owner.username}/avatar`, appOrigin),
+          { headers: { Cookie: `kampus_session=${viewerCookie}` } },
+        ),
+        { params: Promise.resolve({ username: owner.username }) },
+      );
+      expect(blockedResponse.status).toBe(404);
+
+      await pool.query(
+        "delete from blocks where blocker_id = $1 and blocked_id = $2",
+        [owner.id, viewer.id],
+      );
+      await pool.query(
+        "insert into blocks (blocker_id, blocked_id) values ($1, $2)",
+        [viewer.id, owner.id],
+      );
+
+      const recoveryResponse = await getMemberAvatar(
+        new NextRequest(
+          new URL(`/v1/users/${owner.username}/avatar`, appOrigin),
+          { headers: { Cookie: `kampus_session=${viewerCookie}` } },
+        ),
+        { params: Promise.resolve({ username: owner.username }) },
+      );
+      expect(recoveryResponse.status).toBe(200);
+    } finally {
+      if (storageKey) {
+        await getMediaStorage().delete(storageKey);
+      }
     }
   });
 

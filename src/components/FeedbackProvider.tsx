@@ -10,20 +10,6 @@ import {
   type ReactNode,
 } from "react";
 
-type ToastTone = "success" | "error" | "info";
-
-type ToastAction = {
-  label: string;
-  onClick: () => void;
-};
-
-type ToastOptions = {
-  message: string;
-  tone?: ToastTone;
-  action?: ToastAction;
-  duration?: number;
-};
-
 type ConfirmationOptions = {
   title: string;
   description: string;
@@ -32,17 +18,11 @@ type ConfirmationOptions = {
   tone?: "default" | "danger";
 };
 
-type ToastItem = Required<Pick<ToastOptions, "message" | "tone">> &
-  Pick<ToastOptions, "action"> & {
-    id: number;
-  };
-
 type ConfirmationRequest = ConfirmationOptions & {
   resolve: (confirmed: boolean) => void;
 };
 
 type FeedbackContextValue = {
-  showToast: (options: ToastOptions) => void;
   confirm: (options: ConfirmationOptions) => Promise<boolean>;
 };
 
@@ -51,51 +31,14 @@ const FeedbackContext = createContext<FeedbackContextValue | undefined>(
 );
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40";
+  "outline-none focus-visible:ring-3 focus-visible:ring-brand/40";
 
 export function FeedbackProvider({ children }: { children: ReactNode }) {
-  const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [confirmation, setConfirmation] =
     useState<ConfirmationRequest | null>(null);
-  const nextToastId = useRef(0);
-  const toastTimeouts = useRef(new Map<number, number>());
   const confirmationRef = useRef<ConfirmationRequest | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
-
-  const dismissToast = useCallback((toastId: number) => {
-    const timeoutId = toastTimeouts.current.get(toastId);
-    if (timeoutId) {
-      window.clearTimeout(timeoutId);
-      toastTimeouts.current.delete(toastId);
-    }
-    setToasts((currentToasts) =>
-      currentToasts.filter((toast) => toast.id !== toastId),
-    );
-  }, []);
-
-  const showToast = useCallback(
-    ({
-      message,
-      tone = "info",
-      action,
-      duration,
-    }: ToastOptions) => {
-      const id = ++nextToastId.current;
-      const timeoutDuration = duration ?? (action ? 8000 : 4200);
-      setToasts((currentToasts) => [
-        ...currentToasts.slice(-2),
-        { id, message, tone, action },
-      ]);
-
-      const timeoutId = window.setTimeout(
-        () => dismissToast(id),
-        timeoutDuration,
-      );
-      toastTimeouts.current.set(id, timeoutId);
-    },
-    [dismissToast],
-  );
 
   const confirm = useCallback(
     (options: ConfirmationOptions) =>
@@ -117,9 +60,6 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
 
   useEffect(
     () => () => {
-      toastTimeouts.current.forEach((timeoutId) =>
-        window.clearTimeout(timeoutId),
-      );
       confirmationRef.current?.resolve(false);
     },
     [],
@@ -186,59 +126,12 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   }, [closeConfirmation, confirmation]);
 
   return (
-    <FeedbackContext.Provider value={{ showToast, confirm }}>
+    <FeedbackContext.Provider value={{ confirm }}>
       <div inert={confirmation ? true : undefined}>{children}</div>
-
-      <div
-        aria-label="Bildirimler"
-        className="pointer-events-none fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[120] grid justify-items-end gap-2 md:inset-x-auto md:right-5 md:bottom-5 md:w-[min(24rem,calc(100vw-2.5rem))]"
-      >
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            role={toast.tone === "error" ? "alert" : "status"}
-            className="pointer-events-auto flex w-full items-center gap-3 border border-white/12 bg-[#17191c]/98 px-3 py-3 text-white shadow-[0_18px_55px_rgba(0,0,0,0.42)] backdrop-blur-xl"
-          >
-            <span
-              aria-hidden="true"
-              className={`size-2.5 shrink-0 rounded-full ${
-                toast.tone === "success"
-                  ? "bg-[#7fd9a3]"
-                  : toast.tone === "error"
-                    ? "bg-[#ffb199]"
-                    : "bg-[#ff7a45]"
-              }`}
-            />
-            <p className="min-w-0 flex-1 text-xs font-bold leading-5">
-              {toast.message}
-            </p>
-            {toast.action && (
-              <button
-                type="button"
-                onClick={() => {
-                  toast.action?.onClick();
-                  dismissToast(toast.id);
-                }}
-                className={`min-h-10 shrink-0 cursor-pointer px-2 text-xs font-black text-[#ff7a45] ${focusRing}`}
-              >
-                {toast.action.label}
-              </button>
-            )}
-            <button
-              type="button"
-              aria-label="Bildirimi kapat"
-              onClick={() => dismissToast(toast.id)}
-              className={`grid size-10 shrink-0 cursor-pointer place-items-center rounded-full text-lg text-white/46 hover:bg-white/8 hover:text-white ${focusRing}`}
-            >
-              <span aria-hidden="true">×</span>
-            </button>
-          </div>
-        ))}
-      </div>
 
       {confirmation && (
         <div
-          className="fixed inset-0 z-[130] grid place-items-end bg-[#0a0d16]/70 p-3 backdrop-blur-[3px] sm:place-items-center sm:p-6"
+          className="fixed inset-0 z-[130] grid place-items-end bg-canvas/70 p-3 backdrop-blur-[3px] sm:place-items-center sm:p-6"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
               closeConfirmation(false);
@@ -251,9 +144,9 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
             aria-modal="true"
             aria-labelledby="shared-confirmation-title"
             aria-describedby="shared-confirmation-description"
-            className="w-full max-w-md border border-white/12 bg-[#17191c] p-5 text-white shadow-[0_28px_90px_rgba(0,0,0,0.5)] sm:p-6"
+            className="w-full max-w-md border border-white/12 bg-surface-raised p-5 text-white shadow-[0_24px_64px_rgba(0,0,0,0.36)] sm:p-6"
           >
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-brand">
               Onay gerekiyor
             </p>
             <h2
@@ -282,8 +175,8 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
                 onClick={() => closeConfirmation(true)}
                 className={`min-h-11 cursor-pointer px-4 text-xs font-black ${
                   confirmation.tone === "danger"
-                    ? "bg-[#ffb199] text-[#12100e] hover:bg-[#ffb199]/85"
-                    : "bg-white text-[#12100e] hover:bg-white/90"
+                    ? "bg-danger text-[#101012] hover:bg-danger/85"
+                    : "bg-white text-[#101012] hover:bg-white/90"
                 } ${focusRing}`}
               >
                 {confirmation.confirmLabel ?? "Onayla"}

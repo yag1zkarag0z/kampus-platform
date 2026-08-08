@@ -5,7 +5,6 @@ import CampusFeed from "@/components/CampusFeed";
 
 const campusFeedState = vi.hoisted(() => ({
   createPost: vi.fn(),
-  showToast: vi.fn(),
   push: vi.fn(),
 }));
 
@@ -35,10 +34,6 @@ vi.mock("@/components/CampusDataProvider", () => ({
   }),
 }));
 
-vi.mock("@/components/FeedbackProvider", () => ({
-  useFeedback: () => ({ showToast: campusFeedState.showToast }),
-}));
-
 vi.mock("@/components/CampusAuthorAvatar", () => ({
   default: () => <span data-testid="composer-avatar" />,
 }));
@@ -51,7 +46,6 @@ describe("CampusFeed composer", () => {
   beforeEach(() => {
     campusFeedState.createPost.mockReset();
     campusFeedState.createPost.mockResolvedValue("post-1");
-    campusFeedState.showToast.mockReset();
     campusFeedState.push.mockReset();
   });
 

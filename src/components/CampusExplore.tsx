@@ -4,16 +4,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import ActionStatusText from "@/components/ActionStatusText";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import { campusButton } from "@/components/campusButtonStyles";
-import CampusCalendarStrip from "@/components/CampusCalendarStrip";
 import CampusAuthorProfileLink from "@/components/CampusAuthorProfileLink";
 import CampusCategoryNav, {
   type CampusCategoryFilter,
 } from "@/components/CampusCategoryNav";
 import { useCampusData } from "@/components/CampusDataProvider";
-import { useFeedback } from "@/components/FeedbackProvider";
 import CampusHiddenNotice from "@/components/CampusHiddenNotice";
 import CampusListingMeta from "@/components/CampusListingMeta";
 import CampusPoll from "@/components/CampusPoll";
@@ -21,7 +20,9 @@ import CampusPostActions from "@/components/CampusPostActions";
 import CampusPostCardSurface from "@/components/CampusPostCardSurface";
 import CampusPostDocument from "@/components/CampusPostDocument";
 import CampusPostImage from "@/components/CampusPostImage";
+import CampusTrendingTopics from "@/components/CampusTrendingTopics";
 import CampusGif from "@/components/CampusGif";
+import { useActionStatus } from "@/components/useActionStatus";
 import {
   useCampusPostQuery,
   useDebouncedValue,
@@ -46,11 +47,14 @@ const sortOptions: { id: ContentPostSort; label: string }[] = [
 ];
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
+  "outline-none focus-visible:ring-3 focus-visible:ring-brand/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 export default function CampusExplore() {
   const router = useRouter();
-  const { showToast } = useFeedback();
+  const [guestStatus, setGuestStatus] = useActionStatus();
+  const [guestStatusAnchor, setGuestStatusAnchor] = useState<string | null>(
+    null,
+  );
   const { isGuest } = useCampusAccount();
   const {
     posts: dataPosts,
@@ -59,15 +63,18 @@ export default function CampusExplore() {
     registerPosts,
   } = useCampusData();
   // Misafirin beğeni/kaydetme tıklaması mutasyon yerine giriş daveti açar;
-  // düzen herkes için aynı kalır, yalnızca sonuç farklıdır.
-  const requireMember = () => {
+  // düzen herkes için aynı kalır, yalnızca sonuç farklıdır. Durum metni,
+  // tıklanan gönderinin hemen yanında görünsün diye o gönderinin id'sine
+  // "anchor"lanıyor.
+  const requireMember = (anchor: string) => {
     if (!isGuest) {
       return false;
     }
 
-    showToast({
+    setGuestStatusAnchor(anchor);
+    setGuestStatus({
       message: "Bu işlem için giriş yap veya kayıt ol.",
-      tone: "info",
+      tone: "error",
       action: { label: "Giriş yap", onClick: () => router.push("/giris") },
     });
     return true;
@@ -164,13 +171,13 @@ export default function CampusExplore() {
   return (
     <section
       aria-labelledby="explore-title"
-      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] min-w-0 bg-canvas text-white md:min-h-svh"
     >
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0a0d16]/95 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-canvas/95 backdrop-blur-xl">
         <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 sm:px-6">
           <span aria-hidden="true" />
           <div className="min-w-0 justify-self-center text-center">
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.13em] text-[#ff7a45]">
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.13em] text-brand">
               Kampüste ara
             </p>
             <h1
@@ -222,7 +229,9 @@ export default function CampusExplore() {
       </header>
 
       {/* Takvim mobil alt menüde yer bulamadığı için giriş noktası burada. */}
-      <CampusCalendarStrip className="md:hidden" />
+      <div className="md:hidden">
+        <CampusTrendingTopics variant="mobile" />
+      </div>
 
       <div className="border-b border-white/8">
         <div
@@ -241,7 +250,7 @@ export default function CampusExplore() {
                 onClick={() => setActiveSort(sort.id)}
                 className={`min-h-11 shrink-0 rounded-full px-4 text-xs font-bold whitespace-nowrap transition-colors sm:px-5 sm:text-sm ${focusRing} ${
                   isActive
-                    ? "bg-white text-[#12100e]"
+                    ? "bg-white text-[#101012]"
                     : "text-white/55 hover:bg-white/5 hover:text-white"
                 }`}
               >
@@ -303,7 +312,7 @@ export default function CampusExplore() {
                         </span>
                         <span
                           aria-hidden="true"
-                          className="size-1 rotate-45 bg-[#ff7a45]/55"
+                          className="size-1 rotate-45 bg-brand/55"
                         />
                         <CampusAuthorProfileLink
                           author={post.author}
@@ -311,7 +320,7 @@ export default function CampusExplore() {
                           isAnonymous={post.isAnonymous}
                           ariaLabel={`${post.author} profilini aç`}
                           className="min-w-0"
-                          linkClassName={`truncate text-sm font-black transition-colors hover:text-[#ff7a45] sm:text-base ${focusRing}`}
+                          linkClassName={`truncate text-sm font-black transition-colors hover:text-brand sm:text-base ${focusRing}`}
                         >
                           <span className="truncate text-sm font-black sm:text-base">
                             {post.author}
@@ -346,7 +355,7 @@ export default function CampusExplore() {
                     {getCampusPostCommentCount(post) > 0 && (
                       <Link
                         href={`/gonderi/${post.id}#yorumlar`}
-                        className={`mt-2 inline-flex min-h-11 items-center text-sm font-black text-[#ff7a45] sm:text-base ${focusRing}`}
+                        className={`mt-2 inline-flex min-h-11 items-center text-sm font-black text-brand sm:text-base ${focusRing}`}
                       >
                         {getCampusPostCommentCount(post)} yorumu görüntüle
                       </Link>
@@ -359,7 +368,7 @@ export default function CampusExplore() {
                         <Link
                           href={`/gonderi/${post.id}`}
                           aria-label={`${post.title} konusunu aç`}
-                          className={`decoration-[#ff7a45]/40 underline-offset-4 transition-colors hover:text-[#ff7a45] hover:underline ${focusRing}`}
+                          className={`decoration-brand/40 underline-offset-4 transition-colors hover:text-brand hover:underline ${focusRing}`}
                         >
                           {post.title}
                         </Link>
@@ -400,14 +409,14 @@ export default function CampusExplore() {
                               : `${post.title || "Gönderi"} gönderisini beğen, ${post.likes} beğeni`
                           }
                           onClick={() => {
-                            if (!requireMember()) {
+                            if (!requireMember(post.id)) {
                               toggleLike(post.id);
                             }
                           }}
                           className={`campus-pop-on-active inline-flex min-h-11 items-center gap-2 px-2 text-sm font-bold transition-colors sm:text-base ${focusRing} ${
                             post.liked
-                              ? "bg-[#ff7a45]/10 text-[#ff7a45]"
-                              : "text-white/55 hover:bg-white/4 hover:text-[#ff7a45]"
+                              ? "bg-brand/10 text-brand"
+                              : "text-white/55 hover:bg-white/4 hover:text-brand"
                           }`}
                         >
                           <HeartIcon filled={post.liked} />
@@ -422,7 +431,7 @@ export default function CampusExplore() {
                         <Link
                           href={`/gonderi/${post.id}#yorumlar`}
                           aria-label={`${post.title || "Gönderi"} konusunun ${getCampusPostCommentCount(post)} yorumunu aç`}
-                          className={`inline-flex min-h-11 items-center gap-2 px-2 text-sm font-bold text-white/60 transition-colors hover:text-[#ff7a45] sm:text-base ${focusRing}`}
+                          className={`inline-flex min-h-11 items-center gap-2 px-2 text-sm font-bold text-white/60 transition-colors hover:text-brand sm:text-base ${focusRing}`}
                         >
                           <CommentIcon />
                           <span>{getCampusPostCommentCount(post)}</span>
@@ -441,19 +450,23 @@ export default function CampusExplore() {
                             : "Gönderiyi kaydet"
                         }
                         onClick={() => {
-                          if (!requireMember()) {
+                          if (!requireMember(post.id)) {
                             toggleBookmark(post.id);
                           }
                         }}
                         className={`campus-pop-on-active grid size-12 shrink-0 place-items-center transition-colors ${focusRing} ${
                           post.bookmarked
-                            ? "text-[#ff7a45]"
-                            : "text-white/55 hover:text-[#ff7a45]"
+                            ? "text-brand"
+                            : "text-white/55 hover:text-brand"
                         }`}
                       >
                         <BookmarkIcon filled={post.bookmarked} />
                       </button>
                     </footer>
+
+                    {guestStatus && guestStatusAnchor === post.id && (
+                      <ActionStatusText status={guestStatus} className="mt-2" />
+                    )}
                   </>
                 )}
               </CampusPostCardSurface>
@@ -482,7 +495,7 @@ export default function CampusExplore() {
           <div className="max-w-sm">
             <span
               aria-hidden="true"
-              className="mx-auto grid size-12 place-items-center rounded-full border border-white/11 text-[#ff7a45]"
+              className="mx-auto grid size-12 place-items-center rounded-full border border-white/11 text-brand"
             >
               <SearchIcon standalone />
             </span>
@@ -516,7 +529,7 @@ function ExploreLoadingState() {
       <div>
         <span
           aria-hidden="true"
-          className="mx-auto block size-7 animate-spin rounded-full border-2 border-white/14 border-t-[#ff7a45] motion-reduce:animate-none"
+          className="mx-auto block size-7 animate-spin rounded-full border-2 border-white/14 border-t-[#ff6b3d] motion-reduce:animate-none"
         />
         <p className="mt-4 text-sm font-bold text-white/60">
           Sonuçlar yükleniyor…

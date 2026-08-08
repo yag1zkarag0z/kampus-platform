@@ -1,12 +1,13 @@
 "use client";
 
+import ActionStatusText from "@/components/ActionStatusText";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import { useCampusData } from "@/components/CampusDataProvider";
-import { useFeedback } from "@/components/FeedbackProvider";
+import { useActionStatus } from "@/components/useActionStatus";
 import type { CampusPostPoll } from "@/data/campusPosts";
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40";
+  "outline-none focus-visible:ring-3 focus-visible:ring-brand/40";
 
 export default function CampusPoll({
   postId,
@@ -21,7 +22,7 @@ export default function CampusPoll({
 }) {
   const { isGuest } = useCampusAccount();
   const { voteInPoll } = useCampusData();
-  const { showToast } = useFeedback();
+  const [voteStatus, setVoteStatus] = useActionStatus();
   const submitVote =
     onVote ?? ((optionId: string) => voteInPoll(postId, optionId));
   const totalVotes = poll.options.reduce(
@@ -52,9 +53,9 @@ export default function CampusPoll({
               aria-label={`${option.text}, ${percentage} yüzde, ${option.votes} oy`}
               onClick={() => {
                 if (isGuest) {
-                  showToast({
+                  setVoteStatus({
                     message: "Oy vermek için giriş yap veya kayıt ol.",
-                    tone: "info",
+                    tone: "error",
                   });
                   return;
                 }
@@ -63,8 +64,8 @@ export default function CampusPoll({
               }}
               className={`relative isolate min-h-12 cursor-pointer overflow-hidden border px-3.5 py-2.5 text-left transition-colors ${focusRing} ${
                 isSelected
-                  ? "border-[#ff7a45]/48"
-                  : "border-white/12 hover:border-[#ff7a45]/30"
+                  ? "border-brand/48"
+                  : "border-white/12 hover:border-brand/30"
               }`}
             >
               {hasVoted && (
@@ -72,7 +73,7 @@ export default function CampusPoll({
                   aria-hidden="true"
                   className={`absolute inset-y-0 left-0 -z-10 transition-[width] duration-300 motion-reduce:transition-none ${
                     isSelected
-                      ? "bg-[#ff7a45]/18"
+                      ? "bg-brand/18"
                       : "bg-white/7"
                   }`}
                   style={{ width: `${percentage}%` }}
@@ -107,6 +108,8 @@ export default function CampusPoll({
               : "Bir seçenek seçerek oy ver."}
         </span>
       </p>
+
+      {voteStatus && <ActionStatusText status={voteStatus} className="mt-2" />}
     </div>
   );
 }

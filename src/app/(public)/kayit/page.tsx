@@ -14,13 +14,10 @@ export default function RegisterPage() {
       mode="register"
       title={
         <>
-          Kampüse
-          <span className="block font-serif font-normal italic text-[#ff7a45]">
-            katıl.
-          </span>
+          Hesabını oluştur<span className="text-brand">.</span>
         </>
       }
-      description="Yaşar öğrenci e-postanı doğrula ve hesabını oluştur."
+      description="Öğrenci e-postanı doğrula, profilini tamamla."
     >
       <RegisterFlow />
     </AuthShell>

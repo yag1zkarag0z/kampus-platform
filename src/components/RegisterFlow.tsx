@@ -36,7 +36,7 @@ type RegisterField =
 
 const studentEmailPattern = /^\d+@stu\.yasar\.edu\.tr$/i;
 const inputClassName =
-  "auth-input h-12 w-full rounded-xl border border-white/12 bg-white/6 px-3.5 text-base text-white outline-none transition placeholder:text-white/40 hover:border-white/24 focus:border-[#ff7a45] focus:ring-3 focus:ring-[#ff7a45]/20";
+  "auth-input h-12 w-full rounded-xl border border-white/9 bg-surface px-3.5 text-base text-white outline-none transition placeholder:text-white/32 hover:border-white/18 focus:border-brand focus:ring-3 focus:ring-brand/18";
 const helperTextClassName = "mt-2 text-[11px] leading-5 text-white/50";
 
 export default function RegisterFlow() {
@@ -246,8 +246,8 @@ export default function RegisterFlow() {
   const stepLabels = ["E-posta", "Doğrulama", "Profil"];
 
   return (
-    <div className="mx-auto w-full max-w-[31rem] overflow-hidden rounded-[1.6rem] border border-white/12 bg-[#141720]/94 shadow-[0_28px_80px_rgba(0,0,0,0.4)] backdrop-blur-xl">
-      <div className="border-b border-white/10 px-5 py-5 sm:px-7">
+    <div className="mx-auto w-full max-w-[34rem] overflow-hidden rounded-2xl border border-white/9 bg-surface">
+      <div className="border-b border-white/10 px-5 py-4 sm:px-6">
         <ol className="grid grid-cols-3 gap-2" aria-label="Kayıt adımları">
           {stepLabels.map((label, index) => {
             const number = index + 1;
@@ -257,10 +257,10 @@ export default function RegisterFlow() {
             return (
               <li
                 key={label}
-                className={`border-t-2 pt-2 text-[10px] font-bold transition-colors ${
+                className={`rounded-full border px-2 py-2 text-center text-[10px] font-bold transition-colors ${
                   isCurrent || isDone
-                    ? "border-[#ff7a45] text-white"
-                    : "border-white/10 text-white/45"
+                    ? "border-brand/45 bg-brand/10 text-[#ff8968]"
+                    : "border-white/8 text-white/35"
                 }`}
                 aria-current={isCurrent ? "step" : undefined}
               >
@@ -281,29 +281,29 @@ export default function RegisterFlow() {
         </p>
       </div>
 
-      <div className="px-5 py-6 sm:px-7 sm:py-7">
+      <div className="px-5 py-6 sm:px-6 sm:py-7">
         {complete ? (
           <div aria-live="polite">
             <span
               aria-hidden="true"
-              className="grid size-11 place-items-center rounded-full bg-[#ff7a45] text-[#12100e]"
+              className="grid size-11 place-items-center rounded-full bg-brand text-[#101012]"
             >
               ✓
             </span>
-            <h2 className="mt-5 text-3xl font-black tracking-[-0.045em]">
+            <h2 className="mt-5 text-3xl font-semibold tracking-[-0.045em]">
               Aramıza hoş geldin.
             </h2>
             <Link
               href="/akis"
-              className="mt-7 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-white px-4 text-sm font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40"
+              className="mt-7 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-brand px-4 text-sm font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35"
             >
               Akışa geç
             </Link>
           </div>
         ) : step === 1 ? (
           <form onSubmit={submitEmail} noValidate>
-            <h2 className="text-2xl font-black tracking-[-0.04em] sm:text-3xl">
-              Öğrenci e-postanla başlayalım.
+            <h2 className="text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">
+              Öğrenci e-postan.
             </h2>
             <p className="mt-3 text-sm leading-6 text-white/62">
               Katılım yalnızca Yaşar öğrenci e-postasını doğrulayanlara açık.
@@ -337,7 +337,7 @@ export default function RegisterFlow() {
             <button
               type="submit"
               disabled={verification.isRequesting}
-              className="mt-2 inline-flex min-h-12 w-fit items-center justify-center rounded-xl bg-white px-6 text-sm font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40"
+              className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-brand px-6 text-sm font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65"
             >
               {verification.isRequesting
                 ? "Kod gönderiliyor…"
@@ -353,8 +353,8 @@ export default function RegisterFlow() {
           </form>
         ) : step === 2 ? (
           <form onSubmit={submitCode} noValidate>
-            <h2 className="text-2xl font-black tracking-[-0.04em] sm:text-3xl">
-              Kod e-postanda.
+            <h2 className="text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">
+              Doğrulama kodu.
             </h2>
             <p className="mt-3 text-sm leading-6 text-white/62">
               6 haneli doğrulama kodunu{" "}
@@ -440,7 +440,7 @@ export default function RegisterFlow() {
                 verification.isResending ||
                 verification.isVerifying
               }
-              className="mt-5 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-white px-4 text-sm font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40 disabled:cursor-not-allowed disabled:opacity-55"
+              className="mt-5 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-brand px-4 text-sm font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:opacity-55"
             >
               {verification.isVerifying ? "Doğrulanıyor…" : "Kodu doğrula"}
               <span aria-hidden="true">→</span>
@@ -470,7 +470,7 @@ export default function RegisterFlow() {
               ref={profileStepHeadingRef}
               id="register-profile-step-title"
               tabIndex={-1}
-              className="text-2xl font-black tracking-[-0.04em] outline-none sm:text-3xl"
+              className="text-2xl font-semibold tracking-[-0.04em] outline-none sm:text-3xl"
             >
               Kampüs profilini oluştur.
             </h2>
@@ -626,7 +626,7 @@ export default function RegisterFlow() {
                     setShowDepartment(event.target.checked);
                     clearMessage();
                   }}
-                  className="mt-0.5 size-4 shrink-0 accent-[#ff7a45] outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/30"
+                  className="mt-0.5 size-4 shrink-0 accent-brand outline-none focus-visible:ring-3 focus-visible:ring-brand/30"
                 />
                 <span>
                   <span className="block font-bold">
@@ -679,7 +679,7 @@ export default function RegisterFlow() {
                 required
                 aria-invalid={invalidField === "rules"}
                 aria-describedby="register-message"
-                className="mt-0.5 size-4 shrink-0 accent-[#ff7a45] outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/30"
+                className="mt-0.5 size-4 shrink-0 accent-brand outline-none focus-visible:ring-3 focus-visible:ring-brand/30"
               />
               <div>
                 <label
@@ -693,7 +693,7 @@ export default function RegisterFlow() {
                   href="/sozlesme"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-1 block w-fit font-bold text-[#ff7a45] underline decoration-[#ff7a45]/35 underline-offset-4 outline-none hover:text-[#ffb18c] focus-visible:ring-2 focus-visible:ring-[#ff7a45]/30"
+                  className="mt-1 block w-fit font-bold text-brand underline decoration-brand/35 underline-offset-4 outline-none hover:text-[#ff9e80] focus-visible:ring-2 focus-visible:ring-brand/30"
                 >
                   Sözleşmeyi oku
                   <span className="sr-only"> (yeni sekmede açılır)</span>
@@ -707,7 +707,7 @@ export default function RegisterFlow() {
             <button
               type="submit"
               disabled={isRegistering}
-              className="mt-6 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-white px-4 text-sm font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40"
+              className="mt-6 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-brand px-4 text-sm font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65"
             >
               {isRegistering ? "Hesap oluşturuluyor…" : "Kaydı tamamla"}
               <span aria-hidden="true">→</span>
@@ -731,11 +731,11 @@ export default function RegisterFlow() {
       </div>
 
       {!complete && (
-        <div className="border-t border-white/10 bg-black/20 px-5 py-4 text-center text-[11px] text-white/55 sm:px-7">
+        <div className="border-t border-white/8 bg-surface-raised px-5 py-4 text-center text-[11px] text-white/55 sm:px-6">
           Zaten hesabın var mı?{" "}
           <Link
             href="/giris"
-            className="font-bold text-[#ff7a45] underline decoration-[#ff7a45]/35 underline-offset-4"
+            className="font-bold text-brand underline decoration-brand/35 underline-offset-4"
           >
             Giriş yap
           </Link>
@@ -751,7 +751,7 @@ function FormMessage({ message }: { message: string | null }) {
       id="register-message"
       role={message ? "alert" : "status"}
       aria-live={message ? "assertive" : "polite"}
-      className={`text-xs font-medium leading-5 text-[#ffb199] ${
+      className={`text-xs font-medium leading-5 text-danger ${
         message ? "mt-2" : ""
       }`}
     >

@@ -10,11 +10,11 @@ export default function CampusHiddenNotice({
   return (
     <p
       role="status"
-      className={`mt-3 flex items-start gap-2 border-l-2 border-[#ff7a45]/45 bg-[#ff7a45]/6 py-2 pl-3 pr-2 font-semibold text-white/72 ${
+      className={`mt-3 flex items-start gap-2 border-l-2 border-brand/45 bg-brand/6 py-2 pl-3 pr-2 font-semibold text-white/72 ${
         compact ? "text-[11px] leading-4" : "text-xs leading-5"
       }`}
     >
-      <span aria-hidden="true" className="mt-px shrink-0 text-[#ff7a45]">
+      <span aria-hidden="true" className="mt-px shrink-0 text-brand">
         ⏸
       </span>
       <span>

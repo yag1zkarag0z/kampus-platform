@@ -63,7 +63,7 @@ export default function CampusCalendarWidget({
         {events.length > 0 && (
           <Link
             href="/takvim"
-            className={`shrink-0 text-sm font-bold text-[#ff7a45] transition-colors hover:text-[#ff8d5e] ${calendarFocusRing}`}
+            className={`shrink-0 text-sm font-bold text-brand transition-colors hover:text-brand-hover ${calendarFocusRing}`}
           >
             Tümünü gör
           </Link>
@@ -88,14 +88,14 @@ export default function CampusCalendarWidget({
                   {isUrgent && (
                     <span
                       aria-hidden="true"
-                      className="absolute inset-y-1 left-0 w-0.5 bg-[#ff7a45]"
+                      className="absolute inset-y-1 left-0 w-0.5 bg-brand"
                     />
                   )}
                   <div className="grid size-11 shrink-0 place-items-center rounded-xl border border-white/12 bg-white/5 text-center">
                     <span className="block text-sm font-black leading-none">
                       {badge.day}
                     </span>
-                    <span className="mt-0.5 block font-mono text-[9px] font-bold tracking-[0.1em] text-[#ff7a45]">
+                    <span className="mt-0.5 block font-mono text-[9px] font-bold tracking-[0.1em] text-brand">
                       {badge.month}
                     </span>
                   </div>

@@ -2,21 +2,47 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 :root {
-  --background: #0a0d16;
-  --foreground: #ffffff;
-  --logo-lens-start: #77435b;
-  --logo-lens-mid: #34202c;
-  --logo-lens-dark: #17151a;
-  --logo-lens-end: #675163;
-  --logo-rim-start: #ffb18c;
-  --logo-rim-mid: #ff7a45;
-  --logo-rim-end: #aaa6ba;
+  --canvas: #0b0b0c;
+  --surface: #111113;
+  --surface-raised: #171719;
+  --surface-hover: #1d1d21;
+  --border-subtle: rgb(255 255 255 / 9%);
+  --border-strong: rgb(255 255 255 / 16%);
+  --text-primary: #f5f5f5;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #71717a;
+  --brand: #ff6b3d;
+  --brand-hover: #ff805c;
+  --brand-soft: rgb(255 107 61 / 11%);
+  --danger: #ff6f78;
+  --success: #65d996;
+  --background: var(--canvas);
+  --foreground: var(--text-primary);
+  --logo-lens-start: #2b2b2f;
+  --logo-lens-mid: #171719;
+  --logo-lens-dark: #101012;
+  --logo-lens-end: #313136;
+  --logo-rim-start: #ffad92;
+  --logo-rim-mid: var(--brand);
+  --logo-rim-end: #ff805c;
+  --font-geist-sans: "Inter", "SF Pro Display", "Segoe UI Variable",
+    "Segoe UI", Arial, Helvetica, sans-serif;
+  --font-geist-mono: "Cascadia Code", "SFMono-Regular", Consolas,
+    "Liberation Mono", monospace;
   color-scheme: dark;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-hover: var(--surface-hover);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -30,13 +56,8 @@ html {
    * büyütmek yazıyı, boşlukları ve dokunma alanlarını birlikte büyütür.
    * Tek tek her bileşeni elden geçirmek yerine tek kaldıraç kullanılıyor.
    */
-  font-size: 18px;
-}
-
-@media (min-width: 640px) {
-  html {
-    font-size: 19px;
-  }
+  font-size: 20px;
+  scrollbar-color: #35353a var(--canvas);
 }
 
 body {
@@ -44,23 +65,32 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-synthesis: none;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
   transition:
     background-color 240ms ease,
     color 240ms ease;
 }
 
 ::selection {
-  background: #1c2821;
-  color: #fffdf8;
-}
-
-[data-theme="dark"] ::selection {
-  background: #d09272;
-  color: #111315;
+  background: var(--brand);
+  color: #101012;
 }
 
 button:not(:disabled) {
   cursor: pointer;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+:focus-visible {
+  outline-color: var(--brand);
 }
 
 ::view-transition-old(root),
@@ -132,33 +162,31 @@ button:not(:disabled) {
 .campus-email-input:-webkit-autofill,
 .campus-email-input:-webkit-autofill:hover,
 .campus-email-input:-webkit-autofill:focus {
-  -webkit-text-fill-color: #fff;
-  caret-color: #d09272;
-  box-shadow: 0 0 0 1000px #202126 inset;
+  -webkit-text-fill-color: var(--text-primary);
+  caret-color: var(--brand);
+  box-shadow: 0 0 0 1000px var(--surface-raised) inset;
   transition: background-color 9999s ease-out;
 }
 
 .auth-input:-webkit-autofill,
 .auth-input:-webkit-autofill:hover,
 .auth-input:-webkit-autofill:focus {
-  -webkit-text-fill-color: #1c2821;
-  caret-color: #7d3c2d;
-  box-shadow: 0 0 0 1000px #f5f1e9 inset;
+  -webkit-text-fill-color: var(--text-primary);
+  caret-color: var(--brand);
+  box-shadow: 0 0 0 1000px var(--surface-raised) inset;
   transition: background-color 9999s ease-out;
 }
 
 [data-theme="dark"] .auth-input:-webkit-autofill,
 [data-theme="dark"] .auth-input:-webkit-autofill:hover,
 [data-theme="dark"] .auth-input:-webkit-autofill:focus {
-  -webkit-text-fill-color: #ece8e1;
-  caret-color: #d09272;
-  box-shadow: 0 0 0 1000px #27282d inset;
+  -webkit-text-fill-color: var(--text-primary);
+  caret-color: var(--brand);
+  box-shadow: 0 0 0 1000px var(--surface-raised) inset;
 }
 
 .paper-noise {
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='.42'/%3E%3C/svg%3E");
-  mix-blend-mode: multiply;
-  opacity: 0.055;
+  display: none;
 }
 
 @keyframes hero-particle-drift {
@@ -522,6 +550,31 @@ button:not(:disabled) {
     );
 }
 
+/* Legacy landing sections share the same flat surface language. */
+.hero-gradient-motion,
+[data-theme="dark"] .hero-gradient-motion {
+  background: var(--surface);
+}
+
+.campus-pulse-surface,
+[data-theme="dark"] .campus-pulse-surface,
+.how-it-works-surface,
+[data-theme="dark"] .how-it-works-surface,
+.security-surface,
+[data-theme="dark"] .security-surface,
+.closing-cta-surface,
+[data-theme="dark"] .closing-cta-surface {
+  background: var(--surface);
+}
+
+.hero-gradient-motion::before,
+.hero-gradient-motion::after,
+.campus-pulse-surface::before,
+.how-it-works-surface::before,
+.closing-cta-surface::before {
+  display: none;
+}
+
 @keyframes campus-marquee {
   from {
     transform: translate3d(0, 0, 0);
@@ -550,26 +603,12 @@ button:not(:disabled) {
 }
 
 .campus-loading-screen {
-  background:
-    radial-gradient(
-      circle at 50% 43%,
-      rgb(154 89 68 / 13%) 0%,
-      rgb(154 89 68 / 5%) 21%,
-      transparent 44%
-    ),
-    #eee9e1;
+  background: var(--canvas);
   animation: campus-loader-screen 180ms ease-out both;
 }
 
 [data-theme="dark"] .campus-loading-screen {
-  background:
-    radial-gradient(
-      circle at 50% 43%,
-      rgb(199 137 109 / 12%) 0%,
-      rgb(119 67 91 / 7%) 23%,
-      transparent 46%
-    ),
-    #111315;
+  background: var(--canvas);
 }
 
 .campus-loading-logo {

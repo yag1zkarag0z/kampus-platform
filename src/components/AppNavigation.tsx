@@ -4,14 +4,17 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type MouseEvent } from "react";
 
+import ActionStatusText from "@/components/ActionStatusText";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import CampusLogo from "@/components/CampusLogo";
 import { useCampusNotifications } from "@/components/CampusNotificationProvider";
 import { useFeedback } from "@/components/FeedbackProvider";
+import { useActionStatus } from "@/components/useActionStatus";
 import { LOCAL_ACCOUNT_OWNER_ID } from "@/data/campusPosts";
 
 type NavigationIconName =
+  | "home"
   | "feed"
   | "discover"
   | "share"
@@ -31,7 +34,7 @@ type NavigationItem = {
 };
 
 const navigationItems: readonly NavigationItem[] = [
-  { href: "/akis", label: "Home", icon: "feed" },
+  { href: "/akis", label: "Ana sayfa", icon: "home" },
   { href: "/kesfet", label: "Keşfet", icon: "discover" },
   {
     href: "/bildirimler",
@@ -39,7 +42,7 @@ const navigationItems: readonly NavigationItem[] = [
     icon: "notifications",
   },
   { href: "/kaydedilenler", label: "Kaydedilenler", icon: "saved" },
-  { href: "/takvim", label: "Takvim", icon: "calendar" },
+  { href: "/takvim", label: "Kampüs takvimi", icon: "calendar" },
   { href: "/profil", label: "Profil", icon: "profile" },
   {
     href: "/admin",
@@ -50,7 +53,7 @@ const navigationItems: readonly NavigationItem[] = [
 ];
 
 const mobileNavigationItems: readonly NavigationItem[] = [
-  { href: "/akis", label: "Home", icon: "feed" },
+  { href: "/akis", label: "Ana sayfa", icon: "home" },
   { href: "/kesfet", label: "Keşfet", icon: "discover" },
   { href: "/konu-olustur", label: "Konu", icon: "share", primary: true },
   // Bildirimler üst bara (kalp simgesi) taşındı; burada öneriler var.
@@ -69,6 +72,14 @@ function isGuestProtectedPath(href: string) {
 
 function NavigationIconGlyph({ name }: { name: NavigationIconName }) {
   switch (name) {
+    case "home":
+      return (
+        <>
+          <path d="M4 11.5 12 4l8 7.5" />
+          <path d="M6 9.8V20h12V9.8" />
+          <path d="M10 20v-5.5h4V20" />
+        </>
+      );
     case "feed":
       return (
         <>
@@ -84,7 +95,12 @@ function NavigationIconGlyph({ name }: { name: NavigationIconName }) {
         </>
       );
     case "share":
-      return <path d="M12 5v14M5 12h14" />;
+      return (
+        <>
+          <rect x="3.5" y="3.5" width="17" height="17" rx="4.5" />
+          <path d="M12 7.5v9M7.5 12h9" />
+        </>
+      );
     case "notifications":
       // Instagram tarzı kalp: bildirim çanı yerine, akıştaki beğeni
       // ikonuyla aynı aile.
@@ -157,9 +173,11 @@ function ShareIcon({ className = "size-5" }: { className?: string }) {
       stroke="currentColor"
       strokeWidth="1.8"
       strokeLinecap="round"
+      strokeLinejoin="round"
       className={className}
     >
-      <path d="M12 5v14M5 12h14" />
+      <rect x="3.5" y="3.5" width="17" height="17" rx="4.5" />
+      <path d="M12 7.5v9M7.5 12h9" />
     </svg>
   );
 }
@@ -188,7 +206,7 @@ function NotificationBadge() {
   return (
     <span
       aria-hidden="true"
-      className="absolute -right-0.5 -top-0.5 size-2.5 animate-[campus-pop_320ms_cubic-bezier(0.16,1,0.3,1)] rounded-full bg-[#ff7a45] ring-2 ring-[#0a0d16] motion-reduce:animate-none"
+      className="absolute -right-0.5 -top-0.5 size-2.5 animate-[campus-pop_320ms_cubic-bezier(0.16,1,0.3,1)] rounded-full bg-brand ring-2 ring-canvas motion-reduce:animate-none"
     />
   );
 }
@@ -202,9 +220,12 @@ export default function AppNavigation() {
     isUnreadCountHydrated: areNotificationsHydrated,
     unreadCount,
   } = useCampusNotifications();
-  const { confirm: confirmAction, showToast } = useFeedback();
+  const { confirm: confirmAction } = useFeedback();
   const [isDesktopNavigationOpen, setIsDesktopNavigationOpen] =
     useState(true);
+  const [signOutStatus, setSignOutStatus] = useActionStatus();
+  const [guestNavStatus, setGuestNavStatus] = useActionStatus();
+  const [guestNavAnchor, setGuestNavAnchor] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isDesktopNavigationOpen) {
@@ -306,17 +327,26 @@ export default function AppNavigation() {
       await signOut();
       router.replace("/giris");
     } catch {
-      showToast({
+      setSignOutStatus({
         message: "Çıkış yapılamadı. İnternet bağlantını kontrol edip yeniden dene.",
         tone: "error",
       });
     }
   };
 
-  const showGuestAuthToast = () => {
-    showToast({
+  const handleGuestProtectedNavigation = (
+    event: MouseEvent<HTMLAnchorElement>,
+    anchor: string,
+  ) => {
+    if (!isGuest) {
+      return;
+    }
+
+    event.preventDefault();
+    setGuestNavAnchor(anchor);
+    setGuestNavStatus({
       message: "Bu özellik için giriş yap veya kayıt ol.",
-      tone: "info",
+      tone: "error",
       action: {
         label: "Giriş yap",
         onClick: () => router.push("/giris"),
@@ -324,22 +354,11 @@ export default function AppNavigation() {
     });
   };
 
-  const handleGuestProtectedNavigation = (
-    event: MouseEvent<HTMLAnchorElement>,
-  ) => {
-    if (!isGuest) {
-      return;
-    }
-
-    event.preventDefault();
-    showGuestAuthToast();
-  };
-
   return (
     <>
       {/* Mobil üst bar: solda profil, ortada logo işareti, sağda kısayollar. */}
       <header
-        className={`sticky top-0 z-40 grid min-h-16 grid-cols-[auto_1fr_auto] items-center gap-2 bg-[#0a0d16]/55 px-3 py-2 text-white backdrop-blur-xl transition-transform duration-300 md:hidden ${
+        className={`sticky top-0 z-40 grid min-h-16 grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-white/8 bg-canvas/88 px-3 py-2 text-white backdrop-blur-xl transition-transform duration-300 md:hidden ${
           isMobileNavHidden ? "-translate-y-full" : "translate-y-0"
         }`}
       >
@@ -350,7 +369,7 @@ export default function AppNavigation() {
             aria-expanded={isAccountMenuOpen}
             aria-label="Hesap menüsünü aç"
             onClick={() => setIsAccountMenuOpen((current) => !current)}
-            className="inline-flex cursor-pointer rounded-full outline-none transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40"
+            className="inline-flex cursor-pointer rounded-full outline-none transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-brand/40"
           >
             <CampusAuthorAvatar
               author={`@${profile.username}`}
@@ -362,7 +381,7 @@ export default function AppNavigation() {
           {isAccountMenuOpen && (
             <div
               role="menu"
-              className="absolute top-full left-0 z-50 mt-2 w-52 overflow-hidden rounded-2xl border border-white/12 bg-[#141720] py-1 shadow-[0_18px_48px_rgba(0,0,0,0.5)]"
+              className="absolute top-full left-0 z-50 mt-2 w-52 overflow-hidden rounded-xl border border-white/10 bg-surface-raised py-1 shadow-[0_16px_40px_rgba(0,0,0,0.32)]"
             >
               <Link
                 href="/profil"
@@ -391,18 +410,25 @@ export default function AppNavigation() {
                   setIsAccountMenuOpen(false);
                   handleSignOut();
                 }}
-                className="block w-full cursor-pointer border-t border-white/8 px-4 py-3 text-left text-sm font-bold text-[#ffb199] outline-none transition-colors hover:bg-[#ffb199]/9"
+                className="block w-full cursor-pointer border-t border-white/8 px-4 py-3 text-left text-sm font-bold text-danger outline-none transition-colors hover:bg-danger/9"
               >
                 Çıkış yap
               </button>
             </div>
+          )}
+
+          {signOutStatus && (
+            <ActionStatusText
+              status={signOutStatus}
+              className="absolute top-full left-0 z-50 mt-1 w-max max-w-56"
+            />
           )}
         </div>
 
         <Link
           href="/akis"
           aria-label="KAMPÜS akışına git"
-          className="justify-self-center rounded-lg px-2 outline-none transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40"
+          className="justify-self-center rounded-lg px-2 outline-none transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-brand/40"
         >
           <CampusLogo
             variant="mark"
@@ -419,9 +445,9 @@ export default function AppNavigation() {
               aria-current={
                 isActivePath(pathname, "/admin") ? "page" : undefined
               }
-              className={`grid size-12 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 ${
+              className={`grid size-11 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-brand/40 ${
                 isActivePath(pathname, "/admin")
-                  ? "bg-[#ff7a45]/12 text-[#ff7a45]"
+                  ? "bg-brand/12 text-brand"
                   : "text-white/55 hover:bg-white/8 hover:text-white"
               }`}
             >
@@ -440,9 +466,9 @@ export default function AppNavigation() {
             aria-current={
               isActivePath(pathname, "/bildirimler") ? "page" : undefined
             }
-            className={`relative grid size-12 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 ${
+            className={`relative grid size-11 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-brand/40 ${
               isActivePath(pathname, "/bildirimler")
-                ? "bg-[#ff7a45]/12 text-[#ff7a45]"
+                ? "bg-brand/12 text-brand"
                 : "text-white/58 hover:bg-white/8 hover:text-white"
             }`}
           >
@@ -471,7 +497,7 @@ export default function AppNavigation() {
             onClick={() =>
               setIsDesktopNavigationOpen((current) => !current)
             }
-            className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full outline-none transition-colors hover:bg-white/8 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 xl:self-start"
+            className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full outline-none transition-colors hover:bg-white/8 focus-visible:ring-3 focus-visible:ring-brand/40 xl:self-start"
           >
             <span aria-hidden="true" className="relative block size-5">
               <span
@@ -511,7 +537,7 @@ export default function AppNavigation() {
               <Link
                 href="/akis"
                 aria-label="KAMPÜS akışına git"
-                className="mb-2 flex min-h-12 items-center justify-center rounded-xl outline-none transition-colors hover:bg-white/7 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 xl:justify-start xl:px-3"
+                className="mb-2 flex min-h-12 items-center justify-center rounded-xl outline-none transition-colors hover:bg-white/7 focus-visible:ring-3 focus-visible:ring-brand/40 xl:justify-start xl:px-3"
               >
                 <CampusLogo
                   variant="mark"
@@ -543,7 +569,11 @@ export default function AppNavigation() {
                           href={item.href}
                           onClick={
                             isGuest && isGuestProtectedPath(item.href)
-                              ? handleGuestProtectedNavigation
+                              ? (event) =>
+                                  handleGuestProtectedNavigation(
+                                    event,
+                                    item.href,
+                                  )
                               : undefined
                           }
                           aria-current={isActive ? "page" : undefined}
@@ -555,9 +585,9 @@ export default function AppNavigation() {
                               : undefined
                           }
                           title={item.label}
-                          className={`group relative flex min-h-[4.4rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-center text-[11px] font-black leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 xl:min-h-14 xl:flex-row xl:justify-start xl:gap-4 xl:rounded-full xl:px-4 xl:text-left xl:text-xl ${
+                          className={`group relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-center text-[10px] font-bold leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-brand/40 xl:min-h-12 xl:flex-row xl:justify-start xl:gap-3 xl:rounded-xl xl:px-3 xl:text-left xl:text-base ${
                             isActive
-                              ? "bg-[#ff7a45]/13 text-[#ff7a45]"
+                              ? "bg-brand/13 text-brand"
                               : "text-white/62 hover:bg-white/8 hover:text-white"
                           }`}
                         >
@@ -585,7 +615,13 @@ export default function AppNavigation() {
               <Link
                 href="/konu-olustur"
                 onClick={
-                  isGuest ? handleGuestProtectedNavigation : undefined
+                  isGuest
+                    ? (event) =>
+                        handleGuestProtectedNavigation(
+                          event,
+                          "compose-desktop",
+                        )
+                    : undefined
                 }
                 aria-label="Yeni konu aç"
                 aria-current={
@@ -594,11 +630,18 @@ export default function AppNavigation() {
                     : undefined
                 }
                 title="Konu aç"
-                className="mt-4 inline-flex min-h-[4.1rem] w-full flex-col items-center justify-center gap-1.5 rounded-full bg-[#ff7a45] px-1 text-[10px] font-black leading-none text-[#12100e] outline-none transition-colors hover:bg-[#ff7a45]/90 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/45 xl:min-h-15 xl:flex-row xl:justify-center xl:gap-2.5 xl:px-4 xl:text-lg"
+                className="mt-3 inline-flex min-h-14 w-full flex-col items-center justify-center gap-1 rounded-xl bg-brand px-1 text-[10px] font-black leading-none text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/45 xl:min-h-12 xl:flex-row xl:justify-center xl:gap-2 xl:px-4 xl:text-sm"
               >
-                <ShareIcon className="size-[1.35rem] shrink-0 xl:hidden" />
+                <ShareIcon className="size-[1.35rem] shrink-0 xl:size-5" />
                 <span>Konu aç</span>
               </Link>
+
+              {guestNavStatus && guestNavAnchor === "compose-desktop" && (
+                <ActionStatusText
+                  status={guestNavStatus}
+                  className="mt-2 text-center"
+                />
+              )}
 
               {/* X'teki gibi hesap çipi: geniş menüde ad ve kullanıcı adı,
                   dar menüde yalnızca avatar. Çıkış bu menünün içine girer.
@@ -612,7 +655,7 @@ export default function AppNavigation() {
                   <Link
                     href="/giris"
                     title="Giriş yap"
-                    className="mx-auto flex size-13 items-center justify-center gap-2 rounded-full bg-[#ff7a45] text-sm font-black text-[#12100e] outline-none transition-colors hover:bg-[#ff8d5e] focus-visible:ring-3 focus-visible:ring-[#ff7a45]/45 xl:h-12 xl:w-fit xl:px-4"
+                    className="mx-auto flex size-13 items-center justify-center gap-2 rounded-full bg-brand text-sm font-black text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/45 xl:h-12 xl:w-fit xl:px-4"
                   >
                     <SignInIcon className="size-4 shrink-0" />
                     <span className="hidden xl:inline">Giriş yap</span>
@@ -627,7 +670,7 @@ export default function AppNavigation() {
                       setIsAccountMenuOpen((current) => !current)
                     }
                     title={`@${profile.username}`}
-                    className="flex min-h-14 w-full cursor-pointer items-center justify-center gap-3 rounded-full px-1.5 py-2 outline-none transition-colors hover:bg-white/8 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 xl:min-h-16 xl:justify-start xl:px-3"
+                    className="flex min-h-12 w-full cursor-pointer items-center justify-center gap-3 rounded-xl px-1.5 py-2 outline-none transition-colors hover:bg-white/8 focus-visible:ring-3 focus-visible:ring-brand/40 xl:justify-start xl:px-3"
                   >
                     <CampusAuthorAvatar
                       author={`@${profile.username}`}
@@ -653,7 +696,7 @@ export default function AppNavigation() {
                   {isAccountMenuOpen && (
                     <div
                       role="menu"
-                      className="absolute bottom-full left-0 z-50 mb-2 w-56 overflow-hidden rounded-2xl border border-white/12 bg-[#141720] py-1 shadow-[0_18px_48px_rgba(0,0,0,0.5)]"
+                      className="absolute bottom-full left-0 z-50 mb-2 w-56 overflow-hidden rounded-xl border border-white/10 bg-surface-raised py-1 shadow-[0_16px_40px_rgba(0,0,0,0.32)]"
                     >
                       <Link
                         href="/profil"
@@ -678,11 +721,18 @@ export default function AppNavigation() {
                           setIsAccountMenuOpen(false);
                           handleSignOut();
                         }}
-                        className="block w-full cursor-pointer border-t border-white/8 px-4 py-2.5 text-left text-sm font-bold text-[#ffb199] outline-none transition-colors hover:bg-[#ffb199]/9 focus-visible:bg-[#ffb199]/9"
+                        className="block w-full cursor-pointer border-t border-white/8 px-4 py-2.5 text-left text-sm font-bold text-danger outline-none transition-colors hover:bg-danger/9 focus-visible:bg-danger/9"
                       >
                         Çıkış yap
                       </button>
                     </div>
+                  )}
+
+                  {signOutStatus && (
+                    <ActionStatusText
+                      status={signOutStatus}
+                      className="absolute bottom-full left-0 z-50 mb-1 w-max max-w-56"
+                    />
                   )}
                 </div>
                 )}
@@ -694,10 +744,17 @@ export default function AppNavigation() {
 
       <nav
         aria-label="Mobil uygulama menüsü"
-        className={`fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0a0d16]/85 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-white shadow-[0_-12px_34px_rgba(0,0,0,0.24)] backdrop-blur-xl transition-transform duration-300 md:hidden ${
+        className={`fixed inset-x-0 bottom-0 z-50 border-t border-white/8 bg-canvas/92 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-white backdrop-blur-xl transition-transform duration-300 md:hidden ${
           isMobileNavHidden ? "translate-y-full" : "translate-y-0"
         }`}
       >
+        {guestNavStatus && guestNavAnchor === "compose-mobile" && (
+          <ActionStatusText
+            status={guestNavStatus}
+            className="absolute inset-x-3 bottom-full mb-2 text-center"
+          />
+        )}
+
         <ul className="mx-auto grid max-w-lg grid-cols-5 gap-1">
           {mobileNavigationItems.map((item) => {
             const isActive = isActivePath(pathname, item.href);
@@ -708,7 +765,11 @@ export default function AppNavigation() {
                   href={item.href}
                   onClick={
                     isGuest && isGuestProtectedPath(item.href)
-                      ? handleGuestProtectedNavigation
+                      ? (event) =>
+                          handleGuestProtectedNavigation(
+                            event,
+                            "compose-mobile",
+                          )
                       : undefined
                   }
                   aria-current={isActive ? "page" : undefined}
@@ -721,18 +782,18 @@ export default function AppNavigation() {
                         ? `${item.label}, ${unreadCount} okunmamış bildirim`
                         : undefined
                   }
-                  className={`flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-[11px] font-bold leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 ${
+                  className={`flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-[11px] font-bold leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-brand/40 ${
                     item.primary
-                      ? "text-[#ff7a45]"
+                      ? "text-brand"
                       : isActive
-                        ? "bg-[#ff7a45]/12 text-[#ff7a45]"
+                        ? "bg-brand/12 text-brand"
                         : "text-white/58 hover:bg-white/8 hover:text-white"
                   }`}
                 >
                   <span
                     className={
                       item.primary
-                        ? "relative grid size-10 -translate-y-1 place-items-center rounded-full bg-[#ff7a45] text-[#12100e] shadow-none"
+                        ? "relative grid size-10 -translate-y-1 place-items-center rounded-full bg-brand text-[#101012] shadow-none"
                         : "relative grid size-9 place-items-center"
                     }
                   >

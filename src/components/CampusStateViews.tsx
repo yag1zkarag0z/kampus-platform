@@ -23,7 +23,7 @@ export function CampusLoadingState({
       <div>
         <span
           aria-hidden="true"
-          className="mx-auto block size-7 animate-spin rounded-full border-2 border-white/14 border-t-[#ff7a45] motion-reduce:animate-none"
+          className="mx-auto block size-7 animate-spin rounded-full border-2 border-white/14 border-t-[#ff6b3d] motion-reduce:animate-none"
         />
         <p className="mt-4 text-sm font-bold text-white/60">{label}</p>
       </div>
@@ -50,7 +50,7 @@ export function CampusErrorState({
       <div className="max-w-md">
         <span
           aria-hidden="true"
-          className="mx-auto grid size-12 place-items-center rounded-full border border-[#ffb199]/30 text-xl text-[#ffb199]"
+          className="mx-auto grid size-12 place-items-center rounded-full border border-danger/30 text-xl text-danger"
         >
           !
         </span>

@@ -30,7 +30,7 @@ import {
 } from "@/data/campusPosts";
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
+  "outline-none focus-visible:ring-3 focus-visible:ring-brand/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 type ProfileTab = "topics" | "comments";
 
@@ -144,9 +144,9 @@ export default function CampusProfile() {
   return (
     <section
       aria-labelledby="profile-title"
-      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] min-w-0 bg-canvas text-white md:min-h-svh"
     >
-      <header className="sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-white/12 bg-canvas/95 backdrop-blur-xl">
         {/* X'teki gibi sola yaslı: ad ve altında gönderi sayısı. */}
         <div className="flex min-h-16 items-center gap-3 px-4 sm:px-6">
           <div className="min-w-0 flex-1">
@@ -281,7 +281,7 @@ export default function CampusProfile() {
             </span>
                         <span
                           aria-hidden="true"
-                          className="size-1 rotate-45 bg-[#ff7a45]/55"
+                          className="size-1 rotate-45 bg-brand/55"
                         />
                         <time className="text-[11px] font-semibold text-white/55">
                           {post.time}
@@ -291,7 +291,7 @@ export default function CampusProfile() {
                       <h3 className="mt-2.5 break-words text-lg font-black leading-6 tracking-[-0.025em] [overflow-wrap:anywhere]">
                         <Link
                           href={`/gonderi/${post.id}`}
-                          className={`decoration-[#ff7a45]/30 underline-offset-4 transition-colors hover:text-[#ff7a45] hover:underline ${focusRing}`}
+                          className={`decoration-brand/30 underline-offset-4 transition-colors hover:text-brand hover:underline ${focusRing}`}
                         >
                           {post.title}
                         </Link>
@@ -374,7 +374,7 @@ export default function CampusProfile() {
                       <p className="text-xs font-semibold text-white/55">
                         <Link
                           href={`/gonderi/${post.id}`}
-                          className={`font-black text-[#ff7a45] underline decoration-[#ff7a45]/28 underline-offset-4 ${focusRing}`}
+                          className={`font-black text-brand underline decoration-brand/28 underline-offset-4 ${focusRing}`}
                         >
                           {post.title}
                         </Link>{" "}
@@ -389,7 +389,7 @@ export default function CampusProfile() {
                         </time>
                         <Link
                           href={`/gonderi/${post.id}#yorumlar`}
-                          className={`inline-flex min-h-11 items-center px-2 text-xs font-black text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/8 ${focusRing}`}
+                          className={`inline-flex min-h-11 items-center px-2 text-xs font-black text-brand transition-colors hover:bg-brand/8 ${focusRing}`}
                         >
                           Yoruma git
                         </Link>
@@ -447,7 +447,7 @@ function ProfileTabButton({
       onKeyDown={onKeyDown}
       className={`relative inline-flex min-h-14 items-center justify-center gap-2 px-2 text-xs font-black transition-colors sm:text-sm ${
         isActive
-          ? "text-[#ff7a45] after:absolute after:inset-x-4 after:bottom-0 after:h-0.5 after:bg-[#ff7a45]"
+          ? "text-brand after:absolute after:inset-x-4 after:bottom-0 after:h-0.5 after:bg-brand"
           : "text-white/55 hover:text-white"
       } ${focusRing}`}
     >
@@ -475,7 +475,7 @@ function ProfileEmptyState({
       <div className="max-w-md">
         <span
           aria-hidden="true"
-          className="mx-auto grid size-12 place-items-center rounded-full border border-white/11 text-[#ff7a45]"
+          className="mx-auto grid size-12 place-items-center rounded-full border border-white/11 text-brand"
         >
           <DocumentIcon />
         </span>
@@ -501,7 +501,7 @@ function ProfileLoading() {
     <section
       aria-busy="true"
       aria-label="Profil yükleniyor"
-      className="min-h-[calc(100svh-4rem)] bg-[#0a0d16] text-white md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] bg-canvas text-white md:min-h-svh"
     >
       <div className="flex min-h-16 items-center border-b border-white/10 px-4 sm:px-6">
         <div className="h-5 w-20 animate-pulse bg-white/8 motion-reduce:animate-none" />

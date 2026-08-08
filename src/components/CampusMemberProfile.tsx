@@ -10,9 +10,10 @@ import {
   type KeyboardEvent,
 } from "react";
 
+import ActionStatusText from "@/components/ActionStatusText";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import { campusButton } from "@/components/campusButtonStyles";
-import { useFeedback } from "@/components/FeedbackProvider";
+import { useActionStatus } from "@/components/useActionStatus";
 import CampusHiddenNotice from "@/components/CampusHiddenNotice";
 import CampusProfileHero from "@/components/CampusProfileHero";
 import {
@@ -47,7 +48,7 @@ type AuthoredComment = {
 };
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
+  "outline-none focus-visible:ring-3 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 function authorMatchesUsername(
   author: CampusAuthorReference,
@@ -334,10 +335,10 @@ export default function CampusMemberProfile({
   return (
     <section
       aria-labelledby="member-profile-title"
-      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] min-w-0 bg-canvas text-white md:min-h-svh"
     >
       {/* X'teki gibi sola yaslı: geri oku, ad ve altında gönderi sayısı. */}
-      <header className="sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-white/12 bg-canvas/95 backdrop-blur-xl">
         <div className="flex min-h-16 items-center gap-5 px-3 sm:px-6">
           <Link
             href="/akis"
@@ -382,7 +383,7 @@ export default function CampusMemberProfile({
               <RoleBadge role={managedUser.role} />
             )}
             {isOfficial && (
-              <span className="bg-[#8fba9b]/12 px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-[0.1em] text-[#b5d8bd]">
+              <span className="bg-[#69c990]/12 px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-[0.1em] text-[#9be4b4]">
                 Doğrulanmış
               </span>
             )}
@@ -476,7 +477,7 @@ export default function CampusMemberProfile({
                     }
                     className={`min-h-11 px-3 text-xs font-black transition-colors ${focusRing} ${
                       isActive
-                        ? "bg-[#ff7a45]/12 text-[#ff7a45]"
+                        ? "bg-brand/12 text-brand"
                         : "text-white/55 hover:bg-white/8 hover:text-white"
                     }`}
                   >
@@ -530,7 +531,7 @@ function MemberProfileActions({
 }) {
   const router = useRouter();
   const { blockUser, unblockUser } = useCampusModeration();
-  const { showToast } = useFeedback();
+  const [status, setStatus] = useActionStatus();
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -576,7 +577,7 @@ function MemberProfileActions({
         : await blockUser(authorId, author);
 
       if (!changed) {
-        showToast({
+        setStatus({
           message: "İşlem şu anda tamamlanamadı. Tekrar dene.",
           tone: "error",
         });
@@ -584,7 +585,7 @@ function MemberProfileActions({
       }
 
       setIsOpen(false);
-      showToast({
+      setStatus({
         message: isBlocked
           ? `${displayName} engeli kaldırıldı.`
           : `${displayName} engellendi.`,
@@ -616,18 +617,25 @@ function MemberProfileActions({
       {isOpen && (
         <div
           role="menu"
-          className="absolute right-0 z-40 mt-1 w-56 border border-white/12 bg-[#141720] py-1 shadow-[0_18px_50px_rgba(0,0,0,0.45)]"
+          className="absolute right-0 z-40 mt-1 w-56 border border-white/12 bg-surface-raised py-1 shadow-[0_16px_40px_rgba(0,0,0,0.3)]"
         >
           <button
             type="button"
             role="menuitem"
             disabled={isSubmitting}
             onClick={() => void toggleBlock()}
-            className={`flex min-h-11 w-full items-center px-4 text-left text-xs font-bold text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/8 disabled:cursor-wait disabled:opacity-60 ${focusRing}`}
+            className={`flex min-h-11 w-full items-center px-4 text-left text-xs font-bold text-brand transition-colors hover:bg-brand/8 disabled:cursor-wait disabled:opacity-60 ${focusRing}`}
           >
             {isBlocked ? "Engeli kaldır" : "Engelle"}
           </button>
         </div>
+      )}
+
+      {status && (
+        <ActionStatusText
+          status={status}
+          className="absolute top-full right-0 z-40 mt-1 w-56 text-right"
+        />
       )}
     </div>
   );
@@ -695,7 +703,7 @@ function MemberPosts({
                 <h3 className="mt-2 break-words text-lg font-black leading-6 tracking-[-0.025em] sm:text-xl">
                   <Link
                     href={`/gonderi/${post.id}`}
-                    className={`decoration-[#ff7a45]/30 underline-offset-4 hover:text-[#ff7a45] hover:underline ${focusRing}`}
+                    className={`decoration-brand/30 underline-offset-4 hover:text-brand hover:underline ${focusRing}`}
                   >
                     {post.title || "Başlıksız gönderi"}
                   </Link>
@@ -771,12 +779,12 @@ function MemberComments({
                 <p className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-white/55">
                   {post.title || "Başlıksız gönderi"} · {comment.time}
                 </p>
-                <blockquote className="mt-2 border-l-3 border-[#ff7a45]/40 pl-3 text-sm leading-6 text-white/70">
+                <blockquote className="mt-2 border-l-3 border-brand/40 pl-3 text-sm leading-6 text-white/70">
                   {comment.body}
                 </blockquote>
                 <Link
                   href={getProfileHrefForComment(post.id, comment.id)}
-                  className={`mt-3 inline-flex min-h-11 items-center text-xs font-black text-[#ff7a45] hover:text-[#ff7a45]/80 ${focusRing}`}
+                  className={`mt-3 inline-flex min-h-11 items-center text-xs font-black text-brand hover:text-brand/80 ${focusRing}`}
                 >
                   Konuşmaya git
                 </Link>
@@ -796,7 +804,7 @@ function MemberComments({
 
 function RoleBadge({ role }: { role: CampusAdminRole }) {
   return (
-    <span className="bg-[#ff7a45]/12 px-2 py-1 font-mono text-[8px] font-black uppercase tracking-[0.09em] text-[#ff7a45]">
+    <span className="bg-brand/12 px-2 py-1 font-mono text-[8px] font-black uppercase tracking-[0.09em] text-brand">
       {campusAdminRoleLabels[role]}
     </span>
   );
@@ -817,8 +825,8 @@ function RestrictedProfileState({
 }) {
   return (
     <div className="px-4 py-14 sm:px-6 sm:py-20">
-      <div className="mx-auto max-w-xl border border-white/12 bg-[#141720] p-6 text-center sm:p-8">
-        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ffb199]">
+      <div className="mx-auto max-w-xl border border-white/12 bg-surface-raised p-6 text-center sm:p-8">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-danger">
           {eyebrow}
         </p>
         <h3 className="mt-2 text-xl font-black tracking-[-0.04em]">
@@ -840,15 +848,15 @@ function RestrictedProfileState({
 
 function ProfileNotFound({ username }: { username: string }) {
   return (
-    <section className="grid min-h-[calc(100svh-4rem)] place-items-center bg-[#0a0d16] px-4 py-16 text-white md:min-h-svh">
-      <div className="w-full max-w-lg border border-white/12 bg-[#141720] p-6 text-center sm:p-8">
+    <section className="grid min-h-[calc(100svh-4rem)] place-items-center bg-canvas px-4 py-16 text-white md:min-h-svh">
+      <div className="w-full max-w-lg border border-white/12 bg-surface-raised p-6 text-center sm:p-8">
         <span
           aria-hidden="true"
           className="mx-auto grid size-14 place-items-center rounded-full bg-white/8 font-serif text-2xl font-black italic text-white/55"
         >
           ?
         </span>
-        <p className="mt-4 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
+        <p className="mt-4 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-brand">
           Profil bulunamadı
         </p>
         <h1 className="mt-2 break-all text-2xl font-black tracking-[-0.045em]">
@@ -859,7 +867,7 @@ function ProfileNotFound({ username }: { username: string }) {
         </p>
         <Link
           href="/kesfet"
-          className={`mt-6 inline-flex min-h-11 items-center justify-center bg-white px-5 text-xs font-black text-[#12100e] hover:bg-white/90 ${focusRing}`}
+          className={`mt-6 inline-flex min-h-11 items-center justify-center bg-white px-5 text-xs font-black text-[#101012] hover:bg-white/90 ${focusRing}`}
         >
           Keşfete dön
         </Link>
@@ -879,7 +887,7 @@ function ProfileEmptyState({
     <div className="px-4 py-14 text-center sm:px-6 sm:py-20">
       <span
         aria-hidden="true"
-        className="mx-auto block size-3 rotate-45 bg-[#ff7a45]/50"
+        className="mx-auto block size-3 rotate-45 bg-brand/50"
       />
       <h3 className="mt-4 text-sm font-black">{title}</h3>
       <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-white/55">
@@ -894,7 +902,7 @@ export function CampusMemberProfileLoading() {
     <section
       aria-busy="true"
       aria-label="Üye profili yükleniyor"
-      className="min-h-[calc(100svh-4rem)] bg-[#0a0d16] p-4 sm:p-6 md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] bg-canvas p-4 sm:p-6 md:min-h-svh"
     >
       <div className="h-16 animate-pulse bg-white/8 motion-reduce:animate-none" />
       <div className="mt-5 flex gap-5">

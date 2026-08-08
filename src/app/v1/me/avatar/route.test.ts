@@ -10,6 +10,8 @@ import {
   requireActiveMember,
 } from "@/server/auth/authorization";
 import { AuthError } from "@/server/auth/errors";
+import { IMAGE_MULTIPART_MAX_BYTES } from "@/lib/upload-limits";
+import { encodeTestMultipartFormData } from "@/test/multipart";
 
 import { DELETE, POST } from "./route";
 
@@ -72,13 +74,16 @@ function configureEnvironment() {
   process.env.EMAIL_FROM = "KAMPUS Test <no-reply@kampus.local>";
 }
 
-function createUploadRequest(formData: FormData, origin = appOrigin) {
+async function createUploadRequest(formData: FormData, origin = appOrigin) {
+  const encoded = await encodeTestMultipartFormData(formData);
   const request = new NextRequest(`${appOrigin}/v1/me/avatar`, {
     method: "POST",
     headers: {
       Cookie: "kampus_session=m1.raw-token",
+      "Content-Type": encoded.contentType,
       Origin: origin,
     },
+    body: encoded.body,
   });
 
   vi.spyOn(request, "formData").mockResolvedValue(formData);
@@ -118,7 +123,7 @@ describe("POST /v1/me/avatar", () => {
       }),
     );
 
-    const response = await POST(createUploadRequest(formData));
+    const response = await POST(await createUploadRequest(formData));
 
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
@@ -137,9 +142,24 @@ describe("POST /v1/me/avatar", () => {
     formData.set("image", new File(["x"], "avatar.webp"));
     formData.set("ownerId", "someone-else");
 
-    const response = await POST(createUploadRequest(formData));
+    const response = await POST(await createUploadRequest(formData));
 
     expect(response.status).toBe(400);
+    expect(mockedUploadAccountAvatar).not.toHaveBeenCalled();
+  });
+
+  it("rejects a declared avatar body above the multipart ceiling", async () => {
+    const formData = new FormData();
+    formData.set("image", new File(["x"], "avatar.webp"));
+    const request = await createUploadRequest(formData);
+    request.headers.set(
+      "content-length",
+      String(IMAGE_MULTIPART_MAX_BYTES + 1),
+    );
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(413);
     expect(mockedUploadAccountAvatar).not.toHaveBeenCalled();
   });
 
@@ -148,7 +168,7 @@ describe("POST /v1/me/avatar", () => {
     formData.set("image", new File(["x"], "avatar.webp"));
 
     const response = await POST(
-      createUploadRequest(formData, "https://attacker.example"),
+      await createUploadRequest(formData, "https://attacker.example"),
     );
 
     expect(response.status).toBe(403);
@@ -167,7 +187,7 @@ describe("POST /v1/me/avatar", () => {
     const formData = new FormData();
     formData.set("image", new File(["x"], "avatar.webp"));
 
-    const response = await POST(createUploadRequest(formData));
+    const response = await POST(await createUploadRequest(formData));
 
     expect(response.status).toBe(401);
     expect(mockedUploadAccountAvatar).not.toHaveBeenCalled();

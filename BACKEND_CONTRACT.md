@@ -435,6 +435,9 @@ eşleşir. Kullanıcıya göre adreslenen uçlar `:id` değil `:username` alır.
 - `POST /v1/media` — multipart yükleme, WebP'ye yeniden kodlanır
 - `GET /v1/media/:id` — yetki kontrollü servis
 - `DELETE /v1/media/:id` — gönderiye bağlanmamış görseli siler
+- `POST /v1/media/documents` — PDF yükleme
+- `GET /v1/media/documents/:id` — yetki kontrollü, zorunlu indirme
+- `DELETE /v1/media/documents/:id` — gönderiye bağlanmamış PDF'i siler
 
 ### Takip ve engelleme
 
@@ -620,8 +623,16 @@ yoktur çünkü kullanıcı ve gönderi başına tekildirler, ancak genel tavana
 dahildirler. Gönderi başına toplam yorum tavanı 500'dür ve soft-delete
 kayıtlarını da sayar.
 
-Medya yüklemesinin kendi sınırı vardır: saatte 20 yükleme ve aynı anda en fazla
-5 gönderiye bağlanmamış görsel.
+Görsel ve PDF yüklemeleri aynı kotayı paylaşır: saatte 20 yükleme ve aynı anda
+en fazla 5 gönderiye bağlanmamış dosya. Son kota kontrolü ile asset rezervasyonu
+kullanıcı bazlı PostgreSQL advisory lock altında aynı transaction'da yapılır;
+eşzamanlı görsel/PDF istekleri kotayı birlikte aşamaz.
+
+Ham multipart gövdesi dosya parse edilmeden önce akıştan sayılır. Görsel ve
+avatar istekleri için sınır `1 MiB + 64 KiB multipart payı`, PDF için
+`8 MiB + 64 KiB multipart payı`dır; `Content-Length` bulunmayan chunked istekler
+de aynı sınıra tabidir. Next Proxy tamponu ayrıca istek başına 9 MiB ile
+sınırlıdır. Dosyanın kendi kesin sınırı görselde 1 MiB, PDF'te 8 MiB'dir.
 
 OTP: bir e-posta saatte en fazla beş, bir IP özeti saatte en fazla yirmi kod
 isteyebilir.
@@ -666,12 +677,12 @@ Tamamlandı:
 14. Kaydedilenler listesi
 15. Hız sınırları ve otomatik gizleme
 16. Development/test için idempotent seed script'i (`npm run db:seed`)
+17. Batch cleanup worker, object-storage reconciliation ve veri saklama
+    politikası (`DATA_RETENTION.md`)
 
 Kalan:
 
-17. Yüklenen görsellerde otomatik NSFW taraması
-18. Temizlik görevleri: süresi dolmuş OTP ve session, bağlanmamış medya, eski
-    bildirim ve `rate_limit_hits` kayıtları
+18. Yüklenen görsellerde otomatik NSFW taraması
 19. Production altyapısı: SMTP, S3, yedekleme, loglama, izleme
 20. Least-privileged PostgreSQL rolü ve migration/runtime ayrımı
 21. Tam kod güvenlik incelemesi

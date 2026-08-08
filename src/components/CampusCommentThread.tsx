@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
+import ActionStatusText from "@/components/ActionStatusText";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import CampusAuthorProfileLink from "@/components/CampusAuthorProfileLink";
@@ -10,9 +11,9 @@ import CampusCommentActions from "@/components/CampusCommentActions";
 import { useCampusData } from "@/components/CampusDataProvider";
 import CampusEmojiPicker from "@/components/CampusEmojiPicker";
 import CampusGif from "@/components/CampusGif";
-import { useFeedback } from "@/components/FeedbackProvider";
 import GiphyPicker from "@/components/GiphyPicker";
 import { campusButton } from "@/components/campusButtonStyles";
+import { useActionStatus } from "@/components/useActionStatus";
 import { useAutoGrowTextarea } from "@/components/useAutoGrowTextarea";
 import { formatCampusAbsoluteDateTime } from "@/content/adapter";
 import {
@@ -21,7 +22,7 @@ import {
 } from "@/data/campusPosts";
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40";
+  "outline-none focus-visible:ring-3 focus-visible:ring-brand/40";
 
 /**
  * Bir yorumu gönderi gibi açar: üstte hedef yorum, altında yanıtları ve
@@ -38,7 +39,7 @@ export default function CampusCommentThread({
   commentId: string;
 }) {
   const { isGuest } = useCampusAccount();
-  const { showToast } = useFeedback();
+  const [replyStatus, setReplyStatus] = useActionStatus();
   const { posts, isHydrated, addComment, loadPostDetail } = useCampusData();
   const [draft, setDraft] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -117,15 +118,15 @@ export default function CampusCommentThread({
       setIsEmojiPickerOpen(false);
       // Yanıt aşağıdaki listede beliriyor; ayrıca haber vermeye gerek yok.
     } catch {
-      showToast({ message: "Yanıt gönderilemedi.", tone: "error" });
+      setReplyStatus({ message: "Yanıt gönderilemedi.", tone: "error" });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <section className="min-h-full min-w-0 bg-[#0a0d16] text-white">
-      <header className="sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl">
+    <section className="min-h-full min-w-0 bg-canvas text-white">
+      <header className="sticky top-0 z-30 border-b border-white/12 bg-canvas/95 backdrop-blur-xl">
         <div className="flex min-h-16 items-center gap-4 px-3 sm:px-5">
           <Link
             href={`/gonderi/${postId}`}
@@ -241,7 +242,7 @@ export default function CampusCommentThread({
               type="checkbox"
               checked={isAnonymous}
               onChange={(event) => setIsAnonymous(event.target.checked)}
-              className="size-4 accent-[#ff7a45]"
+              className="size-4 accent-brand"
             />
             Anonim
           </label>
@@ -254,7 +255,7 @@ export default function CampusCommentThread({
               onClick={() =>
                 setIsEmojiPickerOpen((currentValue) => !currentValue)
               }
-              className={`grid size-11 place-items-center border border-white/12 text-lg transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+              className={`grid size-11 place-items-center border border-white/12 text-lg transition-colors hover:border-brand/35 hover:bg-brand/8 ${focusRing}`}
             >
               <span aria-hidden="true">☺</span>
             </button>
@@ -270,7 +271,7 @@ export default function CampusCommentThread({
               aria-label="Yanıta GIF ekle"
               aria-expanded={isGifPickerOpen}
               onClick={() => setIsGifPickerOpen((value) => !value)}
-              className={`grid size-11 place-items-center border border-white/12 text-[10px] font-black text-[#ff7a45] transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+              className={`grid size-11 place-items-center border border-white/12 text-[10px] font-black text-brand transition-colors hover:border-brand/35 hover:bg-brand/8 ${focusRing}`}
             >
               GIF
             </button>
@@ -289,6 +290,10 @@ export default function CampusCommentThread({
             {draft.length}/500
           </span>
         </div>
+
+        {replyStatus && (
+          <ActionStatusText status={replyStatus} className="mt-2" />
+        )}
       </form>
 
       {replies && replies.length > 0 ? (
@@ -352,7 +357,7 @@ function ThreadLoading() {
     >
       <span
         aria-hidden="true"
-        className="block size-7 animate-spin rounded-full border-2 border-white/14 border-t-[#ff7a45] motion-reduce:animate-none"
+        className="block size-7 animate-spin rounded-full border-2 border-white/14 border-t-[#ff6b3d] motion-reduce:animate-none"
       />
     </div>
   );

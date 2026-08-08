@@ -1,48 +1,37 @@
-import Link from "next/link";
+import GuestEntryButton from "@/components/GuestEntryButton";
+import HomepageTrackedLink from "@/components/HomepageTrackedLink";
 
 export default function ClosingCTA() {
   return (
     <section
       aria-labelledby="closing-title"
-      className="reveal-item relative overflow-hidden border-b border-white/10 bg-[#0a0d16] text-white"
+      className="border-b border-white/8 bg-canvas text-white"
     >
-      <div
-        aria-hidden="true"
-        className="paper-noise pointer-events-none absolute inset-0 opacity-[0.065]"
-      />
-
-      <div className="relative mx-auto grid w-full max-w-[1360px] gap-9 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[1fr_auto] lg:items-end lg:gap-20 lg:px-12 lg:py-24">
-        <div className="reveal-item">
-          <p className="mb-5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#ff7a45] sm:text-xs">
-            Sıra sende
-          </p>
+      <div className="mx-auto w-full max-w-[1180px] px-5 pb-16 sm:px-8 sm:pb-20 lg:px-10">
+        <div className="flex flex-col gap-5 rounded-2xl border border-white/9 bg-surface p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <h2
             id="closing-title"
-            className="max-w-4xl text-[clamp(2.65rem,7vw,6rem)] font-black leading-[0.92] tracking-[-0.06em]"
+            className="text-2xl font-semibold tracking-[-0.04em] sm:text-3xl"
           >
-            Kampüste konuşulanlara
-            <span className="block font-serif font-normal italic text-[#ff7a45]">
-              sen de katıl.
-            </span>
+            Kampüse katıl<span className="text-brand">.</span>
           </h2>
-        </div>
 
-        <div className="reveal-item lg:max-w-xs">
-          <Link
-            href="/kayit"
-            className="group flex min-h-14 w-full items-center justify-between gap-8 rounded-xl bg-white px-5 font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-4 focus-visible:ring-white/40 focus-visible:ring-offset-4 focus-visible:ring-offset-[#0a0d16] sm:w-fit lg:w-full"
-          >
-            Öğrenci e-postanla katıl
-            <span
-              aria-hidden="true"
-              className="transition-transform group-hover:-translate-y-0.5"
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <GuestEntryButton
+              analyticsSource="closing_guest"
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-5 text-sm font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65"
             >
-              ↑
-            </span>
-          </Link>
-          <p className="mt-4 text-sm leading-6 text-white/78">
-            @stu.yasar.edu.tr uzantılı öğrenci e-postanı doğrulaman yeterli.
-          </p>
+              Misafir olarak göz at <span aria-hidden="true">→</span>
+            </GuestEntryButton>
+            <HomepageTrackedLink
+              href="/kayit"
+              source="closing_register"
+              target="register"
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/14 px-5 text-sm font-semibold text-white outline-none transition-colors hover:border-white/28 hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-white"
+            >
+              Kayıt ol
+            </HomepageTrackedLink>
+          </div>
         </div>
       </div>
     </section>

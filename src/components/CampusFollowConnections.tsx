@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import { AuthClientError } from "@/auth/client";
+import ActionStatusText from "@/components/ActionStatusText";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import { campusButton } from "@/components/campusButtonStyles";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
@@ -18,7 +19,10 @@ import {
   type CampusFollowMember,
   useCampusFollow,
 } from "@/components/CampusFollowProvider";
-import { useFeedback } from "@/components/FeedbackProvider";
+import {
+  type ActionStatus,
+  useActionStatus,
+} from "@/components/useActionStatus";
 import { LOCAL_ACCOUNT_OWNER_ID } from "@/data/campusPosts";
 import {
   followMember,
@@ -47,7 +51,7 @@ type CampusFollowConnectionsProps = {
 };
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
+  "outline-none focus-visible:ring-3 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 function getProfileHref(
   member: FollowListMember,
@@ -104,7 +108,7 @@ function GuestFollowConnections({
 }: CampusFollowConnectionsProps) {
   const router = useRouter();
   const { sessionMode } = useCampusAccount();
-  const { showToast } = useFeedback();
+  const [status, setStatus] = useActionStatus();
   const {
     isHydrated,
     isFollowing,
@@ -121,9 +125,9 @@ function GuestFollowConnections({
 
   const handleFollowToggle = () => {
     if (sessionMode !== "member") {
-      showToast({
+      setStatus({
         message: "Takip etmek için giriş yapmalısın.",
-        tone: "info",
+        tone: "error",
         action: {
           label: "Giriş yap",
           onClick: () => router.push("/giris"),
@@ -137,7 +141,7 @@ function GuestFollowConnections({
       : follow(member);
 
     if (!changed) {
-      showToast({
+      setStatus({
         message: "Takip işlemi şu anda tamamlanamadı.",
         tone: "error",
       });
@@ -159,6 +163,7 @@ function GuestFollowConnections({
       followers={toFollowListMembers(getFollowers(member.authorId))}
       following={toFollowListMembers(getFollowing(member.authorId))}
       onFollowToggle={handleFollowToggle}
+      status={status}
     />
   );
 }
@@ -326,7 +331,7 @@ function MemberFollowConnections({
   isBlocked = false,
   isSuspended = false,
 }: CampusFollowConnectionsProps) {
-  const { showToast } = useFeedback();
+  const [status, setStatus] = useActionStatus();
   const state = useMemberFollowState(member.username);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -346,7 +351,7 @@ function MemberFollowConnections({
       }
       // Buton durumu değiştiği için ayrıca toast göstermiyoruz.
     } catch (error) {
-      showToast({
+      setStatus({
         message:
           error instanceof AuthClientError
             ? error.message
@@ -380,6 +385,7 @@ function MemberFollowConnections({
       onLoadMoreFollowers={state.loadMoreFollowers}
       onLoadMoreFollowing={state.loadMoreFollowing}
       onFollowToggle={() => void handleFollowToggle()}
+      status={status}
     />
   );
 }
@@ -405,6 +411,7 @@ function FollowConnectionsView({
   onLoadMoreFollowers,
   onLoadMoreFollowing,
   onFollowToggle,
+  status,
 }: {
   member: FollowListMember;
   isSelf: boolean;
@@ -426,6 +433,7 @@ function FollowConnectionsView({
   onLoadMoreFollowers?: () => Promise<void>;
   onLoadMoreFollowing?: () => Promise<void>;
   onFollowToggle: () => void;
+  status?: ActionStatus;
 }) {
   const { sessionMode } = useCampusAccount();
   const [activeList, setActiveList] = useState<FollowList | null>(null);
@@ -507,8 +515,8 @@ function FollowConnectionsView({
                edildiğinde aynı turuncunun soluk çerçeveli hali. */
             className={`inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full px-5 text-xs font-black transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${focusRing} ${
               followed
-                ? "border border-[#ff7a45]/45 bg-[#ff7a45]/16 text-[#ffb695] hover:bg-[#ff7a45]/22"
-                : "bg-[#ff7a45] text-[#12100e] hover:bg-[#ff8d5e]"
+                ? "border border-brand/45 bg-brand/16 text-[#ffa082] hover:bg-brand/22"
+                : "bg-brand text-[#101012] hover:bg-brand-hover"
             }`}
           >
             {followed ? "Takip ediliyor" : "Takip et"}
@@ -540,10 +548,12 @@ function FollowConnectionsView({
         </button>
       </div>
 
+      {status && <ActionStatusText status={status} className="mt-2" />}
+
       {activeList && (
         <div
           role="presentation"
-          className="fixed inset-0 z-[110] grid items-end bg-[#0a0d16]/70 p-0 backdrop-blur-[2px] sm:place-items-center sm:p-5"
+          className="fixed inset-0 z-[110] grid items-end bg-canvas/70 p-0 backdrop-blur-[2px] sm:place-items-center sm:p-5"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
               setActiveList(null);
@@ -554,11 +564,11 @@ function FollowConnectionsView({
             role="dialog"
             aria-modal="true"
             aria-labelledby="follow-list-title"
-            className="max-h-[min(78svh,42rem)] w-full overflow-hidden border border-white/12 bg-[#141720] text-white shadow-[0_24px_80px_rgba(0,0,0,0.45)] sm:max-w-md"
+            className="max-h-[min(78svh,42rem)] w-full overflow-hidden border border-white/12 bg-surface-raised text-white shadow-[0_20px_56px_rgba(0,0,0,0.32)] sm:max-w-md"
           >
             <header className="flex min-h-16 items-center justify-between border-b border-white/10 px-4">
               <div>
-                <p className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-[#ff7a45]">
+                <p className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-brand">
                   @{member.username}
                 </p>
                 <h2

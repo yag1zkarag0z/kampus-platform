@@ -19,14 +19,14 @@ export async function GET(
   context: RouteContext<"/v1/media/documents/[id]">,
 ) {
   try {
-    await requireActiveMember(request);
+    const member = await requireActiveMember(request);
     const { id } = await context.params;
-    const document = await getVisibleContentDocument(id);
+    const document = await getVisibleContentDocument(member.userId, id);
     const safeFileName = document.fileName.replaceAll('"', "'");
 
     return new Response(new Uint8Array(document.body), {
       headers: {
-        "Cache-Control": "private, max-age=3600",
+        "Cache-Control": "private, no-store",
         "Content-Type": document.contentType,
         // Satır içi değil, indirilerek açılsın: gömülü içerikli "polyglot"
         // bir PDF, aynı origin'de satır içi açılırsa tarayıcı çerezlerine

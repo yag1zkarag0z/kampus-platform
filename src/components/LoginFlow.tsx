@@ -4,11 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import {
-  AuthClientError,
-  startDevelopmentSession,
-  startGuestSession,
-} from "@/auth/client";
+import { AuthClientError, startGuestSession } from "@/auth/client";
 import {
   useVerificationCode,
   VerificationCodePanel,
@@ -19,7 +15,7 @@ type LoginStep = 1 | 2;
 const studentEmailPattern = /^\d+@stu\.yasar\.edu\.tr$/i;
 
 const inputClassName =
-  "auth-input h-12 w-full rounded-xl border border-white/12 bg-white/6 px-3.5 text-base text-white outline-none transition placeholder:text-white/40 hover:border-white/24 focus:border-[#ff7a45] focus:ring-3 focus:ring-[#ff7a45]/20";
+  "auth-input h-12 w-full rounded-xl border border-white/9 bg-surface px-3.5 text-base text-white outline-none transition placeholder:text-white/32 hover:border-white/18 focus:border-brand focus:ring-3 focus:ring-brand/18";
 
 export default function LoginFlow() {
   const router = useRouter();
@@ -30,7 +26,6 @@ export default function LoginFlow() {
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const [complete, setComplete] = useState(false);
   const [isOpeningGuestView, setIsOpeningGuestView] = useState(false);
-  const [isOpeningDevelopmentAccount, setIsOpeningDevelopmentAccount] = useState(false);
   const verification = useVerificationCode("login");
 
   useEffect(() => {
@@ -141,28 +136,9 @@ export default function LoginFlow() {
     }
   };
 
-  const continueAsDeveloper = async () => {
-    if (isOpeningDevelopmentAccount) return;
-
-    setMessage(null);
-    setIsOpeningDevelopmentAccount(true);
-
-    try {
-      await startDevelopmentSession();
-      router.push("/akis");
-    } catch (error) {
-      setMessage(
-        error instanceof AuthClientError
-          ? error.message
-          : "Geliştirici hesabı açılamadı.",
-      );
-      setIsOpeningDevelopmentAccount(false);
-    }
-  };
-
   return (
-    <div className="mx-auto w-full max-w-[31rem] overflow-hidden rounded-[1.6rem] border border-white/12 bg-[#141720]/94 shadow-[0_28px_80px_rgba(0,0,0,0.4)] backdrop-blur-xl">
-      <div className="border-b border-white/10 px-5 py-5 sm:px-7">
+    <div className="mx-auto w-full max-w-[31rem] overflow-hidden rounded-2xl border border-white/9 bg-surface">
+      <div className="border-b border-white/10 px-5 py-4 sm:px-6">
         <ol className="grid grid-cols-2 gap-2" aria-label="Giriş adımları">
           {["E-posta", "Giriş kodu"].map((label, index) => {
             const number = index + 1;
@@ -172,10 +148,10 @@ export default function LoginFlow() {
             return (
               <li
                 key={label}
-                className={`border-t-2 pt-2 text-[10px] font-bold transition-colors ${
+                className={`rounded-full border px-3 py-2 text-center text-[10px] font-bold transition-colors ${
                   isCurrent || isDone
-                    ? "border-[#ff7a45] text-white"
-                    : "border-white/10 text-white/45"
+                    ? "border-brand/45 bg-brand/10 text-[#ff8968]"
+                    : "border-white/8 text-white/35"
                 }`}
                 aria-current={isCurrent ? "step" : undefined}
               >
@@ -186,11 +162,11 @@ export default function LoginFlow() {
         </ol>
       </div>
 
-      <div className="px-5 py-6 sm:px-7 sm:py-7">
+      <div className="px-5 py-6 sm:px-6 sm:py-7">
         {sessionNotice && !complete && (
           <div
             role="status"
-            className="mb-5 border border-[#ff7a45]/25 bg-[#ff7a45]/9 px-3.5 py-3 text-xs font-bold leading-5 text-[#ffb18c]"
+            className="mb-5 border border-brand/25 bg-brand/9 px-3.5 py-3 text-xs font-bold leading-5 text-[#ff9e80]"
           >
             {sessionNotice}
           </div>
@@ -199,28 +175,27 @@ export default function LoginFlow() {
           <div aria-live="polite">
             <span
               aria-hidden="true"
-              className="grid size-11 place-items-center rounded-full bg-[#ff7a45] text-[#12100e]"
+              className="grid size-11 place-items-center rounded-full bg-brand text-[#101012]"
             >
               ✓
             </span>
-            <h2 className="mt-5 text-3xl font-black tracking-[-0.045em]">
+            <h2 className="mt-5 text-3xl font-semibold tracking-[-0.045em]">
               Giriş tamamlandı.
             </h2>
             <Link
               href="/akis"
-              className="mt-7 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-white px-4 text-sm font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40"
+              className="mt-7 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-brand px-4 text-sm font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35"
             >
               Akışa geç
             </Link>
           </div>
         ) : step === 1 ? (
           <form onSubmit={submitEmail} noValidate>
-            <h2 className="text-2xl font-black tracking-[-0.04em] sm:text-3xl">
-              Tekrar hoş geldin.
+            <h2 className="text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">
+              Öğrenci e-postan.
             </h2>
             <p className="mt-3 text-sm leading-6 text-white/62">
-              Öğrenci e-postana beş dakika geçerli tek kullanımlık bir kod
-              göndereceğiz.
+              E-postana beş dakika geçerli tek kullanımlık bir kod göndereceğiz.
             </p>
 
             <label
@@ -253,7 +228,7 @@ export default function LoginFlow() {
             <button
               type="submit"
               disabled={verification.isRequesting}
-              className="mt-2 inline-flex min-h-12 w-fit items-center justify-center rounded-xl bg-white px-6 text-sm font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40"
+              className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-brand px-6 text-sm font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65"
             >
               {verification.isRequesting
                 ? "Kod gönderiliyor…"
@@ -262,8 +237,8 @@ export default function LoginFlow() {
           </form>
         ) : (
           <form onSubmit={submitCode} noValidate>
-            <h2 className="text-2xl font-black tracking-[-0.04em] sm:text-3xl">
-              Giriş kodunu yaz.
+            <h2 className="text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">
+              Giriş kodu.
             </h2>
             <p className="mt-3 text-sm leading-6 text-white/62">
               6 haneli kodu{" "}
@@ -350,7 +325,7 @@ export default function LoginFlow() {
                 verification.isResending ||
                 verification.isVerifying
               }
-              className="mt-5 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-white px-4 text-sm font-bold text-[#12100e] outline-none transition-colors hover:bg-white/90 focus-visible:ring-3 focus-visible:ring-white/40 disabled:cursor-not-allowed disabled:opacity-55"
+              className="mt-5 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-brand px-4 text-sm font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:opacity-55"
             >
               {verification.isVerifying ? "Doğrulanıyor…" : "Giriş yap"}
               <span aria-hidden="true">→</span>
@@ -373,16 +348,7 @@ export default function LoginFlow() {
       </div>
 
       {!complete && (
-        <div className="border-t border-white/10 bg-black/20 px-5 py-4 text-center text-[11px] text-white/55 sm:px-7">
-          <p>
-            Hesabın yok mu?{" "}
-            <Link
-              href="/kayit"
-              className="font-bold text-[#ff7a45] underline decoration-[#ff7a45]/35 underline-offset-4"
-            >
-              Kayıt ol
-            </Link>
-          </p>
+        <div className="border-t border-white/8 px-5 py-4 sm:px-6">
           <button
             type="button"
             onClick={() => {
@@ -390,26 +356,22 @@ export default function LoginFlow() {
             }}
             disabled={isOpeningGuestView}
             aria-busy={isOpeningGuestView}
-            className="mt-3 min-h-11 w-full rounded-xl border border-white/12 px-4 text-xs font-black text-white transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8"
+            className="group inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white/[0.04] px-4 font-sans text-[16px] font-normal leading-none tracking-normal text-white/68 outline-none transition-colors hover:bg-white/[0.075] hover:text-white focus-visible:ring-2 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-60"
           >
-            {isOpeningGuestView
-              ? "Misafir görünümü açılıyor…"
-              : "Misafir olarak göz at"}
+            <span>
+              {isOpeningGuestView
+                ? "Misafir oturumu açılıyor…"
+                : "Misafir olarak göz at"}
+            </span>
+            {!isOpeningGuestView && (
+              <span
+                aria-hidden="true"
+                className="text-white/35 transition-transform group-hover:translate-x-0.5 group-hover:text-white/70"
+              >
+                →
+              </span>
+            )}
           </button>
-          {process.env.NODE_ENV !== "production" &&
-            process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === "true" && (
-            <button
-              type="button"
-              onClick={() => void continueAsDeveloper()}
-              disabled={isOpeningDevelopmentAccount}
-              aria-busy={isOpeningDevelopmentAccount}
-              className="mt-2 min-h-11 w-full rounded-xl border border-[#ff7a45]/30 bg-[#ff7a45]/8 px-4 text-xs font-black text-[#ffb18c] transition-colors hover:bg-[#ff7a45]/14"
-            >
-              {isOpeningDevelopmentAccount
-                ? "Test hesabı açılıyor…"
-                : "Geliştirici hesabıyla giriş yap"}
-            </button>
-          )}
         </div>
       )}
     </div>
@@ -422,7 +384,7 @@ function FormMessage({ message }: { message: string | null }) {
       id="login-message"
       role={message ? "alert" : "status"}
       aria-live={message ? "assertive" : "polite"}
-      className={`text-xs font-medium leading-5 text-[#ffb199] ${
+      className={`text-xs font-medium leading-5 text-danger ${
         message ? "mt-2" : ""
       }`}
     >

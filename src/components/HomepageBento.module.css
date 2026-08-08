@@ -1,0 +1,437 @@
+.section {
+  background: var(--canvas);
+}
+
+.bentoCard {
+  --card-border: rgb(255 255 255 / 11%);
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--card-border);
+  border-radius: 1.25rem;
+  background: var(--surface);
+  box-shadow: none;
+  contain: layout paint;
+  transition: border-color 180ms ease;
+}
+
+.bentoCard:hover,
+.bentoCard:focus-within {
+  border-color: var(--border-strong);
+}
+
+.cardContent {
+  position: relative;
+  z-index: 1;
+  height: 16.75rem;
+  overflow: hidden;
+}
+
+.cardFooter {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.25rem;
+  padding: 0.7rem 1rem;
+  border-top: 1px solid rgb(255 255 255 / 8%);
+  background: var(--surface-raised);
+}
+
+.notificationViewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  padding: 0.9rem;
+}
+
+.notificationRail {
+  display: grid;
+  animation: notificationFall 16s linear infinite;
+  will-change: transform;
+}
+
+.notificationGroup {
+  display: grid;
+  gap: 0.7rem;
+  padding-block: 0.35rem;
+}
+
+.notificationItem {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  min-height: 4.35rem;
+  padding: 0.7rem;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 1rem;
+  background: var(--surface-raised);
+  box-shadow: none;
+}
+
+.notificationItem::after {
+  position: absolute;
+  top: 50%;
+  right: 0.45rem;
+  width: 0.28rem;
+  height: 0.28rem;
+  border-radius: 999px;
+  background: var(--brand);
+  content: "";
+  transform: translateY(-50%);
+}
+
+.bentoCard:hover .notificationRail,
+.bentoCard:focus-within .notificationRail {
+  animation-play-state: paused;
+}
+
+@keyframes notificationFall {
+  from {
+    transform: translateY(-50%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+.composerSurface {
+  position: absolute;
+  inset: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 1rem;
+  background: var(--surface-raised);
+  box-shadow: none;
+}
+
+.composerBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 0.8rem;
+}
+
+.typingLine {
+  display: block;
+  width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  border-right: 2px solid var(--brand);
+  color: rgb(255 255 255 / 88%);
+  white-space: nowrap;
+  animation:
+    composeTyping 7.2s steps(30, end) infinite,
+    cursorBlink 680ms step-end infinite;
+}
+
+.composerOption {
+  animation: composerOptionPulse 7.2s ease-in-out infinite;
+}
+
+.composerToggle {
+  animation: composerToggle 7.2s ease-in-out infinite;
+}
+
+.composerSubmit {
+  animation: composerSubmit 7.2s ease-in-out infinite;
+}
+
+@keyframes composeTyping {
+  0%,
+  12% {
+    width: 0;
+  }
+
+  40%,
+  86% {
+    width: 29ch;
+  }
+
+  96%,
+  100% {
+    width: 0;
+  }
+}
+
+@keyframes cursorBlink {
+  50% {
+    border-color: transparent;
+  }
+}
+
+@keyframes composerOptionPulse {
+  0%,
+  45% {
+    border-color: rgb(255 255 255 / 10%);
+    background: transparent;
+    color: rgb(255 255 255 / 45%);
+  }
+
+  52%,
+  88% {
+    border-color: rgb(255 107 61 / 46%);
+    background: var(--brand-soft);
+    color: #ff8968;
+  }
+
+  96%,
+  100% {
+    border-color: rgb(255 255 255 / 10%);
+    background: transparent;
+    color: rgb(255 255 255 / 45%);
+  }
+}
+
+@keyframes composerToggle {
+  0%,
+  60% {
+    background: rgb(255 255 255 / 10%);
+    transform: translateX(0);
+  }
+
+  64%,
+  88% {
+    background: var(--brand);
+    transform: translateX(1rem);
+  }
+
+  96%,
+  100% {
+    background: rgb(255 255 255 / 10%);
+    transform: translateX(0);
+  }
+}
+
+@keyframes composerSubmit {
+  0%,
+  75% {
+    background: rgb(255 255 255 / 12%);
+    color: rgb(255 255 255 / 42%);
+    transform: scale(1);
+  }
+
+  78%,
+  88% {
+    background: var(--brand);
+    color: #101012;
+    transform: scale(1.04);
+  }
+
+  96%,
+  100% {
+    background: rgb(255 255 255 / 12%);
+    color: rgb(255 255 255 / 42%);
+    transform: scale(1);
+  }
+}
+
+.exploreCanvas {
+  position: absolute;
+  inset: 0;
+  padding: 1rem;
+  background: var(--surface);
+}
+
+.exploreCard {
+  position: absolute;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 1rem;
+  background: var(--surface-raised);
+  box-shadow: none;
+  transition: border-color 180ms ease;
+}
+
+.explorePrimary {
+  inset: 4.7rem 37% 1rem 1rem;
+}
+
+.exploreSecondary {
+  top: 4.7rem;
+  right: 1rem;
+  bottom: 52%;
+  left: 65%;
+}
+
+.exploreTertiary {
+  inset: 51% 1rem 1rem 65%;
+}
+
+.bentoCard:hover .explorePrimary,
+.bentoCard:focus-within .explorePrimary {
+  border-color: rgb(255 107 61 / 35%);
+}
+
+.followStage {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem 1rem 1.5rem;
+  container-type: size;
+  background: var(--surface);
+}
+
+.followDeck {
+  position: relative;
+  width: min(19rem, 88%);
+  height: min(16rem, calc(100% - 1rem));
+  min-height: 13.5rem;
+}
+
+.followBackCard {
+  position: absolute;
+  inset: 0.7rem -0.25rem -0.7rem 0.25rem;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 1.25rem;
+  background: var(--surface-raised);
+  transform: rotate(3deg) scale(0.96);
+}
+
+.followCard {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  touch-action: pan-y;
+  user-select: none;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 13%);
+  border-radius: 1.25rem;
+  background: var(--surface-hover);
+  box-shadow: none;
+  cursor: grab;
+  will-change: transform;
+}
+
+.followCard:active {
+  cursor: grabbing;
+}
+
+.decisionBadge {
+  position: absolute;
+  z-index: 5;
+  top: 1rem;
+  padding: 0.4rem 0.65rem;
+  border: 2px solid currentcolor;
+  border-radius: 0.65rem;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 100ms linear;
+}
+
+.followBadge {
+  left: 1rem;
+  color: var(--brand);
+  transform: rotate(-5deg);
+}
+
+.skipBadge {
+  right: 1rem;
+  color: rgb(255 255 255 / 70%);
+  transform: rotate(5deg);
+}
+
+.visibleBadge {
+  opacity: 1;
+}
+
+@container (max-height: 320px) {
+  .followProfileBody {
+    padding-block: 0.6rem;
+  }
+
+  .followActions {
+    padding-block: 0.55rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .cardContent {
+    height: 17rem;
+  }
+
+  .cardFooter {
+    padding-inline: 1.2rem;
+  }
+}
+
+@media (max-width: 639px) {
+  .cardContent {
+    height: clamp(17rem, 88vw, 19rem);
+  }
+
+  .explorePrimary {
+    right: 35%;
+  }
+
+  .exploreSecondary,
+  .exploreTertiary {
+    left: 67%;
+  }
+
+  .followStage {
+    padding: 0.75rem;
+  }
+
+  .followDeck {
+    width: min(17rem, 94%);
+    height: min(16rem, calc(100% - 0.5rem));
+    min-height: 13.5rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .followDeck {
+    width: 96%;
+  }
+
+  .followProfileBody {
+    padding-inline: 0.85rem;
+  }
+
+  .followActions {
+    gap: 0.4rem;
+    padding-inline: 0.55rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bentoCard,
+  .exploreCard,
+  .decisionBadge,
+  .followCard {
+    transition: none;
+    transform: none;
+  }
+
+  .followCard {
+    transition: none !important;
+    transform: none !important;
+    will-change: auto;
+  }
+
+  .notificationRail,
+  .typingLine,
+  .composerOption,
+  .composerToggle,
+  .composerSubmit {
+    animation: none;
+  }
+
+  .typingLine {
+    width: 29ch;
+    border-right: 0;
+  }
+}

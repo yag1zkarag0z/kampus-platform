@@ -22,12 +22,12 @@ export default function CampusListingMeta({
     /* İlan kartı fiyatıyla ayrışsın: akışta bir ilanı sohbetten ayıran ilk
        şey fiyat, o yüzden kendi yüzeyinde ve büyük gösteriliyor. */
     <div
-      className={`flex flex-wrap items-center gap-2 border border-[#ff7a45]/30 bg-[#ff7a45]/[0.07] px-3 py-2.5 ${
+      className={`flex flex-wrap items-center gap-2 border border-brand/30 bg-brand/[0.07] px-3 py-2.5 ${
         variant === "detail" ? "mt-5" : "mt-3"
       }`}
     >
       <p
-        className={`mr-1 font-black tracking-[-0.03em] text-[#ff7a45] ${
+        className={`mr-1 font-black tracking-[-0.03em] text-brand ${
           variant === "detail"
             ? "text-3xl sm:text-4xl"
             : variant === "compact"

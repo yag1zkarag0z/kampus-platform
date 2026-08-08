@@ -4,11 +4,12 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import ActionStatusText from "@/components/ActionStatusText";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import FollowSuggestionDeck from "@/components/FollowSuggestionDeck";
 import { useCampusFollow } from "@/components/CampusFollowProvider";
-import { useFeedback } from "@/components/FeedbackProvider";
+import { useActionStatus } from "@/components/useActionStatus";
 import {
   campusFollowMembers,
   type CampusFollowMember,
@@ -31,7 +32,7 @@ type SuggestionEntry = {
 };
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
+  "outline-none focus-visible:ring-3 focus-visible:ring-brand/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 function toEntryFromMock(member: CampusFollowMember): SuggestionEntry {
   return {
@@ -137,7 +138,7 @@ function FollowButton({
   onFollowed: () => void;
 }) {
   const router = useRouter();
-  const { showToast } = useFeedback();
+  const [status, setStatus] = useActionStatus();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleFollowClick = async () => {
@@ -146,9 +147,9 @@ function FollowButton({
     }
 
     if (sessionMode !== "member") {
-      showToast({
+      setStatus({
         message: "Takip etmek için giriş yapmalısın.",
-        tone: "info",
+        tone: "error",
         action: {
           label: "Giriş yap",
           onClick: () => router.push("/giris"),
@@ -164,7 +165,7 @@ function FollowButton({
       // Buton durumu değiştiği için ayrıca toast göstermiyoruz.
       onFollowed();
     } catch {
-      showToast({
+      setStatus({
         message: "Takip işlemi şu anda tamamlanamadı.",
         tone: "error",
       });
@@ -176,30 +177,39 @@ function FollowButton({
   const label = isFollowed ? "Takip edildi" : "Takip et";
 
   return (
-    <button
-      type="button"
-      disabled={isSubmitting || isFollowed}
-      aria-label={`${entry.displayName} kullanıcısını ${label.toLocaleLowerCase("tr-TR")}`}
-      onClick={() => void handleFollowClick()}
-      className={
-        compact
-          ? // Buton değil, düz metin bağlantısı: X'teki gibi kutusuz, yalnızca
-            // renkle ayrışıyor.
-            `inline-flex min-h-10 shrink-0 items-center justify-center px-1 text-sm font-black transition-colors disabled:cursor-default ${focusRing} ${
-              isFollowed
-                ? "text-white/40"
-                : "text-[#ff7a45] hover:text-[#ff8d5e]"
-            }`
-          : `inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-black transition-colors disabled:cursor-default ${focusRing} ${
-              isFollowed
-                ? "border border-[#ff7a45]/45 bg-[#ff7a45]/16 text-[#ffb695]"
-                : "bg-[#ff7a45] text-[#12100e] hover:bg-[#ff8d5e] disabled:opacity-50"
-            }`
-      }
-    >
-      {!compact && (isFollowed ? <CheckIcon /> : <PersonPlusIcon />)}
-      {label}
-    </button>
+    <span className="relative inline-flex shrink-0">
+      <button
+        type="button"
+        disabled={isSubmitting || isFollowed}
+        aria-label={`${entry.displayName} kullanıcısını ${label.toLocaleLowerCase("tr-TR")}`}
+        onClick={() => void handleFollowClick()}
+        className={
+          compact
+            ? // Buton değil, düz metin bağlantısı: X'teki gibi kutusuz, yalnızca
+              // renkle ayrışıyor.
+              `inline-flex min-h-10 shrink-0 items-center justify-center px-1 text-sm font-black transition-colors disabled:cursor-default ${focusRing} ${
+                isFollowed
+                  ? "text-white/40"
+                  : "text-brand hover:text-brand-hover"
+              }`
+            : `inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-black transition-colors disabled:cursor-default ${focusRing} ${
+                isFollowed
+                  ? "border border-brand/45 bg-brand/16 text-[#ffa082]"
+                  : "bg-brand text-[#101012] hover:bg-brand-hover disabled:opacity-50"
+              }`
+        }
+      >
+        {!compact && (isFollowed ? <CheckIcon /> : <PersonPlusIcon />)}
+        {label}
+      </button>
+
+      {status && (
+        <ActionStatusText
+          status={status}
+          className="absolute top-full right-0 z-10 mt-1 w-max max-w-56 text-right"
+        />
+      )}
+    </span>
   );
 }
 
@@ -311,7 +321,7 @@ export default function FollowSuggestions({
         {suggestions.length > 0 && (
           <Link
             href="/takip"
-            className={`shrink-0 text-sm font-bold text-[#ff7a45] transition-colors hover:text-[#ff8d5e] ${focusRing}`}
+            className={`shrink-0 text-sm font-bold text-brand transition-colors hover:text-brand-hover ${focusRing}`}
           >
             Tümünü gör
           </Link>
@@ -341,7 +351,7 @@ export default function FollowSuggestions({
 
 export function FollowSuggestionsPage() {
   const router = useRouter();
-  const { showToast } = useFeedback();
+  const [deckStatus, setDeckStatus] = useActionStatus();
   const { sessionMode } = useCampusAccount();
   const guest = useGuestSuggestedMembers(20);
   const real = useRealSuggestedMembers(20, sessionMode);
@@ -362,7 +372,7 @@ export function FollowSuggestionsPage() {
       await followMember(entry.username);
       markFollowed(entry.id);
     } catch {
-      showToast({
+      setDeckStatus({
         message: "Takip işlemi şu anda tamamlanamadı.",
         tone: "error",
       });
@@ -373,13 +383,13 @@ export function FollowSuggestionsPage() {
     <section
       aria-labelledby="follow-suggestions-page-title"
       aria-busy={!isHydrated}
-      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] min-w-0 bg-canvas text-white md:min-h-svh"
     >
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0a0d16]/95 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-canvas/95 backdrop-blur-xl">
         <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 sm:px-6">
           <span aria-hidden="true" />
           <div className="min-w-0 justify-self-center text-center">
-            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[#ff9a72]">
+            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[#ff8968]">
               Topluluk
             </p>
             <h1
@@ -418,6 +428,12 @@ export function FollowSuggestionsPage() {
               canFollow={isMember}
               onFollow={followFromDeck}
             />
+            {deckStatus && (
+              <ActionStatusText
+                status={deckStatus}
+                className="mt-3 text-center"
+              />
+            )}
           </div>
 
         </div>
@@ -435,14 +451,14 @@ function SuggestionsLoading() {
       aria-label="Öneriler yükleniyor"
       className="px-3 py-4 sm:px-5 sm:py-6 lg:px-6"
     >
-      <div className="h-64 animate-pulse rounded-[1.6rem] border border-white/8 bg-white/[0.025] motion-reduce:animate-none" />
+      <div className="h-64 animate-pulse rounded-2xl border border-white/8 bg-white/[0.025] motion-reduce:animate-none" />
       <div className="mt-7 h-5 w-44 animate-pulse rounded-full bg-white/6 motion-reduce:animate-none" />
       <div className="mt-4 grid gap-3 sm:grid-cols-2 sm:gap-4">
         {Array.from({ length: 6 }, (_, index) => (
           <span
             key={index}
             aria-hidden="true"
-            className="h-60 animate-pulse rounded-[1.35rem] border border-white/8 bg-white/[0.025] motion-reduce:animate-none"
+            className="h-60 animate-pulse rounded-2xl border border-white/8 bg-white/[0.025] motion-reduce:animate-none"
           />
         ))}
       </div>
@@ -457,7 +473,7 @@ function NoSuggestionsEmptyState() {
       <div className="max-w-sm">
         <span
           aria-hidden="true"
-          className="mx-auto grid size-12 place-items-center rounded-full border border-white/12 bg-white/[0.025] text-[#ff9a72]"
+          className="mx-auto grid size-12 place-items-center rounded-full border border-white/12 bg-white/[0.025] text-[#ff8968]"
         >
           <SparkIcon />
         </span>

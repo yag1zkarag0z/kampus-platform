@@ -16,11 +16,14 @@ export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
-  globalSetup: "./e2e/global-setup.ts",
-  globalTeardown: "./e2e/global-teardown.ts",
   retries: process.env.CI ? 2 : 0,
   workers: 1,
-  reporter: process.env.CI ? "github" : "list",
+  reporter: process.env.CI
+    ? [
+        ["github"],
+        ["html", { open: "never", outputFolder: "playwright-report" }],
+      ]
+    : "list",
   expect: {
     timeout: 10_000,
   },
@@ -31,8 +34,8 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   webServer: {
-    command: `npm run dev -- --webpack --hostname ${hostname} --port ${port}`,
-    url: baseURL,
+    command: `node ./node_modules/next/dist/bin/next dev --hostname ${hostname} --port ${port}`,
+    port: Number(port),
     env: {
       APP_ORIGIN: baseURL,
       DATABASE_URL: e2eDatabaseUrl,
@@ -49,6 +52,16 @@ export default defineConfig({
     {
       name: "mobile-chromium",
       use: { ...devices["Pixel 7"] },
+    },
+    {
+      name: "webkit-homepage",
+      testMatch: "**/homepage-polish.spec.ts",
+      use: { ...devices["Desktop Safari"] },
+    },
+    {
+      name: "mobile-webkit-homepage",
+      testMatch: "**/homepage-polish.spec.ts",
+      use: { ...devices["iPhone 13"] },
     },
   ],
 });

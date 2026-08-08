@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import CampusCalendarWidget from "@/components/CampusCalendarWidget";
+import CampusTrendingTopics from "@/components/CampusTrendingTopics";
 import FollowSuggestions from "@/components/FollowSuggestions";
 
 const STORAGE_KEY = "kampus-right-rail-open";
@@ -52,12 +52,12 @@ export default function PlatformRightRail() {
   };
 
   return (
-    <div className="sticky top-0 space-y-3 p-3">
+    <div className="sticky top-0 space-y-3 p-3 2xl:pr-2 2xl:pl-6">
       {/* Takvim önce: kayıt ve sınav tarihleri zamana duyarlı, kaçırılırsa
           telafisi yok. Takip önerisi her zaman geçerli, altta kalabilir. */}
       <div id="platform-right-rail-content" hidden={!isOpen}>
-        <div className="space-y-12">
-          <CampusCalendarWidget />
+        <div className="space-y-5">
+          <CampusTrendingTopics />
           <FollowSuggestions />
         </div>
       </div>
@@ -65,7 +65,7 @@ export default function PlatformRightRail() {
       <footer className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 pb-2">
         <Link
           href="/sozlesme"
-          className="min-h-9 py-2 text-[11px] font-semibold text-white/40 outline-none transition-colors hover:text-white/70 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40"
+          className="min-h-9 py-2 text-[11px] font-semibold text-white/40 outline-none transition-colors hover:text-white/70 focus-visible:ring-3 focus-visible:ring-brand/40"
         >
           Kullanım sözleşmesi
         </Link>
@@ -76,7 +76,7 @@ export default function PlatformRightRail() {
           aria-expanded={isOpen}
           aria-controls="platform-right-rail-content"
           onClick={toggle}
-          className="flex min-h-9 cursor-pointer items-center gap-1.5 py-2 text-[11px] font-semibold text-white/40 outline-none transition-colors hover:text-white/70 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40"
+          className="flex min-h-9 cursor-pointer items-center gap-1.5 py-2 text-[11px] font-semibold text-white/40 outline-none transition-colors hover:text-white/70 focus-visible:ring-3 focus-visible:ring-brand/40"
         >
           {isOpen ? "Paneli gizle" : "Paneli göster"}
           <span

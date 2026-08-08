@@ -1,23 +1,23 @@
 import Link from "next/link";
 
 import CampusLogo from "@/components/CampusLogo";
-import HeroParticles, {
-  createHeroParticles,
-} from "@/components/HeroParticles";
+import styles from "./SiteFooter.module.css";
 
-const footerParticles = createHeroParticles(18, 0x1c2821);
+const footerLinks = [
+  { href: "/#kampus-nabzi", label: "Özellikler" },
+  { href: "/nasil-calisir", label: "Nasıl çalışır?" },
+  { href: "/guvenlik", label: "Güvenlik" },
+  { href: "/sss", label: "SSS" },
+  { href: "/sozlesme", label: "Kullanım sözleşmesi" },
+];
+
+const independenceNotice =
+  "Bağımsız öğrenci projesi. Yaşar Üniversitesi’nin resmî platformu değildir.";
 
 export default function SiteFooter() {
   return (
-    <footer className="relative overflow-hidden bg-[#0a0d16] text-white">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_120%_at_15%_0%,rgba(255,122,69,0.1)_0%,transparent_55%)]"
-      />
-
-      <HeroParticles particles={footerParticles} />
-
-      <div className="relative mx-auto w-full max-w-[1360px] px-5 py-8 sm:px-8 sm:py-10 lg:px-12">
+    <footer className="bg-canvas text-white">
+      <div className="mx-auto w-full max-w-[1180px] px-5 py-8 sm:px-8 sm:py-10 lg:px-10">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <Link
             href="/"
@@ -32,59 +32,40 @@ export default function SiteFooter() {
 
           <nav
             aria-label="Alt menü"
-            className="flex flex-wrap gap-x-5 gap-y-3 text-xs font-bold text-white/65"
+            className="flex flex-wrap gap-x-5 gap-y-3 text-xs font-semibold text-white/52"
           >
-            <Link
-              href="/#kampus-nabzi"
-              className="outline-none transition-colors hover:text-[#ff7a45] focus-visible:rounded focus-visible:ring-2 focus-visible:ring-white"
-            >
-              Kampüs Nabzı
-            </Link>
-            <Link
-              href="/#nasil-calisir"
-              className="outline-none transition-colors hover:text-[#ff7a45] focus-visible:rounded focus-visible:ring-2 focus-visible:ring-white"
-            >
-              Nasıl çalışır?
-            </Link>
-            <Link
-              href="/#guvenlik"
-              className="outline-none transition-colors hover:text-[#ff7a45] focus-visible:rounded focus-visible:ring-2 focus-visible:ring-white"
-            >
-              Güvenlik
-            </Link>
-            <Link
-              href="/#sss"
-              className="outline-none transition-colors hover:text-[#ff7a45] focus-visible:rounded focus-visible:ring-2 focus-visible:ring-white"
-            >
-              SSS
-            </Link>
-            <Link
-              href="/sozlesme"
-              className="outline-none transition-colors hover:text-[#ff7a45] focus-visible:rounded focus-visible:ring-2 focus-visible:ring-white"
-            >
-              Kullanım Sözleşmesi
-            </Link>
+            {footerLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="outline-none transition-colors hover:text-white focus-visible:rounded focus-visible:ring-2 focus-visible:ring-white"
+              >
+                {item.label}
+              </Link>
+            ))}
           </nav>
         </div>
 
-        <div className="mt-7 flex flex-col gap-4 border-t border-white/10 pt-5 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
-          <p className="max-w-3xl text-[11px] leading-5 text-white/65 sm:text-xs">
-            KAMPÜS bağımsız bir öğrenci projesidir.{" "}
-            <strong className="font-bold text-[#ff7a45]">
-              Yaşar Üniversitesi’nin resmî platformu değildir.
-            </strong>{" "}
-            Üniversite tarafından işletilmez veya desteklenmez.
+        <div className="mt-7 flex flex-col gap-3 border-t border-white/10 pt-5 text-[11px] leading-5 text-white/38 sm:flex-row sm:items-center sm:justify-between sm:text-xs">
+          <p className={`${styles.independenceNotice} max-w-2xl`}>
+            {independenceNotice}
           </p>
-
-          <p className="shrink-0 text-[11px] leading-5 text-white/60 sm:text-xs lg:text-right">
-            © 2026 KAMPÜS. //{" "}
+          <p className="flex shrink-0 items-center gap-1.5 text-white/38">
+            <span>© 2026 KAMPÜS</span>
+            <span aria-hidden="true" className="text-white/20">
+              ·
+            </span>
             <a
               href="https://www.yagizkaragoz.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-bold text-white outline-none transition-colors hover:text-[#ff7a45] focus-visible:rounded focus-visible:ring-2 focus-visible:ring-white"
+              aria-label="Yağız Karagöz kişisel web sitesi (yeni sekmede açılır)"
+              className={styles.signatureLink}
             >
-              Yağız Karagöz
+              <span>Yağız Karagöz</span>
+              <span aria-hidden="true" className={styles.signatureArrow}>
+                ↗
+              </span>
             </a>
           </p>
         </div>

@@ -29,11 +29,15 @@ import type {
   ContentPostDto,
 } from "@/content/types";
 import { AuthError } from "@/server/auth/errors";
+import {
+  commentInteractableByViewer,
+  commentVisibleToViewer,
+  postVisibleToViewer,
+} from "@/server/content/visibility";
 import { getDatabase } from "@/server/db/client";
 import { getMediaStorage } from "@/server/media/storage";
 import { resolveGiphyGif } from "@/server/giphy/client";
 import { consumeRateLimit } from "@/server/rate-limit/service";
-import { noBlockBetween } from "@/server/social/blocking";
 import {
   recordCommentNotification,
   recordLikeNotification,
@@ -265,17 +269,7 @@ async function assertActiveContentMember(
   }
 }
 
-/**
- * Otomatik gizlenmiş gönderi listelerde ve doğrudan URL'de görünmez; yalnızca
- * yazarı "inceleme altında" olarak görmeye devam eder. Kural tek yerde
- * tanımlı ki yeni bir sorgu eklendiğinde atlanmasın.
- */
-function notHiddenFromViewer(viewerId: string): SQL {
-  return sql`(
-    ${posts.hiddenAt} is null or ${posts.authorId} = ${viewerId}
-  )`;
-}
-
+/** Lock and return a post only after applying the canonical read policy. */
 async function assertActivePostForInteraction(
   transaction: ContentTransaction,
   postId: string,
@@ -288,10 +282,7 @@ async function assertActivePostForInteraction(
     .where(
       and(
         eq(posts.id, postId),
-        isNull(posts.deletedAt),
-        isNull(users.deletedAt),
-        noBlockBetween(viewerId, posts.authorId),
-        notHiddenFromViewer(viewerId),
+        postVisibleToViewer(viewerId),
       ),
     )
     .for("share")
@@ -868,17 +859,13 @@ async function selectPost(
       and(
         eq(comments.postId, posts.id),
         isNull(comments.deletedAt),
-        noBlockBetween(viewerId, comments.authorId),
+        commentVisibleToViewer(viewerId),
       ),
     )
     .where(
       and(
         eq(posts.id, postId),
-        isNull(posts.deletedAt),
-        isNull(users.deletedAt),
-        // Doğrudan URL ile açılan gönderi de engellenmiş sayılır.
-        noBlockBetween(viewerId, posts.authorId),
-        notHiddenFromViewer(viewerId),
+        postVisibleToViewer(viewerId),
       ),
     )
     .groupBy(posts.id, users.id)
@@ -931,7 +918,7 @@ async function selectPostComments(
     .where(
       and(
         eq(comments.postId, postId),
-        noBlockBetween(viewerId, comments.authorId),
+        commentVisibleToViewer(viewerId),
       ),
     )
     .orderBy(asc(comments.createdAt), asc(comments.id));
@@ -942,11 +929,7 @@ export async function listContentPosts(
   query: FeedQueryInput,
 ) {
   const filters: SQL[] = [
-    isNull(posts.deletedAt),
-    notHiddenFromViewer(viewerId),
-    isNull(users.deletedAt),
-    eq(users.status, "active"),
-    noBlockBetween(viewerId, posts.authorId),
+    postVisibleToViewer(viewerId),
   ];
   const likeCount = sql<number>`(
     select count(*)::int
@@ -966,7 +949,7 @@ export async function listContentPosts(
       from ${comments}
       where ${comments.postId} = ${posts.id}
         and ${comments.deletedAt} is null
-        and ${noBlockBetween(viewerId, comments.authorId)}
+        and ${commentVisibleToViewer(viewerId)}
     ) * 2
   )`;
   const feedRank = query.sort === "trending" ? trendingScore : likeCount;
@@ -1097,7 +1080,7 @@ export async function listContentPosts(
         eq(comments.postId, posts.id),
         isNull(comments.deletedAt),
         // Sayaç, görüntüleyenin gerçekten görebildiği yorumları saymalı.
-        noBlockBetween(viewerId, comments.authorId),
+        commentVisibleToViewer(viewerId),
       ),
     )
     .where(and(...filters))
@@ -1148,11 +1131,7 @@ export async function listContentBookmarks(
 ) {
   const filters: SQL[] = [
     eq(postBookmarks.userId, viewerId),
-    isNull(posts.deletedAt),
-    notHiddenFromViewer(viewerId),
-    isNull(users.deletedAt),
-    eq(users.status, "active"),
-    noBlockBetween(viewerId, posts.authorId),
+    postVisibleToViewer(viewerId),
   ];
 
   if (query.cursor) {
@@ -1217,7 +1196,7 @@ export async function listContentBookmarks(
         eq(comments.postId, posts.id),
         isNull(comments.deletedAt),
         // Sayaç, görüntüleyenin gerçekten görebildiği yorumları saymalı.
-        noBlockBetween(viewerId, comments.authorId),
+        commentVisibleToViewer(viewerId),
       ),
     )
     .where(and(...filters))
@@ -1854,7 +1833,14 @@ async function selectComment(
     })
     .from(comments)
     .innerJoin(users, eq(users.id, comments.authorId))
-    .where(eq(comments.id, commentId))
+    .innerJoin(posts, eq(posts.id, comments.postId))
+    .where(
+      and(
+        eq(comments.id, commentId),
+        postVisibleToViewer(viewerId),
+        commentVisibleToViewer(viewerId),
+      ),
+    )
     .limit(1);
 
   return row ?? null;
@@ -1881,8 +1867,8 @@ export async function setContentCommentLike(
         and(
           eq(comments.id, commentId),
           isNull(comments.deletedAt),
-          isNull(posts.deletedAt),
-          noBlockBetween(viewerId, comments.authorId),
+          postVisibleToViewer(viewerId),
+          commentInteractableByViewer(viewerId),
         ),
       )
       .for("share")
@@ -1939,9 +1925,7 @@ export async function createContentComment(
         .where(
           and(
             eq(posts.id, postId),
-            isNull(posts.deletedAt),
-            isNull(users.deletedAt),
-            noBlockBetween(viewerId, posts.authorId),
+            postVisibleToViewer(viewerId),
           ),
         )
         .for("share")
@@ -1974,7 +1958,7 @@ export async function createContentComment(
             and(
               eq(comments.id, parentId),
               // Engellenen kullanıcının yorumuna yanıt verilemez.
-              noBlockBetween(viewerId, comments.authorId),
+              commentInteractableByViewer(viewerId),
             ),
           )
           .for("share")
@@ -2086,10 +2070,7 @@ export async function updateContentComment(
         and(
           eq(comments.id, commentId),
           isNull(comments.deletedAt),
-          isNull(posts.deletedAt),
-          isNull(users.deletedAt),
-          // Erişilemeyen bir gönderideki yorum üzerinde işlem yapılamaz.
-          noBlockBetween(viewerId, posts.authorId),
+          postVisibleToViewer(viewerId),
         ),
       )
       .for("update")
@@ -2149,10 +2130,7 @@ export async function deleteContentComment(
         and(
           eq(comments.id, commentId),
           isNull(comments.deletedAt),
-          isNull(posts.deletedAt),
-          isNull(users.deletedAt),
-          // Erişilemeyen bir gönderideki yorum üzerinde işlem yapılamaz.
-          noBlockBetween(viewerId, posts.authorId),
+          postVisibleToViewer(viewerId),
         ),
       )
       .for("update")

@@ -9,6 +9,7 @@ import {
   type FormEvent,
 } from "react";
 
+import ActionStatusText from "@/components/ActionStatusText";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import { campusButton } from "@/components/campusButtonStyles";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
@@ -28,7 +29,7 @@ import CampusPostImage from "@/components/CampusPostImage";
 import CampusGif from "@/components/CampusGif";
 import CampusEmojiPicker from "@/components/CampusEmojiPicker";
 import GiphyPicker from "@/components/GiphyPicker";
-import { useFeedback } from "@/components/FeedbackProvider";
+import { useActionStatus } from "@/components/useActionStatus";
 import { useAutoGrowTextarea } from "@/components/useAutoGrowTextarea";
 import { formatCampusAbsoluteDateTime } from "@/content/adapter";
 import {
@@ -44,12 +45,12 @@ import {
 } from "@/data/campusPosts";
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40";
+  "outline-none focus-visible:ring-3 focus-visible:ring-brand/40";
 
 
 export default function CampusPostDetail({ postId }: { postId: string }) {
   const router = useRouter();
-  const { showToast } = useFeedback();
+  const [loadStatus, setLoadStatus] = useActionStatus();
   const { isGuest } = useCampusAccount();
   const {
     posts,
@@ -100,7 +101,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
 
     void loadPostDetail(postId)
       .catch(() => {
-        showToast({
+        setLoadStatus({
           message: "Gönderi ayrıntıları yüklenemedi.",
           tone: "error",
         });
@@ -119,7 +120,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
     isHydrated,
     loadPostDetail,
     postId,
-    showToast,
+    setLoadStatus,
   ]);
 
   useEffect(() => {
@@ -209,10 +210,6 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
       // Yorum kutunun hemen altındaki listede beliriyor; toast tekrar olurdu.
     } catch {
       setFormMessage("Yorum gönderilemedi. Tekrar dene.");
-      showToast({
-        message: "Yorum gönderilemedi.",
-        tone: "error",
-      });
     } finally {
       setIsCommentSubmitting(false);
     }
@@ -231,8 +228,8 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
   }
 
   return (
-    <section className="min-h-full min-w-0 bg-[#0a0d16] text-white">
-      <header className="sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl">
+    <section className="min-h-full min-w-0 bg-canvas text-white">
+      <header className="sticky top-0 z-30 border-b border-white/12 bg-canvas/95 backdrop-blur-xl">
         {/* X'teki gibi sola yaslı: geri oku ve başlık yan yana. */}
         <div className="flex min-h-16 items-center gap-4 px-3 sm:px-5">
           <Link
@@ -253,6 +250,10 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
           </div>
         </div>
       </header>
+
+      {loadStatus && (
+        <ActionStatusText status={loadStatus} className="px-4 pt-3 sm:px-6" />
+      )}
 
       <article className="border-b border-white/10 px-4 py-6 sm:px-6 sm:py-7">
         <header className="flex items-start justify-between gap-4">
@@ -281,7 +282,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                 isAnonymous={post.isAnonymous}
                 ariaLabel={`${post.author} profilini aç`}
                 className="min-w-0"
-                linkClassName={`block truncate text-base font-black transition-colors hover:text-[#ff7a45] ${focusRing}`}
+                linkClassName={`block truncate text-base font-black transition-colors hover:text-brand ${focusRing}`}
               >
                 <span className="block truncate text-base font-black">
                   {post.author}
@@ -370,7 +371,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
               </span>
               <Link
                 href="/giris"
-                className={`inline-flex min-h-11 items-center px-3 text-xs font-black text-[#ff7a45] transition-colors hover:text-[#ff7a45]/80 ${focusRing}`}
+                className={`inline-flex min-h-11 items-center px-3 text-xs font-black text-brand transition-colors hover:text-brand/80 ${focusRing}`}
               >
                 Etkileşim için giriş yap
               </Link>
@@ -403,7 +404,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
               <Link
                 href={`/gonderi/${post.id}/yorum-yaz`}
                 aria-label={`Yorum yaz, ${post.commentCount ?? post.comments.length} yorum`}
-                className={`campus-pop-on-active inline-flex min-h-12 items-center gap-2.5 px-3 text-base font-bold text-white/54 transition-colors hover:text-[#ff7a45] ${focusRing}`}
+                className={`campus-pop-on-active inline-flex min-h-12 items-center gap-2.5 px-3 text-base font-bold text-white/54 transition-colors hover:text-brand ${focusRing}`}
               >
                 <CommentIcon />
                 <span>{post.commentCount ?? post.comments.length}</span>
@@ -421,8 +422,8 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                 onClick={() => toggleBookmark(post.id)}
                 className={`campus-pop-on-active grid size-12 shrink-0 place-items-center rounded-full transition-colors ${focusRing} ${
                   post.bookmarked
-                    ? "text-[#ff7a45]"
-                    : "text-white/48 hover:bg-white/6 hover:text-[#ff7a45]"
+                    ? "text-brand"
+                    : "text-white/48 hover:bg-white/6 hover:text-brand"
                 }`}
               >
                 <BookmarkIcon filled={post.bookmarked} />
@@ -440,7 +441,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
         aria-labelledby={commentsTitleId}
         className={`scroll-mt-44 px-4 pt-2 pb-8 transition-[background-color,box-shadow] duration-700 motion-reduce:duration-0 sm:px-6 sm:pt-3 md:scroll-mt-28 ${
           isNotificationTarget
-            ? "bg-[#ff7a45]/8 shadow-[inset_4px_0_0_#ff7a45]"
+            ? "bg-brand/8 shadow-[inset_4px_0_0_#ff6b3d]"
             : ""
         }`}
       >
@@ -553,7 +554,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                     type="checkbox"
                     checked={isAnonymous}
                     onChange={(event) => setIsAnonymous(event.target.checked)}
-                    className="size-4 accent-[#ff7a45]"
+                    className="size-4 accent-brand"
                   />
                   Anonim
                 </label>
@@ -566,7 +567,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                     onClick={() =>
                       setIsEmojiPickerOpen((currentValue) => !currentValue)
                     }
-                    className={`grid size-11 place-items-center border border-white/12 text-lg transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+                    className={`grid size-11 place-items-center border border-white/12 text-lg transition-colors hover:border-brand/35 hover:bg-brand/8 ${focusRing}`}
                   >
                     <span aria-hidden="true">☺</span>
                   </button>
@@ -581,7 +582,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                     aria-label="Yoruma GIF ekle"
                     onClick={() => setIsGifPickerOpen((value) => !value)}
                     aria-expanded={isGifPickerOpen}
-                    className={`grid size-11 place-items-center border border-white/12 text-[10px] font-black text-[#ff7a45] transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+                    className={`grid size-11 place-items-center border border-white/12 text-[10px] font-black text-brand transition-colors hover:border-brand/35 hover:bg-brand/8 ${focusRing}`}
                   >
                     GIF
                   </button>
@@ -618,7 +619,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                 className={
                   formMessage === "Yorumun eklendi."
                     ? "text-[#9fc5a3]"
-                    : "text-[#ffb199]"
+                    : "text-danger"
                 }
               >
                 {formMessage}
@@ -644,7 +645,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
               onClick={() => setCommentSort(option.id)}
               className={`min-h-11 cursor-pointer rounded-full px-3.5 text-sm font-black transition-colors ${focusRing} ${
                 commentSort === option.id
-                  ? "bg-[#ff7a45]/14 text-[#ff7a45]"
+                  ? "bg-brand/14 text-brand"
                   : "text-white/55 hover:bg-white/6 hover:text-white"
               }`}
             >
@@ -673,11 +674,11 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                     comment.isDeleted ? "" : "hover:bg-white/[0.035]"
                   } ${
                     comment.parentId
-                      ? "ml-7 border-l-2 border-[#ff7a45]/18 pl-3 sm:ml-12 sm:pl-4"
+                      ? "ml-7 border-l-2 border-brand/18 pl-3 sm:ml-12 sm:pl-4"
                       : ""
                   } ${
                     targetCommentId === comment.id
-                      ? "bg-[#ff7a45]/8 shadow-[inset_3px_0_0_#ff7a45]"
+                      ? "bg-brand/8 shadow-[inset_3px_0_0_#ff6b3d]"
                       : ""
                   }`}
                 >
@@ -715,7 +716,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                         isAnonymous={comment.isAnonymous}
                         ariaLabel={`${comment.author} profilini aç`}
                         className="relative z-10"
-                        linkClassName={`text-[15px] font-black transition-colors hover:text-[#ff7a45] ${focusRing}`}
+                        linkClassName={`text-[15px] font-black transition-colors hover:text-brand ${focusRing}`}
                       >
                         <span className="text-xs font-black">
                           {comment.author}
@@ -743,13 +744,13 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                           : ""}
                       </time>
                       {isSameVisibleCampusAuthor(post, comment) && (
-                        <span className="border border-[#ff7a45]/25 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-[#ff7a45]">
+                        <span className="border border-brand/25 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-brand">
                           Gönderi sahibi
                         </span>
                       )}
                     </header>
                     {parentComment && (
-                      <p className="mt-1 text-[11px] font-bold text-[#ff7a45]">
+                      <p className="mt-1 text-[11px] font-bold text-brand">
                         {parentComment.isDeleted ? (
                           "Kaldırılmış yoruma yanıt"
                         ) : (
@@ -760,7 +761,7 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
                               isAnonymous={parentComment.isAnonymous}
                               ariaLabel={`${parentComment.author} profilini aç`}
                               className="relative z-10"
-                              linkClassName={`transition-colors hover:text-[#ff7a45] ${focusRing}`}
+                              linkClassName={`transition-colors hover:text-brand ${focusRing}`}
                             >
                               <span>{parentComment.author}</span>
                             </CampusAuthorProfileLink>{" "}
@@ -826,12 +827,12 @@ function PostDetailLoading() {
     <section
       aria-busy="true"
       aria-label="Gönderi yükleniyor"
-      className="grid min-h-[calc(100svh-4rem)] place-items-center bg-[#0a0d16] px-5 md:min-h-svh"
+      className="grid min-h-[calc(100svh-4rem)] place-items-center bg-canvas px-5 md:min-h-svh"
     >
       <div className="text-center">
         <span
           aria-hidden="true"
-          className="mx-auto block size-7 animate-spin rounded-full border-2 border-white/14 border-t-[#ff7a45] motion-reduce:animate-none"
+          className="mx-auto block size-7 animate-spin rounded-full border-2 border-white/14 border-t-[#ff6b3d] motion-reduce:animate-none"
         />
         <p className="mt-4 text-sm font-bold text-white/60">
           Gönderi yükleniyor…
@@ -843,9 +844,9 @@ function PostDetailLoading() {
 
 function MissingPost() {
   return (
-    <section className="grid min-h-[calc(100svh-4rem)] place-items-center bg-[#0a0d16] px-5 py-16 text-center md:min-h-svh">
+    <section className="grid min-h-[calc(100svh-4rem)] place-items-center bg-canvas px-5 py-16 text-center md:min-h-svh">
       <div className="max-w-md">
-        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
+        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-brand">
           Gönderi bulunamadı
         </p>
         <h1 className="mt-3 text-3xl font-black tracking-[-0.05em]">

@@ -1,80 +1,88 @@
-import LottiePlayer from "@/components/LottiePlayer";
-import campusWorkflowAnimation from "./campus-workflow-lottie.json";
+import Link from "next/link";
 
 const steps = [
   {
-    number: "1",
-    label: "Öğrenci e-postası",
-    title: "Yaşar e-postanı doğrula.",
+    number: "01",
+    label: "Doğrula",
+    title: "Öğrenci hesabını aç.",
     description: "@stu.yasar.edu.tr adresine gelen kodu gir.",
   },
   {
-    number: "2",
-    label: "Kampüs akışı",
-    title: "Kampüste olup biteni gör.",
-    description: "İtirafları, soruları ve etkinlikleri tek yerde takip et.",
+    number: "02",
+    label: "Keşfet",
+    title: "Kampüs akışına göz at.",
+    description: "Soruları, duyuruları ve kampüs gündemini tek yerde gör.",
   },
   {
-    number: "3",
-    label: "Paylaşmaya başla",
-    title: "İster adınla, ister anonim paylaş.",
-    description: "İstersen adınla, istersen anonim paylaş.",
+    number: "03",
+    label: "Katıl",
+    title: "Paylaşmaya başla.",
+    description: "Gönderini adınla veya anonim olarak yayınla.",
   },
 ];
 
 export default function HowItWorks() {
   return (
     <section
-      id="nasil-calisir"
       aria-labelledby="how-it-works-title"
-      className="reveal-item relative overflow-x-clip border-b border-white/10 bg-[#0a0d16] text-white"
+      className="border-b border-white/10 bg-canvas text-white"
     >
-      <div
-        aria-hidden="true"
-        className="paper-noise pointer-events-none absolute inset-0"
-      />
-
-      <div className="relative mx-auto flex w-full max-w-[1360px] flex-col items-center px-5 pb-24 pt-14 text-center sm:px-8 sm:pb-32 sm:pt-20 lg:px-12 lg:pb-40 lg:pt-24">
-        <div className="reveal-item">
-          <LottiePlayer
-            animationData={campusWorkflowAnimation}
-            className="h-11 w-[9.5rem] sm:h-12 sm:w-44"
-          />
+      <div className="mx-auto w-full max-w-[1180px] px-5 py-16 sm:px-8 sm:py-20 lg:px-10 lg:py-24">
+        <div className="max-w-3xl">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-brand sm:text-xs">
+            Nasıl çalışır?
+          </p>
+          <h1
+            id="how-it-works-title"
+            className="mt-5 text-[clamp(2.8rem,7vw,5.8rem)] font-medium leading-[0.95] tracking-[-0.06em]"
+          >
+            Üç adımda KAMPÜS<span className="text-brand">.</span>
+          </h1>
+          <p className="mt-6 max-w-xl text-base leading-7 text-white/56 sm:text-lg">
+            Doğrula, keşfet ve kampüs sohbetine katıl.
+          </p>
         </div>
 
-        <h2
-          id="how-it-works-title"
-          className="reveal-item mt-6 text-[clamp(2.5rem,6vw,4.5rem)] font-black leading-[0.95] tracking-[-0.04em] sm:mt-8"
-        >
-          Nasıl Çalışır?
-        </h2>
-
-        <ol className="mt-16 grid w-full gap-10 sm:mt-20 md:grid-cols-3 md:gap-8">
-          {steps.map((step, index) => (
+        <ol className="mt-12 grid gap-3 md:mt-16 md:grid-cols-3 md:gap-4">
+          {steps.map((step) => (
             <li
               key={step.number}
-              className={`reveal-item flex flex-col items-center border-t border-white/12 pt-8 md:border-t-0 md:px-5 md:py-4 lg:px-8 ${
-                index === 0 ? "md:pl-0" : "md:border-l md:border-white/12"
-              } ${index === steps.length - 1 ? "md:pr-0" : ""}`}
+              className="flex min-h-64 flex-col rounded-2xl border border-white/10 bg-surface p-6 sm:p-7"
             >
-              <span className="font-mono text-4xl font-black leading-none tracking-[-0.02em] text-[#ff7a45] sm:text-5xl">
-                {step.number}
-              </span>
-
-              <span className="mt-1 font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-white/60">
-                {step.label}
-              </span>
-
-              <h3 className="mt-5 max-w-xs text-xl font-black leading-[1.1] tracking-[-0.035em] sm:text-2xl md:min-h-[3.6rem]">
-                {step.title}
-              </h3>
-
-              <p className="mt-3 max-w-xs text-base leading-7 text-white/75">
-                {step.description}
-              </p>
+              <div className="flex items-center justify-between gap-4">
+                <span className="font-mono text-xs font-bold text-brand">
+                  {step.number}
+                </span>
+                <span className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-white/38">
+                  {step.label}
+                </span>
+              </div>
+              <div className="mt-auto pt-12">
+                <h2 className="text-2xl font-semibold leading-tight tracking-[-0.04em]">
+                  {step.title}
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-white/52">
+                  {step.description}
+                </p>
+              </div>
             </li>
           ))}
         </ol>
+
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <Link
+            href="/giris"
+            className="inline-flex min-h-[3.25rem] items-center justify-center rounded-full bg-white px-6 text-sm font-bold text-[#101012] outline-none transition-colors hover:bg-white/88 focus-visible:ring-3 focus-visible:ring-white/35"
+          >
+            Misafir olarak dene
+          </Link>
+          <Link
+            href="/kayit"
+            className="inline-flex min-h-[3.25rem] items-center justify-center rounded-full border border-white/14 px-6 text-sm font-bold outline-none transition-colors hover:border-white/28 hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-white"
+          >
+            Kayıt ol
+          </Link>
+        </div>
       </div>
     </section>
   );

@@ -19,13 +19,13 @@ export async function GET(
   context: RouteContext<"/v1/media/[id]">,
 ) {
   try {
-    await requireActiveMember(request);
+    const member = await requireActiveMember(request);
     const { id } = await context.params;
-    const image = await getVisibleContentImage(id);
+    const image = await getVisibleContentImage(member.userId, id);
 
     return new Response(new Uint8Array(image.body), {
       headers: {
-        "Cache-Control": "private, max-age=3600",
+        "Cache-Control": "private, no-store",
         "Content-Type": image.contentType,
         "X-Content-Type-Options": "nosniff",
       },

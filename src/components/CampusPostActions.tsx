@@ -8,6 +8,7 @@ import {
   type FormEvent,
 } from "react";
 
+import ActionStatusText from "@/components/ActionStatusText";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import {
   type CampusReportReason,
@@ -15,6 +16,7 @@ import {
 } from "@/components/CampusModerationProvider";
 import { useCampusData } from "@/components/CampusDataProvider";
 import { useFeedback } from "@/components/FeedbackProvider";
+import { useActionStatus } from "@/components/useActionStatus";
 import {
   CAMPUS_OFFICIAL_AUTHOR_ID,
   isAnonymousCampusAuthor,
@@ -55,7 +57,7 @@ const reportReasons: {
 ];
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40";
+  "outline-none focus-visible:ring-3 focus-visible:ring-brand/40";
 
 export default function CampusPostActions({
   post,
@@ -68,7 +70,8 @@ export default function CampusPostActions({
 }) {
   const router = useRouter();
   const { isGuest } = useCampusAccount();
-  const { confirm: confirmAction, showToast } = useFeedback();
+  const { confirm: confirmAction } = useFeedback();
+  const [status, setStatus] = useActionStatus();
   const { deletePost, updatePost } = useCampusData();
   const {
     blockUser,
@@ -211,9 +214,9 @@ export default function CampusPostActions({
 
   const openMenu = () => {
     if (isGuest) {
-      showToast({
+      setStatus({
         message: "Şikâyet ve engelleme için giriş yap veya kayıt ol.",
-        tone: "info",
+        tone: "error",
         action: {
           label: "Giriş yap",
           onClick: () => router.push("/giris"),
@@ -231,11 +234,11 @@ export default function CampusPostActions({
 
     setIsReportDialogOpen(false);
     setReportDetail("");
-    showToast({
+    setStatus({
       message: wasAdded
         ? "Şikâyetin moderasyon sırasına eklendi."
         : "Bu gönderiyi daha önce şikâyet ettin.",
-      tone: wasAdded ? "success" : "info",
+      tone: wasAdded ? "success" : "error",
     });
   };
 
@@ -259,11 +262,11 @@ export default function CampusPostActions({
     }
 
     const wasAdded = await blockUser(post.authorId, post.author);
-    showToast({
+    setStatus({
       message: wasAdded
         ? `${post.author} engellendi.`
         : "Bu kullanıcı zaten engellenmiş.",
-      tone: wasAdded ? "success" : "info",
+      tone: wasAdded ? "success" : "error",
     });
 
     if (wasAdded && redirectAfterBlock) {
@@ -324,7 +327,7 @@ export default function CampusPostActions({
     } catch {
       wasDeleted = false;
     }
-    showToast({
+    setStatus({
       message: wasDeleted
         ? "Gönderi silindi."
         : "Gönderi silinemedi.",
@@ -350,11 +353,18 @@ export default function CampusPostActions({
           <MoreIcon />
         </button>
 
+        {status && (
+          <ActionStatusText
+            status={status}
+            className="absolute top-full right-0 z-40 w-56 text-right"
+          />
+        )}
+
         {isMenuOpen && (
           <div
             role="group"
             aria-label="Gönderi seçenekleri"
-            className="absolute right-0 top-[calc(100%+0.25rem)] z-40 w-60 border border-white/12 bg-[#141720] p-1.5 shadow-[0_18px_55px_rgba(0,0,0,0.42)]"
+            className="absolute right-0 top-[calc(100%+0.25rem)] z-40 w-60 border border-white/12 bg-surface-raised p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.28)]"
           >
             {isOwnPost ? (
               <>
@@ -368,7 +378,7 @@ export default function CampusPostActions({
                 <button
                   type="button"
                   onClick={handleDelete}
-                  className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black text-[#ffb199] transition-colors hover:bg-[#ffb199]/9 ${focusRing}`}
+                  className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black text-danger transition-colors hover:bg-danger/9 ${focusRing}`}
                 >
                   Gönderiyi sil
                 </button>
@@ -392,7 +402,7 @@ export default function CampusPostActions({
                   <button
                     type="button"
                     onClick={handleBlock}
-                    className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black text-[#ffb199] transition-colors hover:bg-[#ffb199]/9 ${focusRing}`}
+                    className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black text-danger transition-colors hover:bg-danger/9 ${focusRing}`}
                   >
                     Kullanıcıyı engelle
                   </button>
@@ -418,11 +428,11 @@ export default function CampusPostActions({
             aria-modal="true"
             aria-labelledby={`report-post-title-${post.id}`}
             aria-describedby={`report-post-description-${post.id}`}
-            className="max-h-[calc(100svh-1.5rem)] w-full max-w-lg overflow-y-auto border border-white/12 bg-[#141720] p-4 text-white shadow-[0_28px_90px_rgba(0,0,0,0.5)] sm:p-6"
+            className="max-h-[calc(100svh-1.5rem)] w-full max-w-lg overflow-y-auto border border-white/12 bg-surface-raised p-4 text-white shadow-[0_24px_64px_rgba(0,0,0,0.36)] sm:p-6"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-brand">
                   Moderasyon
                 </p>
                 <h2
@@ -461,8 +471,8 @@ export default function CampusPostActions({
                       key={reason.id}
                       className={`flex min-h-16 cursor-pointer items-start gap-3 border px-3 py-3 transition-colors ${
                         reportReason === reason.id
-                          ? "border-[#ff7a45]/45 bg-[#ff7a45]/8"
-                          : "border-white/12 hover:border-[#ff7a45]/28"
+                          ? "border-brand/45 bg-brand/8"
+                          : "border-white/12 hover:border-brand/28"
                       }`}
                     >
                       <input
@@ -471,7 +481,7 @@ export default function CampusPostActions({
                         value={reason.id}
                         checked={reportReason === reason.id}
                         onChange={() => setReportReason(reason.id)}
-                        className="mt-0.5 size-4 shrink-0 accent-[#ff7a45]"
+                        className="mt-0.5 size-4 shrink-0 accent-brand"
                       />
                       <span>
                         <span className="block text-xs font-black">
@@ -512,13 +522,13 @@ export default function CampusPostActions({
                 <button
                   type="button"
                   onClick={() => setIsReportDialogOpen(false)}
-                  className={`min-h-11 cursor-pointer border border-white/12 px-4 text-xs font-black hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+                  className={`min-h-11 cursor-pointer border border-white/12 px-4 text-xs font-black hover:border-brand/35 hover:bg-brand/8 ${focusRing}`}
                 >
                   Vazgeç
                 </button>
                 <button
                   type="submit"
-                  className={`min-h-11 cursor-pointer bg-white px-4 text-xs font-black text-[#12100e] hover:bg-white/90 ${focusRing}`}
+                  className={`min-h-11 cursor-pointer bg-white px-4 text-xs font-black text-[#101012] hover:bg-white/90 ${focusRing}`}
                 >
                   Şikâyeti gönder
                 </button>
@@ -542,11 +552,11 @@ export default function CampusPostActions({
             role="dialog"
             aria-modal="true"
             aria-labelledby={`edit-post-title-${post.id}`}
-            className="max-h-[calc(100svh-1.5rem)] w-full max-w-xl overflow-y-auto border border-white/12 bg-[#141720] p-4 text-white shadow-[0_28px_90px_rgba(0,0,0,0.5)] sm:p-6"
+            className="max-h-[calc(100svh-1.5rem)] w-full max-w-xl overflow-y-auto border border-white/12 bg-surface-raised p-4 text-white shadow-[0_24px_64px_rgba(0,0,0,0.36)] sm:p-6"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-brand">
                   Gönderin
                 </p>
                 <h2
@@ -616,7 +626,7 @@ export default function CampusPostActions({
                 <p
                   role="status"
                   aria-live="polite"
-                  className="text-xs font-semibold text-[#ffb199]"
+                  className="text-xs font-semibold text-danger"
                 >
                   {editMessage}
                 </p>
@@ -632,14 +642,14 @@ export default function CampusPostActions({
                 <button
                   type="button"
                   onClick={() => setIsEditDialogOpen(false)}
-                  className={`min-h-11 cursor-pointer border border-white/12 px-4 text-xs font-black hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+                  className={`min-h-11 cursor-pointer border border-white/12 px-4 text-xs font-black hover:border-brand/35 hover:bg-brand/8 ${focusRing}`}
                 >
                   Vazgeç
                 </button>
                 <button
                   type="submit"
                   disabled={!editTitle.trim() && !editBody.trim()}
-                  className={`min-h-11 cursor-pointer bg-white px-4 text-xs font-black text-[#12100e] hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
+                  className={`min-h-11 cursor-pointer bg-white px-4 text-xs font-black text-[#101012] hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
                 >
                   Değişiklikleri kaydet
                 </button>

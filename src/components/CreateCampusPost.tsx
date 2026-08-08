@@ -111,7 +111,7 @@ const quickEmojis = [
 ] as const;
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40";
+  "outline-none focus-visible:ring-3 focus-visible:ring-brand/40";
 const MAX_SOURCE_IMAGE_SIZE = 5 * 1024 * 1024;
 const MAX_OUTPUT_IMAGE_SIZE = 700 * 1024;
 const acceptedImageTypes = new Set([
@@ -549,14 +549,14 @@ export default function CreateCampusPost() {
   return (
     <section
       aria-labelledby="create-post-title"
-      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] min-w-0 bg-canvas text-white md:min-h-svh"
     >
-      <header className="sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-white/12 bg-canvas/95 backdrop-blur-xl">
         <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 sm:px-5">
           <span aria-hidden="true" />
 
           <div className="min-w-0 justify-self-center text-center">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-brand">
               {isListing ? "Kampüs pazarı" : "Kampüse yaz"}
             </p>
             <h1
@@ -623,7 +623,7 @@ export default function CreateCampusPost() {
               }
               className={`mt-2 min-h-12 w-full border bg-white/[0.03] px-3.5 py-2.5 text-[15px] font-bold text-white placeholder:font-medium placeholder:text-white/40 ${
                 titleError
-                  ? "border-[#ffb199]"
+                  ? "border-danger"
                   : "border-white/12"
               } ${focusRing}`}
             />
@@ -631,7 +631,7 @@ export default function CreateCampusPost() {
               <p
                 id="campus-post-title-error"
                 role="alert"
-                className="mt-2 text-xs font-semibold text-[#ffb199]"
+                className="mt-2 text-xs font-semibold text-danger"
               >
                 {titleError}
               </p>
@@ -651,8 +651,8 @@ export default function CreateCampusPost() {
                     key={option.value}
                     className={`flex min-h-16 cursor-pointer items-start gap-3 border px-3.5 py-3 transition-colors ${
                       isSelected
-                        ? "border-[#ff7a45]/60 bg-[#ff7a45]/9"
-                        : "border-white/12 bg-white/[0.02] hover:border-[#ff7a45]/35"
+                        ? "border-brand/60 bg-brand/9"
+                        : "border-white/12 bg-white/[0.02] hover:border-brand/35"
                     } ${focusRing}`}
                   >
                     <input
@@ -675,7 +675,7 @@ export default function CreateCampusPost() {
                           setListingPrice("");
                         }
                       }}
-                      className="mt-0.5 size-4 shrink-0 accent-[#ff7a45]"
+                      className="mt-0.5 size-4 shrink-0 accent-brand"
                     />
                     <span>
                       <span className="block text-xs font-black">
@@ -692,8 +692,8 @@ export default function CreateCampusPost() {
           </fieldset>
 
           {isListing && (
-            <fieldset className="mt-7 border border-[#ff7a45]/28 bg-[#ff7a45]/6 p-4 sm:p-5">
-              <legend className="px-1 text-sm font-black tracking-[-0.015em] text-[#ff7a45]">
+            <fieldset className="mt-7 border border-brand/28 bg-brand/6 p-4 sm:p-5">
+              <legend className="px-1 text-sm font-black tracking-[-0.015em] text-brand">
                 İlan bilgileri
               </legend>
               <p className="text-[11px] leading-5 text-white/55">
@@ -709,8 +709,8 @@ export default function CreateCampusPost() {
                       key={option.value}
                       className={`flex min-h-20 cursor-pointer flex-col border px-3 py-3 transition-colors ${
                         isSelected
-                          ? "border-[#ff7a45]/48 bg-[#ff7a45]/9"
-                          : "border-white/12 bg-white/[0.02] hover:border-[#ff7a45]/30"
+                          ? "border-brand/48 bg-brand/9"
+                          : "border-white/12 bg-white/[0.02] hover:border-brand/30"
                       } ${focusRing}`}
                     >
                       <span className="flex items-center gap-2">
@@ -727,7 +727,7 @@ export default function CreateCampusPost() {
                               setListingPrice("");
                             }
                           }}
-                          className="size-4 shrink-0 accent-[#ff7a45]"
+                          className="size-4 shrink-0 accent-brand"
                         />
                         <span className="text-xs font-black">
                           {option.value}
@@ -755,7 +755,7 @@ export default function CreateCampusPost() {
                   )}
 
                   {listingType === "Ücretsiz" ? (
-                    <div className="mt-2 flex min-h-12 items-center border border-white/12 bg-white/[0.02] px-3.5 text-sm font-black text-[#ff7a45]">
+                    <div className="mt-2 flex min-h-12 items-center border border-white/12 bg-white/[0.02] px-3.5 text-sm font-black text-brand">
                       Fiyat gerekmiyor
                     </div>
                   ) : (
@@ -789,7 +789,7 @@ export default function CreateCampusPost() {
                         }
                         className={`min-h-12 w-full border bg-white/[0.03] px-3.5 py-2.5 pr-12 text-sm font-bold placeholder:font-medium placeholder:text-white/40 ${
                           listingError
-                            ? "border-[#ffb199]"
+                            ? "border-danger"
                             : "border-white/12"
                         } ${focusRing}`}
                       />
@@ -803,7 +803,7 @@ export default function CreateCampusPost() {
                     <p
                       id="campus-listing-price-error"
                       role="alert"
-                      className="mt-2 text-xs font-semibold text-[#ffb199]"
+                      className="mt-2 text-xs font-semibold text-danger"
                     >
                       {listingError}
                     </p>
@@ -833,7 +833,7 @@ export default function CreateCampusPost() {
                         event.target.value as CampusListingCondition,
                       )
                     }
-                    className={`mt-2 min-h-12 w-full border border-white/12 bg-[#141720] px-3.5 text-sm font-bold ${focusRing}`}
+                    className={`mt-2 min-h-12 w-full border border-white/12 bg-surface-raised px-3.5 text-sm font-bold ${focusRing}`}
                   >
                     {listingConditions.map((condition) => (
                       <option key={condition} value={condition}>
@@ -844,7 +844,7 @@ export default function CreateCampusPost() {
                 </div>
               </div>
 
-              <p className="mt-4 border-l-2 border-[#ff7a45]/45 pl-3 text-[11px] leading-5 text-white/60">
+              <p className="mt-4 border-l-2 border-brand/45 pl-3 text-[11px] leading-5 text-white/60">
                 İlanlar güven için profilinle yayımlanır. Telefon, e-posta veya
                 açık adresini açıklamaya yazma.
               </p>
@@ -895,7 +895,7 @@ export default function CreateCampusPost() {
               }
               className={`mt-2 min-h-40 w-full resize-y border bg-white/[0.03] px-3.5 py-3 text-sm leading-6 text-white placeholder:text-white/40 ${
                 bodyError
-                  ? "border-[#ffb199]"
+                  ? "border-danger"
                   : "border-white/12"
               } ${focusRing}`}
             />
@@ -906,7 +906,7 @@ export default function CreateCampusPost() {
                   <p
                     id="campus-post-body-error"
                     role="alert"
-                    className="text-xs font-semibold text-[#ffb199]"
+                    className="text-xs font-semibold text-danger"
                   >
                     {bodyError}
                   </p>
@@ -930,7 +930,7 @@ export default function CreateCampusPost() {
                   onClick={() =>
                     setIsEmojiPickerOpen((currentValue) => !currentValue)
                   }
-                  className={`inline-flex min-h-11 items-center gap-2 border border-white/12 px-3 text-xs font-bold transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+                  className={`inline-flex min-h-11 items-center gap-2 border border-white/12 px-3 text-xs font-bold transition-colors hover:border-brand/35 hover:bg-brand/8 ${focusRing}`}
                 >
                   <span aria-hidden="true" className="text-base">
                     ☺
@@ -944,7 +944,7 @@ export default function CreateCampusPost() {
                     role="group"
                     aria-label="Açıklama emojileri"
                     onKeyDown={handleEmojiPickerKeyDown}
-                    className="absolute right-0 bottom-[calc(100%+0.5rem)] z-40 grid w-52 grid-cols-4 gap-1 border border-white/12 bg-[#17191c] p-2 shadow-[0_16px_42px_rgba(0,0,0,0.4)]"
+                    className="absolute right-0 bottom-[calc(100%+0.5rem)] z-40 grid w-52 grid-cols-4 gap-1 border border-white/12 bg-surface-raised p-2 shadow-[0_14px_36px_rgba(0,0,0,0.28)]"
                   >
                     {quickEmojis.map((emoji) => (
                       <button
@@ -952,7 +952,7 @@ export default function CreateCampusPost() {
                         type="button"
                         aria-label={`${emoji.label} emojisini ekle`}
                         onClick={() => appendEmoji(emoji.value)}
-                        className={`grid size-11 place-items-center rounded-lg text-xl transition-colors hover:bg-[#ff7a45]/10 ${focusRing}`}
+                        className={`grid size-11 place-items-center rounded-lg text-xl transition-colors hover:bg-brand/10 ${focusRing}`}
                       >
                         <span aria-hidden="true">{emoji.value}</span>
                       </button>
@@ -974,7 +974,7 @@ export default function CreateCampusPost() {
                   type="button"
                   onClick={() => setIsGifPickerOpen((value) => !value)}
                   aria-expanded={isGifPickerOpen}
-                  className={`inline-flex min-h-11 items-center border border-white/12 px-4 text-xs font-black text-[#ff7a45] hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+                  className={`inline-flex min-h-11 items-center border border-white/12 px-4 text-xs font-black text-brand hover:border-brand/35 hover:bg-brand/8 ${focusRing}`}
                 >
                   GIF seç
                 </button>
@@ -1036,7 +1036,7 @@ export default function CreateCampusPost() {
             </div>
 
             {imagePreview && (
-              <div className="mt-4 overflow-hidden border border-white/12 bg-[#141720]">
+              <div className="mt-4 overflow-hidden border border-white/12 bg-surface-raised">
                 <Image
                   src={imagePreview.src}
                   alt={
@@ -1050,7 +1050,7 @@ export default function CreateCampusPost() {
                   unoptimized
                   className="max-h-[30rem] h-auto w-full object-contain"
                 />
-                <div className="flex flex-wrap justify-end gap-2 border-t border-white/10 bg-[#0a0d16]/80 p-3">
+                <div className="flex flex-wrap justify-end gap-2 border-t border-white/10 bg-canvas/80 p-3">
                   <button
                     type="button"
                     onClick={() => imageInputRef.current?.click()}
@@ -1062,7 +1062,7 @@ export default function CreateCampusPost() {
                   <button
                     type="button"
                     onClick={removeImage}
-                    className={`inline-flex min-h-11 items-center justify-center px-4 text-xs font-black text-[#ffb199] transition-colors hover:bg-[#ffb199]/8 ${focusRing}`}
+                    className={`inline-flex min-h-11 items-center justify-center px-4 text-xs font-black text-danger transition-colors hover:bg-danger/8 ${focusRing}`}
                   >
                     Kaldır
                   </button>
@@ -1073,14 +1073,14 @@ export default function CreateCampusPost() {
             {imageError && (
               <p
                 role="alert"
-                className="mt-3 text-xs font-semibold text-[#ffb199]"
+                className="mt-3 text-xs font-semibold text-danger"
               >
                 {imageError}
               </p>
             )}
 
             {imagePreview && isAnonymous && (
-              <p className="mt-3 border-l-2 border-[#ff7a45]/45 pl-3 text-[11px] leading-5 text-white/60">
+              <p className="mt-3 border-l-2 border-brand/45 pl-3 text-[11px] leading-5 text-white/60">
                 Anonim paylaşımda fotoğraftaki yüz, plaka veya belgeler seni
                 belli edebilir.
               </p>
@@ -1122,10 +1122,10 @@ export default function CreateCampusPost() {
             </div>
 
             {documentPreview && (
-              <div className="mt-4 flex items-center gap-3 border border-white/12 bg-[#141720] p-3">
+              <div className="mt-4 flex items-center gap-3 border border-white/12 bg-surface-raised p-3">
                 <span
                   aria-hidden="true"
-                  className="grid size-11 shrink-0 place-items-center border border-white/12 bg-white/6 text-[10px] font-black uppercase tracking-[0.06em] text-[#ff7a45]"
+                  className="grid size-11 shrink-0 place-items-center border border-white/12 bg-white/6 text-[10px] font-black uppercase tracking-[0.06em] text-brand"
                 >
                   PDF
                 </span>
@@ -1140,7 +1140,7 @@ export default function CreateCampusPost() {
                 <button
                   type="button"
                   onClick={removeDocument}
-                  className={`inline-flex min-h-11 shrink-0 items-center justify-center px-4 text-xs font-black text-[#ffb199] transition-colors hover:bg-[#ffb199]/8 ${focusRing}`}
+                  className={`inline-flex min-h-11 shrink-0 items-center justify-center px-4 text-xs font-black text-danger transition-colors hover:bg-danger/8 ${focusRing}`}
                 >
                   Kaldır
                 </button>
@@ -1150,7 +1150,7 @@ export default function CreateCampusPost() {
             {documentError && (
               <p
                 role="alert"
-                className="mt-3 text-xs font-semibold text-[#ffb199]"
+                className="mt-3 text-xs font-semibold text-danger"
               >
                 {documentError}
               </p>
@@ -1185,8 +1185,8 @@ export default function CreateCampusPost() {
                 }}
                 className={`inline-flex min-h-11 items-center justify-center border px-4 text-xs font-black transition-colors ${focusRing} ${
                   isPollEnabled
-                    ? "border-[#ff7a45]/42 bg-[#ff7a45]/10 text-[#ff7a45]"
-                    : "border-white/12 hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8"
+                    ? "border-brand/42 bg-brand/10 text-brand"
+                    : "border-white/12 hover:border-brand/35 hover:bg-brand/8"
                 }`}
               >
                 {isPollEnabled ? "Anketi kaldır" : "Anket ekle"}
@@ -1227,7 +1227,7 @@ export default function CreateCampusPost() {
                           type="button"
                           aria-label={`${index + 1}. anket seçeneğini kaldır`}
                           onClick={() => removePollOption(index)}
-                          className={`grid size-12 shrink-0 place-items-center text-lg font-bold text-[#ffb199] transition-colors hover:bg-[#ffb199]/8 ${focusRing}`}
+                          className={`grid size-12 shrink-0 place-items-center text-lg font-bold text-danger transition-colors hover:bg-danger/8 ${focusRing}`}
                         >
                           <span aria-hidden="true">×</span>
                         </button>
@@ -1244,7 +1244,7 @@ export default function CreateCampusPost() {
                     <button
                       type="button"
                       onClick={addPollOption}
-                      className={`inline-flex min-h-11 items-center justify-center px-3 text-xs font-black text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/8 ${focusRing}`}
+                      className={`inline-flex min-h-11 items-center justify-center px-3 text-xs font-black text-brand transition-colors hover:bg-brand/8 ${focusRing}`}
                     >
                       Seçenek ekle
                     </button>
@@ -1255,7 +1255,7 @@ export default function CreateCampusPost() {
                   <p
                     id="campus-poll-error"
                     role="alert"
-                    className="mt-2 text-xs font-semibold text-[#ffb199]"
+                    className="mt-2 text-xs font-semibold text-danger"
                   >
                     {pollError}
                   </p>
@@ -1267,10 +1267,10 @@ export default function CreateCampusPost() {
 
           <div className="mt-7 border-t border-white/10 pt-5">
             {isListing ? (
-              <div className="flex min-h-16 items-center gap-3 border border-[#ff7a45]/25 bg-[#ff7a45]/6 px-3.5 py-3">
+              <div className="flex min-h-16 items-center gap-3 border border-brand/25 bg-brand/6 px-3.5 py-3">
                 <span
                   aria-hidden="true"
-                  className="grid size-9 shrink-0 place-items-center border border-[#ff7a45]/34 text-sm font-black text-[#ff7a45]"
+                  className="grid size-9 shrink-0 place-items-center border border-brand/34 text-sm font-black text-brand"
                 >
                   @
                 </span>
@@ -1296,7 +1296,7 @@ export default function CreateCampusPost() {
                   name="anonymous"
                   checked={isAnonymous}
                   onChange={(event) => setIsAnonymous(event.target.checked)}
-                  className={`size-5 shrink-0 accent-[#ff7a45] ${focusRing}`}
+                  className={`size-5 shrink-0 accent-brand ${focusRing}`}
                 />
               </label>
             )}
@@ -1311,9 +1311,9 @@ export default function CreateCampusPost() {
               aria-atomic="true"
               className={`min-h-5 text-xs font-semibold ${
                 statusTone === "error"
-                  ? "text-[#ffb199]"
+                  ? "text-danger"
                   : statusTone === "success"
-                    ? "text-[#7fd9a3]"
+                    ? "text-success"
                     : "text-white/55"
               }`}
             >
@@ -1332,7 +1332,7 @@ export default function CreateCampusPost() {
                 disabled={
                   isSubmitting || isProcessingImage || !isHydrated
                 }
-                className={`inline-flex min-h-11 min-w-28 items-center justify-center bg-white px-5 text-xs font-bold text-[#12100e] transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
+                className={`inline-flex min-h-11 min-w-28 items-center justify-center bg-white px-5 text-xs font-bold text-[#101012] transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
               >
                 {isSubmitting
                   ? isListing

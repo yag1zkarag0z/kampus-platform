@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { AuthClientError } from "@/auth/client";
+import ActionStatusText from "@/components/ActionStatusText";
 import {
   useCampusAccount,
   type CampusAccountSettings,
@@ -21,11 +21,12 @@ import { campusButton } from "@/components/campusButtonStyles";
 import { useCampusData } from "@/components/CampusDataProvider";
 import { useCampusModeration } from "@/components/CampusModerationProvider";
 import { useFeedback } from "@/components/FeedbackProvider";
+import { useActionStatus } from "@/components/useActionStatus";
 
 const DELETE_CONFIRMATION = "SIFIRLA";
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
+  "outline-none focus-visible:ring-3 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 type SettingsSectionProps = {
   eyebrow: string;
@@ -60,7 +61,11 @@ function getInitials(displayName: string) {
 
 export default function CampusSettings() {
   const router = useRouter();
-  const { confirm: confirmAction, showToast } = useFeedback();
+  const { confirm: confirmAction } = useFeedback();
+  const [deleteStatus, setDeleteStatus] = useActionStatus();
+  const [signOutStatus, setSignOutStatus] = useActionStatus();
+  const [unblockStatus, setUnblockStatus] = useActionStatus();
+  const [unblockAnchor, setUnblockAnchor] = useState<string | null>(null);
   const {
     profile,
     settings,
@@ -190,7 +195,7 @@ export default function CampusSettings() {
       setIsDeleteDialogOpen(false);
       router.replace("/kayit");
     } catch {
-      showToast({
+      setDeleteStatus({
         message: "Hesabın silinemedi. Lütfen yeniden dene.",
         tone: "error",
       });
@@ -217,7 +222,7 @@ export default function CampusSettings() {
       await signOut();
       router.replace("/giris");
     } catch {
-      showToast({
+      setSignOutStatus({
         message: "Çıkış yapılamadı. Lütfen yeniden dene.",
         tone: "error",
       });
@@ -240,15 +245,9 @@ export default function CampusSettings() {
         [setting]: checked,
       } as Partial<CampusAccountSettings>);
       setSettingsSaveStatus("saved");
-    } catch (error) {
+    } catch {
       setSettingsSaveStatus("error");
-      showToast({
-        message:
-          error instanceof AuthClientError
-            ? error.message
-            : "Tercih kaydedilemedi. Bağlantını kontrol edip yeniden dene.",
-        tone: "error",
-      });
+      // Üstteki durum etiketi ("Kaydedilemedi") zaten geri bildirimi veriyor.
     } finally {
       setPendingSetting(null);
     }
@@ -272,13 +271,13 @@ export default function CampusSettings() {
     <section
       aria-labelledby="settings-title"
       aria-busy={!isHydrated}
-      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] min-w-0 bg-canvas text-white md:min-h-svh"
     >
       <div
         inert={isDeleteDialogOpen ? true : undefined}
         aria-hidden={isDeleteDialogOpen ? true : undefined}
       >
-        <header className="sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/94 backdrop-blur-xl">
+        <header className="sticky top-0 z-30 border-b border-white/12 bg-canvas/94 backdrop-blur-xl">
           <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 sm:px-6">
             <Link
               href="/profil"
@@ -288,7 +287,7 @@ export default function CampusSettings() {
               <BackIcon />
             </Link>
             <div className="min-w-0 justify-self-center text-center">
-              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45] sm:text-[11px]">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-brand sm:text-[11px]">
                 Hesap
               </p>
               <h1
@@ -327,7 +326,7 @@ export default function CampusSettings() {
               <div className="flex min-w-0 items-center gap-3.5 sm:gap-4">
                 <div
                   aria-hidden="true"
-                  className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-full border border-white/12 bg-white/7 bg-cover bg-center text-sm font-black text-[#ff7a45] sm:size-16"
+                  className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-full border border-white/12 bg-white/7 bg-cover bg-center text-sm font-black text-brand sm:size-16"
                   style={
                     profile.avatarUrl
                       ? { backgroundImage: `url("${profile.avatarUrl}")` }
@@ -342,7 +341,7 @@ export default function CampusSettings() {
                     <p className="min-w-0 truncate text-base font-black tracking-[-0.025em] sm:text-lg">
                       {profile.displayName}
                     </p>
-                    <span className="inline-flex min-h-6 shrink-0 items-center rounded-full bg-[#ff7a45]/10 px-2 text-[10px] font-black text-[#ff7a45]">
+                    <span className="inline-flex min-h-6 shrink-0 items-center rounded-full bg-brand/10 px-2 text-[10px] font-black text-brand">
                       Öğrenci profili
                     </span>
                   </div>
@@ -364,7 +363,7 @@ export default function CampusSettings() {
                 </p>
                 <Link
                   href="/profil/duzenle"
-                  className={`mt-4 ${campusButton.secondary} hover:text-[#ff7a45] `}
+                  className={`mt-4 ${campusButton.secondary} hover:text-brand `}
                 >
                   Profili düzenle
                 </Link>
@@ -390,8 +389,8 @@ export default function CampusSettings() {
                 }}
               />
 
-              <div className="mt-4 border-l-2 border-[#ff7a45]/40 bg-[#ff7a45]/6 px-3 py-3 sm:px-4">
-                <p className="text-xs font-black text-[#ff7a45]">
+              <div className="mt-4 border-l-2 border-brand/40 bg-brand/6 px-3 py-3 sm:px-4">
+                <p className="text-xs font-black text-brand">
                   Anonim içerikler ayrı tutulur
                 </p>
                 <p className="mt-1 text-xs leading-5 text-white/62">
@@ -498,7 +497,7 @@ export default function CampusSettings() {
                   }}
                 />
               </div>
-              <p className="mt-4 border-l-2 border-[#ff7a45]/40 pl-3 text-xs leading-5 text-white/62">
+              <p className="mt-4 border-l-2 border-brand/40 pl-3 text-xs leading-5 text-white/62">
                 Tercihlerin hesabında saklanır ve giriş yaptığın cihazlarda
                 uygulanır. Bildirim gönderimi etkinleştiğinde bu seçimler
                 kullanılacak.
@@ -529,7 +528,7 @@ export default function CampusSettings() {
                   {blockedUsers.map((user) => (
                     <li
                       key={user.authorId}
-                      className="flex min-w-0 items-center gap-3 py-3 first:pt-0 last:pb-0"
+                      className="flex min-w-0 flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0"
                     >
                       <CampusAuthorAvatar
                         author={user.author}
@@ -551,17 +550,27 @@ export default function CampusSettings() {
                           const succeeded = await unblockUser(
                             user.authorId,
                           );
-                          showToast({
-                            message: succeeded
-                              ? `${user.author} için engel kaldırıldı.`
-                              : "Engel kaldırılamadı. Lütfen yeniden dene.",
-                            tone: succeeded ? "success" : "error",
-                          });
+
+                          if (!succeeded) {
+                            setUnblockAnchor(user.authorId);
+                            setUnblockStatus({
+                              message:
+                                "Engel kaldırılamadı. Lütfen yeniden dene.",
+                              tone: "error",
+                            });
+                          }
+                          // Başarılıysa kullanıcı listeden düşüyor; bu zaten geri bildirim.
                         }}
-                        className={`min-h-11 shrink-0 cursor-pointer px-3 text-xs font-black text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/8 ${focusRing}`}
+                        className={`min-h-11 shrink-0 cursor-pointer px-3 text-xs font-black text-brand transition-colors hover:bg-brand/8 ${focusRing}`}
                       >
                         Engeli kaldır
                       </button>
+                      {unblockStatus && unblockAnchor === user.authorId && (
+                        <ActionStatusText
+                          status={unblockStatus}
+                          className="w-full"
+                        />
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -586,10 +595,13 @@ export default function CampusSettings() {
               <button
                 type="button"
                 onClick={handleSignOut}
-                className={`inline-flex min-h-11 w-full items-center justify-center border border-white/13 px-4 text-xs font-black text-white transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 sm:w-auto ${focusRing}`}
+                className={`inline-flex min-h-11 w-full items-center justify-center border border-white/13 px-4 text-xs font-black text-white transition-colors hover:border-brand/35 hover:bg-brand/8 sm:w-auto ${focusRing}`}
               >
                 Çıkış yap
               </button>
+              {signOutStatus && (
+                <ActionStatusText status={signOutStatus} className="mt-2" />
+              )}
             </SettingsSection>
 
             <SettingsSection
@@ -610,7 +622,7 @@ export default function CampusSettings() {
                 type="button"
                 onClick={openDeleteDialog}
                 disabled={!isHydrated}
-                className={`mt-4 inline-flex min-h-11 w-full items-center justify-center border border-[#ffb199]/42 px-4 text-xs font-black text-[#ffb199] transition-colors hover:border-[#ffb199] hover:bg-[#ffb199] hover:text-[#12100e] disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto ${focusRing}`}
+                className={`mt-4 inline-flex min-h-11 w-full items-center justify-center border border-danger/42 px-4 text-xs font-black text-danger transition-colors hover:border-danger hover:bg-danger hover:text-[#101012] disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto ${focusRing}`}
               >
                 Hesabımı sil
               </button>
@@ -635,11 +647,11 @@ export default function CampusSettings() {
             aria-modal="true"
             aria-labelledby="delete-account-title"
             aria-describedby="delete-account-description"
-            className="w-full max-w-lg overflow-y-auto border border-[#ffb199]/24 bg-[#141720] p-4 text-white shadow-[0_28px_90px_rgba(0,0,0,0.5)] sm:max-h-[calc(100svh-3rem)] sm:p-6"
+            className="w-full max-w-lg overflow-y-auto border border-danger/24 bg-surface-raised p-4 text-white shadow-[0_24px_64px_rgba(0,0,0,0.36)] sm:max-h-[calc(100svh-3rem)] sm:p-6"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ffb199]">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-danger">
                   Son onay
                 </p>
                 <h2
@@ -679,7 +691,7 @@ export default function CampusSettings() {
                   moderasyon tercihlerin temizlenir.
                 </li>
               </ul>
-              <p className="mt-3 font-bold text-[#ffb199]">
+              <p className="mt-3 font-bold text-danger">
                 Gönderilerin ve yorumların kalır; yazarları “Silinmiş
                 kullanıcı” olarak görünür. Bu işlem geri alınamaz.
               </p>
@@ -691,7 +703,7 @@ export default function CampusSettings() {
                 className="block text-xs font-bold leading-5"
               >
                 Devam etmek için aşağıdaki alana tam olarak{" "}
-                <span className="font-black text-[#ffb199]">
+                <span className="font-black text-danger">
                   {DELETE_CONFIRMATION}
                 </span>{" "}
                 yaz.
@@ -715,15 +727,15 @@ export default function CampusSettings() {
                 }
                 className={`mt-2 min-h-11 w-full border bg-white/5 px-3 text-sm font-black uppercase tracking-[0.08em] text-white transition-colors placeholder:text-white/40 ${
                   hasMismatchedDeleteConfirmation
-                    ? "border-[#ffb199]"
-                    : "border-white/14 focus:border-[#ffb199]"
+                    ? "border-danger"
+                    : "border-white/14 focus:border-danger"
                 } ${focusRing}`}
               />
               {hasMismatchedDeleteConfirmation && (
                 <p
                   id="delete-account-confirmation-error"
                   role="alert"
-                  className="mt-2 text-xs font-bold text-[#ffb199]"
+                  className="mt-2 text-xs font-bold text-danger"
                 >
                   Onay metni tam olarak “{DELETE_CONFIRMATION}” olmalı.
                 </p>
@@ -745,13 +757,16 @@ export default function CampusSettings() {
                     isResettingLocalData
                   }
                   aria-busy={isResettingLocalData}
-                  className={`inline-flex min-h-11 items-center justify-center bg-[#ffb199] px-4 text-xs font-black text-[#12100e] transition-colors hover:bg-[#ffb199]/90 disabled:cursor-not-allowed disabled:bg-[#ffb199]/35 disabled:text-white/60 ${focusRing}`}
+                  className={`inline-flex min-h-11 items-center justify-center bg-danger px-4 text-xs font-black text-[#101012] transition-colors hover:bg-danger/90 disabled:cursor-not-allowed disabled:bg-danger/35 disabled:text-white/60 ${focusRing}`}
                 >
                   {isResettingLocalData
                     ? "Hesap siliniyor…"
                     : "Hesabımı sil"}
                 </button>
               </div>
+              {deleteStatus && (
+                <ActionStatusText status={deleteStatus} className="mt-3" />
+              )}
             </form>
           </div>
         </div>
@@ -770,12 +785,12 @@ function SettingsSection({
   return (
     <section
       className={`min-w-0 border bg-white/[0.03] p-4 sm:p-5 ${
-        danger ? "border-[#ffb199]/25" : "border-white/12"
+        danger ? "border-danger/25" : "border-white/12"
       }`}
     >
       <p
         className={`font-mono text-[10px] font-bold uppercase tracking-[0.14em] sm:text-[11px] ${
-          danger ? "text-[#ffb199]" : "text-[#ff7a45]"
+          danger ? "text-danger" : "text-brand"
         }`}
       >
         {eyebrow}
@@ -825,7 +840,7 @@ function SettingSwitch({
         onClick={() => onChange(!checked)}
         className={`relative inline-flex min-h-11 w-[3.25rem] shrink-0 items-center rounded-full border px-1 transition-colors disabled:cursor-wait disabled:opacity-45 ${
           checked
-            ? "border-[#ff7a45] bg-[#ff7a45]"
+            ? "border-brand bg-brand"
             : "border-white/16 bg-white/8"
         } ${focusRing}`}
       >

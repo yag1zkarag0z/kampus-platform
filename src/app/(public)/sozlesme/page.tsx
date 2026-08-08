@@ -26,28 +26,19 @@ const sections = [
 ] as const;
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
+  "outline-none focus-visible:ring-3 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 export default function TermsPage() {
   return (
     <>
-      <div className="relative isolate overflow-hidden bg-[#0a0d16] text-white">
+      <div className="relative isolate overflow-hidden bg-canvas text-white">
         <a
           href="#terms-content"
-          className="fixed top-3 left-3 z-[60] -translate-y-20 bg-white px-4 py-3 text-xs font-black text-[#12100e] outline-none transition-transform focus:translate-y-0"
+          className="fixed top-3 left-3 z-[60] -translate-y-20 bg-white px-4 py-3 text-xs font-black text-[#101012] outline-none transition-transform focus:translate-y-0"
         >
           İçeriğe geç
         </a>
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 -z-20 bg-[radial-gradient(ellipse_120%_80%_at_82%_-8%,rgba(255,122,69,0.12)_0%,transparent_55%),linear-gradient(175deg,#05060a_0%,#0a0d16_55%,#0e1220_100%)]"
-        />
-        <div
-          aria-hidden="true"
-          className="paper-noise pointer-events-none absolute inset-0 -z-10"
-        />
-
-        <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0d16]/92 backdrop-blur-xl">
+        <header className="sticky top-0 z-50 border-b border-white/10 bg-canvas/92 backdrop-blur-xl">
           <div className="mx-auto flex min-h-[4.5rem] w-full max-w-[1360px] items-center justify-between gap-3 px-5 sm:min-h-20 sm:px-8 lg:px-12">
             <Link
               href="/"
@@ -62,7 +53,7 @@ export default function TermsPage() {
 
             <Link
               href="/"
-              className={`hidden min-h-11 items-center px-3 text-xs font-black text-white/55 transition-colors hover:text-[#ff7a45] sm:inline-flex ${focusRing}`}
+              className={`hidden min-h-11 items-center px-3 text-xs font-black text-white/55 transition-colors hover:text-brand sm:inline-flex ${focusRing}`}
             >
               Ana sayfaya dön
             </Link>
@@ -76,12 +67,12 @@ export default function TermsPage() {
         >
           <div className="mx-auto max-w-6xl">
             <header className="max-w-4xl border-b border-white/10 pb-9 sm:pb-12">
-              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#ff7a45] sm:text-xs">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-brand sm:text-xs">
                 KAMPÜS. / Sözleşme v1.0
               </p>
               <h1 className="mt-4 max-w-4xl text-[clamp(2.55rem,8vw,5.7rem)] font-black leading-[0.92] tracking-[-0.06em]">
                 Kullanım ve
-                <span className="block font-serif font-normal italic text-[#ff7a45]">
+                <span className="block font-serif font-normal italic text-brand">
                   topluluk sözleşmesi.
                 </span>
               </h1>
@@ -123,7 +114,7 @@ export default function TermsPage() {
 
             <div className="mt-10 grid items-start gap-12 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-16 xl:gap-24">
               <aside className="sticky top-28 hidden lg:block">
-                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#ff7a45]">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-brand">
                   Bu sayfada
                 </p>
                 <TermsNavigation className="mt-4" />
@@ -382,7 +373,7 @@ export default function TermsPage() {
                   </p>
                   <Link
                     href="/kayit"
-                    className={`mt-5 inline-flex min-h-12 items-center justify-center bg-white px-5 text-sm font-black text-[#12100e] transition-colors hover:bg-white/90 ${focusRing}`}
+                    className={`mt-5 inline-flex min-h-12 items-center justify-center bg-white px-5 text-sm font-black text-[#101012] transition-colors hover:bg-white/90 ${focusRing}`}
                   >
                     Kayıt ekranına dön
                   </Link>
@@ -406,11 +397,11 @@ function TermsNavigation({ className = "" }: { className?: string }) {
           <li key={section.id}>
             <a
               href={`#${section.id}`}
-              className={`flex min-h-11 items-center gap-2 text-[11px] font-bold leading-4 text-white/55 transition-colors hover:text-[#ff7a45] ${focusRing}`}
+              className={`flex min-h-11 items-center gap-2 text-[11px] font-bold leading-4 text-white/55 transition-colors hover:text-brand ${focusRing}`}
             >
               <span
                 aria-hidden="true"
-                className="font-mono text-[9px] text-[#ff7a45]"
+                className="font-mono text-[9px] text-brand"
               >
                 {String(index + 1).padStart(2, "0")}
               </span>
@@ -426,7 +417,7 @@ function TermsNavigation({ className = "" }: { className?: string }) {
 function SummaryItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="border-b border-white/10 py-5 last:border-b-0 sm:border-r sm:border-b-0 sm:px-5 sm:first:pl-0 sm:last:border-r-0 sm:last:pr-0">
-      <dt className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
+      <dt className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-brand">
         {label}
       </dt>
       <dd className="mt-2 text-xs font-semibold leading-5 text-white/68">
@@ -456,7 +447,7 @@ function TermsSection({
       <div className="flex items-baseline gap-3">
         <span
           aria-hidden="true"
-          className="font-mono text-[10px] font-bold text-[#ff7a45]"
+          className="font-mono text-[10px] font-bold text-brand"
         >
           {number}
         </span>
@@ -467,7 +458,7 @@ function TermsSection({
           {title}
         </h2>
       </div>
-      <div className="mt-5 space-y-4 text-sm leading-7 text-white/68 marker:text-[#ff7a45] [&_li]:pl-1 [&_strong]:font-black [&_strong]:text-white [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-2.5">
+      <div className="mt-5 space-y-4 text-sm leading-7 text-white/68 marker:text-brand [&_li]:pl-1 [&_strong]:font-black [&_strong]:text-white [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-2.5">
         {children}
       </div>
     </section>

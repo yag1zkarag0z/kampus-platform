@@ -285,11 +285,12 @@ describe("follow routes with PostgreSQL", () => {
   });
 
   it("suggests same-department members first and excludes self, followed, and blocked users", async () => {
-    const viewer = await insertAccount("Yazılım Mühendisliği");
-    const sameDepartment = await insertAccount("Yazılım Mühendisliği");
-    const alreadyFollowed = await insertAccount("Yazılım Mühendisliği");
-    const blocked = await insertAccount("Yazılım Mühendisliği");
-    const otherDepartment = await insertAccount("İşletme");
+    const department = `E2E-${randomUUID()}`;
+    const viewer = await insertAccount(department);
+    const sameDepartment = await insertAccount(department);
+    const alreadyFollowed = await insertAccount(department);
+    const blocked = await insertAccount(department);
+    await insertAccount("İşletme");
     const viewerCookie = await createMemberCookie(viewer.id);
 
     await postFollow(
@@ -316,13 +317,24 @@ describe("follow routes with PostgreSQL", () => {
     expect(suggestedIds).not.toContain(viewer.id);
     expect(suggestedIds).not.toContain(alreadyFollowed.id);
     expect(suggestedIds).not.toContain(blocked.id);
-    // Same-department pool (1 member) is smaller than the suggestion
-    // limit, so the other-department member should backfill the list.
-    expect(suggestedIds).toContain(otherDepartment.id);
 
-    const sameDepartmentIndex = suggestedIds.indexOf(sameDepartment.id);
-    const otherDepartmentIndex = suggestedIds.indexOf(otherDepartment.id);
-    expect(sameDepartmentIndex).toBeLessThan(otherDepartmentIndex);
+    const firstOtherDepartmentIndex = data.findIndex(
+      (entry) => entry.department !== department,
+    );
+
+    // The isolated same-department fixture must lead the list; remaining
+    // slots may be filled by any eligible account already in the test DB.
+    expect(firstOtherDepartmentIndex).toBeGreaterThan(0);
+    expect(
+      data
+        .slice(0, firstOtherDepartmentIndex)
+        .every((entry) => entry.department === department),
+    ).toBe(true);
+    expect(
+      data
+        .slice(firstOtherDepartmentIndex)
+        .every((entry) => entry.department !== department),
+    ).toBe(true);
   });
 
   it("requires an active member session for suggestions", async () => {

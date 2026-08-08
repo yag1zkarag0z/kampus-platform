@@ -6,7 +6,9 @@ const nextConfig: NextConfig = {
     root: process.cwd(),
   },
   experimental: {
-    viewTransition: true,
+    // Proxy buffers at most 9 MiB. Route handlers apply lower, field-specific
+    // limits while reading the stream and return a deterministic 413 response.
+    proxyClientMaxBodySize: 9 * 1024 * 1024,
   },
   images: {
     remotePatterns: [

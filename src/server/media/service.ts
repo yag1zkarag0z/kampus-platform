@@ -2,10 +2,15 @@ import "server-only";
 
 import { createHash, randomUUID } from "node:crypto";
 
-import { and, count, eq, gte, isNull, notExists } from "drizzle-orm";
+import { and, count, eq, gte, isNull, notExists, sql } from "drizzle-orm";
 import sharp from "sharp";
 
+import {
+  DOCUMENT_UPLOAD_MAX_BYTES,
+  IMAGE_UPLOAD_MAX_BYTES,
+} from "@/lib/upload-limits";
 import { AuthError } from "@/server/auth/errors";
+import { postVisibleToViewer } from "@/server/content/visibility";
 import { getDatabase } from "@/server/db/client";
 import {
   documentAssets,
@@ -18,11 +23,9 @@ import {
 
 import { getMediaStorage } from "./storage";
 
-const MAX_UPLOAD_BYTES = 1024 * 1024;
-const MAX_OUTPUT_BYTES = 1024 * 1024;
+const MAX_OUTPUT_BYTES = IMAGE_UPLOAD_MAX_BYTES;
 const MAX_DIMENSION = 1600;
 const MAX_INPUT_PIXELS = 20_000_000;
-const MAX_DOCUMENT_UPLOAD_BYTES = 8 * 1024 * 1024;
 const PDF_MAGIC_BYTES = Buffer.from("%PDF-", "ascii");
 const HOURLY_UPLOAD_LIMIT = 20;
 const UNATTACHED_UPLOAD_LIMIT = 5;
@@ -62,7 +65,6 @@ function documentNotFoundError() {
 /** Yol ayraçlarını ve kontrol karakterlerini atar; .pdf uzantısını garantiler. */
 function sanitizeDocumentFileName(rawName: string) {
   const base = rawName.split(/[/\\]/u).pop() ?? "";
-  // eslint-disable-next-line no-control-regex
   const cleaned = base.replace(/[\x00-\x1f\x7f]/gu, "").trim();
   const withExtension = cleaned.toLocaleLowerCase("tr-TR").endsWith(".pdf")
     ? cleaned
@@ -80,76 +82,31 @@ function assertMediaId(assetId: string) {
  * ayrı sayaçlar olsaydı kullanıcı iki dosya türünü karıştırarak toplam
  * kotayı ikiye katlayabilirdi.
  */
-async function assertUploadAllowed(userId: string) {
-  const database = getDatabase();
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1_000);
-  const [
-    activeUser,
-    hourlyImageUsage,
-    hourlyDocumentUsage,
-    unattachedImageUsage,
-    unattachedDocumentUsage,
-  ] = await Promise.all([
-    database
-      .select({ id: users.id })
-      .from(users)
-      .where(
-        and(
-          eq(users.id, userId),
-          eq(users.status, "active"),
-          isNull(users.deletedAt),
-        ),
-      )
-      .limit(1),
-    database
-      .select({ total: count() })
-      .from(mediaAssets)
-      .where(
-        and(
-          eq(mediaAssets.ownerId, userId),
-          gte(mediaAssets.createdAt, oneHourAgo),
-        ),
-      ),
-    database
-      .select({ total: count() })
-      .from(documentAssets)
-      .where(
-        and(
-          eq(documentAssets.ownerId, userId),
-          gte(documentAssets.createdAt, oneHourAgo),
-        ),
-      ),
-    database
-      .select({ total: count() })
-      .from(mediaAssets)
-      .where(
-        and(
-          eq(mediaAssets.ownerId, userId),
-          notExists(
-            database
-              .select({ assetId: postImages.assetId })
-              .from(postImages)
-              .where(eq(postImages.assetId, mediaAssets.id)),
-          ),
-        ),
-      ),
-    database
-      .select({ total: count() })
-      .from(documentAssets)
-      .where(
-        and(
-          eq(documentAssets.ownerId, userId),
-          notExists(
-            database
-              .select({ assetId: postDocuments.assetId })
-              .from(postDocuments)
-              .where(eq(postDocuments.assetId, documentAssets.id)),
-          ),
-        ),
-      ),
-  ]);
+type MediaDatabase = ReturnType<typeof getDatabase>;
+type MediaTransaction = Parameters<
+  Parameters<MediaDatabase["transaction"]>[0]
+>[0];
 
-  if (!activeUser[0]) {
+async function assertUploadAllowed(
+  transaction: MediaTransaction,
+  userId: string,
+  now: Date,
+) {
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1_000);
+  const [activeUser] = await transaction
+    .select({ id: users.id })
+    .from(users)
+    .where(
+      and(
+        eq(users.id, userId),
+        eq(users.status, "active"),
+        isNull(users.deletedAt),
+      ),
+    )
+    .for("share")
+    .limit(1);
+
+  if (!activeUser) {
     throw new AuthError(
       "AUTHENTICATION_REQUIRED",
       "Dosya yüklemek için öğrenci hesabınla giriş yapmalısın.",
@@ -157,11 +114,58 @@ async function assertUploadAllowed(userId: string) {
     );
   }
 
+  const [hourlyImageUsage] = await transaction
+    .select({ total: count() })
+    .from(mediaAssets)
+    .where(
+      and(
+        eq(mediaAssets.ownerId, userId),
+        gte(mediaAssets.createdAt, oneHourAgo),
+      ),
+    );
+  const [hourlyDocumentUsage] = await transaction
+    .select({ total: count() })
+    .from(documentAssets)
+    .where(
+      and(
+        eq(documentAssets.ownerId, userId),
+        gte(documentAssets.createdAt, oneHourAgo),
+      ),
+    );
+  const [unattachedImageUsage] = await transaction
+    .select({ total: count() })
+    .from(mediaAssets)
+    .where(
+      and(
+        eq(mediaAssets.ownerId, userId),
+        notExists(
+          transaction
+            .select({ assetId: postImages.assetId })
+            .from(postImages)
+            .where(eq(postImages.assetId, mediaAssets.id)),
+        ),
+      ),
+    );
+  const [unattachedDocumentUsage] = await transaction
+    .select({ total: count() })
+    .from(documentAssets)
+    .where(
+      and(
+        eq(documentAssets.ownerId, userId),
+        notExists(
+          transaction
+            .select({ assetId: postDocuments.assetId })
+            .from(postDocuments)
+            .where(eq(postDocuments.assetId, documentAssets.id)),
+        ),
+      ),
+    );
+
   const hourlyTotal =
-    (hourlyImageUsage[0]?.total ?? 0) + (hourlyDocumentUsage[0]?.total ?? 0);
+    (hourlyImageUsage?.total ?? 0) + (hourlyDocumentUsage?.total ?? 0);
   const unattachedTotal =
-    (unattachedImageUsage[0]?.total ?? 0) +
-    (unattachedDocumentUsage[0]?.total ?? 0);
+    (unattachedImageUsage?.total ?? 0) +
+    (unattachedDocumentUsage?.total ?? 0);
 
   if (
     hourlyTotal >= HOURLY_UPLOAD_LIMIT ||
@@ -175,8 +179,26 @@ async function assertUploadAllowed(userId: string) {
   }
 }
 
+async function reserveUpload(
+  userId: string,
+  createdAt: Date,
+  insertReservation: (transaction: MediaTransaction) => Promise<void>,
+) {
+  await getDatabase().transaction(async (transaction) => {
+    // Images and documents share one quota. The per-user transaction lock
+    // serializes the final count-and-insert step across all application nodes.
+    await transaction.execute(
+      sql`select pg_advisory_xact_lock(
+        hashtextextended(${`media-upload:${userId}`}, 0)
+      )`,
+    );
+    await assertUploadAllowed(transaction, userId, createdAt);
+    await insertReservation(transaction);
+  });
+}
+
 export async function processImage(file: File) {
-  if (file.size < 1 || file.size > MAX_UPLOAD_BYTES) {
+  if (file.size < 1 || file.size > IMAGE_UPLOAD_MAX_BYTES) {
     throw invalidImageError("İşlenmiş görsel en fazla 1 MB olabilir.");
   }
 
@@ -225,19 +247,17 @@ export async function processImage(file: File) {
 }
 
 export async function uploadContentImage(userId: string, file: File) {
-  await assertUploadAllowed(userId);
   const processed = await processImage(file);
   const assetId = randomUUID();
   const storageKey = `images/${userId}/${assetId}.webp`;
+  const createdAt = new Date();
   const checksum = createHash("sha256")
     .update(processed.body)
     .digest("hex");
   const storage = getMediaStorage();
 
-  await storage.put(storageKey, processed.body, "image/webp");
-
-  try {
-    await getDatabase().insert(mediaAssets).values({
+  await reserveUpload(userId, createdAt, async (transaction) => {
+    await transaction.insert(mediaAssets).values({
       id: assetId,
       ownerId: userId,
       storageKey,
@@ -246,9 +266,22 @@ export async function uploadContentImage(userId: string, file: File) {
       width: processed.width,
       height: processed.height,
       checksum,
+      createdAt,
     });
+  });
+
+  try {
+    await storage.put(storageKey, processed.body, "image/webp");
   } catch (error) {
-    await storage.delete(storageKey).catch(() => undefined);
+    await getDatabase()
+      .delete(mediaAssets)
+      .where(
+        and(
+          eq(mediaAssets.id, assetId),
+          eq(mediaAssets.ownerId, userId),
+        ),
+      )
+      .catch(() => undefined);
     throw error;
   }
 
@@ -267,7 +300,7 @@ export async function uploadContentImage(userId: string, file: File) {
  * imza baytından (magic number) doğrulanıp olduğu gibi saklanıyor.
  */
 export async function processDocument(file: File) {
-  if (file.size < 1 || file.size > MAX_DOCUMENT_UPLOAD_BYTES) {
+  if (file.size < 1 || file.size > DOCUMENT_UPLOAD_MAX_BYTES) {
     throw invalidDocumentError("Doküman en fazla 8 MB olabilir.");
   }
 
@@ -281,19 +314,17 @@ export async function processDocument(file: File) {
 }
 
 export async function uploadContentDocument(userId: string, file: File) {
-  await assertUploadAllowed(userId);
   const processed = await processDocument(file);
   const assetId = randomUUID();
   const storageKey = `documents/${userId}/${assetId}.pdf`;
+  const createdAt = new Date();
   const checksum = createHash("sha256")
     .update(processed.body)
     .digest("hex");
   const storage = getMediaStorage();
 
-  await storage.put(storageKey, processed.body, "application/pdf");
-
-  try {
-    await getDatabase().insert(documentAssets).values({
+  await reserveUpload(userId, createdAt, async (transaction) => {
+    await transaction.insert(documentAssets).values({
       id: assetId,
       ownerId: userId,
       storageKey,
@@ -301,9 +332,22 @@ export async function uploadContentDocument(userId: string, file: File) {
       sizeBytes: processed.body.length,
       fileName: processed.fileName,
       checksum,
+      createdAt,
     });
+  });
+
+  try {
+    await storage.put(storageKey, processed.body, "application/pdf");
   } catch (error) {
-    await storage.delete(storageKey).catch(() => undefined);
+    await getDatabase()
+      .delete(documentAssets)
+      .where(
+        and(
+          eq(documentAssets.id, assetId),
+          eq(documentAssets.ownerId, userId),
+        ),
+      )
+      .catch(() => undefined);
     throw error;
   }
 
@@ -315,7 +359,10 @@ export async function uploadContentDocument(userId: string, file: File) {
   };
 }
 
-export async function getVisibleContentImage(assetId: string) {
+export async function getVisibleContentImage(
+  viewerId: string,
+  assetId: string,
+) {
   assertMediaId(assetId);
   const [asset] = await getDatabase()
     .select({
@@ -325,12 +372,10 @@ export async function getVisibleContentImage(assetId: string) {
     .from(mediaAssets)
     .innerJoin(postImages, eq(postImages.assetId, mediaAssets.id))
     .innerJoin(posts, eq(posts.id, postImages.postId))
-    .innerJoin(users, eq(users.id, posts.authorId))
     .where(
       and(
         eq(mediaAssets.id, assetId),
-        isNull(posts.deletedAt),
-        isNull(users.deletedAt),
+        postVisibleToViewer(viewerId),
       ),
     )
     .limit(1);
@@ -389,7 +434,10 @@ export async function deleteUnattachedContentImage(
   }
 }
 
-export async function getVisibleContentDocument(assetId: string) {
+export async function getVisibleContentDocument(
+  viewerId: string,
+  assetId: string,
+) {
   assertMediaId(assetId);
   const [asset] = await getDatabase()
     .select({
@@ -400,12 +448,10 @@ export async function getVisibleContentDocument(assetId: string) {
     .from(documentAssets)
     .innerJoin(postDocuments, eq(postDocuments.assetId, documentAssets.id))
     .innerJoin(posts, eq(posts.id, postDocuments.postId))
-    .innerJoin(users, eq(users.id, posts.authorId))
     .where(
       and(
         eq(documentAssets.id, assetId),
-        isNull(posts.deletedAt),
-        isNull(users.deletedAt),
+        postVisibleToViewer(viewerId),
       ),
     )
     .limit(1);

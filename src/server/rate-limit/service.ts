@@ -23,7 +23,9 @@ export type RateLimitAction =
   | "report_create"
   | "follow"
   | "block"
-  | "interaction";
+  | "interaction"
+  | "username_change"
+  | "avatar_change";
 
 type RateLimitWindow = {
   windowSeconds: number;
@@ -54,6 +56,17 @@ const ACTION_WINDOWS: Record<RateLimitAction, RateLimitWindow[]> = {
   follow: [{ windowSeconds: HOUR, limit: 60 }],
   block: [{ windowSeconds: HOUR, limit: 30 }],
   interaction: [],
+  // Kimlik taklidi/engel atlatma amaçlı sık değişimi caydırır.
+  username_change: [{ windowSeconds: 30 * DAY, limit: 1 }],
+  // Moderasyon yakalamadan önce uygunsuz bir görseli kısaca gösterip hemen
+  // değiştirmeyi zorlaştırır; günlük birkaç deneme için yine de yeterli.
+  avatar_change: [{ windowSeconds: DAY, limit: 3 }],
+};
+
+/** Genel mesajın yetersiz kaldığı, kullanıcıya doğrudan gösterilecek özel durumlar. */
+const ACTION_RATE_LIMIT_MESSAGES: Partial<Record<RateLimitAction, string>> = {
+  username_change: "Kullanıcı adını 30 günde bir değiştirebilirsin.",
+  avatar_change: "Avatarını günde en fazla 3 kez değiştirebilirsin.",
 };
 
 type RateLimitDatabase = ReturnType<typeof getDatabase>;
@@ -62,15 +75,18 @@ type RateLimitTransaction = Parameters<
 >[0];
 export type RateLimitExecutor = RateLimitDatabase | RateLimitTransaction;
 
-function rateLimitedError(retryAfterSeconds: number) {
-  return new AuthError(
-    "CONTENT_RATE_LIMITED",
-    "Çok kısa sürede fazla işlem yaptın. Biraz bekleyip yeniden dene.",
-    {
-      retryAfterSeconds,
-      status: 429,
-    },
-  );
+function rateLimitedError(
+  retryAfterSeconds: number,
+  action: RateLimitAction | null,
+) {
+  const message =
+    (action && ACTION_RATE_LIMIT_MESSAGES[action]) ??
+    "Çok kısa sürede fazla işlem yaptın. Biraz bekleyip yeniden dene.";
+
+  return new AuthError("CONTENT_RATE_LIMITED", message, {
+    retryAfterSeconds,
+    status: 429,
+  });
 }
 
 /**
@@ -124,7 +140,7 @@ async function assertWindow(
     ),
   );
 
-  throw rateLimitedError(retryAfterSeconds);
+  throw rateLimitedError(retryAfterSeconds, action);
 }
 
 /**

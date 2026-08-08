@@ -50,6 +50,9 @@ export async function cleanupE2eAuthData() {
   await client.connect();
 
   try {
+    await client.query("set lock_timeout = '5s'");
+    await client.query("set statement_timeout = '30s'");
+
     const databaseResult = await client.query<{
       database_name: string;
     }>("select current_database() as database_name");

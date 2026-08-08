@@ -13,15 +13,19 @@ import {
   listContentBookmarks,
   listContentPosts,
   setContentPostBookmark,
+  setContentCommentLike,
   setContentPostLike,
   updateContentComment,
   updateContentPost,
   voteInContentPoll,
 } from "@/server/content/service";
 import {
+  getVisibleContentDocument,
   getVisibleContentImage,
+  uploadContentDocument,
   uploadContentImage,
 } from "@/server/media/service";
+import { getMediaStorage } from "@/server/media/storage";
 import type { FeedQueryInput } from "@/server/content/validation";
 import {
   AuthError,
@@ -161,7 +165,9 @@ describe("content service with PostgreSQL", () => {
       height: 32,
       alt: "Kampüsten bir kare görseli",
     });
-    await expect(getVisibleContentImage(uploaded.id)).resolves.toMatchObject({
+    await expect(
+      getVisibleContentImage(owner.id, uploaded.id),
+    ).resolves.toMatchObject({
       contentType: "image/webp",
       body: expect.any(Buffer),
     });
@@ -181,10 +187,231 @@ describe("content service with PostgreSQL", () => {
 
     await deleteContentPost(owner.id, created.id);
     await expectAuthError(
-      () => getVisibleContentImage(uploaded.id),
+      () => getVisibleContentImage(owner.id, uploaded.id),
       "MEDIA_NOT_FOUND",
       404,
     );
+  });
+
+  it("applies hidden, blocked, and suspended post visibility to direct reads and attachments", async () => {
+    const owner = await insertUser("Visibility Owner");
+    const viewer = await insertUser("Visibility Viewer");
+    const imageSource = await sharp({
+      create: {
+        width: 32,
+        height: 32,
+        channels: 3,
+        background: "#d26f45",
+      },
+    })
+      .png()
+      .toBuffer();
+    const image = await uploadContentImage(
+      owner.id,
+      new File([imageSource], "visibility.png", { type: "image/png" }),
+    );
+    const document = await uploadContentDocument(
+      owner.id,
+      new File([Buffer.from("%PDF-1.4\n%%EOF", "ascii")], "visibility.pdf", {
+        type: "application/pdf",
+      }),
+    );
+    const storage = getMediaStorage();
+
+    try {
+      const imagePost = await createContentPost(owner.id, {
+        category: "chat",
+        title: "Visibility image post",
+        body: "",
+        isAnonymous: false,
+        imageId: image.id,
+      });
+      await createContentPost(owner.id, {
+        category: "chat",
+        title: "Visibility document post",
+        body: "",
+        isAnonymous: false,
+        documentId: document.id,
+      });
+      const comment = await createContentComment(viewer.id, imagePost.id, {
+        body: "Visible before moderation",
+        isAnonymous: false,
+      });
+
+      await expect(
+        getVisibleContentImage(viewer.id, image.id),
+      ).resolves.toMatchObject({ contentType: "image/webp" });
+      await expect(
+        getVisibleContentDocument(viewer.id, document.id),
+      ).resolves.toMatchObject({ contentType: "application/pdf" });
+
+      await pool.query("update posts set hidden_at = now() where id = $1", [
+        imagePost.id,
+      ]);
+
+      await expect(
+        getVisibleContentImage(owner.id, image.id),
+      ).resolves.toMatchObject({ contentType: "image/webp" });
+      await expectAuthError(
+        () => getVisibleContentImage(viewer.id, image.id),
+        "MEDIA_NOT_FOUND",
+        404,
+      );
+      await expectAuthError(
+        () => getContentPost(viewer.id, imagePost.id),
+        "POST_NOT_FOUND",
+        404,
+      );
+      await expectAuthError(
+        () =>
+          createContentComment(viewer.id, imagePost.id, {
+            body: "Hidden post bypass",
+            isAnonymous: false,
+          }),
+        "POST_NOT_FOUND",
+        404,
+      );
+      await expectAuthError(
+        () => setContentCommentLike(viewer.id, comment.id, true),
+        "COMMENT_NOT_FOUND",
+        404,
+      );
+
+      await pool.query("update posts set hidden_at = null where id = $1", [
+        imagePost.id,
+      ]);
+      await pool.query(
+        "insert into blocks (blocker_id, blocked_id) values ($1, $2)",
+        [owner.id, viewer.id],
+      );
+
+      await expectAuthError(
+        () => getVisibleContentImage(viewer.id, image.id),
+        "MEDIA_NOT_FOUND",
+        404,
+      );
+      await expectAuthError(
+        () => getVisibleContentDocument(viewer.id, document.id),
+        "MEDIA_NOT_FOUND",
+        404,
+      );
+
+      await pool.query(
+        "delete from blocks where blocker_id = $1 and blocked_id = $2",
+        [owner.id, viewer.id],
+      );
+      await pool.query(
+        "update users set status = 'suspended', suspended_at = now() where id = $1",
+        [owner.id],
+      );
+
+      await expectAuthError(
+        () => getContentPost(viewer.id, imagePost.id),
+        "POST_NOT_FOUND",
+        404,
+      );
+      await expectAuthError(
+        () => getVisibleContentImage(viewer.id, image.id),
+        "MEDIA_NOT_FOUND",
+        404,
+      );
+      await expectAuthError(
+        () => getVisibleContentDocument(viewer.id, document.id),
+        "MEDIA_NOT_FOUND",
+        404,
+      );
+    } finally {
+      await Promise.all([
+        storage.delete(`images/${owner.id}/${image.id}.webp`),
+        storage.delete(`documents/${owner.id}/${document.id}.pdf`),
+      ]);
+    }
+  });
+
+  it("serializes concurrent image and document reservations against the shared unattached quota", async () => {
+    const owner = await insertUser("Atomic Upload Owner");
+    const existingAssetIds = Array.from({ length: 4 }, () => randomUUID());
+    const storage = getMediaStorage();
+
+    for (const [index, assetId] of existingAssetIds.entries()) {
+      await pool.query(
+        `insert into media_assets (
+          id, owner_id, storage_key, mime_type, size_bytes,
+          width, height, checksum
+        ) values ($1, $2, $3, 'image/webp', 1, 1, 1, $4)`,
+        [
+          assetId,
+          owner.id,
+          `images/${owner.id}/${assetId}.webp`,
+          index.toString(16).padStart(64, "0"),
+        ],
+      );
+    }
+
+    const imageSource = await sharp({
+      create: {
+        width: 16,
+        height: 16,
+        channels: 3,
+        background: "#d26f45",
+      },
+    })
+      .png()
+      .toBuffer();
+
+    try {
+      const results = await Promise.allSettled([
+        uploadContentImage(
+          owner.id,
+          new File([imageSource], "atomic.png", { type: "image/png" }),
+        ),
+        uploadContentDocument(
+          owner.id,
+          new File([Buffer.from("%PDF-1.4\n%%EOF", "ascii")], "atomic.pdf", {
+            type: "application/pdf",
+          }),
+        ),
+      ]);
+      const fulfilled = results.filter(
+        (result) => result.status === "fulfilled",
+      );
+      const rejected = results.filter(
+        (result) => result.status === "rejected",
+      );
+
+      expect(fulfilled).toHaveLength(1);
+      expect(rejected).toHaveLength(1);
+      expect(rejected[0]).toMatchObject({
+        reason: expect.objectContaining({
+          code: "CONTENT_RATE_LIMITED",
+          status: 429,
+        }),
+      });
+
+      const usage = await pool.query<{ total: string }>(
+        `select (
+          select count(*) from media_assets where owner_id = $1
+        ) + (
+          select count(*) from document_assets where owner_id = $1
+        ) as total`,
+        [owner.id],
+      );
+
+      expect(Number(usage.rows[0]?.total)).toBe(5);
+    } finally {
+      const reservedObjects = await pool.query<{ storage_key: string }>(
+        `select storage_key from media_assets where owner_id = $1
+         union all
+         select storage_key from document_assets where owner_id = $1`,
+        [owner.id],
+      );
+
+      await Promise.all(
+        reservedObjects.rows.map(({ storage_key: storageKey }) =>
+          storage.delete(storageKey),
+        ),
+      );
+    }
   });
 
   it("creates listings and returns their market details in feed and detail", async () => {
@@ -427,19 +654,17 @@ describe("content service with PostgreSQL", () => {
     };
     const firstPage = await listContentPosts(viewer.id, query);
     const seenIds = firstPage.data.map((post) => post.id);
+    const seenCursors = new Set<string>();
     let cursor = firstPage.page.nextCursor;
-    let pageCount = 1;
 
     while (cursor) {
+      expect(seenCursors.has(cursor)).toBe(false);
+      seenCursors.add(cursor);
+
       const page = await listContentPosts(viewer.id, { ...query, cursor });
 
       seenIds.push(...page.data.map((post) => post.id));
       cursor = page.page.nextCursor;
-      pageCount += 1;
-
-      if (pageCount > 4) {
-        throw new Error("Trending sayfalaması sonlanmadı.");
-      }
     }
 
     expect(new Set(seenIds).size).toBe(seenIds.length);
@@ -1222,6 +1447,7 @@ describe("content service with PostgreSQL", () => {
       isAuthor: false,
       canEdit: false,
       canDelete: false,
+      liked: false,
     });
   });
 

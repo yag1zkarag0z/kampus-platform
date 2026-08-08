@@ -18,7 +18,7 @@ export default function Image() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "#05060a",
+          backgroundColor: "#0b0b0c",
           backgroundImage:
             "radial-gradient(ellipse 120% 80% at 82% -8%, rgba(255,122,69,0.22) 0%, transparent 55%), radial-gradient(ellipse 90% 70% at -8% 112%, rgba(94,74,196,0.18) 0%, transparent 58%)",
         }}
@@ -56,7 +56,7 @@ export default function Image() {
               rx="3.4"
               transform="rotate(-5 10 6.65)"
               fill="#4a2c39"
-              stroke="#ff7a45"
+              stroke="#ff6b3d"
               strokeWidth="0.85"
             />
             <rect
@@ -67,13 +67,13 @@ export default function Image() {
               rx="3.4"
               transform="rotate(5 20.3 6.3)"
               fill="#4a2c39"
-              stroke="#ff7a45"
+              stroke="#ff6b3d"
               strokeWidth="0.85"
             />
           </svg>
 
           <span>S</span>
-          <span style={{ color: "#ff7a45" }}>.</span>
+          <span style={{ color: "#ff6b3d" }}>.</span>
         </div>
 
         <div
@@ -83,7 +83,7 @@ export default function Image() {
             fontSize: 32,
             fontWeight: 700,
             letterSpacing: "0.02em",
-            color: "#ff7a45",
+            color: "#ff6b3d",
             textTransform: "uppercase",
           }}
         >

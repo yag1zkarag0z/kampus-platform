@@ -6,7 +6,7 @@ import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
+  "outline-none focus-visible:ring-3 focus-visible:ring-brand/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 /** Karar için gereken yatay sürükleme mesafesi. */
 const SWIPE_THRESHOLD = 96;
@@ -157,13 +157,13 @@ export default function FollowSuggestionDeck({
           <p className="text-xs font-bold text-white/50">
             {isDone ? entries.length : index + 1} / {entries.length}
           </p>
-          <p className="text-xs font-bold text-[#ff9a72]">
+          <p className="text-xs font-bold text-[#ff8968]">
             {followedIds.size} takip
           </p>
         </div>
         <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/8">
           <div
-            className="h-full rounded-full bg-[#ff7a45]"
+            className="h-full rounded-full bg-brand"
             style={{
               width: `${((isDone ? entries.length : index) / entries.length) * 100}%`,
               transition: `width ${LEAVE_DURATION}ms ${EASE_OUT}`,
@@ -173,7 +173,7 @@ export default function FollowSuggestionDeck({
       </div>
 
       {isDone ? (
-        <div className="rounded-3xl border border-white/10 bg-gradient-to-b from-[#151a26] to-[#10141d] px-6 py-14 text-center">
+        <div className="rounded-2xl border border-white/9 bg-surface-raised px-6 py-14 text-center">
           <p className="text-xl font-black tracking-[-0.035em]">
             Hepsini gözden geçirdin
           </p>
@@ -184,7 +184,7 @@ export default function FollowSuggestionDeck({
           </p>
           <Link
             href="/akis"
-            className={`mt-6 inline-flex min-h-12 cursor-pointer items-center rounded-full bg-white px-6 text-sm font-black text-[#12100e] transition-colors hover:bg-[#ffede6] ${focusRing}`}
+            className={`mt-6 inline-flex min-h-12 cursor-pointer items-center rounded-full bg-white px-6 text-sm font-black text-[#101012] transition-colors hover:bg-[#ffede6] ${focusRing}`}
           >
             Akışa dön
           </Link>
@@ -202,7 +202,7 @@ export default function FollowSuggestionDeck({
                   ? "none"
                   : `transform ${LEAVE_DURATION}ms ${EASE_OUT}, opacity ${LEAVE_DURATION}ms ${EASE_OUT}`,
               }}
-              className="absolute inset-x-2 top-2 bottom-0 rounded-3xl border border-white/10 bg-gradient-to-b from-[#141926] to-[#0f131c]"
+              className="absolute inset-x-2 top-2 bottom-0 rounded-2xl border border-white/8 bg-surface"
             />
           )}
 
@@ -220,9 +220,9 @@ export default function FollowSuggestionDeck({
                 : `transform ${LEAVE_DURATION}ms ${EASE_OUT}, opacity ${LEAVE_DURATION}ms ${EASE_OUT}`,
               willChange: "transform",
             }}
-            className="absolute inset-0 flex cursor-grab touch-pan-y flex-col overflow-hidden rounded-3xl border border-white/12 bg-gradient-to-b from-[#171d2b] to-[#10141d] shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_30px_60px_-30px_rgba(0,0,0,0.95)] select-none active:cursor-grabbing"
+            className="absolute inset-0 flex cursor-grab touch-pan-y flex-col overflow-hidden rounded-2xl border border-white/11 bg-surface-raised shadow-[0_24px_56px_-36px_rgba(0,0,0,0.72)] select-none active:cursor-grabbing"
           >
-            <div className="h-px w-full bg-gradient-to-r from-transparent via-[#ff7a45]/55 to-transparent" />
+            <div className="h-px w-full bg-brand/45" />
 
             {/* Sürükleme yönünü kart üzerinde göster. Renkler tema
                 paletinden: onay turuncu, geçme nötr gri. */}
@@ -232,7 +232,7 @@ export default function FollowSuggestionDeck({
                 transform: `rotate(-8deg) scale(${intent === "follow" ? 1 : 0.85})`,
                 transition: `opacity 180ms ease-out, transform 180ms ${EASE_OUT}`,
               }}
-              className={`pointer-events-none absolute top-6 left-6 rounded-lg border-2 border-[#ff7a45] bg-[#ff7a45]/12 px-3 py-1 font-mono text-sm font-black uppercase text-[#ff9a72] ${
+              className={`pointer-events-none absolute top-6 left-6 rounded-lg border-2 border-brand bg-brand/12 px-3 py-1 font-mono text-sm font-black uppercase text-[#ff8968] ${
                 intent === "follow" ? "opacity-100" : "opacity-0"
               }`}
             >
@@ -265,7 +265,7 @@ export default function FollowSuggestionDeck({
               <h2 className="mt-4 max-w-full truncate text-2xl font-black tracking-[-0.04em]">
                 {entry.displayName}
               </h2>
-              <p className="mt-1 max-w-full truncate text-sm font-bold text-[#ff9a72]">
+              <p className="mt-1 max-w-full truncate text-sm font-bold text-[#ff8968]">
                 @{entry.username}
               </p>
               {entry.detail && (
@@ -302,8 +302,8 @@ export default function FollowSuggestionDeck({
                 onClick={() => decide("follow")}
                 className={`inline-flex min-h-12 flex-[1.2] cursor-pointer items-center justify-center gap-2 rounded-xl text-sm font-black transition-colors ${focusRing} ${
                   followedIds.has(entry.id)
-                    ? "border border-[#ff7a45]/45 bg-[#ff7a45]/16 text-[#ffb695]"
-                    : "bg-[#ff7a45] text-[#12100e] hover:bg-[#ff8d5e]"
+                    ? "border border-brand/45 bg-brand/16 text-[#ffa082]"
+                    : "bg-brand text-[#101012] hover:bg-brand-hover"
                 }`}
               >
                 {followedIds.has(entry.id) ? (

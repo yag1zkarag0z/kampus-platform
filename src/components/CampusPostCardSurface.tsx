@@ -71,7 +71,7 @@ export default function CampusPostCardSurface({
     <article
       {...props}
       onClick={openPost}
-      className={`cursor-pointer transition-colors duration-200 hover:bg-[#ff7a45]/5 ${className}`}
+      className={`cursor-pointer transition-colors duration-200 hover:bg-brand/5 ${className}`}
     />
   );
 }

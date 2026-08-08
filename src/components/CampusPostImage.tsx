@@ -27,7 +27,7 @@ export default function CampusPostImage({
         : "max-h-[32rem]";
 
   return (
-    <div className="relative mt-4 overflow-hidden border border-white/12 bg-[#141720]">
+    <div className="relative mt-4 overflow-hidden border border-white/12 bg-surface-raised">
       {hasImageError ? (
         <div
           role="img"

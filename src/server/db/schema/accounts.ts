@@ -309,6 +309,9 @@ export const sessions = pgTable(
       .on(table.userId, table.expiresAt)
       .where(sql`${table.revokedAt} is null`),
     index("sessions_expires_at_idx").on(table.expiresAt),
+    index("sessions_revoked_at_idx")
+      .on(table.revokedAt)
+      .where(sql`${table.revokedAt} is not null`),
     check(
       "sessions_token_hash_check",
       sql`char_length(${table.tokenHash}) between 32 and 512`,

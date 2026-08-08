@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 
+import ActionStatusText from "@/components/ActionStatusText";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import { campusButton } from "@/components/campusButtonStyles";
 import { useCampusNotifications } from "@/components/CampusNotificationProvider";
-import { useFeedback } from "@/components/FeedbackProvider";
+import { useActionStatus } from "@/components/useActionStatus";
 import { getNotificationCopy } from "@/notifications/copy";
 import type {
   NotificationDto,
@@ -22,7 +23,7 @@ const commentTargetKinds = new Set<NotificationKindDto>([
   "reply",
 ]);
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
+  "outline-none focus-visible:ring-3 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 const filterOptions: {
   id: NotificationFilter;
@@ -152,7 +153,7 @@ export default function CampusNotifications() {
     markAllAsRead,
   } = useCampusNotifications();
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const { showToast } = useFeedback();
+  const [loadMoreStatus, setLoadMoreStatus] = useActionStatus();
 
   const mentionCount = useMemo(
     () =>
@@ -205,9 +206,9 @@ export default function CampusNotifications() {
     <section
       aria-labelledby="notifications-title"
       aria-busy={!isNotificationsHydrated}
-      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] min-w-0 bg-canvas text-white md:min-h-svh"
     >
-      <header className="sticky top-0 z-30 border-b border-white/8 bg-[#0a0d16]/95 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-white/8 bg-canvas/95 backdrop-blur-xl">
         <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-3.5">
           <h1
             ref={titleRef}
@@ -223,7 +224,7 @@ export default function CampusNotifications() {
             disabled={!isNotificationsHydrated || unreadCount === 0}
             onClick={() => void handleMarkAllAsRead()}
             aria-label="Tüm bildirimleri okundu olarak işaretle"
-            className={`inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-full px-2.5 text-xs font-black text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/8 disabled:cursor-not-allowed disabled:opacity-38 sm:px-3 sm:text-sm ${focusRing}`}
+            className={`inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-full px-2.5 text-xs font-black text-brand transition-colors hover:bg-brand/8 disabled:cursor-not-allowed disabled:opacity-38 sm:px-3 sm:text-sm ${focusRing}`}
           >
             <ReadAllIcon />
             <span className="hidden min-[460px]:inline">Tümünü oku</span>
@@ -247,7 +248,7 @@ export default function CampusNotifications() {
                 onClick={() => setActiveFilter(filter.id)}
                 className={`relative flex min-h-10 items-center justify-center gap-1.5 border-b-2 text-xs font-black transition-colors sm:text-sm ${focusRing} ${
                   isActive
-                    ? "border-[#ff7a45] text-[#ff7a45]"
+                    ? "border-brand text-brand"
                     : "border-transparent text-white/55 hover:text-white"
                 }`}
               >
@@ -256,7 +257,7 @@ export default function CampusNotifications() {
                   aria-label={`${count} bildirim`}
                   className={`inline-flex min-w-5 justify-center rounded-full px-1.5 py-0.5 font-mono text-[9px] ${
                     isActive
-                      ? "bg-[#ff7a45]/14 text-[#ff7a45]"
+                      ? "bg-brand/14 text-brand"
                       : "bg-white/8 text-white/50"
                   }`}
                 >
@@ -319,7 +320,7 @@ export default function CampusNotifications() {
                 disabled={isLoadingMoreNotifications}
                 onClick={() =>
                   void loadMoreNotifications().catch(() => {
-                    showToast({
+                    setLoadMoreStatus({
                       message: "Bildirimler yüklenemedi. Tekrar dene.",
                       tone: "error",
                     });
@@ -331,6 +332,9 @@ export default function CampusNotifications() {
                   ? "Bildirimler yükleniyor…"
                   : "Daha fazla bildirim yükle"}
               </button>
+              {loadMoreStatus && (
+                <ActionStatusText status={loadMoreStatus} className="mt-2" />
+              )}
             </div>
           )}
         </div>
@@ -400,7 +404,7 @@ function NotificationItem({
           {!isRead && (
             <span
               aria-hidden="true"
-              className="size-2 rounded-full bg-[#ff7a45]"
+              className="size-2 rounded-full bg-brand"
             />
           )}
         </span>
@@ -464,7 +468,7 @@ function NotificationsEmptyState({
       <div className="max-w-88">
         <span
           aria-hidden="true"
-          className="mx-auto grid size-11 place-items-center rounded-full border border-white/10 text-[#ff7a45]"
+          className="mx-auto grid size-11 place-items-center rounded-full border border-white/10 text-brand"
         >
           <HeartIcon className="size-5" />
         </span>
@@ -495,7 +499,7 @@ function NotificationKindIcon({ kind }: { kind: NotificationKindDto }) {
     <span
       role="img"
       aria-label={labelByKind[kind]}
-      className="absolute -right-1 -bottom-1 grid size-5 place-items-center rounded-full bg-[#12151d] text-[#ff7a45] ring-2 ring-[#0a0d16]"
+      className="absolute -right-1 -bottom-1 grid size-5 place-items-center rounded-full bg-surface text-brand ring-2 ring-canvas"
     >
       {kind === "like" ? (
         <HeartIcon className="size-2.5" />

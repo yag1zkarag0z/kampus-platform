@@ -23,7 +23,7 @@ export default function GlobalError({
           placeItems: "center",
           padding: "24px",
           boxSizing: "border-box",
-          background: "#0a0d16",
+          background: "#0b0b0c",
           color: "#ffffff",
           fontFamily:
             "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
@@ -41,7 +41,7 @@ export default function GlobalError({
               placeItems: "center",
               border: "1px solid rgba(255,255,255,0.2)",
               borderRadius: "999px",
-              color: "#ff7a45",
+              color: "#ff6b3d",
               fontWeight: 900,
               fontSize: "18px",
             }}
@@ -51,7 +51,7 @@ export default function GlobalError({
           <p
             style={{
               margin: "24px 0 0",
-              color: "#ff7a45",
+              color: "#ff6b3d",
               fontSize: "11px",
               fontWeight: 800,
               letterSpacing: "0.12em",
@@ -92,7 +92,7 @@ export default function GlobalError({
               borderRadius: "999px",
               padding: "0 22px",
               background: "#ffffff",
-              color: "#12100e",
+              color: "#101012",
               font: "inherit",
               fontSize: "14px",
               fontWeight: 800,

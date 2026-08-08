@@ -12,7 +12,7 @@ type GiphyResult = {
   images?: { fixed_width?: GiphyImage; downsized?: GiphyImage; original?: GiphyImage };
 };
 
-const focusRing = "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40";
+const focusRing = "outline-none focus-visible:ring-3 focus-visible:ring-brand/40";
 
 function toCampusGif(result: GiphyResult): CampusGif | null {
   const image = result.images?.fixed_width ?? result.images?.downsized ?? result.images?.original;
@@ -141,7 +141,7 @@ export default function GiphyPicker({
         role="dialog"
         aria-modal="true"
         aria-label="GIPHY GIF seçici"
-        className="fixed inset-x-3 bottom-3 z-[70] max-h-[calc(100svh-1.5rem)] min-w-0 overflow-hidden border border-white/12 bg-[#141720] p-3 shadow-[0_24px_70px_rgba(0,0,0,0.65)] sm:inset-x-auto sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:w-[min(44rem,calc(100vw-3rem))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:p-4"
+        className="fixed inset-x-3 bottom-3 z-[70] max-h-[calc(100svh-1.5rem)] min-w-0 overflow-hidden border border-white/12 bg-surface-raised p-3 shadow-[0_20px_56px_rgba(0,0,0,0.36)] sm:inset-x-auto sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:w-[min(44rem,calc(100vw-3rem))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:p-4"
       >
       <div className="flex items-center gap-2">
         <div role="search" className="min-w-0 flex-1">

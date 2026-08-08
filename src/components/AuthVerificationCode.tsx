@@ -288,7 +288,7 @@ export function VerificationCodePanel({
       <div
         className={`rounded-xl border px-3 py-2.5 ${
           isExpired || isLocked
-            ? "border-[#ffb18c]/24 bg-[#ffb18c]/8 text-[#ffb18c]"
+            ? "border-[#ff9e80]/24 bg-[#ff9e80]/8 text-[#ff9e80]"
             : "border-white/10 bg-white/4 text-white/55"
         }`}
       >
@@ -301,8 +301,8 @@ export function VerificationCodePanel({
               aria-hidden="true"
               className={`size-1.5 rounded-full ${
                 isExpired || isLocked
-                  ? "bg-[#ffb18c]"
-                  : "bg-[#7fd9a3]"
+                  ? "bg-[#ff9e80]"
+                  : "bg-success"
               }`}
             />
             {statusText}
@@ -320,7 +320,7 @@ export function VerificationCodePanel({
         onClick={onResend}
         disabled={!canResend || isResending}
         aria-controls={inputId}
-        className="min-h-11 w-full rounded-xl border border-white/12 px-4 text-xs font-black text-white outline-none transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 disabled:cursor-not-allowed disabled:opacity-48"
+        className="min-h-11 w-full rounded-xl border border-white/12 px-4 text-xs font-black text-white outline-none transition-colors hover:border-brand/35 hover:bg-brand/8 focus-visible:ring-3 focus-visible:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-48"
       >
         {resendLabel}
       </button>

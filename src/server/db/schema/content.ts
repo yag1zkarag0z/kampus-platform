@@ -79,6 +79,9 @@ export const posts = pgTable(
     index("posts_active_author_feed_cursor_idx")
       .on(table.authorId, table.createdAt.desc(), table.id.desc())
       .where(sql`${table.deletedAt} is null`),
+    index("posts_deleted_at_idx")
+      .on(table.deletedAt)
+      .where(sql`${table.deletedAt} is not null`),
     check(
       "posts_content_not_blank_check",
       sql`char_length(btrim(${table.title})) > 0
@@ -156,6 +159,9 @@ export const comments = pgTable(
       .on(table.parentId)
       .where(sql`${table.parentId} is not null`),
     index("comments_author_id_idx").on(table.authorId),
+    index("comments_deleted_at_idx")
+      .on(table.deletedAt)
+      .where(sql`${table.deletedAt} is not null`),
     check(
       "comments_body_not_blank_check",
       sql`char_length(btrim(${table.body})) > 0
@@ -306,6 +312,7 @@ export const mediaAssets = pgTable(
       table.ownerId,
       table.createdAt.desc(),
     ),
+    index("media_assets_created_at_idx").on(table.createdAt),
     check(
       "media_assets_image_metadata_check",
       sql`${table.mimeType} = 'image/webp'
@@ -362,6 +369,7 @@ export const documentAssets = pgTable(
       table.ownerId,
       table.createdAt.desc(),
     ),
+    index("document_assets_created_at_idx").on(table.createdAt),
     check(
       "document_assets_pdf_metadata_check",
       sql`${table.mimeType} = 'application/pdf'
@@ -504,6 +512,9 @@ export const reports = pgTable(
     ),
     index("reports_status_idx").on(table.status),
     index("reports_post_id_idx").on(table.postId),
+    index("reports_resolved_at_idx")
+      .on(table.resolvedAt)
+      .where(sql`${table.resolvedAt} is not null`),
     check(
       "reports_detail_length_check",
       sql`char_length(${table.detail}) <= 300`,
@@ -647,6 +658,7 @@ export const notifications = pgTable(
     index("notifications_recipient_unread_idx")
       .on(table.recipientId)
       .where(sql`${table.readAt} is null`),
+    index("notifications_created_at_idx").on(table.createdAt),
     check(
       "notifications_not_self_check",
       sql`${table.actorId} <> ${table.recipientId}`,

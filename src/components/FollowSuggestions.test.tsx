@@ -9,7 +9,6 @@ import { campusFollowMembers } from "@/data/campusFollows";
 const followSuggestionsState = vi.hoisted(() => ({
   pathname: "/akis",
   push: vi.fn(),
-  showToast: vi.fn(),
   sessionMode: "guest" as "guest" | "member",
   isHydrated: true,
   followingAuthorIds: new Set<string>(),
@@ -33,10 +32,6 @@ vi.mock("@/components/CampusFollowProvider", () => ({
   }),
 }));
 
-vi.mock("@/components/FeedbackProvider", () => ({
-  useFeedback: () => ({ showToast: followSuggestionsState.showToast }),
-}));
-
 vi.mock("@/components/CampusAuthorAvatar", () => ({
   default: ({ author }: { author: string }) => (
     <span data-testid="avatar">{author}</span>
@@ -50,7 +45,6 @@ describe("FollowSuggestions", () => {
     followSuggestionsState.isHydrated = true;
     followSuggestionsState.followingAuthorIds = new Set();
     followSuggestionsState.push.mockReset();
-    followSuggestionsState.showToast.mockReset();
   });
 
   it("shows four compact seed suggestions to a guest", () => {

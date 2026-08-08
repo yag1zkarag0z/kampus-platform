@@ -2,7 +2,9 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { requireActiveMember } from "@/server/auth/authorization";
+import { IMAGE_MULTIPART_MAX_BYTES } from "@/lib/upload-limits";
 import { uploadContentImage } from "@/server/media/service";
+import { encodeTestMultipartFormData } from "@/test/multipart";
 
 import { POST } from "./route";
 
@@ -32,13 +34,16 @@ function configureEnvironment() {
   process.env.EMAIL_FROM = "KAMPUS Test <no-reply@kampus.local>";
 }
 
-function createUploadRequest(formData: FormData, origin = appOrigin) {
+async function createUploadRequest(formData: FormData, origin = appOrigin) {
+  const encoded = await encodeTestMultipartFormData(formData);
   const request = new NextRequest(`${appOrigin}/v1/media`, {
     method: "POST",
     headers: {
       Cookie: "kampus_session=m1.raw-token",
+      "Content-Type": encoded.contentType,
       Origin: origin,
     },
+    body: encoded.body,
   });
 
   vi.spyOn(request, "formData").mockResolvedValue(formData);
@@ -70,7 +75,7 @@ describe("POST /v1/media", () => {
       }),
     );
 
-    const response = await POST(createUploadRequest(formData));
+    const response = await POST(await createUploadRequest(formData));
 
     expect(
       response.status,
@@ -96,9 +101,30 @@ describe("POST /v1/media", () => {
     formData.set("image", new File(["x"], "campus.webp"));
     formData.set("ownerId", "someone-else");
 
-    const response = await POST(createUploadRequest(formData));
+    const response = await POST(await createUploadRequest(formData));
 
     expect(response.status).toBe(400);
+    expect(mockedUploadContentImage).not.toHaveBeenCalled();
+  });
+
+  it("rejects an oversized streamed body without relying on Content-Length", async () => {
+    const formData = new FormData();
+    formData.set(
+      "image",
+      new File(
+        [new Uint8Array(IMAGE_MULTIPART_MAX_BYTES)],
+        "oversized.webp",
+        { type: "image/webp" },
+      ),
+    );
+    const request = await createUploadRequest(formData);
+
+    expect(request.headers.get("content-length")).toBeNull();
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(413);
+    expect(response.headers.get("cache-control")).toBe("no-store");
     expect(mockedUploadContentImage).not.toHaveBeenCalled();
   });
 
@@ -107,7 +133,7 @@ describe("POST /v1/media", () => {
     formData.set("image", new File(["x"], "campus.webp"));
 
     const response = await POST(
-      createUploadRequest(formData, "https://attacker.example"),
+      await createUploadRequest(formData, "https://attacker.example"),
     );
 
     expect(response.status).toBe(403);

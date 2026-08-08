@@ -76,7 +76,7 @@ export default function CampusRightRail() {
       <div className="sticky top-0 h-svh overflow-y-auto px-5 py-5 xl:px-6">
         <Link
           href="/kesfet#kampus-search"
-          className="flex min-h-12 items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 text-sm text-white/58 outline-none transition-colors hover:border-[#ff7a45]/35 hover:bg-white/8 focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40"
+          className="flex min-h-12 items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 text-sm text-white/58 outline-none transition-colors hover:border-brand/35 hover:bg-white/8 focus-visible:ring-3 focus-visible:ring-brand/40"
         >
           <svg
             aria-hidden="true"
@@ -103,10 +103,10 @@ export default function CampusRightRail() {
 
         <section
           aria-labelledby="topic-hubs-title"
-          className="mt-5 overflow-hidden rounded-[1.35rem] border border-white/10 bg-white/4"
+          className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-white/4"
         >
           <div className="border-b border-white/8 px-5 py-4">
-            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
+            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-brand">
               Konulara göre keşfet
             </p>
             <h2
@@ -130,7 +130,7 @@ export default function CampusRightRail() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-bold leading-5 tracking-[-0.02em] group-hover:text-[#ff7a45]">
+                      <p className="text-sm font-bold leading-5 tracking-[-0.02em] group-hover:text-brand">
                         {topic.name}
                       </p>
                       <p className="mt-0.5 text-xs leading-5 text-white/60">
@@ -142,7 +142,7 @@ export default function CampusRightRail() {
                     </div>
                     <span
                       aria-hidden="true"
-                      className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full border border-[#ff7a45]/25 bg-[#ff7a45]/10 font-mono text-[9px] font-bold text-[#ff7a45]"
+                      className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full border border-brand/25 bg-brand/10 font-mono text-[9px] font-bold text-brand"
                     >
                       0{index + 1}
                     </span>
@@ -154,7 +154,7 @@ export default function CampusRightRail() {
 
           <Link
             href="/kesfet"
-            className="block border-t border-white/8 px-5 py-3.5 text-xs font-bold text-[#ff7a45] outline-none transition-colors hover:bg-white/5 focus-visible:bg-white/5"
+            className="block border-t border-white/8 px-5 py-3.5 text-xs font-bold text-brand outline-none transition-colors hover:bg-white/5 focus-visible:bg-white/5"
           >
             Tüm başlıkları gör
           </Link>
@@ -162,7 +162,7 @@ export default function CampusRightRail() {
 
         <section
           aria-labelledby="campus-calendar-title"
-          className="mt-4 rounded-[1.35rem] border border-white/10 bg-[#24242b] p-5"
+          className="mt-4 rounded-2xl border border-white/10 bg-[#24242b] p-5"
         >
           <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[#aaa6ba]">
             Yaklaşan
@@ -181,7 +181,7 @@ export default function CampusRightRail() {
                   <span className="block text-sm font-black leading-none">
                     {event.day}
                   </span>
-                  <span className="mt-0.5 block font-mono text-[9px] font-bold tracking-[0.1em] text-[#ff7a45]">
+                  <span className="mt-0.5 block font-mono text-[9px] font-bold tracking-[0.1em] text-brand">
                     {event.month}
                   </span>
                 </div>
@@ -196,7 +196,7 @@ export default function CampusRightRail() {
           </ol>
         </section>
 
-        <p className="mt-5 border-l-2 border-[#ff7a45] pl-3 text-[11px] leading-5 text-white/62">
+        <p className="mt-5 border-l-2 border-brand pl-3 text-[11px] leading-5 text-white/62">
           KAMPÜS bağımsız bir öğrenci projesidir. Yaşar Üniversitesi’nin resmî
           platformu değildir.
         </p>

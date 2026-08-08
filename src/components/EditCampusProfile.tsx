@@ -34,7 +34,7 @@ const acceptedAvatarTypes = new Set([
   "image/webp",
 ]);
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
+  "outline-none focus-visible:ring-3 focus-visible:ring-brand/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 const fieldClassName = `mt-2 min-h-12 w-full border border-white/12 bg-white/[0.03] px-3.5 py-2.5 text-sm font-semibold text-white placeholder:font-medium placeholder:text-white/40 ${focusRing}`;
 
 /**
@@ -42,7 +42,7 @@ const fieldClassName = `mt-2 min-h-12 w-full border border-white/12 bg-white/[0.
  * çiziliyor; koyu temada beyaz üstüne beyaz yazı okunmuyordu. Seçenek zeminini
  * açıkça koyuya sabitliyoruz.
  */
-const selectClassName = `${fieldClassName} [&>option]:bg-[#141720] [&>option]:text-white [&>optgroup]:bg-[#141720] [&>optgroup]:text-white/70`;
+const selectClassName = `${fieldClassName} [&>option]:bg-surface-raised [&>option]:text-white [&>optgroup]:bg-surface-raised [&>optgroup]:text-white/70`;
 
 type EditableProfile = {
   displayName: string;
@@ -497,9 +497,9 @@ function EditProfileForm({
   return (
     <section
       aria-labelledby="edit-profile-title"
-      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] min-w-0 bg-canvas text-white md:min-h-svh"
     >
-      <header className="sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-white/12 bg-canvas/95 backdrop-blur-xl">
         <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 sm:px-5">
           <Link
             href="/profil"
@@ -518,7 +518,7 @@ function EditProfileForm({
             <BackIcon />
           </Link>
           <div className="min-w-0 justify-self-center text-center">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-brand">
               Profil
             </p>
             <h1
@@ -546,7 +546,7 @@ function EditProfileForm({
             </h2>
 
             <div className="mt-4 flex flex-col gap-5 min-[360px]:flex-row min-[360px]:items-center">
-              <div className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-full border border-white/12 bg-[#17191c] text-2xl font-black text-[#ff7a45]">
+              <div className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-full border border-white/12 bg-surface-raised text-2xl font-black text-brand">
                 {avatarPreview ? (
                   <Image
                     src={avatarPreview}
@@ -576,7 +576,7 @@ function EditProfileForm({
                   />
                   <label
                     htmlFor="profile-avatar"
-                    className="inline-flex min-h-11 cursor-pointer items-center justify-center border border-white/12 px-4 text-xs font-black transition-colors hover:border-[#ff7a45]/32 hover:bg-[#ff7a45]/7 peer-focus-visible:ring-3 peer-focus-visible:ring-[#ff7a45]/40 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-[#0a0d16]"
+                    className="inline-flex min-h-11 cursor-pointer items-center justify-center border border-white/12 px-4 text-xs font-black transition-colors hover:border-brand/32 hover:bg-brand/7 peer-focus-visible:ring-3 peer-focus-visible:ring-brand/40 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-canvas"
                   >
                     {isProcessingAvatar ? "Hazırlanıyor…" : "Fotoğraf seç"}
                   </label>
@@ -584,7 +584,7 @@ function EditProfileForm({
                     <button
                       type="button"
                       onClick={handleRemoveAvatar}
-                      className={`inline-flex min-h-11 items-center justify-center px-4 text-xs font-black text-[#ffb199] transition-colors hover:bg-[#ffb199]/8 ${focusRing}`}
+                      className={`inline-flex min-h-11 items-center justify-center px-4 text-xs font-black text-danger transition-colors hover:bg-danger/8 ${focusRing}`}
                     >
                       Fotoğrafı kaldır
                     </button>
@@ -595,12 +595,13 @@ function EditProfileForm({
                   className="mt-2 text-[11px] leading-5 text-white/55"
                 >
                   PNG, JPEG veya WebP · En fazla 2 MB · Kare kırpılır ·
-                  Kaydettiğinde hesabına yüklenir
+                  Kaydettiğinde hesabına yüklenir · Günde en fazla 3 kez
+                  değiştirebilirsin
                 </p>
                 <p
                   id="profile-avatar-error"
                   role={avatarError ? "alert" : undefined}
-                  className="mt-1 min-h-4 text-[11px] font-semibold text-[#ffb199]"
+                  className="mt-1 min-h-4 text-[11px] font-semibold text-danger"
                 >
                   {avatarError}
                 </p>
@@ -639,7 +640,7 @@ function EditProfileForm({
                   }}
                   className={`${fieldClassName} ${
                     fieldErrors.displayName
-                      ? "border-[#ffb199]"
+                      ? "border-danger"
                       : ""
                   }`}
                 />
@@ -687,7 +688,7 @@ function EditProfileForm({
                     }}
                     className={`${fieldClassName} pl-8 ${
                       fieldErrors.username
-                        ? "border-[#ffb199]"
+                        ? "border-danger"
                         : ""
                     }`}
                   />
@@ -697,6 +698,7 @@ function EditProfileForm({
                   className="mt-1.5 text-[11px] leading-5 text-white/55"
                 >
                   Küçük harf, rakam, nokta ve alt çizgi kullanabilirsin.
+                  Kullanıcı adını 30 günde bir değiştirebilirsin.
                 </p>
                 <FieldError
                   id="profile-username-error"
@@ -731,7 +733,7 @@ function EditProfileForm({
                   placeholder="Kendinden kısaca bahset."
                   className={`${fieldClassName} min-h-32 resize-y leading-6 ${
                     fieldErrors.bio
-                      ? "border-[#ffb199]"
+                      ? "border-danger"
                       : ""
                   }`}
                 />
@@ -776,7 +778,7 @@ function EditProfileForm({
                   }}
                   className={`${selectClassName} ${
                     fieldErrors.department
-                      ? "border-[#ffb199]"
+                      ? "border-danger"
                       : ""
                   }`}
                 >
@@ -820,7 +822,7 @@ function EditProfileForm({
                   }}
                   className={`${selectClassName} ${
                     fieldErrors.year
-                      ? "border-[#ffb199]"
+                      ? "border-danger"
                       : ""
                   }`}
                 >
@@ -853,11 +855,11 @@ function EditProfileForm({
                     setShowDepartment(event.target.checked);
                     setStatusMessage("");
                   }}
-                  className={`size-5 shrink-0 accent-[#ff7a45] ${focusRing}`}
+                  className={`size-5 shrink-0 accent-brand ${focusRing}`}
                 />
               </label>
 
-              <div className="mt-6 border-l-2 border-[#ff7a45]/40 pl-3.5">
+              <div className="mt-6 border-l-2 border-brand/40 pl-3.5">
                 <p className="text-[11px] leading-5 text-white/55">
                   Anonim açtığın konular ve anonim yorumların profilinde hiçbir
                   zaman gösterilmez.
@@ -871,7 +873,7 @@ function EditProfileForm({
               role="status"
               aria-live="polite"
               aria-atomic="true"
-              className="min-h-5 text-xs font-semibold text-[#ffb199]"
+              className="min-h-5 text-xs font-semibold text-danger"
             >
               {statusMessage}
             </p>
@@ -895,7 +897,7 @@ function EditProfileForm({
               <button
                 type="submit"
                 disabled={isSaving || isProcessingAvatar}
-                className={`inline-flex min-h-11 flex-1 items-center justify-center bg-white px-5 text-xs font-black text-[#12100e] transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none ${focusRing}`}
+                className={`inline-flex min-h-11 flex-1 items-center justify-center bg-white px-5 text-xs font-black text-[#101012] transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none ${focusRing}`}
               >
                 {isSaving ? "Kaydediliyor…" : "Değişiklikleri kaydet"}
               </button>
@@ -918,7 +920,7 @@ function FieldError({
     <p
       id={id}
       role={message ? "alert" : undefined}
-      className="mt-1.5 min-h-4 text-[11px] font-semibold text-[#ffb199]"
+      className="mt-1.5 min-h-4 text-[11px] font-semibold text-danger"
     >
       {message}
     </p>
@@ -930,7 +932,7 @@ function EditProfileLoading() {
     <section
       aria-busy="true"
       aria-label="Profil düzenleme alanı yükleniyor"
-      className="min-h-[calc(100svh-4rem)] bg-[#0a0d16] text-white md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] bg-canvas text-white md:min-h-svh"
     >
       <div className="flex min-h-16 items-center gap-3 border-b border-white/12 px-4">
         <div className="size-11 animate-pulse rounded-full bg-white/8 motion-reduce:animate-none" />

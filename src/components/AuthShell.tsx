@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+
 import CampusLogo from "@/components/CampusLogo";
 
 type AuthShellProps = {
@@ -15,55 +16,61 @@ export default function AuthShell({
   description,
   children,
 }: AuthShellProps) {
-  return (
-    <main className="relative isolate min-h-svh overflow-hidden bg-[#0a0d16] text-white">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-20 bg-[radial-gradient(ellipse_120%_80%_at_82%_-8%,rgba(255,122,69,0.14)_0%,transparent_55%),radial-gradient(ellipse_90%_70%_at_-8%_112%,rgba(94,74,196,0.12)_0%,transparent_58%),linear-gradient(175deg,#05060a_0%,#0a0d16_55%,#0e1220_100%)]"
-      />
-      <div
-        aria-hidden="true"
-        className="paper-noise pointer-events-none absolute inset-0 -z-10"
-      />
+  const isLogin = mode === "login";
 
-      <div className="mx-auto flex min-h-svh w-full max-w-[1360px] flex-col px-5 sm:px-8 lg:px-12">
-        <header className="flex min-h-[4.5rem] items-center border-b border-white/10 sm:min-h-20">
+  return (
+    <main className="min-h-svh bg-canvas text-white">
+      <div className="mx-auto flex min-h-svh w-full max-w-[1180px] flex-col px-5 sm:px-8 lg:px-10">
+        <header className="flex min-h-18 items-center justify-between gap-4 border-b border-white/8">
           <Link
             href="/"
             aria-label="KAMPÜS ana sayfa"
-            className="inline-flex min-h-11 items-center outline-none transition-opacity hover:opacity-80 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-4 focus-visible:ring-offset-[#0a0d16]"
+            className="inline-flex min-h-11 items-center outline-none transition-opacity hover:opacity-80 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-white"
           >
             <CampusLogo
               idPrefix={`auth-${mode}-logo`}
-              wordmarkClassName="text-lg sm:text-xl"
+              wordmarkClassName="text-xl"
             />
           </Link>
+
+          <div className="flex items-center gap-2.5">
+            <span className="hidden text-[13px] font-normal text-white/42 sm:inline">
+              {isLogin ? "Hesabın yok mu?" : "Zaten hesabın var mı?"}
+            </span>
+            <Link
+              href={isLogin ? "/kayit" : "/giris"}
+              className="inline-flex min-h-10 items-center rounded-lg border border-white/12 bg-white/[0.035] px-3.5 text-[14px] font-medium tracking-normal text-white/82 outline-none transition-colors hover:border-white/22 hover:bg-white/[0.07] hover:text-white focus-visible:ring-2 focus-visible:ring-brand/35"
+            >
+              {isLogin ? "Kayıt ol" : "Giriş yap"}
+            </Link>
+          </div>
         </header>
 
-        <div className="grid flex-1 items-center gap-10 py-10 sm:py-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(28rem,0.78fr)] lg:gap-16 lg:py-16 xl:gap-24">
-          <section className="max-w-2xl text-center lg:text-left">
-            <h1 className="mx-auto max-w-3xl text-[clamp(2.8rem,9vw,5.6rem)] font-black leading-[0.91] tracking-[-0.06em] lg:mx-0">
-              {title}
-            </h1>
-
-            <p className="mx-auto mt-6 max-w-xl text-base leading-7 text-white/68 sm:text-lg sm:leading-8 lg:mx-0">
-              {description}
-            </p>
-
-            <aside className="mx-auto mt-7 max-w-xl border-t-2 border-[#ff7a45] pt-3 text-[11px] leading-5 text-white/62 sm:text-xs lg:mx-0 lg:border-l-2 lg:border-t-0 lg:pl-3 lg:pt-0">
-              KAMPÜS bağımsız bir öğrenci projesidir;{" "}
-              <strong className="font-bold text-[#ff7a45]">
-                Yaşar Üniversitesi’nin resmî platformu değildir.
-              </strong>
-            </aside>
-          </section>
-
-          <section
-            aria-label={mode === "register" ? "Kayıt formu" : "Giriş formu"}
-            className="w-full lg:justify-self-end"
+        <div className="flex flex-1 items-start justify-center py-8 sm:py-12 lg:py-14">
+          <div
+            className={`w-full ${
+              isLogin ? "max-w-[31rem]" : "max-w-[34rem]"
+            }`}
           >
-            {children}
-          </section>
+            <section className="mb-7 text-center sm:mb-8">
+              <h1 className="text-[clamp(2.7rem,6.8vw,4.55rem)] font-semibold leading-[0.98] tracking-[-0.055em]">
+                {title}
+              </h1>
+              <p className="mx-auto mt-4 max-w-lg text-sm leading-6 text-white/52 sm:text-base">
+                {description}
+              </p>
+            </section>
+
+            <section
+              aria-label={isLogin ? "Giriş formu" : "Kayıt formu"}
+            >
+              {children}
+            </section>
+
+            <p className="mx-auto mt-6 max-w-xl text-center text-[11px] leading-5 text-white/30">
+              Bağımsız öğrenci projesi · Yaşar Üniversitesi’nin resmî platformu değildir.
+            </p>
+          </div>
         </div>
       </div>
     </main>

@@ -28,11 +28,11 @@ export default function CampusLoadingScreen({
 
         <p className="campus-loading-wordmark mt-3 text-2xl font-black tracking-[-0.06em] sm:text-3xl">
           KAMPÜS
-          <span className="text-[#ff7a45]">.</span>
+          <span className="text-brand">.</span>
         </p>
 
         <p className="campus-loading-credit mt-4 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-white/55 sm:text-[11px]">
-          by <span className="text-[#ff7a45]">Yagiz Karagoz</span>
+          by <span className="text-brand">Yagiz Karagoz</span>
         </p>
       </div>
     </div>

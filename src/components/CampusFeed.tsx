@@ -15,6 +15,7 @@ import {
   type ReactNode,
 } from "react";
 
+import ActionStatusText from "@/components/ActionStatusText";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import CampusAuthorProfileLink from "@/components/CampusAuthorProfileLink";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
@@ -54,7 +55,7 @@ import {
   type CampusPostCategory,
   type CampusPostImage as CampusPostImageData,
 } from "@/data/campusPosts";
-import { useFeedback } from "@/components/FeedbackProvider";
+import { useActionStatus } from "@/components/useActionStatus";
 
 type FeedView = "latest" | "following";
 
@@ -100,7 +101,7 @@ const composerCategories: CampusPostCategory[] = [
 ];
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
+  "outline-none focus-visible:ring-3 focus-visible:ring-brand/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 const quickEmojis = [
   { value: "👍", label: "Beğeni" },
   { value: "❤️", label: "Kalp" },
@@ -221,7 +222,7 @@ function CharacterRing({ value, max }: { value: number; max: number }) {
           cy="12"
           r="9"
           fill="none"
-          stroke={isNearLimit ? "#ff5a5a" : "#ff7a45"}
+          stroke={isNearLimit ? "#ff5a5a" : "#ff6b3d"}
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -236,7 +237,13 @@ export default function CampusFeed() {
   const router = useRouter();
   // Aşağı kaydırırken sekmeler de üst barla birlikte çekilsin.
   const isHeaderHidden = useHideOnScrollDown();
-  const { showToast } = useFeedback();
+  const [guestStatus, setGuestStatus] = useActionStatus();
+  // Durum metni tepede tek bir yerde değil, tetikleyen öğenin (belirli bir
+  // gönderi, sekmeler veya konu açma kutusu) yanında görünsün diye.
+  const [guestStatusAnchor, setGuestStatusAnchor] = useState<string | null>(
+    null,
+  );
+  const [loadMoreStatus, setLoadMoreStatus] = useActionStatus();
   const { isGuest } = useCampusAccount();
   const {
     posts,
@@ -252,14 +259,15 @@ export default function CampusFeed() {
   } = useCampusData();
   // Misafirin beğeni/kaydetme tıklaması mutasyon yerine giriş daveti açar;
   // düzen herkes için aynı kalır, yalnızca sonuç farklıdır.
-  const requireMember = () => {
+  const requireMember = (anchor: string) => {
     if (!isGuest) {
       return false;
     }
 
-    showToast({
+    setGuestStatusAnchor(anchor);
+    setGuestStatus({
       message: "Bu işlem için giriş yap veya kayıt ol.",
-      tone: "info",
+      tone: "error",
       action: { label: "Giriş yap", onClick: () => router.push("/giris") },
     });
     return true;
@@ -445,9 +453,10 @@ export default function CampusFeed() {
 
   const changeFeedView = (view: FeedView) => {
     if (view === "following" && isGuest) {
-      showToast({
+      setGuestStatusAnchor("tabs");
+      setGuestStatus({
         message: "Takip ettiğin kişilerin gönderilerini görmek için giriş yap.",
-        tone: "info",
+        tone: "error",
         action: {
           label: "Giriş yap",
           onClick: () => router.push("/giris"),
@@ -460,9 +469,10 @@ export default function CampusFeed() {
   };
 
   const handleGuestComposerClick = () => {
-    showToast({
+    setGuestStatusAnchor("composer");
+    setGuestStatus({
       message: "Gönderi paylaşmak için giriş yapmalısın.",
-      tone: "info",
+      tone: "error",
       action: {
         label: "Giriş yap",
         onClick: () => router.push("/giris"),
@@ -702,7 +712,6 @@ export default function CampusFeed() {
       const message = describeComposerError(error);
 
       setQuickPostMessage(message);
-      showToast({ message, tone: "error" });
     } finally {
       setIsQuickPostSubmitting(false);
     }
@@ -712,7 +721,7 @@ export default function CampusFeed() {
     try {
       await loadMore();
     } catch {
-      showToast({
+      setLoadMoreStatus({
         message: "Gönderiler yüklenemedi. Tekrar dene.",
         tone: "error",
       });
@@ -722,14 +731,14 @@ export default function CampusFeed() {
   return (
     <section
       aria-labelledby="campus-feed-title"
-      className="mx-auto min-h-[calc(100svh-4rem)] w-full max-w-[900px] min-w-0 bg-[#0a0d16] text-white sm:border-x sm:border-white/12 md:min-h-svh"
+      className="mx-auto min-h-[calc(100svh-4rem)] w-full max-w-[900px] min-w-0 bg-canvas text-white sm:border-x sm:border-white/12 md:min-h-svh"
     >
       <h1 id="campus-feed-title" className="sr-only">
         Kampüs akışı
       </h1>
 
       <header
-        className={`sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/55 backdrop-blur-xl transition-transform duration-300 ${
+        className={`sticky top-0 z-30 border-b border-white/12 bg-canvas/55 backdrop-blur-xl transition-transform duration-300 ${
           isHeaderHidden ? "-translate-y-full md:translate-y-0" : "translate-y-0"
         }`}
       >
@@ -752,7 +761,7 @@ export default function CampusFeed() {
                   onClick={() => changeFeedView(view.id)}
                   className={`relative min-h-14 min-w-0 px-2 text-sm font-black transition-colors sm:text-base ${focusRing} ${
                     isActive
-                      ? "text-[#ff7a45] after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-[#ff7a45] sm:after:inset-x-6"
+                      ? "text-brand after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-brand sm:after:inset-x-6"
                       : "text-white/55 hover:bg-white/4 hover:text-white"
                   }`}
                 >
@@ -776,7 +785,7 @@ export default function CampusFeed() {
               }
               className={`inline-flex min-h-14 min-w-12 items-center justify-center gap-1.5 px-2 text-xs font-black transition-colors hover:bg-white/4 min-[460px]:min-w-28 min-[460px]:px-3 ${focusRing} ${
                 activeCategory !== "Tümü"
-                  ? "bg-[#ff7a45]/12 text-[#ff7a45]"
+                  ? "bg-brand/12 text-brand"
                   : "text-white/55"
               }`}
             >
@@ -803,7 +812,7 @@ export default function CampusFeed() {
                 id="campus-feed-category-menu"
                 role="group"
                 aria-label="Gönderi kategorileri"
-                className="absolute top-[calc(100%+1px)] right-0 z-50 w-60 border border-white/12 bg-[#141720] p-2 shadow-[0_20px_50px_rgba(0,0,0,0.42)]"
+                className="absolute top-[calc(100%+1px)] right-0 z-50 w-60 border border-white/12 bg-surface-raised p-2 shadow-[0_16px_40px_rgba(0,0,0,0.28)]"
               >
                 <p className="px-2 pt-1 pb-2 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-white/55">
                   Kategori seç
@@ -823,7 +832,7 @@ export default function CampusFeed() {
                         }}
                         className={`inline-flex min-h-11 items-center px-2.5 text-left text-[11px] font-bold transition-colors ${focusRing} ${
                           isActive
-                            ? "bg-[#ff7a45]/12 text-[#ff7a45]"
+                            ? "bg-brand/12 text-brand"
                             : "text-white/55 hover:bg-white/6 hover:text-white"
                         }`}
                       >
@@ -837,6 +846,15 @@ export default function CampusFeed() {
           </div>
         </div>
       </header>
+
+      {guestStatus &&
+        (guestStatusAnchor === "tabs" ||
+          guestStatusAnchor === "composer") && (
+          <ActionStatusText
+            status={guestStatus}
+            className="px-4 pt-3 sm:px-5"
+          />
+        )}
 
       <div className="relative border-b border-white/12">
         {isGuest && (
@@ -875,7 +893,7 @@ export default function CampusFeed() {
                   onClick={() =>
                     setIsComposerCategoryOpen((value) => !value)
                   }
-                  className={`inline-flex min-h-8 items-center gap-1.5 rounded-full border border-[#ff7a45]/45 bg-[#ff7a45]/12 px-3 text-xs font-black text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/18 ${focusRing}`}
+                  className={`inline-flex min-h-8 items-center gap-1.5 rounded-full border border-brand/45 bg-brand/12 px-3 text-xs font-black text-brand transition-colors hover:bg-brand/18 ${focusRing}`}
                 >
                   {composerCategory}
                   <span aria-hidden="true" className="text-[9px]">▾</span>
@@ -884,7 +902,7 @@ export default function CampusFeed() {
                 {isComposerCategoryOpen && (
                   <div
                     role="menu"
-                    className="absolute top-full left-0 z-50 mt-1 grid w-56 grid-cols-2 gap-1 border border-white/12 bg-[#141720] p-2 shadow-[0_20px_50px_rgba(0,0,0,0.42)]"
+                    className="absolute top-full left-0 z-50 mt-1 grid w-56 grid-cols-2 gap-1 border border-white/12 bg-surface-raised p-2 shadow-[0_16px_40px_rgba(0,0,0,0.28)]"
                   >
                     {composerCategories.map((category) => (
                       <button
@@ -897,7 +915,7 @@ export default function CampusFeed() {
                         }}
                         className={`min-h-10 px-2.5 text-left text-[11px] font-bold transition-colors ${focusRing} ${
                           composerCategory === category
-                            ? "bg-[#ff7a45]/15 text-[#ff7a45]"
+                            ? "bg-brand/15 text-brand"
                             : "text-white/62 hover:bg-white/6 hover:text-white"
                         }`}
                       >
@@ -924,7 +942,7 @@ export default function CampusFeed() {
                 }}
                 maxLength={CAMPUS_POST_TITLE_MAX_LENGTH}
                 placeholder="Başlık ekle (isteğe bağlı)"
-                className="w-full border-0 border-b border-white/10 bg-transparent px-0 py-2 text-xl font-black tracking-[-0.025em] text-white outline-none ring-0 placeholder:font-bold placeholder:text-white/38 focus:border-[#ff7a45]/45 focus:outline-none focus:ring-0 sm:text-2xl"
+                className="w-full border-0 border-b border-white/10 bg-transparent px-0 py-2 text-xl font-black tracking-[-0.025em] text-white outline-none ring-0 placeholder:font-bold placeholder:text-white/38 focus:border-brand/45 focus:outline-none focus:ring-0 sm:text-2xl"
               />
             </>
           )}
@@ -953,7 +971,7 @@ export default function CampusFeed() {
             }
             aria-label="Gönderi metni"
             /* Kapak yok: 500 karakterin tamamı yazarken görünür kalsın. */
-            className="min-h-14 w-full resize-none overflow-y-auto border-0 bg-transparent px-0 py-2 text-xl font-semibold leading-8 text-white outline-none ring-0 placeholder:font-medium placeholder:text-white/42 focus:outline-none focus:ring-0 sm:text-2xl"
+            className={`min-h-14 w-full resize-none border-0 bg-transparent px-0 py-2 text-xl font-semibold leading-8 text-white outline-none ring-0 placeholder:font-medium placeholder:text-white/42 focus:outline-none focus:ring-0 sm:text-2xl ${isGuest ? "overflow-y-hidden" : "overflow-y-auto"}`}
           />
 
             {isComposerExpanded && (
@@ -964,7 +982,7 @@ export default function CampusFeed() {
                   onChange={(event) =>
                     setIsComposerAnonymous(event.target.checked)
                   }
-                  className="size-4 accent-[#ff7a45]"
+                  className="size-4 accent-brand"
                 />
                 {isComposerAnonymous
                   ? "Anonim paylaşıyorsun"
@@ -985,7 +1003,7 @@ export default function CampusFeed() {
 
           {quickPostImage && (
             /* ChatGPT tarzı küçük ek: önizleme akışı doldurmasın. */
-            <div className="relative mt-3 inline-block size-20 overflow-hidden rounded-xl border border-white/12 bg-[#141720] min-[400px]:ml-[3.75rem] sm:ml-16">
+            <div className="relative mt-3 inline-block size-20 overflow-hidden rounded-xl border border-white/12 bg-surface-raised min-[400px]:ml-[3.75rem] sm:ml-16">
               <Image
                 src={quickPostImage.src}
                 alt="Seçilen gönderi fotoğrafının önizlemesi"
@@ -1024,7 +1042,7 @@ export default function CampusFeed() {
           <div
             role="group"
             aria-label="Gönderi araçları"
-            className="flex min-w-0 items-center gap-0.5 sm:gap-1"
+            className={`flex min-w-0 flex-1 items-center gap-0.5 sm:gap-1 ${isGuest ? "overflow-x-hidden" : "overflow-x-auto"}`}
           >
             <ComposerAction
               icon={<PhotoIcon />}
@@ -1047,7 +1065,7 @@ export default function CampusFeed() {
 	            aria-expanded={isGifPickerOpen}
 	            aria-label="GIF ekle"
 	            title="GIF ekle"
-	            className={`grid size-10 shrink-0 place-items-center text-[#ff7a45]/85 transition-colors hover:bg-[#ff7a45]/8 hover:text-[#ff7a45] sm:size-12 ${focusRing}`}
+	            className={`grid size-10 shrink-0 place-items-center text-brand/85 transition-colors hover:bg-brand/8 hover:text-brand sm:size-12 ${focusRing}`}
 	          >
 	            <span
 	              aria-hidden="true"
@@ -1106,7 +1124,7 @@ export default function CampusFeed() {
             }
             className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center rounded-full px-4 text-sm font-black transition-colors disabled:cursor-not-allowed sm:min-h-12 sm:px-6 sm:text-base ${focusRing} ${
               quickPostBody.trim()
-                ? "bg-[#ff7a45] text-[#12100e] hover:bg-[#ff7a45]/90"
+                ? "bg-brand text-[#101012] hover:bg-brand/90"
                 : "bg-white/12 text-white/40"
             }`}
           >
@@ -1128,7 +1146,7 @@ export default function CampusFeed() {
                 type="button"
                 aria-label={`${emoji.label} emojisini ekle`}
                 onClick={() => appendQuickPostEmoji(emoji.value)}
-                className={`grid min-h-10 min-w-0 place-items-center rounded-lg text-xl transition-colors hover:bg-[#ff7a45]/10 sm:min-h-11 sm:text-2xl ${focusRing}`}
+                className={`grid min-h-10 min-w-0 place-items-center rounded-lg text-xl transition-colors hover:bg-brand/10 sm:min-h-11 sm:text-2xl ${focusRing}`}
               >
                 <span aria-hidden="true">{emoji.value}</span>
               </button>
@@ -1150,7 +1168,7 @@ export default function CampusFeed() {
               <button
                 type="button"
                 onClick={toggleQuickPostPoll}
-                className={`inline-flex min-h-10 shrink-0 items-center px-3 text-xs font-black text-[#ffb199] hover:bg-[#ffb199]/8 sm:text-sm ${focusRing}`}
+                className={`inline-flex min-h-10 shrink-0 items-center px-3 text-xs font-black text-danger hover:bg-danger/8 sm:text-sm ${focusRing}`}
               >
                 Kaldır
               </button>
@@ -1178,14 +1196,14 @@ export default function CampusFeed() {
                       updatePollOption(index, event.target.value)
                     }
                     placeholder={`${index + 1}. seçenek`}
-                    className={`min-h-11 min-w-0 flex-1 border border-white/12 bg-[#0a0d16]/70 px-3 text-sm font-semibold text-white placeholder:text-white/40 sm:min-h-12 sm:text-base ${focusRing}`}
+                    className={`min-h-11 min-w-0 flex-1 border border-white/12 bg-canvas/70 px-3 text-sm font-semibold text-white placeholder:text-white/40 sm:min-h-12 sm:text-base ${focusRing}`}
                   />
                   {pollOptions.length > 2 && (
                     <button
                       type="button"
                       aria-label={`${index + 1}. anket seçeneğini kaldır`}
                       onClick={() => removePollOption(index)}
-                      className={`grid size-11 shrink-0 place-items-center text-lg font-black text-[#ffb199] hover:bg-[#ffb199]/8 sm:size-12 ${focusRing}`}
+                      className={`grid size-11 shrink-0 place-items-center text-lg font-black text-danger hover:bg-danger/8 sm:size-12 ${focusRing}`}
                     >
                       <span aria-hidden="true">×</span>
                     </button>
@@ -1202,7 +1220,7 @@ export default function CampusFeed() {
                 <button
                   type="button"
                   onClick={addPollOption}
-                  className={`inline-flex min-h-10 items-center px-3 text-xs font-black text-[#ff7a45] hover:bg-[#ff7a45]/8 sm:text-sm ${focusRing}`}
+                  className={`inline-flex min-h-10 items-center px-3 text-xs font-black text-brand hover:bg-brand/8 sm:text-sm ${focusRing}`}
                 >
                   Seçenek ekle
                 </button>
@@ -1213,7 +1231,7 @@ export default function CampusFeed() {
               <p
                 id="campus-feed-poll-error"
                 role="alert"
-                className="mt-2 text-sm font-bold text-[#ffb199]"
+                className="mt-2 text-sm font-bold text-danger"
               >
                 {pollError}
               </p>
@@ -1224,7 +1242,7 @@ export default function CampusFeed() {
         {quickPostImageError && (
           <p
             role="alert"
-            className="mt-2 text-sm font-bold text-[#ffb199] min-[400px]:pl-[3.75rem] sm:pl-16"
+            className="mt-2 text-sm font-bold text-danger min-[400px]:pl-[3.75rem] sm:pl-16"
           >
             {quickPostImageError}
           </p>
@@ -1233,7 +1251,7 @@ export default function CampusFeed() {
         <p
           role="status"
           aria-live="polite"
-          className="min-h-5 pt-1 text-sm font-bold text-[#ffb18c] min-[400px]:pl-[3.75rem] sm:pl-16"
+          className="min-h-5 pt-1 text-sm font-bold text-[#ff9e80] min-[400px]:pl-[3.75rem] sm:pl-16"
         >
           {quickPostMessage}
         </p>
@@ -1241,9 +1259,9 @@ export default function CampusFeed() {
         {isQuickPostSubmitting && (
           <span
             aria-hidden="true"
-            className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden bg-[#ff7a45]/20"
+            className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden bg-brand/20"
           >
-            <span className="block h-full w-full animate-pulse bg-[#ff7a45] motion-reduce:animate-none" />
+            <span className="block h-full w-full animate-pulse bg-brand motion-reduce:animate-none" />
           </span>
         )}
         </form>
@@ -1257,7 +1275,7 @@ export default function CampusFeed() {
           <div>
             <span
               aria-hidden="true"
-              className="mx-auto block size-7 animate-spin rounded-full border-2 border-white/14 border-t-[#ff7a45] motion-reduce:animate-none"
+              className="mx-auto block size-7 animate-spin rounded-full border-2 border-white/14 border-t-[#ff6b3d] motion-reduce:animate-none"
             />
             <p className="mt-4 text-sm font-bold text-white/60">
               Takip akışın hazırlanıyor…
@@ -1301,7 +1319,7 @@ export default function CampusFeed() {
                         </span>
                         <span
                           aria-hidden="true"
-                          className="size-1 rotate-45 bg-[#ff7a45]/55"
+                          className="size-1 rotate-45 bg-brand/55"
                         />
                         <CampusAuthorProfileLink
                           author={post.author}
@@ -1309,7 +1327,7 @@ export default function CampusFeed() {
                           isAnonymous={post.isAnonymous}
                           ariaLabel={`${post.author} profilini aç`}
                           className="min-w-0"
-                          linkClassName={`truncate text-sm font-black transition-colors hover:text-[#ff7a45] sm:text-base ${focusRing}`}
+                          linkClassName={`truncate text-sm font-black transition-colors hover:text-brand sm:text-base ${focusRing}`}
                         >
                           <span className="truncate text-sm font-black sm:text-base">
                             {post.author}
@@ -1345,7 +1363,7 @@ export default function CampusFeed() {
                     {getCampusPostCommentCount(post) > 0 && (
                       <Link
                         href={`/gonderi/${post.id}#yorumlar`}
-                        className={`mt-2 inline-flex min-h-11 items-center text-sm font-black text-[#ff7a45] sm:text-base ${focusRing}`}
+                        className={`mt-2 inline-flex min-h-11 items-center text-sm font-black text-brand sm:text-base ${focusRing}`}
                       >
                         {getCampusPostCommentCount(post)} yorumu görüntüle
                       </Link>
@@ -1358,7 +1376,7 @@ export default function CampusFeed() {
                         <Link
                           href={`/gonderi/${post.id}`}
                           aria-label={`${post.title} konusunu aç`}
-                          className={`decoration-[#ff7a45]/40 underline-offset-4 transition-colors hover:text-[#ff7a45] hover:underline ${focusRing}`}
+                          className={`decoration-brand/40 underline-offset-4 transition-colors hover:text-brand hover:underline ${focusRing}`}
                         >
                           {post.title}
                         </Link>
@@ -1399,14 +1417,14 @@ export default function CampusFeed() {
                               : `${post.title || "Gönderi"} gönderisini beğen, ${post.likes} beğeni`
                           }
                           onClick={() => {
-                            if (!requireMember()) {
+                            if (!requireMember(post.id)) {
                               toggleLike(post.id);
                             }
                           }}
                           className={`campus-pop-on-active inline-flex min-h-11 items-center gap-2 px-2 text-sm font-bold transition-colors sm:text-base ${focusRing} ${
                             post.liked
-                              ? "bg-[#ff7a45]/10 text-[#ff7a45]"
-                              : "text-white/55 hover:bg-white/4 hover:text-[#ff7a45]"
+                              ? "bg-brand/10 text-brand"
+                              : "text-white/55 hover:bg-white/4 hover:text-brand"
                           }`}
                         >
                           <HeartIcon filled={post.liked} />
@@ -1421,7 +1439,7 @@ export default function CampusFeed() {
                         <Link
                           href={`/gonderi/${post.id}#yorumlar`}
                           aria-label={`${post.title || "Gönderi"} konusunun ${getCampusPostCommentCount(post)} yorumunu aç`}
-                          className={`inline-flex min-h-11 items-center gap-2 px-2 text-sm font-bold text-white/60 transition-colors hover:text-[#ff7a45] sm:text-base ${focusRing}`}
+                          className={`inline-flex min-h-11 items-center gap-2 px-2 text-sm font-bold text-white/60 transition-colors hover:text-brand sm:text-base ${focusRing}`}
                         >
                           <CommentIcon />
                           <span>{getCampusPostCommentCount(post)}</span>
@@ -1440,19 +1458,23 @@ export default function CampusFeed() {
                             : "Gönderiyi kaydet"
                         }
                         onClick={() => {
-                          if (!requireMember()) {
+                          if (!requireMember(post.id)) {
                             toggleBookmark(post.id);
                           }
                         }}
                         className={`campus-pop-on-active grid size-12 shrink-0 place-items-center transition-colors ${focusRing} ${
                           post.bookmarked
-                            ? "text-[#ff7a45]"
-                            : "text-white/55 hover:text-[#ff7a45]"
+                            ? "text-brand"
+                            : "text-white/55 hover:text-brand"
                         }`}
                       >
                         <BookmarkIcon filled={post.bookmarked} />
                       </button>
                     </footer>
+
+                    {guestStatus && guestStatusAnchor === post.id && (
+                      <ActionStatusText status={guestStatus} className="mt-2" />
+                    )}
                   </>
                 )}
               </CampusPostCardSurface>
@@ -1474,6 +1496,9 @@ export default function CampusFeed() {
                   ? "Gönderiler yükleniyor…"
                   : "Daha fazla gönderi yükle"}
               </button>
+              {loadMoreStatus && (
+                <ActionStatusText status={loadMoreStatus} className="mt-2" />
+              )}
             </div>
           )}
         </>
@@ -1509,7 +1534,7 @@ export default function CampusFeed() {
               setFeedScope("global");
               setActiveCategory("Tümü");
             }}
-            className={`mt-6 inline-flex min-h-11 items-center text-sm font-bold text-[#ff7a45] underline decoration-[#ff7a45]/40 underline-offset-4 sm:text-base ${focusRing}`}
+            className={`mt-6 inline-flex min-h-11 items-center text-sm font-bold text-brand underline decoration-brand/40 underline-offset-4 sm:text-base ${focusRing}`}
           >
             Ana akışa dön
           </button>
@@ -1542,8 +1567,8 @@ function ComposerAction({
       disabled={disabled}
       className={`grid size-10 shrink-0 place-items-center transition-colors disabled:cursor-wait disabled:opacity-45 sm:size-12 ${focusRing} ${
         isActive
-          ? "bg-[#ff7a45]/12 text-[#ff7a45]"
-          : "text-[#ff7a45]/85 hover:bg-[#ff7a45]/8 hover:text-[#ff7a45]"
+          ? "bg-brand/12 text-brand"
+          : "text-brand/85 hover:bg-brand/8 hover:text-brand"
       }`}
     >
       <span aria-hidden="true">{icon}</span>
@@ -1565,7 +1590,7 @@ function ComposerLinkAction({
       href={href}
       aria-label={label}
       title={label}
-      className={`grid size-10 shrink-0 place-items-center text-[#ff7a45]/85 transition-colors hover:bg-[#ff7a45]/8 hover:text-[#ff7a45] sm:size-12 ${focusRing}`}
+      className={`grid size-10 shrink-0 place-items-center text-brand/85 transition-colors hover:bg-brand/8 hover:text-brand sm:size-12 ${focusRing}`}
     >
       <span aria-hidden="true">{icon}</span>
     </Link>

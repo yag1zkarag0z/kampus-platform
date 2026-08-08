@@ -4,14 +4,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
+import ActionStatusText from "@/components/ActionStatusText";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import { useCampusData } from "@/components/CampusDataProvider";
 import CampusEmojiPicker from "@/components/CampusEmojiPicker";
 import CampusGif from "@/components/CampusGif";
-import { useFeedback } from "@/components/FeedbackProvider";
 import GiphyPicker from "@/components/GiphyPicker";
 import { campusButton } from "@/components/campusButtonStyles";
+import { useActionStatus } from "@/components/useActionStatus";
 import { useAutoGrowTextarea } from "@/components/useAutoGrowTextarea";
 import {
   LOCAL_ACCOUNT_OWNER_ID,
@@ -19,7 +20,7 @@ import {
 } from "@/data/campusPosts";
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40";
+  "outline-none focus-visible:ring-3 focus-visible:ring-brand/40";
 
 /**
  * Gönderiye kök yorum yazma sayfası. Gönderi detayında satır içi kutu yok;
@@ -32,7 +33,7 @@ export default function CampusCommentCompose({
 }) {
   const router = useRouter();
   const { isGuest } = useCampusAccount();
-  const { showToast } = useFeedback();
+  const [submitStatus, setSubmitStatus] = useActionStatus();
   const { addComment } = useCampusData();
   const [draft, setDraft] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -73,14 +74,10 @@ export default function CampusCommentCompose({
 
     try {
       await addComment(postId, { body, isAnonymous, gif: selectedGif });
-      showToast({
-        message: "Yorumun gönderiye eklendi.",
-        tone: "success",
-      });
-      // Geri yığınında boş taslak sayfası kalmasın.
+      // Sayfa hemen değişiyor; başarı mesajı görünmeye vakit bulamaz.
       router.replace(`/gonderi/${postId}`);
     } catch {
-      showToast({ message: "Yorum gönderilemedi.", tone: "error" });
+      setSubmitStatus({ message: "Yorum gönderilemedi.", tone: "error" });
       setIsSubmitting(false);
     }
   };
@@ -88,8 +85,8 @@ export default function CampusCommentCompose({
   const canSubmit = Boolean(draft.trim() || selectedGif);
 
   return (
-    <section className="min-h-full min-w-0 bg-[#0a0d16] text-white">
-      <header className="sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl">
+    <section className="min-h-full min-w-0 bg-canvas text-white">
+      <header className="sticky top-0 z-30 border-b border-white/12 bg-canvas/95 backdrop-blur-xl">
         <div className="flex min-h-16 items-center gap-4 px-3 sm:px-5">
           <Link
             href={`/gonderi/${postId}`}
@@ -162,7 +159,7 @@ export default function CampusCommentCompose({
                   type="checkbox"
                   checked={isAnonymous}
                   onChange={(event) => setIsAnonymous(event.target.checked)}
-                  className="size-4 accent-[#ff7a45]"
+                  className="size-4 accent-brand"
                 />
                 Anonim
               </label>
@@ -175,7 +172,7 @@ export default function CampusCommentCompose({
                   onClick={() =>
                     setIsEmojiPickerOpen((currentValue) => !currentValue)
                   }
-                  className={`grid size-11 place-items-center border border-white/12 text-lg transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+                  className={`grid size-11 place-items-center border border-white/12 text-lg transition-colors hover:border-brand/35 hover:bg-brand/8 ${focusRing}`}
                 >
                   <span aria-hidden="true">☺</span>
                 </button>
@@ -191,7 +188,7 @@ export default function CampusCommentCompose({
                   aria-label="Yoruma GIF ekle"
                   aria-expanded={isGifPickerOpen}
                   onClick={() => setIsGifPickerOpen((value) => !value)}
-                  className={`grid size-11 place-items-center border border-white/12 text-[10px] font-black text-[#ff7a45] transition-colors hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+                  className={`grid size-11 place-items-center border border-white/12 text-[10px] font-black text-brand transition-colors hover:border-brand/35 hover:bg-brand/8 ${focusRing}`}
                 >
                   GIF
                 </button>
@@ -220,6 +217,10 @@ export default function CampusCommentCompose({
               </button>
             </div>
           </div>
+
+          {submitStatus && (
+            <ActionStatusText status={submitStatus} className="mt-2 text-right" />
+          )}
         </form>
       )}
     </section>

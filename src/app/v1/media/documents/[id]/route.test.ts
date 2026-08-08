@@ -65,8 +65,12 @@ describe("/v1/media/documents/[id]", () => {
     );
     const response = await GET(request, routeContext());
 
-    expect(mockedGetVisibleContentDocument).toHaveBeenCalledWith(assetId);
+    expect(mockedGetVisibleContentDocument).toHaveBeenCalledWith(
+      memberId,
+      assetId,
+    );
     expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(response.headers.get("content-type")).toBe("application/pdf");
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     expect(response.headers.get("content-disposition")).toBe(

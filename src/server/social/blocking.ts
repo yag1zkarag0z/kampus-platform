@@ -39,6 +39,22 @@ export function noBlockBetween(
   )`;
 }
 
+/**
+ * Directional profile policy: a target that blocked the viewer is hidden. A
+ * viewer may still open a target they blocked themselves to undo that action.
+ */
+export function viewerIsNotBlockedBy(
+  viewerId: string,
+  targetUserId: AnyPgColumn,
+): SQL {
+  return sql`not exists (
+    select 1
+    from ${blocks}
+    where ${blocks.blockerId} = ${targetUserId}
+      and ${blocks.blockedId} = ${viewerId}
+  )`;
+}
+
 /** İki kullanıcı arasında herhangi bir yönde engel var mı? */
 export async function hasBlockBetween(
   executor: BlockingExecutor,

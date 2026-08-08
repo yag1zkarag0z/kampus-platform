@@ -62,8 +62,12 @@ describe("/v1/media/[id]", () => {
     const request = new NextRequest(`${appOrigin}/v1/media/${assetId}`);
     const response = await GET(request, routeContext());
 
-    expect(mockedGetVisibleContentImage).toHaveBeenCalledWith(assetId);
+    expect(mockedGetVisibleContentImage).toHaveBeenCalledWith(
+      memberId,
+      assetId,
+    );
     expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(response.headers.get("content-type")).toBe("image/webp");
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(

@@ -18,7 +18,7 @@ export const campusCategoryFilters: CampusCategoryFilter[] = [
 ];
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40";
+  "outline-none focus-visible:ring-3 focus-visible:ring-brand/40";
 const MENU_WIDTH = 224;
 const MENU_MARGIN = 12;
 
@@ -124,7 +124,7 @@ export default function CampusCategoryNav({
         onClick={() => (isMenuOpen ? setIsMenuOpen(false) : openMenu())}
         className={`inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full px-4 text-xs font-bold whitespace-nowrap transition-colors sm:px-5 sm:text-sm ${focusRing} ${
           isFilterActive
-            ? "bg-[#ff7a45]/15 text-[#ff7a45]"
+            ? "bg-brand/15 text-brand"
             : "text-white/55 hover:bg-white/5 hover:text-white"
         }`}
       >
@@ -141,7 +141,7 @@ export default function CampusCategoryNav({
             left: menuPosition.left,
             width: MENU_WIDTH,
           }}
-          className="z-50 overflow-hidden rounded-2xl border border-white/12 bg-[#141720] p-2 shadow-[0_18px_48px_rgba(0,0,0,0.5)]"
+          className="z-50 overflow-hidden rounded-2xl border border-white/12 bg-surface-raised p-2 shadow-[0_16px_40px_rgba(0,0,0,0.3)]"
         >
           {onToggleDocumentOnly && (
             <>
@@ -155,8 +155,8 @@ export default function CampusCategoryNav({
                 }}
                 className={`flex min-h-11 w-full items-center gap-1.5 rounded-lg px-2.5 text-left text-[11px] font-black transition-colors ${focusRing} ${
                   hasDocumentOnly
-                    ? "bg-[#ff7a45]/20 text-[#ff7a45]"
-                    : "text-[#ff7a45]/85 hover:bg-[#ff7a45]/10 hover:text-[#ff7a45]"
+                    ? "bg-brand/20 text-brand"
+                    : "text-brand/85 hover:bg-brand/10 hover:text-brand"
                 }`}
               >
                 📎 Ders notları
@@ -180,7 +180,7 @@ export default function CampusCategoryNav({
                   }}
                   className={`inline-flex min-h-11 items-center rounded-lg px-2.5 text-left text-[11px] font-bold transition-colors ${focusRing} ${
                     isActive
-                      ? "bg-[#ff7a45]/20 text-[#ff7a45]"
+                      ? "bg-brand/20 text-brand"
                       : "text-white/78 hover:bg-white/8 hover:text-white"
                   }`}
                 >

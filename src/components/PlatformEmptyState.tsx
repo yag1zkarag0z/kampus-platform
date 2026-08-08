@@ -10,8 +10,8 @@ export default function PlatformEmptyState({
   description,
 }: PlatformEmptyStateProps) {
   return (
-    <section className="flex min-h-[calc(100svh-4rem)] flex-col bg-[#0a0d16] md:min-h-svh">
-      <header className="sticky top-0 z-20 flex min-h-16 items-center justify-center border-b border-white/10 bg-[#0a0d16]/88 px-4 text-center backdrop-blur-xl sm:px-5">
+    <section className="flex min-h-[calc(100svh-4rem)] flex-col bg-canvas md:min-h-svh">
+      <header className="sticky top-0 z-20 flex min-h-16 items-center justify-center border-b border-white/10 bg-canvas/88 px-4 text-center backdrop-blur-xl sm:px-5">
         <p className="text-base font-black tracking-[-0.035em] text-white">{title}</p>
       </header>
 
@@ -19,11 +19,11 @@ export default function PlatformEmptyState({
         <div className="max-w-md">
           <span
             aria-hidden="true"
-            className="mx-auto grid size-14 place-items-center rounded-full border border-white/12 bg-[#17191c] text-2xl text-[#ff7a45]"
+            className="mx-auto grid size-14 place-items-center rounded-full border border-white/12 bg-surface-raised text-2xl text-brand"
           >
             ◇
           </span>
-          <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
+          <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-brand">
             {eyebrow}
           </p>
           <h1 className="mt-2 text-3xl font-black tracking-[-0.055em] text-white sm:text-4xl">

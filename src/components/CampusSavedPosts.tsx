@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import { AuthClientError } from "@/auth/client";
+import ActionStatusText from "@/components/ActionStatusText";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import { campusButton } from "@/components/campusButtonStyles";
@@ -23,7 +24,12 @@ import CampusPostCardSurface from "@/components/CampusPostCardSurface";
 import CampusPostDocument from "@/components/CampusPostDocument";
 import CampusPostImage from "@/components/CampusPostImage";
 import CampusGif from "@/components/CampusGif";
-import { useFeedback } from "@/components/FeedbackProvider";
+import {
+  useActionStatus,
+  usePendingRemoval,
+  type ActionStatus,
+  type PendingRemoval,
+} from "@/components/useActionStatus";
 import {
   appendUniqueCampusPosts,
   getUsablePageCursor,
@@ -45,7 +51,7 @@ import {
 } from "@/data/campusPosts";
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
+  "outline-none focus-visible:ring-3 focus-visible:ring-brand/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 export default function CampusSavedPosts() {
   const { sessionMode } = useCampusAccount();
@@ -264,8 +270,10 @@ function useSavedBookmarks() {
 }
 
 function MemberSavedPosts() {
-  const { showToast } = useFeedback();
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const [pendingRemoval, setPendingRemoval] =
+    usePendingRemoval<CampusPost>();
+  const [listStatus, setListStatus] = useActionStatus();
   const {
     posts,
     isHydrated,
@@ -279,15 +287,18 @@ function MemberSavedPosts() {
     voteInSavedPoll,
   } = useSavedBookmarks();
 
-  const undoRemoval = async (post: CampusPost, index: number) => {
+  const undoRemoval = async () => {
+    if (!pendingRemoval) {
+      return;
+    }
+
+    const { item: post, index } = pendingRemoval;
+    setPendingRemoval(null);
+
     try {
       await restoreBookmark(post, index);
-      showToast({
-        message: `“${post.title || "Gönderi"}” yeniden kaydedildi.`,
-        tone: "success",
-      });
     } catch {
-      showToast({
+      setListStatus({
         message: "Kayıt geri alınamadı. Tekrar dene.",
         tone: "error",
       });
@@ -302,17 +313,9 @@ function MemberSavedPosts() {
         return;
       }
 
-      showToast({
-        message: `“${post.title || "Gönderi"}” kaydedilenlerden kaldırıldı.`,
-        tone: "info",
-        action: {
-          label: "Geri al",
-          onClick: () => void undoRemoval(removal.post, removal.index),
-        },
-      });
-      requestAnimationFrame(() => titleRef.current?.focus());
+      setPendingRemoval({ item: removal.post, index: removal.index });
     } catch {
-      showToast({
+      setListStatus({
         message: "Kayıt kaldırılamadı. Tekrar dene.",
         tone: "error",
       });
@@ -323,7 +326,7 @@ function MemberSavedPosts() {
     try {
       await loadMore();
     } catch {
-      showToast({
+      setListStatus({
         message: "Kayıtlar yüklenemedi. Tekrar dene.",
         tone: "error",
       });
@@ -341,9 +344,12 @@ function MemberSavedPosts() {
       onReload={reload}
       onLoadMore={() => void loadMoreSavedPosts()}
       onRemove={(post) => void removeSavedPost(post)}
+      pendingRemoval={pendingRemoval}
+      onUndoRemoval={() => void undoRemoval()}
+      listStatus={listStatus}
       onVote={(postId, optionId) => {
         void voteInSavedPoll(postId, optionId).catch(() => {
-          showToast({
+          setListStatus({
             message: "Oyun kaydedilemedi. Tekrar dene.",
             tone: "error",
           });
@@ -357,8 +363,13 @@ function LocalSavedPosts() {
   const router = useRouter();
   const { isGuest } = useCampusAccount();
   const { posts, isHydrated, toggleBookmark } = useCampusData();
-  const { showToast } = useFeedback();
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const [pendingRemoval, setPendingRemoval] =
+    usePendingRemoval<CampusPost>();
+  const [guestStatus, setGuestStatus] = useActionStatus();
+  const [guestStatusAnchor, setGuestStatusAnchor] = useState<string | null>(
+    null,
+  );
 
   const savedPosts = useMemo(
     () =>
@@ -374,9 +385,10 @@ function LocalSavedPosts() {
 
   const removeSavedPost = (post: CampusPost) => {
     if (isGuest) {
-      showToast({
+      setGuestStatusAnchor(post.id);
+      setGuestStatus({
         message: "Kaydedilenleri değiştirmek için giriş yap veya kayıt ol.",
-        tone: "info",
+        tone: "error",
         action: {
           label: "Giriş yap",
           onClick: () => router.push("/giris"),
@@ -385,16 +397,18 @@ function LocalSavedPosts() {
       return;
     }
 
+    const index = savedPosts.findIndex((item) => item.id === post.id);
     toggleBookmark(post.id);
-    showToast({
-      message: `“${post.title || "Gönderi"}” kaydedilenlerden kaldırıldı.`,
-      tone: "info",
-      action: {
-        label: "Geri al",
-        onClick: () => toggleBookmark(post.id),
-      },
-    });
-    requestAnimationFrame(() => titleRef.current?.focus());
+    setPendingRemoval({ item: post, index: index < 0 ? 0 : index });
+  };
+
+  const undoRemoval = () => {
+    if (!pendingRemoval) {
+      return;
+    }
+
+    toggleBookmark(pendingRemoval.item.id);
+    setPendingRemoval(null);
   };
 
   return (
@@ -403,6 +417,10 @@ function LocalSavedPosts() {
       posts={savedPosts}
       isHydrated={isHydrated}
       onRemove={removeSavedPost}
+      pendingRemoval={pendingRemoval}
+      onUndoRemoval={undoRemoval}
+      guestStatus={guestStatus}
+      guestStatusAnchor={guestStatusAnchor}
     />
   );
 }
@@ -418,6 +436,11 @@ function SavedPostsView({
   onLoadMore,
   onRemove,
   onVote,
+  pendingRemoval = null,
+  onUndoRemoval,
+  listStatus = null,
+  guestStatus = null,
+  guestStatusAnchor = null,
 }: {
   titleRef: RefObject<HTMLHeadingElement | null>;
   posts: CampusPost[];
@@ -429,18 +452,49 @@ function SavedPostsView({
   onLoadMore?: () => void;
   onRemove: (post: CampusPost) => void;
   onVote?: (postId: string, optionId: string) => void;
+  pendingRemoval?: PendingRemoval<CampusPost>;
+  onUndoRemoval?: () => void;
+  listStatus?: ActionStatus;
+  guestStatus?: ActionStatus;
+  guestStatusAnchor?: string | null;
 }) {
+  const displayItems = useMemo(() => {
+    const items: {
+      key: string;
+      kind: "post" | "removed";
+      post: CampusPost;
+    }[] = posts.map((post) => ({
+      key: post.id,
+      kind: "post" as const,
+      post,
+    }));
+
+    if (pendingRemoval) {
+      const insertAt = Math.min(
+        Math.max(pendingRemoval.index, 0),
+        items.length,
+      );
+      items.splice(insertAt, 0, {
+        key: `removed-${pendingRemoval.item.id}`,
+        kind: "removed",
+        post: pendingRemoval.item,
+      });
+    }
+
+    return items;
+  }, [posts, pendingRemoval]);
+
   return (
     <section
       aria-labelledby="saved-posts-title"
       aria-busy={!isHydrated}
-      className="min-h-[calc(100svh-4rem)] min-w-0 bg-[#0a0d16] text-white md:min-h-svh"
+      className="min-h-[calc(100svh-4rem)] min-w-0 bg-canvas text-white md:min-h-svh"
     >
-      <header className="sticky top-0 z-30 border-b border-white/12 bg-[#0a0d16]/95 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-white/12 bg-canvas/95 backdrop-blur-xl">
         <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 sm:px-6">
           <span aria-hidden="true" />
           <div className="min-w-0 justify-self-center text-center">
-            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-[#ff7a45]">
+            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-brand">
               Kişisel alan
             </p>
             <h1
@@ -466,23 +520,34 @@ function SavedPostsView({
         </div>
       </header>
 
+      {listStatus && (
+        <ActionStatusText status={listStatus} className="px-4 py-2 sm:px-6" />
+      )}
+
       {!isHydrated ? (
         <SavedPostsLoading />
       ) : hasLoadFailed ? (
         <SavedPostsErrorState onReload={onReload} />
-      ) : posts.length > 0 ? (
+      ) : displayItems.length > 0 ? (
         <>
           <ol className="grid min-w-0 px-3 py-3 sm:px-5 sm:py-4 lg:px-6 2xl:grid-cols-2 2xl:gap-4">
-            {posts.map((post) => (
+            {displayItems.map((item) => (
               <li
-                key={post.id}
+                key={item.key}
                 className="min-w-0 border-b border-white/9 last:border-b-0 2xl:border 2xl:bg-white/[0.015] 2xl:px-5 2xl:last:border-b"
               >
-                <SavedPostCard
-                  post={post}
-                  onRemove={onRemove}
-                  onVote={onVote}
-                />
+                {item.kind === "removed" ? (
+                  <RemovedPostRow post={item.post} onUndo={onUndoRemoval} />
+                ) : (
+                  <SavedPostCard
+                    post={item.post}
+                    onRemove={onRemove}
+                    onVote={onVote}
+                    status={
+                      guestStatusAnchor === item.post.id ? guestStatus : null
+                    }
+                  />
+                )}
               </li>
             ))}
           </ol>
@@ -511,14 +576,41 @@ function SavedPostsView({
   );
 }
 
+function RemovedPostRow({
+  post,
+  onUndo,
+}: {
+  post: CampusPost;
+  onUndo?: () => void;
+}) {
+  return (
+    <div className="flex min-h-24 items-center justify-between gap-3 py-5 sm:py-6">
+      <p className="min-w-0 truncate text-sm font-bold text-white/70">
+        “{post.title || "Gönderi"}” kaydedilenlerden kaldırıldı.
+      </p>
+      {onUndo && (
+        <button
+          type="button"
+          onClick={onUndo}
+          className={`shrink-0 text-sm font-black text-brand underline underline-offset-2 ${focusRing}`}
+        >
+          Geri al
+        </button>
+      )}
+    </div>
+  );
+}
+
 function SavedPostCard({
   post,
   onRemove,
   onVote,
+  status = null,
 }: {
   post: CampusPost;
   onRemove: (post: CampusPost) => void;
   onVote?: (postId: string, optionId: string) => void;
+  status?: ActionStatus;
 }) {
   return (
     <CampusPostCardSurface
@@ -553,7 +645,7 @@ function SavedPostCard({
           </span>
           <span
             aria-hidden="true"
-            className="size-1 rotate-45 bg-[#ff7a45]/58"
+            className="size-1 rotate-45 bg-brand/58"
           />
           <CampusAuthorProfileLink
             author={post.author}
@@ -561,7 +653,7 @@ function SavedPostCard({
             isAnonymous={post.isAnonymous}
             ariaLabel={`${post.author} profilini aç`}
             className="min-w-0"
-            linkClassName={`truncate text-xs font-black transition-colors hover:text-[#ff7a45] ${focusRing}`}
+            linkClassName={`truncate text-xs font-black transition-colors hover:text-brand ${focusRing}`}
           >
             <span className="truncate text-xs font-black">
               {post.author}
@@ -584,7 +676,7 @@ function SavedPostCard({
       <h2 className="mt-2.5 max-w-[78ch] break-words text-lg font-black leading-6 tracking-[-0.025em] [overflow-wrap:anywhere] sm:text-xl sm:leading-7">
         <Link
           href={`/gonderi/${post.id}`}
-          className={`decoration-[#ff7a45]/30 underline-offset-4 transition-colors hover:text-[#ff7a45] hover:underline ${focusRing}`}
+          className={`decoration-brand/30 underline-offset-4 transition-colors hover:text-brand hover:underline ${focusRing}`}
         >
           {post.title}
         </Link>
@@ -629,12 +721,14 @@ function SavedPostCard({
           type="button"
           aria-label={`“${post.title}” kaydını kaldır`}
           onClick={() => onRemove(post)}
-          className={`ml-auto inline-flex min-h-11 items-center gap-1.5 px-2 text-[#ff7a45] transition-colors hover:bg-[#ff7a45]/8 hover:text-[#ff7a45]/80 ${focusRing}`}
+          className={`ml-auto inline-flex min-h-11 items-center gap-1.5 px-2 text-brand transition-colors hover:bg-brand/8 hover:text-brand/80 ${focusRing}`}
         >
           <BookmarkIcon />
           Kaydı kaldır
         </button>
       </footer>
+
+      {status && <ActionStatusText status={status} className="mt-2" />}
     </CampusPostCardSurface>
   );
 }
@@ -649,7 +743,7 @@ function SavedPostsLoading() {
       <div>
         <span
           aria-hidden="true"
-          className="mx-auto block size-7 animate-spin rounded-full border-2 border-white/14 border-t-[#ff7a45] motion-reduce:animate-none"
+          className="mx-auto block size-7 animate-spin rounded-full border-2 border-white/14 border-t-[#ff6b3d] motion-reduce:animate-none"
         />
         <p className="mt-4 text-sm font-bold text-white/60">
           Kaydedilen gönderiler yükleniyor…
@@ -689,7 +783,7 @@ function SavedPostsEmptyState() {
       <div className="max-w-md">
         <span
           aria-hidden="true"
-          className="mx-auto grid size-12 place-items-center rounded-full border border-white/11 text-[#ff7a45]"
+          className="mx-auto grid size-12 place-items-center rounded-full border border-white/11 text-brand"
         >
           <BookmarkIcon />
         </span>

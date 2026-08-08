@@ -16,13 +16,13 @@ export async function GET(
   context: UserAvatarRouteContext,
 ) {
   try {
-    await requireActiveMember(request);
+    const member = await requireActiveMember(request);
     const { username } = await context.params;
-    const avatar = await getAccountAvatar(username);
+    const avatar = await getAccountAvatar(member.userId, username);
 
     return new Response(new Uint8Array(avatar.body), {
       headers: {
-        "Cache-Control": "private, max-age=3600",
+        "Cache-Control": "private, no-store",
         "Content-Type": avatar.contentType,
         "X-Content-Type-Options": "nosniff",
       },

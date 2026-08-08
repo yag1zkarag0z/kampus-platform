@@ -1,7 +1,7 @@
 "use client";
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-[#ff7a45]/40";
+  "outline-none focus-visible:ring-3 focus-visible:ring-brand/40";
 
 export const quickEmojis = [
   { value: "👍", label: "Beğeni" },
@@ -32,7 +32,7 @@ export default function CampusEmojiPicker({
     <div
       role="group"
       aria-label="Yorum emojileri"
-      className="absolute right-0 bottom-[calc(100%+0.5rem)] z-40 grid w-48 grid-cols-4 gap-1 border border-white/12 bg-[#17191c] p-2 shadow-[0_16px_42px_rgba(0,0,0,0.4)] sm:right-auto sm:left-0"
+      className="absolute right-0 bottom-[calc(100%+0.5rem)] z-40 grid w-48 grid-cols-4 gap-1 border border-white/12 bg-surface-raised p-2 shadow-[0_14px_36px_rgba(0,0,0,0.28)] sm:right-auto sm:left-0"
     >
       {quickEmojis.map((emoji) => (
         <button
@@ -40,7 +40,7 @@ export default function CampusEmojiPicker({
           type="button"
           aria-label={`${emoji.label} emojisini ekle`}
           onClick={() => onSelect(emoji.value)}
-          className={`grid size-10 place-items-center rounded-lg text-xl transition-colors hover:bg-[#ff7a45]/10 ${focusRing}`}
+          className={`grid size-10 place-items-center rounded-lg text-xl transition-colors hover:bg-brand/10 ${focusRing}`}
         >
           <span aria-hidden="true">{emoji.value}</span>
         </button>

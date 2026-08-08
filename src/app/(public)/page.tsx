@@ -1,9 +1,6 @@
 import ClosingCTA from "@/components/ClosingCTA";
-import CampusPulseSection from "@/components/CampusPulseSection";
-import FAQSection from "@/components/FAQSection";
 import Hero from "@/components/Hero";
-import HowItWorks from "@/components/HowItWorks";
-import SecuritySection from "@/components/SecuritySection";
+import HomepageBentoLazy from "@/components/HomepageBentoLazy";
 import SiteFooter from "@/components/SiteFooter";
 
 export default function Home() {
@@ -11,10 +8,7 @@ export default function Home() {
     <>
       <main>
         <Hero />
-        <CampusPulseSection />
-        <HowItWorks />
-        <SecuritySection />
-        <FAQSection />
+        <HomepageBentoLazy />
         <ClosingCTA />
       </main>
       <SiteFooter />

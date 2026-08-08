@@ -167,14 +167,14 @@ describe("LoginFlow", () => {
 
     expect(
       screen.getByRole("button", {
-        name: "Misafir görünümü açılıyor…",
+        name: "Misafir oturumu açılıyor…",
       }),
     ).toBeDisabled();
     expect(mockedStartGuestSession).toHaveBeenCalledOnce();
 
     await user.click(
       screen.getByRole("button", {
-        name: "Misafir görünümü açılıyor…",
+        name: "Misafir oturumu açılıyor…",
       }),
     );
     expect(mockedStartGuestSession).toHaveBeenCalledOnce();

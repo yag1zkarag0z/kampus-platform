@@ -134,7 +134,7 @@ export default function CampusCalendarMonthGrid({
       <button
         type="button"
         onClick={onJumpToToday}
-        className={`mt-2 text-[11px] font-bold text-[#ff7a45] transition-colors hover:text-[#ff8d5e] ${calendarFocusRing}`}
+        className={`mt-2 text-[11px] font-bold text-brand transition-colors hover:text-brand-hover ${calendarFocusRing}`}
       >
         Bugüne git
       </button>
@@ -165,15 +165,15 @@ export default function CampusCalendarMonthGrid({
               type="button"
               role="gridcell"
               onClick={() => onSelectDate(isSelected ? null : cell.date)}
-              aria-pressed={isSelected}
+            aria-selected={isSelected}
               aria-current={isToday ? "date" : undefined}
               className={`flex aspect-square min-w-0 flex-col items-center justify-center gap-0.5 text-xs font-bold transition-colors ${calendarFocusRing} ${
                 !cell.inCurrentMonth
                   ? "text-white/20 hover:bg-white/[0.03]"
                   : isSelected
-                    ? "bg-white text-[#12100e]"
+                    ? "bg-white text-[#101012]"
                     : isToday
-                      ? "border border-[#ff7a45]/45 text-[#ffb694] hover:bg-[#ff7a45]/10"
+                      ? "border border-brand/45 text-[#ffa082] hover:bg-brand/10"
                       : "text-white/78 hover:bg-white/6"
               }`}
             >
@@ -185,7 +185,7 @@ export default function CampusCalendarMonthGrid({
                     aria-hidden="true"
                     className={`size-1 rounded-full ${
                       isSelected
-                        ? "bg-[#12100e]/60"
+                        ? "bg-[#101012]/60"
                         : calendarCategoryStyles[category].dot
                     }`}
                   />

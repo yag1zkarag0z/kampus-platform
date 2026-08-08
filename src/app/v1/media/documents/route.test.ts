@@ -2,7 +2,9 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { requireActiveMember } from "@/server/auth/authorization";
+import { DOCUMENT_MULTIPART_MAX_BYTES } from "@/lib/upload-limits";
 import { uploadContentDocument } from "@/server/media/service";
+import { encodeTestMultipartFormData } from "@/test/multipart";
 
 import { POST } from "./route";
 
@@ -32,13 +34,16 @@ function configureEnvironment() {
   process.env.EMAIL_FROM = "KAMPUS Test <no-reply@kampus.local>";
 }
 
-function createUploadRequest(formData: FormData, origin = appOrigin) {
+async function createUploadRequest(formData: FormData, origin = appOrigin) {
+  const encoded = await encodeTestMultipartFormData(formData);
   const request = new NextRequest(`${appOrigin}/v1/media/documents`, {
     method: "POST",
     headers: {
       Cookie: "kampus_session=m1.raw-token",
+      "Content-Type": encoded.contentType,
       Origin: origin,
     },
+    body: encoded.body,
   });
 
   vi.spyOn(request, "formData").mockResolvedValue(formData);
@@ -70,7 +75,7 @@ describe("POST /v1/media/documents", () => {
       }),
     );
 
-    const response = await POST(createUploadRequest(formData));
+    const response = await POST(await createUploadRequest(formData));
 
     expect(
       response.status,
@@ -96,9 +101,24 @@ describe("POST /v1/media/documents", () => {
     formData.set("document", new File(["x"], "ders-notlari.pdf"));
     formData.set("ownerId", "someone-else");
 
-    const response = await POST(createUploadRequest(formData));
+    const response = await POST(await createUploadRequest(formData));
 
     expect(response.status).toBe(400);
+    expect(mockedUploadContentDocument).not.toHaveBeenCalled();
+  });
+
+  it("rejects a declared document body above the multipart ceiling", async () => {
+    const formData = new FormData();
+    formData.set("document", new File(["x"], "ders-notlari.pdf"));
+    const request = await createUploadRequest(formData);
+    request.headers.set(
+      "content-length",
+      String(DOCUMENT_MULTIPART_MAX_BYTES + 1),
+    );
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(413);
     expect(mockedUploadContentDocument).not.toHaveBeenCalled();
   });
 
@@ -107,7 +127,7 @@ describe("POST /v1/media/documents", () => {
     formData.set("document", new File(["x"], "ders-notlari.pdf"));
 
     const response = await POST(
-      createUploadRequest(formData, "https://attacker.example"),
+      await createUploadRequest(formData, "https://attacker.example"),
     );
 
     expect(response.status).toBe(403);

@@ -62,7 +62,7 @@ export default function CampusCalendarStrip({
         className={`flex min-h-11 w-full items-center gap-2.5 text-left ${calendarFocusRing}`}
       >
         <CalendarIcon />
-        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.13em] text-[#ff7a45]">
+        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.13em] text-brand">
           Kampüs takvimi
         </span>
         <span className="ml-auto flex items-center gap-1.5 text-[11px] font-bold text-white/55">
@@ -83,13 +83,13 @@ export default function CampusCalendarStrip({
             <li key={event.id}>
               <Link
                 href="/takvim"
-                className={`flex items-start gap-2.5 border border-white/10 bg-white/[0.03] p-2.5 transition-colors hover:border-[#ff7a45]/30 ${calendarFocusRing}`}
+                className={`flex items-start gap-2.5 border border-white/10 bg-white/[0.03] p-2.5 transition-colors hover:border-brand/30 ${calendarFocusRing}`}
               >
                 <span className="grid size-9 shrink-0 place-items-center border border-white/12 bg-white/6 text-center">
                   <span className="block text-xs font-black leading-none">
                     {badge.day}
                   </span>
-                  <span className="mt-px block font-mono text-[8px] font-bold tracking-[0.1em] text-[#ff7a45]">
+                  <span className="mt-px block font-mono text-[8px] font-bold tracking-[0.1em] text-brand">
                     {badge.month}
                   </span>
                 </span>
@@ -115,7 +115,7 @@ export default function CampusCalendarStrip({
       {isOpen && (
         <Link
           href="/takvim"
-          className={`block pb-1 text-[11px] font-bold text-[#ff7a45] ${calendarFocusRing}`}
+          className={`block pb-1 text-[11px] font-bold text-brand ${calendarFocusRing}`}
         >
           Tüm akademik takvim
         </Link>
@@ -132,7 +132,7 @@ function CalendarIcon() {
       fill="none"
       stroke="currentColor"
       strokeWidth="1.7"
-      className="size-4 shrink-0 text-[#ff7a45]"
+      className="size-4 shrink-0 text-brand"
     >
       <rect x="3.8" y="5.2" width="16.4" height="15" rx="2" />
       <path d="M3.8 9.8h16.4M8.4 3.5v3.4M15.6 3.5v3.4" />

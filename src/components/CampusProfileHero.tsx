@@ -54,7 +54,7 @@ export default function CampusProfileHero({
       {/* Kapak alanı: banner yüklemesi yok, kimliği KAMPÜS logosu taşıyor. */}
       <div
         aria-hidden="true"
-        className="grid h-32 w-full place-items-center overflow-hidden bg-[#12151d] sm:h-48"
+        className="grid h-32 w-full place-items-center overflow-hidden bg-surface sm:h-48"
       >
         <CampusLogo
           idPrefix={coverIdPrefix}
@@ -65,7 +65,7 @@ export default function CampusProfileHero({
       <div className="border-b border-white/12 px-4 pb-6 sm:px-6">
         {/* Avatar kapağa taşar, eylemler sağ üstte durur. */}
         <div className="flex items-start justify-between gap-3">
-          <span className="-mt-14 inline-flex shrink-0 rounded-full ring-4 ring-[#0a0d16] sm:-mt-20">
+          <span className="-mt-14 inline-flex shrink-0 rounded-full ring-4 ring-canvas sm:-mt-20">
             <CampusAuthorAvatar
               author={author}
               authorId={authorId}

@@ -8,6 +8,7 @@ import {
   type FormEvent,
 } from "react";
 
+import ActionStatusText from "@/components/ActionStatusText";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import {
   type CampusReportReason,
@@ -15,6 +16,7 @@ import {
 } from "@/components/CampusModerationProvider";
 import { useCampusData } from "@/components/CampusDataProvider";
 import { useFeedback } from "@/components/FeedbackProvider";
+import { useActionStatus } from "@/components/useActionStatus";
 import {
   CAMPUS_OFFICIAL_AUTHOR_ID,
   LOCAL_ACCOUNT_OWNER_ID,
@@ -30,7 +32,7 @@ const reportReasons: { id: CampusReportReason; label: string }[] = [
 ];
 
 const focusRing =
-  "outline-none focus-visible:ring-3 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d16]";
+  "outline-none focus-visible:ring-3 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 export default function CampusCommentActions({
   postId,
@@ -58,7 +60,8 @@ export default function CampusCommentActions({
     hasReportedComment,
     reportComment,
   } = useCampusModeration();
-  const { confirm: confirmAction, showToast } = useFeedback();
+  const { confirm: confirmAction } = useFeedback();
+  const [status, setStatus] = useActionStatus();
   const menuRef = useRef<HTMLDivElement>(null);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -181,9 +184,9 @@ export default function CampusCommentActions({
       return false;
     }
 
-    showToast({
+    setStatus({
       message: "Bu işlem için giriş yap veya kayıt ol.",
-      tone: "info",
+      tone: "error",
       action: {
         label: "Giriş yap",
         onClick: () => router.push("/giris"),
@@ -257,7 +260,7 @@ export default function CampusCommentActions({
     } catch {
       wasDeleted = false;
     }
-    showToast({
+    setStatus({
       message: wasDeleted ? "Yorum silindi." : "Yorum silinemedi.",
       tone: wasDeleted ? "success" : "error",
     });
@@ -273,11 +276,11 @@ export default function CampusCommentActions({
     );
     setDialog(null);
     setReportDetail("");
-    showToast({
+    setStatus({
       message: wasAdded
         ? "Yorum moderasyon sırasına eklendi."
         : "Bu yorumu daha önce şikâyet ettin.",
-      tone: wasAdded ? "success" : "info",
+      tone: wasAdded ? "success" : "error",
     });
   };
 
@@ -301,11 +304,11 @@ export default function CampusCommentActions({
     }
 
     const wasBlocked = await blockUser(comment.authorId, comment.author);
-    showToast({
+    setStatus({
       message: wasBlocked
         ? `${comment.author} engellendi.`
         : "Bu kullanıcı zaten engellenmiş.",
-      tone: wasBlocked ? "success" : "info",
+      tone: wasBlocked ? "success" : "error",
     });
   };
 
@@ -334,7 +337,7 @@ export default function CampusCommentActions({
         <button
           type="button"
           onClick={openReply}
-          className={`inline-flex min-h-11 cursor-pointer items-center gap-1.5 px-2 text-sm font-bold text-white/55 transition-colors hover:text-[#ff7a45] ${focusRing}`}
+          className={`inline-flex min-h-11 cursor-pointer items-center gap-1.5 px-2 text-sm font-bold text-white/55 transition-colors hover:text-brand ${focusRing}`}
         >
           <CommentReplyIcon />
           {comment.replyCount ? (
@@ -355,11 +358,18 @@ export default function CampusCommentActions({
             <MoreIcon />
           </button>
 
+          {status && (
+            <ActionStatusText
+              status={status}
+              className="absolute top-full left-1/2 z-40 w-48 -translate-x-1/2 text-center sm:left-0 sm:w-52 sm:translate-x-0 sm:text-left"
+            />
+          )}
+
           {isMenuOpen && (
             <div
               role="group"
               aria-label="Yorum seçenekleri"
-              className="absolute top-[calc(100%+0.2rem)] left-1/2 z-40 w-[min(14rem,calc(100vw-1.5rem))] -translate-x-1/2 border border-white/12 bg-[#17191c] p-1.5 shadow-[0_18px_55px_rgba(0,0,0,0.42)] sm:left-0 sm:w-56 sm:translate-x-0"
+              className="absolute top-[calc(100%+0.2rem)] left-1/2 z-40 w-[min(14rem,calc(100vw-1.5rem))] -translate-x-1/2 border border-white/12 bg-surface-raised p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.28)] sm:left-0 sm:w-56 sm:translate-x-0"
             >
               {isOwnComment ? (
                 <>
@@ -373,7 +383,7 @@ export default function CampusCommentActions({
                   <button
                     type="button"
                     onClick={handleDelete}
-                    className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black text-[#ffb199] hover:bg-[#ffb199]/9 ${focusRing}`}
+                    className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black text-danger hover:bg-danger/9 ${focusRing}`}
                   >
                     Yorumu sil
                   </button>
@@ -397,7 +407,7 @@ export default function CampusCommentActions({
                     <button
                       type="button"
                       onClick={handleBlock}
-                      className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black text-[#ffb199] hover:bg-[#ffb199]/9 ${focusRing}`}
+                      className={`flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-xs font-black text-danger hover:bg-danger/9 ${focusRing}`}
                     >
                       Kullanıcıyı engelle
                     </button>
@@ -423,11 +433,11 @@ export default function CampusCommentActions({
             role="dialog"
             aria-modal="true"
             aria-labelledby={`comment-action-title-${comment.id}`}
-            className="max-h-[calc(100svh-1.5rem)] w-full max-w-lg overflow-y-auto border border-white/12 bg-[#17191c] p-4 text-white shadow-[0_28px_90px_rgba(0,0,0,0.5)] sm:p-6"
+            className="max-h-[calc(100svh-1.5rem)] w-full max-w-lg overflow-y-auto border border-white/12 bg-surface-raised p-4 text-white shadow-[0_24px_64px_rgba(0,0,0,0.36)] sm:p-6"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#ff7a45]">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-brand">
                   {dialog === "edit" ? "Yorumun" : "Moderasyon"}
                 </p>
                 <h2
@@ -473,7 +483,7 @@ export default function CampusCommentActions({
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <p
                     role="status"
-                    className="text-xs font-semibold text-[#ffb199]"
+                    className="text-xs font-semibold text-danger"
                   >
                     {formMessage}
                   </p>
@@ -497,7 +507,7 @@ export default function CampusCommentActions({
                         key={reason.id}
                         className={`flex min-h-12 cursor-pointer items-center gap-3 border px-3 py-2.5 text-xs font-black ${
                           reportReason === reason.id
-                            ? "border-[#ff7a45]/45 bg-[#ff7a45]/8"
+                            ? "border-brand/45 bg-brand/8"
                             : "border-white/11"
                         }`}
                       >
@@ -506,7 +516,7 @@ export default function CampusCommentActions({
                           name={`comment-report-${comment.id}`}
                           checked={reportReason === reason.id}
                           onChange={() => setReportReason(reason.id)}
-                          className="size-4 accent-[#ff7a45]"
+                          className="size-4 accent-brand"
                         />
                         {reason.label}
                       </label>
@@ -557,14 +567,14 @@ function DialogButtons({
       <button
         type="button"
         onClick={onCancel}
-        className={`min-h-11 cursor-pointer border border-white/12 px-4 text-xs font-black hover:border-[#ff7a45]/35 hover:bg-[#ff7a45]/8 ${focusRing}`}
+        className={`min-h-11 cursor-pointer border border-white/12 px-4 text-xs font-black hover:border-brand/35 hover:bg-brand/8 ${focusRing}`}
       >
         Vazgeç
       </button>
       <button
         type="submit"
         disabled={submitDisabled}
-        className={`min-h-11 cursor-pointer bg-white px-4 text-xs font-black text-[#12100e] hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
+        className={`min-h-11 cursor-pointer bg-white px-4 text-xs font-black text-[#101012] hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
       >
         {submitLabel}
       </button>

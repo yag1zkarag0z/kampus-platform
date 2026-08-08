@@ -56,8 +56,12 @@ describe("GET /v1/users/[username]/avatar", () => {
     );
     const response = await GET(request, routeContext("kampuslu35"));
 
-    expect(mockedGetAccountAvatar).toHaveBeenCalledWith("kampuslu35");
+    expect(mockedGetAccountAvatar).toHaveBeenCalledWith(
+      memberId,
+      "kampuslu35",
+    );
     expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(response.headers.get("content-type")).toBe("image/webp");
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(

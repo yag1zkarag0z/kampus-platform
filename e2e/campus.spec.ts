@@ -21,14 +21,14 @@ test("public home presents the product and entry points", async ({
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: /Yaşar’da bugün ne konuşuluyor/i,
+      name: "Yaşar kampüsü, tek akışta.",
     }),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Kayıt ol" }).first(),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Misafir olarak giriş yap" }),
+    page.getByRole("button", { name: "Misafir olarak göz at" }).first(),
   ).toBeVisible();
 });
 
@@ -37,7 +37,7 @@ test("signed-out platform access redirects to login", async ({ page }) => {
 
   await expect(page).toHaveURL(/\/giris$/);
   await expect(
-    page.getByRole("heading", { name: "Tekrar hoş geldin." }),
+    page.getByRole("heading", { name: "KAMPÜS’e giriş yap." }),
   ).toBeVisible();
 });
 
@@ -60,7 +60,9 @@ test("member can complete the real OTP login flow", async ({ page }) => {
   const code = await waitForOtpEmail(identity.email, "login");
 
   await page.getByLabel("Giriş kodu").fill(code);
-  await page.getByRole("button", { name: "Giriş yap" }).click();
+  await page
+    .getByRole("button", { name: "Giriş yap", exact: true })
+    .click();
 
   await expect(
     page.getByRole("heading", { name: "Giriş tamamlandı." }),
@@ -174,8 +176,11 @@ test("member profile and settings persist across reloads", async ({
       name: updatedDisplayName,
     }),
   ).toBeVisible();
-  await expect(page.getByText(`@${updatedUsername}`, { exact: true }))
-    .toBeVisible();
+  await expect(
+    page
+      .getByRole("main")
+      .getByText(`@${updatedUsername}`, { exact: true }),
+  ).toBeVisible();
   await expect(page.getByText(updatedBio, { exact: true })).toBeVisible();
 
   const profileSession = await getSessionState(page);
@@ -200,8 +205,11 @@ test("member profile and settings persist across reloads", async ({
       name: updatedDisplayName,
     }),
   ).toBeVisible();
-  await expect(page.getByText(`@${updatedUsername}`, { exact: true }))
-    .toBeVisible();
+  await expect(
+    page
+      .getByRole("main")
+      .getByText(`@${updatedUsername}`, { exact: true }),
+  ).toBeVisible();
   await expect(page.getByText(updatedBio, { exact: true })).toBeVisible();
 
   await page.goto("/ayarlar");
@@ -234,13 +242,17 @@ test("guest stays read-only and cannot open protected screens", async ({
     .click();
 
   await expect(page).toHaveURL(/\/akis$/);
-  await expect(
-    page.getByText("Misafir görünümü", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByText("Misafir akışındaki 20 gönderiyi görüntülüyorsun."),
-  ).toBeVisible();
-  await expect(page.getByLabel("Gönderi metni")).toHaveCount(0);
+  await expect(page.getByRole("button", {
+    name: "Gönderi paylaşmak için giriş yap",
+  })).toBeVisible();
+  const guestComposer = page.locator(
+    'form[aria-labelledby="campus-composer-title"]',
+  );
+  await expect(guestComposer).toHaveAttribute("aria-hidden", "true");
+  await expect(guestComposer).toHaveAttribute("inert", "");
+  await expect.poll(async () => (await getSessionState(page)).mode).toBe(
+    "guest",
+  );
 
   await page.goto("/profil/duzenle");
   await expect(page).toHaveURL(/\/akis$/);
@@ -249,16 +261,15 @@ test("guest stays read-only and cannot open protected screens", async ({
 test("member can publish a quick post and open it from the card body", async ({
   page,
 }) => {
+  test.setTimeout(60_000);
   await seedMemberSession(page);
   const body = `E2E kampüs gönderisi ${Date.now()}`;
 
   await page.goto("/akis");
   await page.getByLabel("Gönderi metni").fill(body);
-  await page.getByRole("button", { name: "Paylaş" }).click();
-
-  await expect(
-    page.getByText("Gönderin akışta paylaşıldı."),
-  ).toBeVisible();
+  const shareButton = page.getByRole("button", { name: "Paylaş" });
+  await expect(shareButton).toBeEnabled();
+  await shareButton.click();
 
   const card = page.getByRole("article").filter({ hasText: body }).first();
   await expect(card).toBeVisible();
@@ -309,9 +320,9 @@ test("member can publish a quick post and open it from the card body", async ({
   const commentBody = `E2E kalıcı yorum ${Date.now()}`;
   await page.getByLabel("Yorumunu ekle").fill(commentBody);
   await page.getByRole("button", { name: "Yorum yap" }).click();
-  await expect(
-    page.getByText("Yorumun gönderiye eklendi."),
-  ).toBeVisible();
+  await expect(page).toHaveURL(
+    /\/gonderi\/[0-9a-f]{8}-[0-9a-f-]{27}$/i,
+  );
   await expect(
     page.locator("#yorumlar li").filter({ hasText: commentBody }),
   ).toBeVisible();

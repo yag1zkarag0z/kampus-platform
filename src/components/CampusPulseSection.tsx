@@ -3,7 +3,7 @@ import campusPulseAnimation from "./campus-pulse-lottie.json";
 
 const avatarToneClassNames = [
   "bg-[#432a2d] text-[#f0c5b1]",
-  "bg-[#24382e] text-[#b5d8bd]",
+  "bg-[#24382e] text-[#9be4b4]",
 ];
 
 function FeedMockup() {
@@ -35,7 +35,7 @@ function FeedMockup() {
             <div className="min-w-0">
               <p
                 className={`font-mono text-[11px] font-bold uppercase tracking-[0.1em] ${
-                  post.tag === "Anonim" ? "text-[#ff7a45]" : "text-white/55"
+                  post.tag === "Anonim" ? "text-brand" : "text-white/55"
                 }`}
               >
                 {post.tag}
@@ -70,7 +70,7 @@ function DiscoverMockup() {
             key={category}
             className={`rounded-full px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.08em] ${
               index === 0
-                ? "bg-[#ff7a45] text-[#141720]"
+                ? "bg-brand text-[#171719]"
                 : "border border-white/12 text-white/55"
             }`}
           >
@@ -96,7 +96,7 @@ function DiscoverMockup() {
             >
               <div
                 aria-hidden="true"
-                className="absolute inset-y-0 left-0 bg-[#ff7a45]/25"
+                className="absolute inset-y-0 left-0 bg-brand/25"
                 style={{ width: `${option.pct}%` }}
               />
               <div className="relative flex items-center justify-between px-3 py-2 text-[11px] font-bold text-white/80">
@@ -113,7 +113,7 @@ function DiscoverMockup() {
 
 const notificationToneClassNames = [
   "bg-[#432a2d] text-[#f0c5b1]",
-  "bg-[#24382e] text-[#b5d8bd]",
+  "bg-[#24382e] text-[#9be4b4]",
   "bg-[#293044] text-[#c4cce8]",
   "bg-[#3d3425] text-[#e3cf9c]",
 ];
@@ -153,7 +153,7 @@ function NotificationsMockup() {
         <div
           key={item.name + item.action}
           className={`flex items-start gap-3 rounded-lg px-2.5 py-2 ${
-            item.accent ? "bg-[#ff7a45]/10" : ""
+            item.accent ? "bg-brand/10" : ""
           }`}
         >
           <span
@@ -205,7 +205,7 @@ export default function CampusPulseSection() {
     <section
       id="kampus-nabzi"
       aria-labelledby="campus-pulse-title"
-      className="reveal-item relative overflow-x-clip border-b border-white/10 bg-[#0a0d16] text-white"
+      className="reveal-item relative overflow-x-clip border-b border-white/10 bg-canvas text-white"
     >
       <div
         aria-hidden="true"
@@ -240,10 +240,10 @@ export default function CampusPulseSection() {
                 <div className="relative w-full">
                   <div
                     aria-hidden="true"
-                    className="absolute -right-3 -top-3 -z-10 h-full w-full rounded-[1.6rem] bg-[#ff7a45]"
+                    className="absolute -right-3 -top-3 -z-10 h-full w-full rounded-2xl bg-brand"
                   />
 
-                  <div className="relative flex h-64 flex-col overflow-hidden rounded-[1.4rem] border border-white/12 bg-[#17191c] shadow-[0_18px_55px_rgba(0,0,0,0.32)] sm:h-72">
+                  <div className="relative flex h-64 flex-col overflow-hidden rounded-2xl border border-white/12 bg-surface-raised shadow-[0_16px_40px_rgba(0,0,0,0.26)] sm:h-72">
                     <screen.Mockup />
                   </div>
                 </div>

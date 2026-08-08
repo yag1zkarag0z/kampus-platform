@@ -21,26 +21,25 @@ export default function PlatformLayout({
             <CampusNotificationProvider>
               <CampusFollowProvider>
                 <CampusDataProvider>
-                  <div className="min-h-svh bg-[#0a0d16] text-white transition-colors">
+                  <div className="min-h-svh bg-canvas text-white">
               <a
                 href="#platform-content"
-                className="fixed left-4 top-3 z-[100] -translate-y-20 rounded-full bg-white px-4 py-2 text-xs font-bold text-[#12100e] outline-none transition-transform focus:translate-y-0"
+                className="fixed left-4 top-3 z-[100] -translate-y-20 rounded-full bg-white px-4 py-2 text-xs font-bold text-[#101012] outline-none transition-transform focus:translate-y-0"
               >
                 İçeriğe geç
               </a>
-              {/* X'in üç sütunlu düzeni (auto / orta / sağ rail), oranları
-                  korunarak %20 büyütüldü: bizim tipografi X'in 15px tabanından
-                  daha iri, 600px orta sütun sıkışık kalıyordu. */}
-              <div className="min-h-svh w-full md:grid md:justify-center md:grid-cols-[6rem_minmax(0,45rem)] lg:grid-cols-[6rem_minmax(0,45rem)_25rem] xl:grid-cols-[27rem_minmax(0,45rem)_25rem]">
+              {/* Büyük masaüstünde X'e yakın 300 / 720 / 460 px oranı:
+                  akış okunabilir kalırken navigasyon ve sağ panel dolgun durur. */}
+              <div className="min-h-svh w-full md:grid md:justify-center md:grid-cols-[4rem_minmax(0,35rem)] xl:grid-cols-[12rem_minmax(0,35rem)_16.5rem] 2xl:grid-cols-[15rem_minmax(0,36rem)_23rem]">
                 <AppNavigation />
                 <main
                   id="platform-content"
                   tabIndex={-1}
-                  className="route-page min-w-0 overflow-x-hidden border-x border-white/9 bg-[#0a0d16] pb-[calc(5.5rem+env(safe-area-inset-bottom))] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#ff7a45]/40 md:col-start-2 md:row-start-1 md:pb-0"
+                  className="route-page min-w-0 overflow-x-hidden border-x border-white/8 bg-canvas pb-[calc(5.5rem+env(safe-area-inset-bottom))] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/40 md:col-start-2 md:row-start-1 md:pb-0"
                 >
                   {children}
                 </main>
-                <div className="hidden min-w-0 lg:col-start-3 lg:row-start-1 lg:block">
+                <div className="hidden min-w-0 xl:col-start-3 xl:row-start-1 xl:block">
                   <PlatformRightRail />
                 </div>
               </div>

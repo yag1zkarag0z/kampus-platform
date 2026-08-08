@@ -10,6 +10,8 @@ import { getDatabase } from "@/server/db/client";
 import { sessions, userSettings, users } from "@/server/db/schema";
 import { processImage } from "@/server/media/service";
 import { getMediaStorage } from "@/server/media/storage";
+import { consumeRateLimit } from "@/server/rate-limit/service";
+import { viewerIsNotBlockedBy } from "@/server/social/blocking";
 
 import {
   getCampusAcademicIssues,
@@ -153,6 +155,7 @@ export async function updateAccountProfile(
         .select({
           department: users.department,
           id: users.id,
+          username: users.username,
           year: users.yearLabel,
         })
         .from(users)
@@ -179,6 +182,13 @@ export async function updateAccountProfile(
         if (academicIssues.length > 0) {
           throw invalidAcademicDetailsError(academicIssues);
         }
+      }
+
+      if (
+        normalizedUsername !== undefined &&
+        normalizedUsername !== activeUser.username
+      ) {
+        await consumeRateLimit(transaction, userId, "username_change");
       }
 
       const [updatedUser] = await transaction
@@ -380,6 +390,10 @@ export async function deleteAccount(userId: string, now = new Date()) {
 }
 
 export async function uploadAccountAvatar(userId: string, file: File) {
+  // İşleme/depolama maliyetine girmeden önce kontrol edilir: moderasyon
+  // yakalamadan önce uygunsuz bir görseli kısaca gösterip hemen değiştirmeyi
+  // zorlaştırır.
+  await consumeRateLimit(getDatabase(), userId, "avatar_change");
   const processed = await processImage(file);
   const storageKey = `images/${userId}/${randomUUID()}.webp`;
   const storage = getMediaStorage();
@@ -462,7 +476,7 @@ export async function removeAccountAvatar(userId: string) {
   }
 }
 
-export async function getAccountAvatar(username: string) {
+export async function getAccountAvatar(viewerId: string, username: string) {
   const normalizedUsername = username.trim().toLowerCase();
 
   const [user] = await getDatabase()
@@ -473,6 +487,7 @@ export async function getAccountAvatar(username: string) {
         eq(users.username, normalizedUsername),
         eq(users.status, "active"),
         isNull(users.deletedAt),
+        viewerIsNotBlockedBy(viewerId, users.id),
       ),
     )
     .limit(1);
