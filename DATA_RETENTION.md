@@ -15,7 +15,7 @@ kaynağı `src/server/maintenance/policy.ts` dosyasıdır. Politika değişiklik
 | Soft-delete gönderi ve yorum | 30 gün | Audit bağı yoksa hard-delete |
 | Silinmiş hesap | En az 30 gün | PII hemen tombstone edilir; audit bağı bitince hard-delete |
 | Bağlanmamış yükleme | 24 saat | DB kaydı ve object birlikte silinir |
-| Çözülmüş rapor ve moderasyon audit kaydı | 365 gün | Hard-delete |
+| Çözülmüş rapor ve moderasyon audit kaydı | 365 gün | Audit satırı güncellenemez; süre dolunca bakım görevi hard-delete eder |
 | DB kaydı olmayan storage object | 24 saat grace | Object silinir |
 | Storage object'i olmayan DB asset kaydı | 24 saat grace | Attachment kaldırılır, asset kaydı silinir |
 

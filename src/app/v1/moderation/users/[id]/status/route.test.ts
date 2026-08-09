@@ -83,17 +83,27 @@ describe("PATCH /v1/moderation/users/[id]/status", () => {
 
   it("restores the target user", async () => {
     const response = await PATCH(
-      createRequest({ status: "active" }),
+      createRequest({ status: "active", note: "İtiraz kabul edildi." }),
       context(),
     );
 
     expect(mockedRestoreUser).toHaveBeenCalledWith(
       moderatorId,
       targetId,
-      undefined,
+      "İtiraz kabul edildi.",
     );
     expect(mockedSuspendUser).not.toHaveBeenCalled();
     expect(response.status).toBe(204);
+  });
+
+  it("requires a reason when restoring the target user", async () => {
+    const response = await PATCH(
+      createRequest({ status: "active" }),
+      context(),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mockedRestoreUser).not.toHaveBeenCalled();
   });
 
   it("propagates a role-hierarchy rejection", async () => {

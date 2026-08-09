@@ -4,11 +4,18 @@ import { randomBytes, randomInt, randomUUID } from "node:crypto";
 
 import { and, eq, isNull } from "drizzle-orm";
 
+import {
+  type AvatarPresetId,
+} from "@/avatar/presets";
+import { renderAvatarPresetSvg } from "@/avatar/render";
 import { reservedCampusUsernames } from "@/data/campusAccountRules";
 import { AuthError } from "@/server/auth/errors";
 import { getDatabase } from "@/server/db/client";
 import { sessions, userSettings, users } from "@/server/db/schema";
-import { processImage } from "@/server/media/service";
+import {
+  processImage,
+  processTrustedAvatarSvg,
+} from "@/server/media/service";
 import { getMediaStorage } from "@/server/media/storage";
 import { consumeRateLimit } from "@/server/rate-limit/service";
 import { viewerIsNotBlockedBy } from "@/server/social/blocking";
@@ -389,16 +396,11 @@ export async function deleteAccount(userId: string, now = new Date()) {
   }
 }
 
-export async function uploadAccountAvatar(userId: string, file: File) {
-  // İşleme/depolama maliyetine girmeden önce kontrol edilir: moderasyon
-  // yakalamadan önce uygunsuz bir görseli kısaca gösterip hemen değiştirmeyi
-  // zorlaştırır.
-  await consumeRateLimit(getDatabase(), userId, "avatar_change");
-  const processed = await processImage(file);
+async function replaceAccountAvatar(userId: string, body: Buffer) {
   const storageKey = `images/${userId}/${randomUUID()}.webp`;
   const storage = getMediaStorage();
 
-  await storage.put(storageKey, processed.body, "image/webp");
+  await storage.put(storageKey, body, "image/webp");
 
   let previousAvatarObjectKey: string | null = null;
 
@@ -436,6 +438,26 @@ export async function uploadAccountAvatar(userId: string, file: File) {
   if (previousAvatarObjectKey) {
     await storage.delete(previousAvatarObjectKey);
   }
+}
+
+export async function uploadAccountAvatar(userId: string, file: File) {
+  // İşleme/depolama maliyetine girmeden önce kontrol edilir: moderasyon
+  // yakalamadan önce uygunsuz bir görseli kısaca gösterip hemen değiştirmeyi
+  // zorlaştırır.
+  await consumeRateLimit(getDatabase(), userId, "avatar_change");
+  const processed = await processImage(file);
+  await replaceAccountAvatar(userId, processed.body);
+}
+
+export async function setAccountAvatarPreset(
+  userId: string,
+  presetId: AvatarPresetId,
+) {
+  await consumeRateLimit(getDatabase(), userId, "avatar_change");
+  const processed = await processTrustedAvatarSvg(
+    renderAvatarPresetSvg(presetId),
+  );
+  await replaceAccountAvatar(userId, processed.body);
 }
 
 export async function removeAccountAvatar(userId: string) {

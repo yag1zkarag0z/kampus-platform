@@ -11,6 +11,8 @@ import {
   type ReactNode,
 } from "react";
 
+import { campusAvatarUrl } from "@/avatar/catalog";
+
 import {
   AuthClientError,
   deleteCurrentAccount,
@@ -71,7 +73,7 @@ const guestProfile: CampusProfile = {
   displayName: "İsimsiz Kullanıcı",
   department: "",
   year: "",
-  avatarUrl: "https://api.dicebear.com/9.x/avataaars/svg?seed=misafir",
+  avatarUrl: campusAvatarUrl("misafir"),
   bio: "KAMPÜS’ü misafir olarak görüntülüyorsun.",
   joinedLabel: "Misafir hesap",
 };

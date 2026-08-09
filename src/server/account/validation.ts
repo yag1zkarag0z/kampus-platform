@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { avatarPresetIds } from "@/avatar/presets";
 import { parseAuthInput } from "@/server/auth/validation";
 
 import { getCampusAcademicIssues } from "./academic-validation";
@@ -45,6 +46,14 @@ export const updateSettingsSchema = z
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0);
+
+export const updateAvatarPresetSchema = z
+  .object({
+    presetId: z.enum(avatarPresetIds, {
+      error: "Hazır avatar seçimi geçersiz.",
+    }),
+  })
+  .strict();
 
 export function parseAccountInput<TSchema extends z.ZodType>(
   schema: TSchema,

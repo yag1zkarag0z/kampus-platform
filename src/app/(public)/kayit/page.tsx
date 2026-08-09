@@ -8,7 +8,15 @@ export const metadata: Metadata = {
     "Yaşar öğrenci e-postanı doğrula ve KAMPÜS hesabını oluştur.",
 };
 
-export default function RegisterPage() {
+export default async function RegisterPage({
+  searchParams,
+}: PageProps<"/kayit">) {
+  const query = await searchParams;
+  const previewProfileStep =
+    process.env.NODE_ENV !== "production" && query.preview === "profile";
+  const previewAvatarStep =
+    process.env.NODE_ENV !== "production" && query.preview === "avatar";
+
   return (
     <AuthShell
       mode="register"
@@ -19,7 +27,10 @@ export default function RegisterPage() {
       }
       description="Öğrenci e-postanı doğrula, profilini tamamla."
     >
-      <RegisterFlow />
+      <RegisterFlow
+        previewAvatarStep={previewAvatarStep}
+        previewProfileStep={previewProfileStep}
+      />
     </AuthShell>
   );
 }

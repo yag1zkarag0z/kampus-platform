@@ -9,13 +9,10 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { campusAvatarUrl as avatarUrl } from "@/avatar/catalog";
 import styles from "./HomepageBento.module.css";
 
 type SwipeDirection = "follow" | "skip";
-
-function avatarUrl(seed: string) {
-  return `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
-}
 
 function DemoAvatar({
   src,

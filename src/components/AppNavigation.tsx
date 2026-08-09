@@ -539,17 +539,19 @@ export default function AppNavigation() {
                 aria-label="KAMPÜS akışına git"
                 className="mb-2 flex min-h-12 items-center justify-center rounded-xl outline-none transition-colors hover:bg-white/7 focus-visible:ring-3 focus-visible:ring-brand/40 xl:justify-start xl:px-3"
               >
-                <CampusLogo
-                  variant="mark"
-                  idPrefix="desktop-app-navigation-logo"
-                  markClassName="h-8 w-6"
-                  className="xl:hidden"
-                />
-                <CampusLogo
-                  idPrefix="desktop-app-navigation-lockup"
-                  className="hidden xl:inline-flex"
-                  wordmarkClassName="text-xl 2xl:text-2xl"
-                />
+                <span className="xl:hidden">
+                  <CampusLogo
+                    variant="mark"
+                    idPrefix="desktop-app-navigation-logo"
+                    markClassName="h-8 w-6"
+                  />
+                </span>
+                <span className="hidden xl:block">
+                  <CampusLogo
+                    idPrefix="desktop-app-navigation-lockup"
+                    wordmarkClassName="text-xl 2xl:text-2xl"
+                  />
+                </span>
               </Link>
 
               <nav aria-label="Uygulama menüsü">
@@ -582,10 +584,10 @@ export default function AppNavigation() {
                             areNotificationsHydrated &&
                             unreadCount > 0
                               ? `${item.label}, ${unreadCount} okunmamış bildirim`
-                              : undefined
+                              : item.label
                           }
                           title={item.label}
-                          className={`group relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-center text-[10px] font-bold leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-brand/40 xl:min-h-12 xl:flex-row xl:justify-start xl:gap-3 xl:rounded-xl xl:px-3 xl:text-left xl:text-base ${
+                          className={`group relative flex min-h-14 min-w-0 items-center justify-center rounded-xl px-1 text-center text-[10px] font-bold leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-brand/40 xl:min-h-12 xl:justify-start xl:gap-3 xl:rounded-xl xl:px-3 xl:text-left xl:text-base ${
                             isActive
                               ? "bg-brand/13 text-brand"
                               : "text-white/62 hover:bg-white/8 hover:text-white"
@@ -602,7 +604,7 @@ export default function AppNavigation() {
                                 <NotificationBadge key={unreadCount} />
                               )}
                           </span>
-                          <span className="max-w-full truncate">
+                          <span className="hidden max-w-full truncate xl:inline">
                             {item.label}
                           </span>
                         </Link>
@@ -630,10 +632,10 @@ export default function AppNavigation() {
                     : undefined
                 }
                 title="Konu aç"
-                className="mt-3 inline-flex min-h-14 w-full flex-col items-center justify-center gap-1 rounded-xl bg-brand px-1 text-[10px] font-black leading-none text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/45 xl:min-h-12 xl:flex-row xl:justify-center xl:gap-2 xl:px-4 xl:text-sm"
+                className="mt-3 inline-flex min-h-14 w-full items-center justify-center rounded-xl bg-brand px-1 text-[10px] font-black leading-none text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/45 xl:min-h-12 xl:gap-2 xl:px-4 xl:text-sm"
               >
                 <ShareIcon className="size-[1.35rem] shrink-0 xl:size-5" />
-                <span>Konu aç</span>
+                <span className="hidden xl:inline">Konu aç</span>
               </Link>
 
               {guestNavStatus && guestNavAnchor === "compose-desktop" && (
@@ -687,7 +689,7 @@ export default function AppNavigation() {
                     </span>
                     <span
                       aria-hidden="true"
-                      className="hidden shrink-0 text-lg leading-none text-white/55 xl:block"
+                      className="hidden shrink-0 text-lg leading-none text-white/55 2xl:block"
                     >
                       ···
                     </span>
@@ -744,7 +746,7 @@ export default function AppNavigation() {
 
       <nav
         aria-label="Mobil uygulama menüsü"
-        className={`fixed inset-x-0 bottom-0 z-50 border-t border-white/8 bg-canvas/92 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-white backdrop-blur-xl transition-transform duration-300 md:hidden ${
+        className={`fixed inset-x-0 bottom-0 z-50 border-t border-white/8 bg-canvas/92 px-[4px] pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-white backdrop-blur-xl transition-transform duration-300 md:hidden ${
           isMobileNavHidden ? "translate-y-full" : "translate-y-0"
         }`}
       >
@@ -755,7 +757,7 @@ export default function AppNavigation() {
           />
         )}
 
-        <ul className="mx-auto grid max-w-lg grid-cols-5 gap-1">
+        <ul className="mx-auto grid max-w-lg grid-cols-5 gap-0">
           {mobileNavigationItems.map((item) => {
             const isActive = isActivePath(pathname, item.href);
 
@@ -782,7 +784,7 @@ export default function AppNavigation() {
                         ? `${item.label}, ${unreadCount} okunmamış bildirim`
                         : undefined
                   }
-                  className={`flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-[11px] font-bold leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-brand/40 ${
+                  className={`flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-[2px] text-[10px] font-bold leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-brand/40 min-[360px]:text-[11px] ${
                     item.primary
                       ? "text-brand"
                       : isActive

@@ -371,8 +371,10 @@ unique'tir. `check` kısıtı çözüm alanlarının durumla tutarlı olmasını
 - `note varchar(240)`
 - `created_at timestamptz`
 
-Bu tablo append-only'dir. `actor_id` yalnızca otomatik gizlemede boştur; insan
-kararlarında her zaman doludur.
+Bu tablo append-only'dir. Satırlar uygulama tarafından güncellenemez; yalnızca
+365 günlük saklama süresi dolunca bakım görevi tarafından silinir. Audit zinciri
+silinmeden kullanıcı, rapor veya gönderi hard-delete edilemez. `actor_id` yalnızca
+otomatik gizlemede boştur; insan kararlarında her zaman doludur.
 
 `rate_limit_hits`
 
@@ -654,8 +656,11 @@ Kuralın sınırları bilinçlidir:
   tek kullanımlık hesap üretmek pahalıdır; yaş şartı korumayı yalnızca herkesin
   yeni olduğu lansman günlerinde devre dışı bırakırdı.
 - Gizleme silme değildir. Moderatör şikâyeti reddederse gönderi geri yayına
-  girer; her iki işlem de audit kaydı üretir, otomatik gizlemede `actor_id`
-  boştur.
+  kalan güvenilir ve bekleyen şikâyet sayısı eşiğin altındaysa girer. Her iki
+  işlem de audit kaydı üretir, otomatik gizlemede `actor_id` boştur.
+- Askıdan çıkarma gerekçe ister, yalnızca gerçekten askıdaki ve silinmemiş hesabı
+  değiştirir. Tekrarlanan aynı istek yeni audit kaydı üretmez. Askıya alma bütün
+  mevcut oturumları anında iptal eder; restore eski oturumları yeniden açmaz.
 
 ## 8. Uygulama sırası ve ilerleme
 

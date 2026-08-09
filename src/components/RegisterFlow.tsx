@@ -11,11 +11,25 @@ import Link from "next/link";
 import {
   AuthClientError,
   registerCampusAccount,
+  setCurrentAvatarPreset,
 } from "@/auth/client";
+import {
+  avatarPresets,
+  type AvatarPresetId,
+} from "@/avatar/presets";
+import AvatarPresetPicker from "@/components/AvatarPresetPicker";
 import {
   useVerificationCode,
   VerificationCodePanel,
 } from "@/components/AuthVerificationCode";
+import {
+  authFlowBodyClassName,
+  authFlowCardClassName,
+  authFlowHeaderClassName,
+  authInputClassName,
+  authStepDescriptionClassName,
+  authStepTitleClassName,
+} from "@/components/authFlowLayout";
 import {
   campusUsernamePattern,
   reservedCampusUsernames,
@@ -25,7 +39,7 @@ import {
   yasarDepartmentGroups,
 } from "@/data/yasarDepartments";
 
-type RegisterStep = 1 | 2 | 3;
+type RegisterStep = 1 | 2 | 3 | 4;
 type RegisterField =
   | "email"
   | "code"
@@ -35,12 +49,19 @@ type RegisterField =
   | "rules";
 
 const studentEmailPattern = /^\d+@stu\.yasar\.edu\.tr$/i;
-const inputClassName =
-  "auth-input h-12 w-full rounded-xl border border-white/9 bg-surface px-3.5 text-base text-white outline-none transition placeholder:text-white/32 hover:border-white/18 focus:border-brand focus:ring-3 focus:ring-brand/18";
-const helperTextClassName = "mt-2 text-[11px] leading-5 text-white/50";
+const helperTextClassName =
+  "mt-[8px] text-[11px] leading-[18px] text-white/58 lg:text-center lg:text-[13px] lg:leading-[20px]";
 
-export default function RegisterFlow() {
-  const [step, setStep] = useState<RegisterStep>(1);
+export default function RegisterFlow({
+  previewAvatarStep = false,
+  previewProfileStep = false,
+}: {
+  previewAvatarStep?: boolean;
+  previewProfileStep?: boolean;
+}) {
+  const [step, setStep] = useState<RegisterStep>(
+    previewAvatarStep ? 4 : previewProfileStep ? 3 : 1,
+  );
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -56,7 +77,12 @@ export default function RegisterFlow() {
     useState<RegisterField | null>(null);
   const [complete, setComplete] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isSavingAvatar, setIsSavingAvatar] = useState(false);
+  const [selectedAvatar, setSelectedAvatar] = useState<AvatarPresetId>(
+    avatarPresets[0].id,
+  );
   const profileStepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const avatarStepHeadingRef = useRef<HTMLHeadingElement>(null);
   const verification = useVerificationCode("registration");
   const availableYearOptions = getCampusYearOptions(department);
   const clearMessage = () => {
@@ -65,12 +91,9 @@ export default function RegisterFlow() {
   };
 
   useEffect(() => {
-    if (step !== 3) {
-      return;
-    }
-
     const focusFrame = window.requestAnimationFrame(() => {
-      profileStepHeadingRef.current?.focus();
+      if (step === 3) profileStepHeadingRef.current?.focus();
+      if (step === 4) avatarStepHeadingRef.current?.focus();
     });
 
     return () => window.cancelAnimationFrame(focusFrame);
@@ -225,7 +248,7 @@ export default function RegisterFlow() {
 
       setUsername(normalizedUsername);
       clearMessage();
-      setComplete(true);
+      setStep(4);
     } catch (error) {
       setMessage(
         error instanceof AuthClientError
@@ -243,12 +266,40 @@ export default function RegisterFlow() {
     }
   };
 
-  const stepLabels = ["E-posta", "Doğrulama", "Profil"];
+  const saveAvatar = async () => {
+    if (previewAvatarStep) {
+      setComplete(true);
+      return;
+    }
+
+    setIsSavingAvatar(true);
+    clearMessage();
+
+    try {
+      await setCurrentAvatarPreset(selectedAvatar);
+      setComplete(true);
+    } catch (error) {
+      setMessage(
+        error instanceof AuthClientError
+          ? error.message
+          : "Avatar kaydedilemedi. İstersen şimdilik geçebilirsin.",
+      );
+    } finally {
+      setIsSavingAvatar(false);
+    }
+  };
+
+  const stepLabels = [
+    { full: "E-posta", short: "E-posta" },
+    { full: "Doğrulama", short: "Kod" },
+    { full: "Profil", short: "Profil" },
+    { full: "Avatar", short: "Avatar" },
+  ];
 
   return (
-    <div className="mx-auto w-full max-w-[34rem] overflow-hidden rounded-2xl border border-white/9 bg-surface">
-      <div className="border-b border-white/10 px-5 py-4 sm:px-6">
-        <ol className="grid grid-cols-3 gap-2" aria-label="Kayıt adımları">
+    <div className={authFlowCardClassName}>
+      <div className={authFlowHeaderClassName}>
+        <ol className="grid grid-cols-4 gap-[6px] sm:gap-[8px]" aria-label="Kayıt adımları">
           {stepLabels.map((label, index) => {
             const number = index + 1;
             const isCurrent = number === step;
@@ -256,15 +307,16 @@ export default function RegisterFlow() {
 
             return (
               <li
-                key={label}
-                className={`rounded-full border px-2 py-2 text-center text-[10px] font-bold transition-colors ${
+                key={label.full}
+                className={`min-w-0 rounded-full border px-[5px] py-[7px] text-center text-[10px] font-bold transition-colors sm:px-[8px] sm:py-[8px] sm:text-[11px] lg:px-[12px] lg:py-[10px] lg:text-[12px] ${
                   isCurrent || isDone
                     ? "border-brand/45 bg-brand/10 text-[#ff8968]"
-                    : "border-white/8 text-white/35"
+                    : "border-white/8 text-white/48 sm:text-white/35"
                 }`}
                 aria-current={isCurrent ? "step" : undefined}
               >
-                {label}
+                <span className="sm:hidden">{label.short}</span>
+                <span className="hidden sm:inline">{label.full}</span>
               </li>
             );
           })}
@@ -277,41 +329,91 @@ export default function RegisterFlow() {
         >
           {step === 3
             ? "Kayıt adımı 3: Kampüs profilini oluştur."
-            : ""}
+            : step === 4
+              ? "Kayıt adımı 4: Avatarını seç."
+              : ""}
         </p>
       </div>
 
-      <div className="px-5 py-6 sm:px-6 sm:py-7">
+      <div className={authFlowBodyClassName}>
         {complete ? (
           <div aria-live="polite">
             <span
               aria-hidden="true"
-              className="grid size-11 place-items-center rounded-full bg-brand text-[#101012]"
+              className="grid size-[44px] place-items-center rounded-full bg-brand text-[#101012] lg:mx-auto"
             >
               ✓
             </span>
-            <h2 className="mt-5 text-3xl font-semibold tracking-[-0.045em]">
+            <h2 className={`${authStepTitleClassName} mt-[20px]`}>
               Aramıza hoş geldin.
             </h2>
             <Link
               href="/akis"
-              className="mt-7 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-brand px-4 text-sm font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35"
+              className="mt-[24px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[16px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[272px]"
             >
               Akışa geç
             </Link>
           </div>
+        ) : step === 4 ? (
+          <div aria-labelledby="register-avatar-step-title">
+            <h2
+              ref={avatarStepHeadingRef}
+              id="register-avatar-step-title"
+              tabIndex={-1}
+              className={`${authStepTitleClassName} outline-none`}
+            >
+              Avatarını seç.
+            </h2>
+            <p className={`${authStepDescriptionClassName} lg:mt-[8px]`}>
+              <span className="sm:hidden">Sonra değiştirebilirsin.</span>
+              <span className="hidden sm:inline">
+                Seni yansıtan birini seç. Daha sonra profilinden değiştirebilirsin.
+              </span>
+            </p>
+
+            <AvatarPresetPicker
+              selected={selectedAvatar}
+              onSelect={(preset) => {
+                setSelectedAvatar(preset);
+                clearMessage();
+              }}
+            />
+
+            <FormMessage message={message} />
+
+            <button
+              type="button"
+              onClick={() => void saveAvatar()}
+              disabled={isSavingAvatar}
+              className="relative mt-[18px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[16px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65 sm:mx-auto sm:mt-[24px] sm:flex sm:min-h-[50px] sm:w-auto sm:min-w-[210px] sm:px-[22px] lg:mt-[18px] lg:min-h-[52px] lg:w-[272px] lg:min-w-[272px]"
+            >
+              {isSavingAvatar ? "Kaydediliyor…" : "Bu avatarı kullan"}
+              <span aria-hidden="true" className="absolute right-[18px]">→</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setComplete(true)}
+              className="mt-[6px] min-h-[40px] w-full text-[12px] font-medium text-white/64 outline-none transition-colors hover:text-white/80 focus-visible:ring-2 focus-visible:ring-brand/30 lg:text-[13px]"
+            >
+              Geç
+            </button>
+          </div>
         ) : step === 1 ? (
           <form onSubmit={submitEmail} noValidate>
-            <h2 className="text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">
+            <h2 className={authStepTitleClassName}>
               Öğrenci e-postan.
             </h2>
-            <p className="mt-3 text-sm leading-6 text-white/62">
-              Katılım yalnızca Yaşar öğrenci e-postasını doğrulayanlara açık.
+            <p className={authStepDescriptionClassName}>
+              <span className="sm:hidden">Öğrenci e-postanla doğrula.</span>
+              <span className="hidden sm:inline">
+                Katılım yalnızca Yaşar öğrenci e-postasını doğrulayanlara açık.
+              </span>
             </p>
 
             <label
               htmlFor="register-email"
-              className="mt-7 block text-xs font-bold"
+              className="mt-[22px] block text-[13px] font-bold sm:mt-[28px] lg:mt-[24px] lg:text-center lg:text-[14px]"
             >
               Yaşar öğrenci e-postan
             </label>
@@ -327,7 +429,7 @@ export default function RegisterFlow() {
                 clearMessage();
               }}
               placeholder="öğrenci.no@stu.yasar.edu.tr"
-              className={`${inputClassName} mt-2`}
+              className={`${authInputClassName} mt-2`}
               aria-invalid={invalidField === "email"}
               aria-describedby="register-email-help register-message"
               required
@@ -337,7 +439,7 @@ export default function RegisterFlow() {
             <button
               type="submit"
               disabled={verification.isRequesting}
-              className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-brand px-6 text-sm font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65"
+              className="mt-[16px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[272px]"
             >
               {verification.isRequesting
                 ? "Kod gönderiliyor…"
@@ -353,20 +455,17 @@ export default function RegisterFlow() {
           </form>
         ) : step === 2 ? (
           <form onSubmit={submitCode} noValidate>
-            <h2 className="text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">
+            <h2 className={authStepTitleClassName}>
               Doğrulama kodu.
             </h2>
-            <p className="mt-3 text-sm leading-6 text-white/62">
-              6 haneli doğrulama kodunu{" "}
-              <strong className="font-bold text-white">
-                {email}
-              </strong>{" "}
-              adresi için hazırladık.
+            <p className={`${authStepDescriptionClassName} break-words`}>
+              Kod <strong className="font-bold text-white">{email}</strong>
+              <span className="hidden sm:inline"> adresi için hazırlandı.</span>
             </p>
 
             <label
               htmlFor="register-code"
-              className="mt-7 block text-xs font-bold"
+              className="mt-[22px] block text-[13px] font-bold sm:mt-[28px] lg:mt-[24px] lg:text-center lg:text-[14px]"
             >
               Doğrulama kodu
             </label>
@@ -403,7 +502,7 @@ export default function RegisterFlow() {
                 verification.isResending ||
                 verification.isVerifying
               }
-              className={`${inputClassName} mt-2 text-center font-mono text-xl font-bold tracking-[0.35em] disabled:cursor-not-allowed disabled:opacity-55`}
+              className={`${authInputClassName} mt-[8px] text-center font-mono text-[20px] font-bold tracking-[0.3em] disabled:cursor-not-allowed disabled:opacity-55 lg:text-[24px]`}
               aria-invalid={invalidField === "code"}
               aria-describedby="register-code-help register-message"
               required
@@ -412,8 +511,11 @@ export default function RegisterFlow() {
               id="register-code-help"
               className={helperTextClassName}
             >
-              Kodu e-postadan kopyalayıp buraya yapıştırabilirsin. Kodunu
-              kimseyle paylaşma.
+              <span className="sm:hidden">Kodu e-postadan yapıştır.</span>
+              <span className="hidden sm:inline">
+                Kodu e-postadan kopyalayıp buraya yapıştırabilirsin. Kodunu
+                kimseyle paylaşma.
+              </span>
             </p>
 
             <FormMessage message={message} />
@@ -440,10 +542,10 @@ export default function RegisterFlow() {
                 verification.isResending ||
                 verification.isVerifying
               }
-              className="mt-5 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-brand px-4 text-sm font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:opacity-55"
+              className="relative mt-[18px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:opacity-55 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[272px]"
             >
               {verification.isVerifying ? "Doğrulanıyor…" : "Kodu doğrula"}
-              <span aria-hidden="true">→</span>
+              <span aria-hidden="true" className="absolute right-[18px]">→</span>
             </button>
 
             <button
@@ -455,7 +557,7 @@ export default function RegisterFlow() {
                 clearMessage();
                 verification.resetVerification();
               }}
-              className="mt-3 min-h-11 w-full text-xs font-bold text-white/55 underline decoration-white/20 underline-offset-4"
+              className="mt-[8px] min-h-[40px] w-full text-[12px] font-bold text-white/62 underline decoration-white/20 underline-offset-4 lg:text-[13px]"
             >
               E-posta adresini değiştir
             </button>
@@ -470,25 +572,28 @@ export default function RegisterFlow() {
               ref={profileStepHeadingRef}
               id="register-profile-step-title"
               tabIndex={-1}
-              className="text-2xl font-semibold tracking-[-0.04em] outline-none sm:text-3xl"
+              className={`${authStepTitleClassName} outline-none`}
             >
               Kampüs profilini oluştur.
             </h2>
-            <p className="mt-3 text-sm leading-6 text-white/62">
-              Yalnızca kullanıcı adın zorunlu olarak görünür. Diğer profil
-              bilgilerini sen yönetirsin.
+            <p className={authStepDescriptionClassName}>
+              <span className="sm:hidden">Profilini istediğin gibi düzenle.</span>
+              <span className="hidden sm:inline">
+                Yalnızca kullanıcı adın zorunlu olarak görünür. Diğer profil
+                bilgilerini sen yönetirsin.
+              </span>
             </p>
 
-            <div className="mt-6 grid gap-x-4 gap-y-5 sm:grid-cols-2">
+            <div className="mt-[18px] grid gap-x-[16px] gap-y-[16px] sm:mt-[24px] sm:grid-cols-2 sm:gap-y-[20px]">
               <div>
                 <label
                   htmlFor="register-username"
-                  className="block text-xs font-bold"
+                  className="block text-[12px] font-bold lg:text-center lg:text-[14px]"
                 >
                   Kullanıcı adı
                 </label>
-                <div className="relative mt-2">
-                  <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-sm font-bold text-white/50">
+                <div className="relative mt-[8px]">
+                  <span className="pointer-events-none absolute inset-y-0 left-[14px] flex items-center text-[14px] font-bold text-white/58 lg:left-[18px] lg:text-[17px]">
                     @
                   </span>
                   <input
@@ -502,7 +607,7 @@ export default function RegisterFlow() {
                       clearMessage();
                     }}
                     placeholder="kampuslu35"
-                    className={`${inputClassName} pl-8`}
+                    className={`${authInputClassName} pl-[32px]`}
                     aria-invalid={invalidField === "username"}
                     aria-describedby="register-username-help register-message"
                     required
@@ -519,7 +624,7 @@ export default function RegisterFlow() {
               <div>
                 <label
                   htmlFor="register-name"
-                  className="block text-xs font-bold"
+                  className="block text-[12px] font-bold lg:text-center lg:text-[14px]"
                 >
                   Görünen adın <span className="font-normal">(isteğe bağlı)</span>
                 </label>
@@ -535,14 +640,14 @@ export default function RegisterFlow() {
                   }}
                   placeholder="Adın veya rumuzun"
                   maxLength={40}
-                  className={`${inputClassName} mt-2`}
+                  className={`${authInputClassName} mt-[8px]`}
                 />
               </div>
 
               <div className="sm:col-span-2">
                 <label
                   htmlFor="register-department"
-                  className="block text-xs font-bold"
+                  className="block text-[12px] font-bold lg:text-center lg:text-[14px]"
                 >
                   Bölüm
                 </label>
@@ -559,7 +664,7 @@ export default function RegisterFlow() {
                     }
                     clearMessage();
                   }}
-                  className={`${inputClassName} mt-2 cursor-pointer pr-9`}
+                  className={`${authInputClassName} mt-[8px] cursor-pointer pr-[36px]`}
                   aria-invalid={invalidField === "department"}
                   aria-describedby="register-department-help register-message"
                   required
@@ -589,7 +694,7 @@ export default function RegisterFlow() {
               <div>
                 <label
                   htmlFor="register-year"
-                  className="block text-xs font-bold"
+                  className="block text-[12px] font-bold lg:text-center lg:text-[14px]"
                 >
                   Sınıf
                 </label>
@@ -601,7 +706,7 @@ export default function RegisterFlow() {
                     setYear(event.target.value);
                     clearMessage();
                   }}
-                  className={`${inputClassName} mt-2 cursor-pointer pr-9`}
+                  className={`${authInputClassName} mt-[8px] cursor-pointer pr-[36px]`}
                   aria-invalid={invalidField === "year"}
                   aria-describedby="register-message"
                   required
@@ -617,7 +722,7 @@ export default function RegisterFlow() {
                 </select>
               </div>
 
-              <label className="flex min-h-20 cursor-pointer items-start gap-3 rounded-xl border border-white/12 bg-white/5 p-3 text-xs leading-5">
+              <label className="flex cursor-pointer items-start gap-[12px] rounded-[12px] border border-white/12 bg-white/5 p-[12px] text-[12px] leading-[18px] sm:min-h-[80px] lg:p-[14px] lg:text-[14px] lg:leading-[22px]">
                 <input
                   type="checkbox"
                   name="showDepartment"
@@ -626,28 +731,28 @@ export default function RegisterFlow() {
                     setShowDepartment(event.target.checked);
                     clearMessage();
                   }}
-                  className="mt-0.5 size-4 shrink-0 accent-brand outline-none focus-visible:ring-3 focus-visible:ring-brand/30"
+                  className="mt-[2px] size-[16px] shrink-0 accent-brand outline-none focus-visible:ring-3 focus-visible:ring-brand/30"
                 />
                 <span>
                   <span className="block font-bold">
                     Bölüm ve sınıfımı göster
                   </span>
-                  <span className="mt-1 block text-white/50">
+                  <span className="mt-[4px] block text-white/58">
                     İstersen daha sonra ayarlardan değiştirebilirsin.
                   </span>
                 </span>
               </label>
 
               <div className="sm:col-span-2">
-                <div className="flex items-baseline justify-between gap-3">
+                <div className="flex items-baseline justify-between gap-[12px]">
                   <label
                     htmlFor="register-bio"
-                    className="block text-xs font-bold"
+                    className="block text-[12px] font-bold lg:text-center lg:text-[14px]"
                   >
                     Biyografi{" "}
                     <span className="font-normal">(isteğe bağlı)</span>
                   </label>
-                  <span className="font-mono text-[10px] font-bold text-white/50">
+                  <span className="font-mono text-[10px] font-bold text-white/50 lg:text-[12px]">
                     {bio.length}/160
                   </span>
                 </div>
@@ -662,12 +767,12 @@ export default function RegisterFlow() {
                   placeholder="Kendinden veya kampüste ilgilendiğin şeylerden kısaca bahset."
                   maxLength={160}
                   rows={4}
-                  className={`${inputClassName} mt-2 h-auto min-h-28 resize-y py-3 leading-6`}
+                  className={`${authInputClassName} mt-[8px] h-auto min-h-[88px] resize-y py-[10px] leading-[22px] sm:min-h-[112px] sm:py-[12px]`}
                 />
               </div>
             </div>
 
-            <div className="mt-6 flex items-start gap-3 rounded-xl border border-white/12 bg-white/5 p-3 text-xs leading-5">
+            <div className="mt-[20px] flex items-start gap-[12px] rounded-[12px] border border-white/12 bg-white/5 p-[12px] text-[12px] leading-[18px] sm:mt-[24px] lg:p-[14px] lg:text-[14px] lg:leading-[22px]">
               <input
                 id="register-rules"
                 type="checkbox"
@@ -679,7 +784,7 @@ export default function RegisterFlow() {
                 required
                 aria-invalid={invalidField === "rules"}
                 aria-describedby="register-message"
-                className="mt-0.5 size-4 shrink-0 accent-brand outline-none focus-visible:ring-3 focus-visible:ring-brand/30"
+                className="mt-[2px] size-[16px] shrink-0 accent-brand outline-none focus-visible:ring-3 focus-visible:ring-brand/30"
               />
               <div>
                 <label
@@ -693,7 +798,7 @@ export default function RegisterFlow() {
                   href="/sozlesme"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-1 block w-fit font-bold text-brand underline decoration-brand/35 underline-offset-4 outline-none hover:text-[#ff9e80] focus-visible:ring-2 focus-visible:ring-brand/30"
+                  className="mt-[4px] block w-fit font-bold text-brand underline decoration-brand/35 underline-offset-4 outline-none hover:text-[#ff9e80] focus-visible:ring-2 focus-visible:ring-brand/30"
                 >
                   Sözleşmeyi oku
                   <span className="sr-only"> (yeni sekmede açılır)</span>
@@ -707,10 +812,10 @@ export default function RegisterFlow() {
             <button
               type="submit"
               disabled={isRegistering}
-              className="mt-6 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-brand px-4 text-sm font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65"
+              className="relative mt-[20px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65 sm:mt-[24px] sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[272px]"
             >
               {isRegistering ? "Hesap oluşturuluyor…" : "Kaydı tamamla"}
-              <span aria-hidden="true">→</span>
+              <span aria-hidden="true" className="absolute right-[18px]">→</span>
             </button>
 
             <button
@@ -722,7 +827,7 @@ export default function RegisterFlow() {
                 verification.resetVerification();
                 setStep(1);
               }}
-              className="mt-3 min-h-11 w-full text-xs font-bold text-white/55 underline decoration-white/20 underline-offset-4"
+              className="mt-[8px] min-h-[40px] w-full text-[12px] font-bold text-white/62 underline decoration-white/20 underline-offset-4 lg:text-[13px]"
             >
               E-posta doğrulamasını yeniden başlat
             </button>
@@ -730,8 +835,8 @@ export default function RegisterFlow() {
         )}
       </div>
 
-      {!complete && (
-        <div className="border-t border-white/8 bg-surface-raised px-5 py-4 text-center text-[11px] text-white/55 sm:px-6">
+      {!complete && step !== 4 && (
+        <div className="hidden border-t border-white/8 bg-surface-raised px-[24px] py-[16px] text-center text-white/62 sm:flex sm:items-center sm:justify-center lg:min-h-[84px] lg:text-[13px]">
           Zaten hesabın var mı?{" "}
           <Link
             href="/giris"
@@ -751,7 +856,7 @@ function FormMessage({ message }: { message: string | null }) {
       id="register-message"
       role={message ? "alert" : "status"}
       aria-live={message ? "assertive" : "polite"}
-      className={`text-xs font-medium leading-5 text-danger ${
+      className={`text-[12px] font-medium leading-[20px] text-danger lg:text-center lg:text-[13px] ${
         message ? "mt-2" : ""
       }`}
     >

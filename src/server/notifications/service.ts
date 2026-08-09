@@ -213,7 +213,7 @@ async function attachGroupedLikeActors(
         ) as rn
       from ${postLikes}
       join ${users} on ${users.id} = ${postLikes.userId}
-      where ${postLikes.postId} = any(${groupedPostIds}::uuid[])
+      where ${inArray(postLikes.postId, groupedPostIds)}
         and ${users.deletedAt} is null
         and ${noBlockBetween(recipientId, users.id)}
     ) ranked

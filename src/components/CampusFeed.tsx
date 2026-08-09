@@ -1065,7 +1065,7 @@ export default function CampusFeed() {
 	            aria-expanded={isGifPickerOpen}
 	            aria-label="GIF ekle"
 	            title="GIF ekle"
-	            className={`grid size-10 shrink-0 place-items-center text-brand/85 transition-colors hover:bg-brand/8 hover:text-brand sm:size-12 ${focusRing}`}
+	            className={`grid size-8 shrink-0 place-items-center text-brand/85 transition-colors hover:bg-brand/8 hover:text-brand sm:size-12 ${focusRing}`}
 	          >
 	            <span
 	              aria-hidden="true"
@@ -1565,7 +1565,7 @@ function ComposerAction({
       aria-pressed={isActive}
       onClick={onClick}
       disabled={disabled}
-      className={`grid size-10 shrink-0 place-items-center transition-colors disabled:cursor-wait disabled:opacity-45 sm:size-12 ${focusRing} ${
+      className={`grid size-8 shrink-0 place-items-center transition-colors disabled:cursor-wait disabled:opacity-45 sm:size-12 ${focusRing} ${
         isActive
           ? "bg-brand/12 text-brand"
           : "text-brand/85 hover:bg-brand/8 hover:text-brand"
@@ -1590,7 +1590,7 @@ function ComposerLinkAction({
       href={href}
       aria-label={label}
       title={label}
-      className={`grid size-10 shrink-0 place-items-center text-brand/85 transition-colors hover:bg-brand/8 hover:text-brand sm:size-12 ${focusRing}`}
+      className={`hidden size-12 shrink-0 place-items-center text-brand/85 transition-colors hover:bg-brand/8 hover:text-brand sm:grid ${focusRing}`}
     >
       <span aria-hidden="true">{icon}</span>
     </Link>
@@ -1599,7 +1599,7 @@ function ComposerLinkAction({
 
 function PhotoIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="size-6 sm:size-7">
+    <svg viewBox="0 0 24 24" fill="none" className="size-5 sm:size-7">
       <rect
         x="3.5"
         y="4.5"
@@ -1623,7 +1623,7 @@ function PhotoIcon() {
 
 function PollIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="size-6 sm:size-7">
+    <svg viewBox="0 0 24 24" fill="none" className="size-5 sm:size-7">
       <path
         d="M5 7.5h2.5M5 12h2.5M5 16.5h2.5M11 7.5h8M11 12h5M11 16.5h7"
         stroke="currentColor"
@@ -1636,7 +1636,7 @@ function PollIcon() {
 
 function EmojiIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="size-6 sm:size-7">
+    <svg viewBox="0 0 24 24" fill="none" className="size-5 sm:size-7">
       <circle
         cx="12"
         cy="12"

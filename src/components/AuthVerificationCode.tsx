@@ -277,7 +277,7 @@ export function VerificationCodePanel({
           : "Doğrulama kodu e-postana gönderildi.";
 
   return (
-    <div className="mt-4 space-y-3">
+    <div className="mt-[16px] space-y-[10px] sm:space-y-[12px]">
       <p
         className="sr-only"
         role={isExpired || isLocked ? "alert" : "status"}
@@ -286,15 +286,15 @@ export function VerificationCodePanel({
         {announcementText}
       </p>
       <div
-        className={`rounded-xl border px-3 py-2.5 ${
+        className={`rounded-[12px] border px-[12px] py-[10px] ${
           isExpired || isLocked
             ? "border-[#ff9e80]/24 bg-[#ff9e80]/8 text-[#ff9e80]"
             : "border-white/10 bg-white/4 text-white/55"
         }`}
       >
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <div className="flex flex-wrap items-center justify-between gap-x-[12px] gap-y-[4px] lg:justify-center">
           <p
-            className="flex items-center gap-2 text-[11px] font-bold leading-5"
+            className="flex items-center gap-[8px] text-[11px] font-bold leading-[18px] lg:text-center lg:text-[13px] lg:leading-[20px]"
             aria-live="off"
           >
             <span
@@ -308,7 +308,7 @@ export function VerificationCodePanel({
             {statusText}
           </p>
           {!isExpired && !isLocked && (
-            <p className="text-[10px] font-bold">
+            <p className="text-[10px] font-bold lg:text-center lg:text-[12px]">
               {attemptsLeft} deneme hakkı
             </p>
           )}
@@ -320,7 +320,7 @@ export function VerificationCodePanel({
         onClick={onResend}
         disabled={!canResend || isResending}
         aria-controls={inputId}
-        className="min-h-11 w-full rounded-xl border border-white/12 px-4 text-xs font-black text-white outline-none transition-colors hover:border-brand/35 hover:bg-brand/8 focus-visible:ring-3 focus-visible:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-48"
+        className="min-h-[44px] w-full rounded-[12px] border border-white/12 px-[16px] text-[12px] font-black text-white outline-none transition-colors hover:border-brand/35 hover:bg-brand/8 focus-visible:ring-3 focus-visible:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-48 lg:mx-auto lg:block lg:min-h-[50px] lg:w-[272px] lg:text-[14px]"
       >
         {resendLabel}
       </button>

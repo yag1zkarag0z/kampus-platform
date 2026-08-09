@@ -195,7 +195,7 @@ export default function CampusCommentThread({
         inert={isGuest}
         className="border-b border-white/10 px-4 py-4 sm:px-6"
       >
-        <div className="flex items-start gap-3">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 min-[480px]:flex min-[480px]:gap-3">
           <CampusAuthorAvatar
             author={isAnonymous ? "Anonim" : "@sen"}
             authorId={LOCAL_ACCOUNT_OWNER_ID}
@@ -215,7 +215,7 @@ export default function CampusCommentThread({
           <button
             type="submit"
             disabled={(!draft.trim() && !selectedGif) || isSubmitting}
-            className={`shrink-0 self-center ${campusButton.primary}`}
+            className={`col-start-2 w-fit shrink-0 justify-self-end min-[480px]:self-center ${campusButton.primary}`}
           >
             Yanıtla
           </button>

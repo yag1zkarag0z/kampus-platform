@@ -18,6 +18,7 @@
     "maintenance:dry-run": "tsx scripts/maintenance-worker.ts --dry-run",
     "maintenance:once": "tsx scripts/maintenance-worker.ts --once",
     "maintenance:worker": "tsx scripts/maintenance-worker.ts",
+    "avatars:generate": "tsx scripts/generate-avatar-presets.ts",
     "db:up": "docker compose up -d postgres mailpit",
     "db:test:up": "docker compose up -d postgres-test mailpit",
     "db:down": "docker compose down",
@@ -31,6 +32,8 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1101.0",
+    "@dicebear/avataaars": "9.4.2",
+    "@dicebear/core": "9.4.2",
     "@gsap/react": "^2.1.2",
     "drizzle-orm": "^0.45.2",
     "gsap": "^3.15.0",

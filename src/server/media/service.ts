@@ -246,6 +246,28 @@ export async function processImage(file: File) {
   }
 }
 
+/** Only accepts SVG generated from the application's fixed avatar presets. */
+export async function processTrustedAvatarSvg(svg: string) {
+  const result = await sharp(Buffer.from(svg), {
+    density: 144,
+    failOn: "warning",
+    limitInputPixels: MAX_INPUT_PIXELS,
+  })
+    .resize(512, 512, { fit: "cover" })
+    .webp({ effort: 4, quality: 84 })
+    .toBuffer({ resolveWithObject: true });
+
+  if (
+    result.info.width !== 512 ||
+    result.info.height !== 512 ||
+    result.data.length > MAX_OUTPUT_BYTES
+  ) {
+    throw invalidImageError("Hazır avatar güvenli boyutlara dönüştürülemedi.");
+  }
+
+  return { body: result.data, width: 512, height: 512 };
+}
+
 export async function uploadContentImage(userId: string, file: File) {
   const processed = await processImage(file);
   const assetId = randomUUID();

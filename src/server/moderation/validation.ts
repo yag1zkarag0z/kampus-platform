@@ -57,6 +57,15 @@ export const updateUserStatusSchema = z
     }),
     note: noteSchema.optional(),
   })
+  .superRefine((input, context) => {
+    if (input.status === "active" && !input.note?.trim()) {
+      context.addIssue({
+        code: "custom",
+        path: ["note"],
+        message: "Hesabı yeniden etkinleştirmek için bir gerekçe yazmalısın.",
+      });
+    }
+  })
   .strict();
 
 export const updateUserRoleSchema = z

@@ -489,12 +489,12 @@ export const reports = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     reporterId: uuid("reporter_id")
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => users.id, { onDelete: "restrict" }),
     targetType: reportTargetType("target_type").notNull(),
     targetId: uuid("target_id").notNull(),
     postId: uuid("post_id")
       .notNull()
-      .references(() => posts.id, { onDelete: "cascade" }),
+      .references(() => posts.id, { onDelete: "restrict" }),
     reason: reportReason("reason").notNull(),
     detail: varchar("detail", { length: 300 }).default("").notNull(),
     status: reportStatus("status").default("pending").notNull(),
@@ -557,17 +557,17 @@ export const moderationActions = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     // Otomatik gizlemede insan aktör yok; bu yüzden null olabilir.
     actorId: uuid("actor_id").references(() => users.id, {
-      onDelete: "cascade",
+      onDelete: "restrict",
     }),
     action: moderationActionType("action").notNull(),
     reportId: uuid("report_id").references(() => reports.id, {
-      onDelete: "set null",
+      onDelete: "restrict",
     }),
     targetUserId: uuid("target_user_id").references(() => users.id, {
-      onDelete: "cascade",
+      onDelete: "restrict",
     }),
     postId: uuid("post_id").references(() => posts.id, {
-      onDelete: "set null",
+      onDelete: "restrict",
     }),
     note: varchar("note", { length: 240 }),
     createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
@@ -576,6 +576,16 @@ export const moderationActions = pgTable(
     index("moderation_actions_created_at_idx").on(table.createdAt),
     index("moderation_actions_target_user_id_idx").on(
       table.targetUserId,
+    ),
+    check(
+      "moderation_actions_actor_check",
+      sql`(${table.action} = 'content_hidden' and ${table.actorId} is null)
+        or (${table.action} <> 'content_hidden' and ${table.actorId} is not null)`,
+    ),
+    check(
+      "moderation_actions_target_check",
+      sql`${table.action} not in ('user_suspended', 'user_restored', 'role_changed')
+        or ${table.targetUserId} is not null`,
     ),
   ],
 );

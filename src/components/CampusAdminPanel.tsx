@@ -306,7 +306,10 @@ export default function CampusAdminPanel() {
       return;
     }
 
-    const wasRestored = await restoreUser(user.id);
+    const wasRestored = await restoreUser(
+      user.id,
+      "Kullanıcı yönetiminden yeniden etkinleştirildi.",
+    );
     setUserActionAnchor(user.id);
     setUserActionStatus({
       message: wasRestored

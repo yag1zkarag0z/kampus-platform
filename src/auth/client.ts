@@ -6,6 +6,7 @@ import type {
   OtpChallengeResponse,
   SessionState,
 } from "./types";
+import type { AvatarPresetId } from "@/avatar/presets";
 
 export type OtpPurpose = "registration" | "login";
 
@@ -285,6 +286,13 @@ export function uploadCurrentAvatar(file: Blob) {
   return requestApi<SessionState>("/v1/me/avatar", {
     method: "POST",
     body: formData,
+  });
+}
+
+export function setCurrentAvatarPreset(presetId: AvatarPresetId) {
+  return requestApi<SessionState>("/v1/me/avatar/preset", {
+    method: "POST",
+    body: JSON.stringify({ presetId }),
   });
 }
 

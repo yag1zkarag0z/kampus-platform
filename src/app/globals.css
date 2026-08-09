@@ -73,6 +73,28 @@ body {
     color 240ms ease;
 }
 
+/*
+ * Mobil uygulama hissi: sayfalar ve yatay listeler kaymaya devam eder, ancak
+ * işletim sisteminin scrollbar izi arayüzün üzerinde görünmez. Desktop kendi
+ * scrollbar davranışını korur.
+ */
+@media (max-width: 767px) {
+  html,
+  body,
+  * {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  *::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
+
 ::selection {
   background: var(--brand);
   color: #101012;
@@ -86,7 +108,7 @@ button,
 input,
 select,
 textarea {
-  font: inherit;
+  font-family: inherit;
 }
 
 :focus-visible {

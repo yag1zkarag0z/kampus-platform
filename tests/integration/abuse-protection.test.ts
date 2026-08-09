@@ -412,4 +412,56 @@ describe("otomatik gizleme", () => {
 
     expect(audit.rowCount).toBe(1);
   });
+
+  it("şikâyet eşiği sürerken gönderiyi erken geri açmaz", async () => {
+    const author = await insertUser("Threshold Restore Author");
+    const moderator = await insertUser("Threshold Restore Moderator");
+    const post = await createMediaPost(author.id);
+    const reporters = await insertAgedReporters(4);
+
+    await pool.query("update users set role = 'moderator' where id = $1", [
+      moderator.id,
+    ]);
+    await reportPostFrom(reporters, post.id);
+
+    const pending = await pool.query<{ id: string }>(
+      `select id from reports
+       where target_id = $1 and status = 'pending'
+       order by created_at, id`,
+      [post.id],
+    );
+
+    await resolveReport(
+      moderator.id,
+      pending.rows[0]!.id,
+      "dismissed",
+      "İlk itiraz kabul edildi",
+    );
+
+    const stillHidden = await pool.query<{ hidden_at: Date | null }>(
+      "select hidden_at from posts where id = $1",
+      [post.id],
+    );
+    expect(stillHidden.rows[0]!.hidden_at).not.toBeNull();
+
+    await resolveReport(
+      moderator.id,
+      pending.rows[1]!.id,
+      "dismissed",
+      "Eşik altına düştü",
+    );
+
+    const restored = await pool.query<{ hidden_at: Date | null }>(
+      "select hidden_at from posts where id = $1",
+      [post.id],
+    );
+    expect(restored.rows[0]!.hidden_at).toBeNull();
+
+    const audit = await pool.query(
+      `select action from moderation_actions
+       where post_id = $1 and action = 'content_restored'`,
+      [post.id],
+    );
+    expect(audit.rowCount).toBe(1);
+  });
 });

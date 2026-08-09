@@ -535,17 +535,8 @@ describe("maintenance worker with PostgreSQL", () => {
     await expect(rowExists("posts", postId)).resolves.toBe(true);
     await expect(rowExists("users", ownerId)).resolves.toBe(true);
 
-    await pool.query(
-      "update reports set created_at = $1, resolved_at = $2 where id = $3",
-      [before(now, 400 * DAY), before(now, 366 * DAY), reportId],
-    );
-    await pool.query(
-      "update moderation_actions set created_at = $1 where id = $2",
-      [before(now, 366 * DAY), actionId],
-    );
-
     const expired = await runMaintenance({
-      now,
+      now: new Date(now.getTime() + 366 * DAY),
       mode: "cleanup",
       batchSize: 1,
       pool,

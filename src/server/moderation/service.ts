@@ -34,6 +34,7 @@ import {
   postImages,
   posts,
   reports,
+  sessions,
   users,
 } from "@/server/db/schema";
 
@@ -664,27 +665,97 @@ async function assertCanModerateTarget(
     throw selfModerationError();
   }
 
-  const [target] = await transaction
-    .select({ role: users.role })
+  const [actor] = await transaction
+    .select({
+      role: users.role,
+      status: users.status,
+      deletedAt: users.deletedAt,
+    })
     .from(users)
-    .where(eq(users.id, targetUserId))
+    .where(eq(users.id, actorId))
     .limit(1);
 
-  if (!target) {
+  if (
+    !actor ||
+    actor.role === "member" ||
+    actor.status !== "active" ||
+    actor.deletedAt !== null
+  ) {
+    throw authorizationRequiredError();
+  }
+
+  const [target] = await transaction
+    .select({
+      role: users.role,
+      status: users.status,
+      deletedAt: users.deletedAt,
+    })
+    .from(users)
+    .where(eq(users.id, targetUserId))
+    .for("update")
+    .limit(1);
+
+  if (!target || target.deletedAt !== null) {
     throw userNotFoundError();
   }
 
-  if (target.role !== "member") {
-    const [actor] = await transaction
-      .select({ role: users.role })
-      .from(users)
-      .where(eq(users.id, actorId))
-      .limit(1);
-
-    if (actor?.role !== "admin") {
-      throw authorizationRequiredError();
-    }
+  if (target.role !== "member" && actor.role !== "admin") {
+    throw authorizationRequiredError();
   }
+
+  return target;
+}
+
+async function assertActiveModerator(
+  transaction: ModerationTransaction,
+  actorId: string,
+) {
+  const [actor] = await transaction
+    .select({
+      role: users.role,
+      status: users.status,
+      deletedAt: users.deletedAt,
+    })
+    .from(users)
+    .where(eq(users.id, actorId))
+    .limit(1);
+
+  if (
+    !actor ||
+    actor.role === "member" ||
+    actor.status !== "active" ||
+    actor.deletedAt !== null
+  ) {
+    throw authorizationRequiredError();
+  }
+
+  return actor;
+}
+
+async function hasAutoHideThreshold(
+  transaction: ModerationTransaction,
+  postId: string,
+) {
+  const dismissedByReporter = sql<number>`(
+    select count(*)
+    from ${reports} as dismissed_reports
+    where dismissed_reports.reporter_id = ${reports.reporterId}
+      and dismissed_reports.resolution = 'dismissed'
+  )`;
+
+  const [usage] = await transaction
+    .select({ reporters: countDistinct(reports.reporterId) })
+    .from(reports)
+    .where(
+      and(
+        eq(reports.targetType, "post"),
+        eq(reports.targetId, postId),
+        eq(reports.status, "pending"),
+        lt(dismissedByReporter, AUTO_HIDE_MAX_DISMISSED_REPORTS),
+      ),
+    );
+
+  return (usage?.reporters ?? 0) >= AUTO_HIDE_REPORT_THRESHOLD;
 }
 
 export async function resolveReport(
@@ -697,6 +768,8 @@ export async function resolveReport(
   const trimmedNote = note?.trim().slice(0, 240) || null;
 
   await getDatabase().transaction(async (transaction) => {
+    await assertActiveModerator(transaction, moderatorId);
+
     const [report] = await transaction
       .select()
       .from(reports)
@@ -725,7 +798,11 @@ export async function resolveReport(
 
     // Şikâyet haksız bulunduysa otomatik gizleme kalkar; gönderi geri yayına
     // girer ve bu da denetim kaydına yazılır.
-    if (resolution === "dismissed" && report.targetType === "post") {
+    if (
+      resolution === "dismissed" &&
+      report.targetType === "post" &&
+      !(await hasAutoHideThreshold(transaction, report.targetId))
+    ) {
       const restored = await transaction
         .update(posts)
         .set({ hiddenAt: null })
@@ -793,6 +870,15 @@ export async function resolveReport(
           .set({ status: "suspended", suspendedAt: now })
           .where(
             and(eq(users.id, authorId), eq(users.status, "active")),
+          );
+        await transaction
+          .update(sessions)
+          .set({ revokedAt: now })
+          .where(
+            and(
+              eq(sessions.userId, authorId),
+              isNull(sessions.revokedAt),
+            ),
           );
         targetUserId = authorId;
       }
@@ -882,13 +968,20 @@ export async function setUserRole(
   }
 
   await getDatabase().transaction(async (transaction) => {
+    const actor = await assertActiveModerator(transaction, adminId);
+
+    if (actor.role !== "admin") {
+      throw authorizationRequiredError();
+    }
+
     const [target] = await transaction
-      .select({ role: users.role })
+      .select({ role: users.role, deletedAt: users.deletedAt })
       .from(users)
       .where(eq(users.id, targetUserId))
+      .for("update")
       .limit(1);
 
-    if (!target) {
+    if (!target || target.deletedAt !== null) {
       throw userNotFoundError();
     }
 
@@ -919,13 +1012,31 @@ export async function suspendUser(
   const trimmedNote = note?.trim().slice(0, 240) || null;
 
   await getDatabase().transaction(async (transaction) => {
-    await assertCanModerateTarget(transaction, moderatorId, targetUserId);
+    const target = await assertCanModerateTarget(
+      transaction,
+      moderatorId,
+      targetUserId,
+    );
+
+    if (target.status === "suspended") {
+      return;
+    }
 
     await transaction
       .update(users)
       .set({ status: "suspended", suspendedAt: now })
       .where(
         and(eq(users.id, targetUserId), eq(users.status, "active")),
+      );
+
+    await transaction
+      .update(sessions)
+      .set({ revokedAt: now })
+      .where(
+        and(
+          eq(sessions.userId, targetUserId),
+          isNull(sessions.revokedAt),
+        ),
       );
 
     await transaction.insert(moderationActions).values({
@@ -944,8 +1055,24 @@ export async function restoreUser(
 ) {
   const trimmedNote = note?.trim().slice(0, 240) || null;
 
+  if (!trimmedNote) {
+    throw new AuthError(
+      "INVALID_REQUEST",
+      "Hesabı yeniden etkinleştirmek için bir gerekçe yazmalısın.",
+      { status: 400 },
+    );
+  }
+
   await getDatabase().transaction(async (transaction) => {
-    await assertCanModerateTarget(transaction, moderatorId, targetUserId);
+    const target = await assertCanModerateTarget(
+      transaction,
+      moderatorId,
+      targetUserId,
+    );
+
+    if (target.status === "active") {
+      return;
+    }
 
     await transaction
       .update(users)

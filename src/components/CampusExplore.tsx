@@ -210,7 +210,7 @@ export default function CampusExplore() {
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Başlık, kategori veya kullanıcı ara"
+              placeholder="Kampüste ara"
               autoComplete="off"
               className={`min-h-14 w-full rounded-full border border-white/12 bg-white/5 py-3 pr-12 pl-12 text-base font-medium text-white placeholder:text-white/45 ${focusRing}`}
             />

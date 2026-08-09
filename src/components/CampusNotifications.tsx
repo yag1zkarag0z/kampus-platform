@@ -65,6 +65,26 @@ function formatRelativeTime(isoDate: string) {
   }).format(new Date(isoDate));
 }
 
+function formatCompactRelativeTime(isoDate: string) {
+  const elapsedMs = Date.now() - new Date(isoDate).getTime();
+  const elapsedMinutes = Math.round(elapsedMs / 60_000);
+
+  if (elapsedMinutes < 1) return "şimdi";
+  if (elapsedMinutes < 60) return `${elapsedMinutes} dk`;
+
+  const elapsedHours = Math.round(elapsedMinutes / 60);
+  if (elapsedHours < 24) return `${elapsedHours} sa`;
+
+  const elapsedDays = Math.round(elapsedHours / 24);
+  if (elapsedDays === 1) return "dün";
+  if (elapsedDays < 7) return `${elapsedDays} gün`;
+
+  return new Intl.DateTimeFormat("tr-TR", {
+    day: "numeric",
+    month: "short",
+  }).format(new Date(isoDate));
+}
+
 /** Gün başlangıcı: yerel saat diliminde 00:00. */
 function startOfLocalDay(value: Date) {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
@@ -234,7 +254,7 @@ export default function CampusNotifications() {
         <div
           role="group"
           aria-label="Bildirimleri filtrele"
-          className="grid grid-cols-3 border-t border-white/8 px-4 sm:px-6"
+          className="grid grid-cols-3 border-t border-white/8 px-[12px] sm:px-6"
         >
           {filterOptions.map((filter) => {
             const isActive = activeFilter === filter.id;
@@ -246,16 +266,16 @@ export default function CampusNotifications() {
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => setActiveFilter(filter.id)}
-                className={`relative flex min-h-10 items-center justify-center gap-1.5 border-b-2 text-xs font-black transition-colors sm:text-sm ${focusRing} ${
+                className={`relative flex min-h-[48px] min-w-0 items-center justify-center gap-[3px] border-b-2 px-[1px] text-[11px] font-black transition-colors sm:min-h-10 sm:gap-1.5 sm:text-sm ${focusRing} ${
                   isActive
                     ? "border-brand text-brand"
                     : "border-transparent text-white/55 hover:text-white"
                 }`}
               >
-                {filter.label}
+                <span className="min-w-0 truncate">{filter.label}</span>
                 <span
                   aria-label={`${count} bildirim`}
-                  className={`inline-flex min-w-5 justify-center rounded-full px-1.5 py-0.5 font-mono text-[9px] ${
+                  className={`inline-flex min-w-[18px] shrink-0 justify-center rounded-full px-[4px] py-[2px] font-mono text-[9px] ${
                     isActive
                       ? "bg-brand/14 text-brand"
                       : "bg-white/8 text-white/50"
@@ -357,6 +377,7 @@ function NotificationItem({
   const targetLabel =
     notification.kind === "follow" ? "Profili aç." : "Gönderiyi aç.";
   const time = formatRelativeTime(notification.createdAt);
+  const compactTime = formatCompactRelativeTime(notification.createdAt);
 
   return (
     <li className="border-b border-white/5 last:border-b-0">
@@ -366,7 +387,7 @@ function NotificationItem({
         aria-label={`${copy.actorLabel} ${copy.action} ${copy.preview}. ${
           isRead ? "" : "Okunmamış. "
         }${time}. ${targetLabel}`}
-        className={`flex min-h-19 items-center gap-3 px-4 py-3 transition-colors hover:bg-white/3 sm:px-6 ${focusRing}`}
+        className={`flex min-h-19 items-center gap-[10px] px-[14px] py-3 transition-colors hover:bg-white/3 sm:gap-3 sm:px-6 ${focusRing}`}
       >
         <span className="relative shrink-0">
           <CampusAuthorAvatar
@@ -397,9 +418,10 @@ function NotificationItem({
         <span className="flex shrink-0 flex-col items-end gap-1.5">
           <time
             dateTime={notification.createdAt}
-            className="text-xs text-white/45"
+            className="text-[11px] text-white/45 sm:text-xs"
           >
-            {time}
+            <span className="sm:hidden">{compactTime}</span>
+            <span className="hidden sm:inline">{time}</span>
           </time>
           {!isRead && (
             <span
@@ -620,4 +642,3 @@ function MentionIcon({ className = "size-4" }: { className?: string }) {
     </svg>
   );
 }
-

@@ -108,7 +108,18 @@ afterEach(async () => {
     [userIds],
   );
   await pool.query(
-    "delete from moderation_actions where actor_id = any($1::uuid[])",
+    `delete from moderation_actions
+     where actor_id = any($1::uuid[])
+        or target_user_id = any($1::uuid[])`,
+    [userIds],
+  );
+  await pool.query(
+    `delete from reports
+     where reporter_id = any($1::uuid[])
+        or resolved_by = any($1::uuid[])
+        or post_id in (
+          select id from posts where author_id = any($1::uuid[])
+        )`,
     [userIds],
   );
   await pool.query("delete from posts where author_id = any($1::uuid[])", [

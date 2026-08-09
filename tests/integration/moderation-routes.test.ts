@@ -450,6 +450,121 @@ describe("moderation routes with PostgreSQL", () => {
     expect(userRow.rows[0]?.status).toBe("suspended");
   });
 
+  it("revokes sessions and records each real status transition only once", async () => {
+    const moderator = await insertAccount("moderator");
+    const member = await insertAccount();
+    const moderatorCookie = await createMemberCookie(
+      moderator.id,
+      "moderator",
+    );
+    await createMemberCookie(member.id);
+    await createMemberCookie(member.id);
+
+    const suspendRequest = () =>
+      patchUserStatus(
+        jsonRequest(`/v1/moderation/users/${member.id}/status`, "PATCH", {
+          cookie: moderatorCookie,
+          body: { status: "suspended", note: "Tekrarlayan ihlal." },
+        }),
+        { params: Promise.resolve({ id: member.id }) },
+      );
+    const restoreRequest = () =>
+      patchUserStatus(
+        jsonRequest(`/v1/moderation/users/${member.id}/status`, "PATCH", {
+          cookie: moderatorCookie,
+          body: { status: "active", note: "İtiraz kabul edildi." },
+        }),
+        { params: Promise.resolve({ id: member.id }) },
+      );
+
+    await expect(suspendRequest()).resolves.toMatchObject({ status: 204 });
+    await expect(suspendRequest()).resolves.toMatchObject({ status: 204 });
+
+    const revokedSessions = await pool.query<{
+      total: number;
+      revoked: number;
+    }>(
+      `select count(*)::int as total,
+              count(*) filter (where revoked_at is not null)::int as revoked
+       from sessions where user_id = $1`,
+      [member.id],
+    );
+    expect(revokedSessions.rows[0]).toEqual({ total: 2, revoked: 2 });
+
+    await expect(restoreRequest()).resolves.toMatchObject({ status: 204 });
+    await expect(restoreRequest()).resolves.toMatchObject({ status: 204 });
+
+    const state = await pool.query<{
+      status: string;
+      suspended_at: Date | null;
+    }>("select status, suspended_at from users where id = $1", [member.id]);
+    expect(state.rows[0]).toEqual({ status: "active", suspended_at: null });
+
+    const audit = await pool.query<{ action: string; note: string | null }>(
+      `select action, note from moderation_actions
+       where target_user_id = $1
+         and action in ('user_suspended', 'user_restored')
+       order by created_at`,
+      [member.id],
+    );
+    expect(audit.rows).toEqual([
+      { action: "user_suspended", note: "Tekrarlayan ihlal." },
+      { action: "user_restored", note: "İtiraz kabul edildi." },
+    ]);
+  });
+
+  it("keeps moderation audit rows immutable", async () => {
+    const moderator = await insertAccount("moderator");
+    const member = await insertAccount();
+    const moderatorCookie = await createMemberCookie(
+      moderator.id,
+      "moderator",
+    );
+
+    const response = await patchUserStatus(
+      jsonRequest(`/v1/moderation/users/${member.id}/status`, "PATCH", {
+        cookie: moderatorCookie,
+        body: { status: "suspended", note: "Audit testi." },
+      }),
+      { params: Promise.resolve({ id: member.id }) },
+    );
+    expect(response.status).toBe(204);
+
+    await expect(
+      pool.query(
+        `update moderation_actions set note = 'değiştirildi'
+         where target_user_id = $1 and action = 'user_suspended'`,
+        [member.id],
+      ),
+    ).rejects.toMatchObject({ code: "55000" });
+  });
+
+  it("does not restore a deleted account", async () => {
+    const moderator = await insertAccount("moderator");
+    const member = await insertAccount();
+    const moderatorCookie = await createMemberCookie(
+      moderator.id,
+      "moderator",
+    );
+
+    await pool.query(
+      `update users
+       set status = 'suspended', suspended_at = now(), deleted_at = now()
+       where id = $1`,
+      [member.id],
+    );
+
+    const response = await patchUserStatus(
+      jsonRequest(`/v1/moderation/users/${member.id}/status`, "PATCH", {
+        cookie: moderatorCookie,
+        body: { status: "active", note: "Yanlış karar." },
+      }),
+      { params: Promise.resolve({ id: member.id }) },
+    );
+
+    expect(response.status).toBe(404);
+  });
+
   it("prevents an admin from changing their own role", async () => {
     const admin = await insertAccount("admin");
     const adminCookie = await createMemberCookie(admin.id, "admin");

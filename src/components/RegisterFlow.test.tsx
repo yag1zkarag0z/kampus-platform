@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   registerCampusAccount,
   requestOtpCode,
+  setCurrentAvatarPreset,
   verifyOtpCode,
 } from "@/auth/client";
 import RegisterFlow from "@/components/RegisterFlow";
@@ -20,12 +21,14 @@ vi.mock("@/auth/client", async () => {
     requestOtpCode: vi.fn(),
     verifyOtpCode: vi.fn(),
     registerCampusAccount: vi.fn(),
+    setCurrentAvatarPreset: vi.fn(),
   };
 });
 
 const mockedRequestOtpCode = vi.mocked(requestOtpCode);
 const mockedVerifyOtpCode = vi.mocked(verifyOtpCode);
 const mockedRegisterCampusAccount = vi.mocked(registerCampusAccount);
+const mockedSetCurrentAvatarPreset = vi.mocked(setCurrentAvatarPreset);
 
 describe("RegisterFlow", () => {
   beforeEach(() => {
@@ -54,6 +57,33 @@ describe("RegisterFlow", () => {
           year: "2. sınıf",
           bio: "",
           avatarUrl: null,
+          joinedLabel: "Temmuz 2026",
+        },
+        settings: {
+          showDepartment: false,
+          notifyReplies: true,
+          notifyLikes: true,
+          notifyAnnouncements: true,
+          notifyComments: true,
+          notifyFollows: true,
+          notifyMentions: true,
+          emailNotifications: true,
+        },
+      },
+    });
+    mockedSetCurrentAvatarPreset.mockReset().mockResolvedValue({
+      mode: "member",
+      expiresAt: new Date(Date.now() + 2_592_000_000).toISOString(),
+      user: {
+        id: "2aebba61-4a8f-43b6-8c5f-0962250b6340",
+        role: "member",
+        profile: {
+          username: "kampuslu35",
+          displayName: "kampuslu35",
+          department: "Yazılım Mühendisliği",
+          year: "2. sınıf",
+          bio: "",
+          avatarUrl: "/v1/users/kampuslu35/avatar",
           joinedLabel: "Temmuz 2026",
         },
         settings: {
@@ -160,6 +190,41 @@ describe("RegisterFlow", () => {
       showDepartment: false,
       termsAccepted: true,
     });
+    expect(
+      await screen.findByRole("heading", { name: "Avatarını seç." }),
+    ).toBeInTheDocument();
+
+    const avatarOptions = screen.getAllByRole("radio");
+    await user.click(avatarOptions[1]);
+    await user.click(
+      screen.getByRole("button", { name: "Bu avatarı kullan" }),
+    );
+
+    expect(mockedSetCurrentAvatarPreset).toHaveBeenCalledWith("deniz");
+    expect(
+      await screen.findByRole("heading", {
+        name: "Aramıza hoş geldin.",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens the avatar step directly in development preview mode", async () => {
+    const user = userEvent.setup();
+    render(<RegisterFlow previewAvatarStep />);
+
+    expect(
+      screen.getByRole("heading", { name: "Avatarını seç." }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Önizleme")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Geç" }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Bu avatarı kullan" }),
+    );
+
+    expect(mockedSetCurrentAvatarPreset).not.toHaveBeenCalled();
     expect(
       await screen.findByRole("heading", {
         name: "Aramıza hoş geldin.",

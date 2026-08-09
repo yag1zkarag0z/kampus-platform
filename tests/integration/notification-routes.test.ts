@@ -193,6 +193,27 @@ describe("notification routes with PostgreSQL", () => {
       like_count: 2,
       actor_id: secondLiker.id,
     });
+
+    const authorCookie = await createMemberCookie(author.id);
+    const listResponse = await getNotifications(
+      plainRequest("/v1/me/notifications", { cookie: authorCookie }),
+    );
+    expect(listResponse.status).toBe(200);
+
+    const payload = (await listResponse.json()) as {
+      data: Array<{
+        kind: string;
+        likeCount: number | null;
+        otherActors: Array<{ id: string }>;
+      }>;
+    };
+    const likeNotification = payload.data.find(
+      (notification) => notification.kind === "like",
+    );
+
+    expect(likeNotification).toMatchObject({ likeCount: 2 });
+    expect(likeNotification?.otherActors).toHaveLength(1);
+    expect(likeNotification?.otherActors[0]?.id).toBe(firstLiker.id);
   });
 
   it("routes reply notifications to the immediate parent's author across nested replies", async () => {

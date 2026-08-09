@@ -146,30 +146,30 @@ export default function CampusProfile() {
       aria-labelledby="profile-title"
       className="min-h-[calc(100svh-4rem)] min-w-0 bg-canvas text-white md:min-h-svh"
     >
-      <header className="sticky top-0 z-30 border-b border-white/12 bg-canvas/95 backdrop-blur-xl">
+      <header className="relative z-30 border-b border-white/12 bg-canvas/95 backdrop-blur-xl md:sticky md:top-0">
         {/* X'teki gibi sola yaslı: ad ve altında gönderi sayısı. */}
-        <div className="flex min-h-16 items-center gap-3 px-4 sm:px-6">
+        <div className="flex min-h-[60px] items-center gap-[10px] px-[16px] sm:min-h-[64px] sm:gap-[12px] sm:px-[24px]">
           <div className="min-w-0 flex-1">
             <h1
               id="profile-title"
-              className="truncate text-xl font-black tracking-[-0.04em]"
+              className="truncate text-[18px] font-black tracking-[-0.04em] sm:text-[20px]"
             >
               {isGuest ? "Misafir hesabı" : profile.displayName}
             </h1>
-            <p className="truncate text-xs font-semibold text-white/55">
+            <p className="truncate text-[11px] font-semibold text-white/55 sm:text-[12px]">
               {authoredTopics.length} gönderi
             </p>
           </div>
 
           {isGuest ? (
-            <span className="justify-self-end bg-orange/7 px-2.5 py-1.5 font-mono text-[9px] font-black uppercase tracking-[0.1em] text-white/55">
+            <span className="shrink-0 justify-self-end bg-orange/7 px-[8px] py-[6px] font-mono text-[8px] font-black uppercase tracking-[0.08em] text-white/55 sm:px-[10px] sm:text-[9px] sm:tracking-[0.1em]">
               Misafir Girişi
             </span>
           ) : (
             <Link
               href="/ayarlar"
               aria-label="Hesap ayarlarını aç"
-              className={`grid size-11 shrink-0 place-items-center justify-self-end rounded-full text-white/55 transition-colors hover:bg-white/7 hover:text-white ${focusRing}`}
+              className={`grid size-[44px] shrink-0 place-items-center justify-self-end rounded-full text-white/55 transition-colors hover:bg-white/7 hover:text-white ${focusRing}`}
             >
               <SettingsIcon />
             </Link>
@@ -229,7 +229,7 @@ export default function CampusProfile() {
         <div
           role="tablist"
           aria-label="Profil içerikleri"
-          className="grid grid-cols-2 border-b border-white/9 px-2 sm:px-4"
+          className="grid grid-cols-2 border-b border-white/9 px-[8px] sm:px-[16px]"
         >
           <ProfileTabButton
             id="profile-topics-tab"
@@ -257,7 +257,7 @@ export default function CampusProfile() {
             role="tabpanel"
             aria-labelledby="profile-topics-tab"
             tabIndex={0}
-            className={`px-3 py-3 sm:px-5 sm:py-4 ${focusRing}`}
+            className={`px-[12px] py-[12px] sm:px-[20px] sm:py-[16px] ${focusRing}`}
           >
             {authoredTopics.length > 0 ? (
               <ol className="grid min-w-0 2xl:grid-cols-2 2xl:gap-4">
@@ -361,7 +361,7 @@ export default function CampusProfile() {
             role="tabpanel"
             aria-labelledby="profile-comments-tab"
             tabIndex={0}
-            className={`px-3 py-3 sm:px-5 sm:py-4 ${focusRing}`}
+            className={`px-[12px] py-[12px] sm:px-[20px] sm:py-[16px] ${focusRing}`}
           >
             {authoredComments.length > 0 ? (
               <ol className="grid min-w-0 2xl:grid-cols-2 2xl:gap-4">
@@ -445,7 +445,7 @@ function ProfileTabButton({
       tabIndex={isActive ? 0 : -1}
       onClick={onClick}
       onKeyDown={onKeyDown}
-      className={`relative inline-flex min-h-14 items-center justify-center gap-2 px-2 text-xs font-black transition-colors sm:text-sm ${
+      className={`relative inline-flex min-h-[56px] items-center justify-center gap-[8px] px-[8px] text-[12px] font-black transition-colors sm:text-[14px] ${
         isActive
           ? "text-brand after:absolute after:inset-x-4 after:bottom-0 after:h-0.5 after:bg-brand"
           : "text-white/55 hover:text-white"
@@ -471,23 +471,23 @@ function ProfileEmptyState({
   actionHref: string;
 }) {
   return (
-    <div className="grid min-h-80 place-items-center px-3 py-14 text-center">
+    <div className="grid min-h-[320px] place-items-center px-[12px] py-[48px] text-center sm:py-[56px]">
       <div className="max-w-md">
         <span
           aria-hidden="true"
-          className="mx-auto grid size-12 place-items-center rounded-full border border-white/11 text-brand"
+          className="mx-auto grid size-[48px] place-items-center rounded-full border border-white/11 text-brand"
         >
           <DocumentIcon />
         </span>
-        <h2 className="mt-5 text-lg font-black tracking-[-0.03em]">
+        <h2 className="mt-[20px] text-[18px] font-black tracking-[-0.03em]">
           {title}
         </h2>
-        <p className="mt-2 text-sm leading-6 text-white/55">
+        <p className="mt-[8px] text-[14px] leading-[24px] text-white/55">
           {description}
         </p>
         <Link
           href={actionHref}
-          className={`mt-6 ${campusButton.primary} `}
+          className={`mt-[24px] ${campusButton.primary} `}
         >
           {actionLabel}
         </Link>

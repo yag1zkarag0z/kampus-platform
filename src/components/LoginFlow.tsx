@@ -9,13 +9,18 @@ import {
   useVerificationCode,
   VerificationCodePanel,
 } from "@/components/AuthVerificationCode";
+import {
+  authFlowBodyClassName,
+  authFlowCardClassName,
+  authFlowHeaderClassName,
+  authInputClassName,
+  authStepDescriptionClassName,
+  authStepTitleClassName,
+} from "@/components/authFlowLayout";
 
 type LoginStep = 1 | 2;
 
 const studentEmailPattern = /^\d+@stu\.yasar\.edu\.tr$/i;
-
-const inputClassName =
-  "auth-input h-12 w-full rounded-xl border border-white/9 bg-surface px-3.5 text-base text-white outline-none transition placeholder:text-white/32 hover:border-white/18 focus:border-brand focus:ring-3 focus:ring-brand/18";
 
 export default function LoginFlow() {
   const router = useRouter();
@@ -137,9 +142,9 @@ export default function LoginFlow() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[31rem] overflow-hidden rounded-2xl border border-white/9 bg-surface">
-      <div className="border-b border-white/10 px-5 py-4 sm:px-6">
-        <ol className="grid grid-cols-2 gap-2" aria-label="Giriş adımları">
+    <div className={authFlowCardClassName}>
+      <div className={authFlowHeaderClassName}>
+        <ol className="grid grid-cols-2 gap-[8px]" aria-label="Giriş adımları">
           {["E-posta", "Giriş kodu"].map((label, index) => {
             const number = index + 1;
             const isCurrent = number === step;
@@ -148,10 +153,10 @@ export default function LoginFlow() {
             return (
               <li
                 key={label}
-                className={`rounded-full border px-3 py-2 text-center text-[10px] font-bold transition-colors ${
+                className={`rounded-full border px-[8px] py-[7px] text-center text-[10px] font-bold transition-colors sm:px-[12px] sm:py-[8px] sm:text-[11px] lg:px-[16px] lg:py-[10px] lg:text-[12px] ${
                   isCurrent || isDone
                     ? "border-brand/45 bg-brand/10 text-[#ff8968]"
-                    : "border-white/8 text-white/35"
+                    : "border-white/8 text-white/48 sm:text-white/35"
                 }`}
                 aria-current={isCurrent ? "step" : undefined}
               >
@@ -162,11 +167,11 @@ export default function LoginFlow() {
         </ol>
       </div>
 
-      <div className="px-5 py-6 sm:px-6 sm:py-7">
+      <div className={authFlowBodyClassName}>
         {sessionNotice && !complete && (
           <div
             role="status"
-            className="mb-5 border border-brand/25 bg-brand/9 px-3.5 py-3 text-xs font-bold leading-5 text-[#ff9e80]"
+            className="mb-[16px] border border-brand/25 bg-brand/9 px-[14px] py-[12px] text-center text-[12px] font-bold leading-[20px] text-[#ff9e80] lg:text-[14px] lg:leading-[22px]"
           >
             {sessionNotice}
           </div>
@@ -175,32 +180,35 @@ export default function LoginFlow() {
           <div aria-live="polite">
             <span
               aria-hidden="true"
-              className="grid size-11 place-items-center rounded-full bg-brand text-[#101012]"
+              className="grid size-[44px] place-items-center rounded-full bg-brand text-[#101012] lg:mx-auto"
             >
               ✓
             </span>
-            <h2 className="mt-5 text-3xl font-semibold tracking-[-0.045em]">
+            <h2 className={`${authStepTitleClassName} mt-[20px]`}>
               Giriş tamamlandı.
             </h2>
             <Link
               href="/akis"
-              className="mt-7 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-brand px-4 text-sm font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35"
+              className="mt-[24px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[16px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[272px]"
             >
               Akışa geç
             </Link>
           </div>
         ) : step === 1 ? (
           <form onSubmit={submitEmail} noValidate>
-            <h2 className="text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">
+            <h2 className={authStepTitleClassName}>
               Öğrenci e-postan.
             </h2>
-            <p className="mt-3 text-sm leading-6 text-white/62">
-              E-postana beş dakika geçerli tek kullanımlık bir kod göndereceğiz.
+            <p className={authStepDescriptionClassName}>
+              <span className="sm:hidden">Tek kullanımlık kodunu gönderelim.</span>
+              <span className="hidden sm:inline">
+                E-postana beş dakika geçerli tek kullanımlık bir kod göndereceğiz.
+              </span>
             </p>
 
             <label
               htmlFor="login-email"
-              className="mt-7 block text-xs font-bold"
+              className="mt-[22px] block text-[13px] font-bold sm:mt-[28px] lg:mt-[24px] lg:text-center lg:text-[14px]"
             >
               Yaşar öğrenci e-postan
             </label>
@@ -216,7 +224,7 @@ export default function LoginFlow() {
                 setMessage(null);
               }}
               placeholder="öğrenci.no@stu.yasar.edu.tr"
-              className={`${inputClassName} mt-2`}
+              className={`${authInputClassName} mt-2`}
               aria-invalid={message !== null}
               aria-errormessage={message ? "login-message" : undefined}
               aria-describedby="login-message"
@@ -228,7 +236,7 @@ export default function LoginFlow() {
             <button
               type="submit"
               disabled={verification.isRequesting}
-              className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-brand px-6 text-sm font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65"
+              className="mt-[16px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[272px]"
             >
               {verification.isRequesting
                 ? "Kod gönderiliyor…"
@@ -237,20 +245,17 @@ export default function LoginFlow() {
           </form>
         ) : (
           <form onSubmit={submitCode} noValidate>
-            <h2 className="text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">
+            <h2 className={authStepTitleClassName}>
               Giriş kodu.
             </h2>
-            <p className="mt-3 text-sm leading-6 text-white/62">
-              6 haneli kodu{" "}
-              <strong className="font-bold text-white">
-                {email}
-              </strong>{" "}
-              adresi için hazırladık.
+            <p className={`${authStepDescriptionClassName} break-words`}>
+              Kod <strong className="font-bold text-white">{email}</strong>
+              <span className="hidden sm:inline"> adresi için hazırlandı.</span>
             </p>
 
             <label
               htmlFor="login-code"
-              className="mt-7 block text-xs font-bold"
+              className="mt-[22px] block text-[13px] font-bold sm:mt-[28px] lg:mt-[24px] lg:text-center lg:text-[14px]"
             >
               Giriş kodu
             </label>
@@ -287,7 +292,7 @@ export default function LoginFlow() {
                 verification.isResending ||
                 verification.isVerifying
               }
-              className={`${inputClassName} mt-2 text-center font-mono text-xl font-bold tracking-[0.35em] disabled:cursor-not-allowed disabled:opacity-55`}
+              className={`${authInputClassName} mt-[8px] text-center font-mono text-[20px] font-bold tracking-[0.3em] disabled:cursor-not-allowed disabled:opacity-55 lg:text-[24px]`}
               aria-invalid={message !== null}
               aria-errormessage={message ? "login-message" : undefined}
               aria-describedby="login-code-help login-message"
@@ -295,10 +300,13 @@ export default function LoginFlow() {
             />
             <p
               id="login-code-help"
-              className="mt-2 text-[11px] leading-5 text-white/50"
+              className="mt-[8px] text-[11px] leading-[18px] text-white/58 lg:text-center lg:text-[13px] lg:leading-[20px]"
             >
-              Kodu e-postadan kopyalayıp buraya yapıştırabilirsin. Kodunu
-              kimseyle paylaşma.
+              <span className="sm:hidden">Kodu e-postadan yapıştır.</span>
+              <span className="hidden sm:inline">
+                Kodu e-postadan kopyalayıp buraya yapıştırabilirsin. Kodunu
+                kimseyle paylaşma.
+              </span>
             </p>
 
             <FormMessage message={message} />
@@ -325,10 +333,10 @@ export default function LoginFlow() {
                 verification.isResending ||
                 verification.isVerifying
               }
-              className="mt-5 inline-flex min-h-12 w-full items-center justify-between rounded-xl bg-brand px-4 text-sm font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:opacity-55"
+              className="relative mt-[18px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:opacity-55 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[272px]"
             >
               {verification.isVerifying ? "Doğrulanıyor…" : "Giriş yap"}
-              <span aria-hidden="true">→</span>
+              <span aria-hidden="true" className="absolute right-[18px]">→</span>
             </button>
 
             <button
@@ -339,7 +347,7 @@ export default function LoginFlow() {
                 setMessage(null);
                 verification.resetVerification();
               }}
-              className="mt-3 min-h-11 w-full text-xs font-bold text-white/55 underline decoration-white/20 underline-offset-4"
+              className="mt-[8px] min-h-[40px] w-full text-[12px] font-bold text-white/62 underline decoration-white/20 underline-offset-4 lg:text-[13px]"
             >
               E-posta adresini değiştir
             </button>
@@ -348,7 +356,7 @@ export default function LoginFlow() {
       </div>
 
       {!complete && (
-        <div className="border-t border-white/8 px-5 py-4 sm:px-6">
+        <div className="border-t border-white/8 px-[16px] py-[12px] sm:px-[24px] sm:py-[16px] lg:min-h-[84px]">
           <button
             type="button"
             onClick={() => {
@@ -356,7 +364,7 @@ export default function LoginFlow() {
             }}
             disabled={isOpeningGuestView}
             aria-busy={isOpeningGuestView}
-            className="group inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white/[0.04] px-4 font-sans text-[16px] font-normal leading-none tracking-normal text-white/68 outline-none transition-colors hover:bg-white/[0.075] hover:text-white focus-visible:ring-2 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-60"
+            className="group relative inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] border border-white/8 bg-white/[0.04] px-[16px] font-sans text-[15px] font-medium leading-none tracking-normal text-white/78 outline-none transition-colors hover:border-white/14 hover:bg-white/[0.075] hover:text-white focus-visible:ring-2 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-60 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[300px] lg:text-[16px]"
           >
             <span>
               {isOpeningGuestView
@@ -366,7 +374,7 @@ export default function LoginFlow() {
             {!isOpeningGuestView && (
               <span
                 aria-hidden="true"
-                className="text-white/35 transition-transform group-hover:translate-x-0.5 group-hover:text-white/70"
+                className="absolute right-[18px] text-white/35 transition-transform group-hover:translate-x-0.5 group-hover:text-white/70"
               >
                 →
               </span>
@@ -384,7 +392,7 @@ function FormMessage({ message }: { message: string | null }) {
       id="login-message"
       role={message ? "alert" : "status"}
       aria-live={message ? "assertive" : "polite"}
-      className={`text-xs font-medium leading-5 text-danger ${
+      className={`text-[12px] font-medium leading-[20px] text-danger lg:text-center lg:text-[13px] ${
         message ? "mt-2" : ""
       }`}
     >

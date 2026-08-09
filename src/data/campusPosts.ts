@@ -151,29 +151,24 @@ const minutesAgo = (n: number) => Date.now() - n * 60_000;
 const hoursAgo = (n: number) => Date.now() - n * 60 * 60_000;
 const daysAgo = (n: number) => Date.now() - n * 24 * 60 * 60_000;
 
-/** Herkese aynı çizgi-roman tarzı, gerçek kişi olmayan avatar üretir. */
-function seedAvatar(seed: string) {
-  return `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
-}
-
 /** Misafir akışındaki kurgusal öğrenciler — resmî KAMPÜS hesabı değil. */
 export const guestAuthors = {
-  ecearslan: { author: "@ecearslan", authorId: "seed-ecearslan", avatarUrl: seedAvatar("ecearslan") },
-  deniz: { author: "@deniz", authorId: "seed-deniz", avatarUrl: seedAvatar("deniz-akin") },
-  mertcan: { author: "@mertcan", authorId: "seed-mertcan", avatarUrl: seedAvatar("mertcan") },
-  selin: { author: "@selin", authorId: "seed-selin", avatarUrl: seedAvatar("selin-yilmaz") },
-  canberk: { author: "@canberk", authorId: "seed-canberk", avatarUrl: seedAvatar("canberk") },
-  beril: { author: "@beril", authorId: "seed-beril", avatarUrl: seedAvatar("beril-aydin") },
-  eceyilmaz: { author: "@eceyilmaz", authorId: "ece-yilmaz", avatarUrl: seedAvatar("ece-yilmaz") },
+  ecearslan: { author: "@ecearslan", authorId: "seed-ecearslan", avatarUrl: campusAvatarUrl("ecearslan") },
+  deniz: { author: "@deniz", authorId: "seed-deniz", avatarUrl: campusAvatarUrl("deniz-akin") },
+  mertcan: { author: "@mertcan", authorId: "seed-mertcan", avatarUrl: campusAvatarUrl("mertcan") },
+  selin: { author: "@selin", authorId: "seed-selin", avatarUrl: campusAvatarUrl("selin-yilmaz") },
+  canberk: { author: "@canberk", authorId: "seed-canberk", avatarUrl: campusAvatarUrl("canberk") },
+  beril: { author: "@beril", authorId: "seed-beril", avatarUrl: campusAvatarUrl("beril-aydin") },
+  eceyilmaz: { author: "@eceyilmaz", authorId: "ece-yilmaz", avatarUrl: campusAvatarUrl("ece-yilmaz") },
   teknolojitoplulugu: {
     author: "@teknolojitoplulugu",
     authorId: "technology-club",
-    avatarUrl: seedAvatar("teknoloji-toplulugu"),
+    avatarUrl: campusAvatarUrl("teknoloji-toplulugu"),
   },
-  denizari: { author: "@denizari", authorId: "deniz-ari", avatarUrl: seedAvatar("deniz-ari") },
-  borademir: { author: "@borademir", authorId: "bora-demir", avatarUrl: seedAvatar("bora-demir") },
-  selinkaya: { author: "@selinkaya", authorId: "selin-kaya", avatarUrl: seedAvatar("selin-kaya") },
-  iremozturk: { author: "@iremozturk", authorId: "irem-ozturk", avatarUrl: seedAvatar("irem-ozturk") },
+  denizari: { author: "@denizari", authorId: "deniz-ari", avatarUrl: campusAvatarUrl("deniz-ari") },
+  borademir: { author: "@borademir", authorId: "bora-demir", avatarUrl: campusAvatarUrl("bora-demir") },
+  selinkaya: { author: "@selinkaya", authorId: "selin-kaya", avatarUrl: campusAvatarUrl("selin-kaya") },
+  iremozturk: { author: "@iremozturk", authorId: "irem-ozturk", avatarUrl: campusAvatarUrl("irem-ozturk") },
 } as const;
 
 type GuestAuthorKey = keyof typeof guestAuthors;
@@ -1077,3 +1072,4 @@ export const campusPosts: CampusPost[] = [
 export function getCampusPost(postId: string) {
   return campusPosts.find((post) => post.id === postId);
 }
+import { campusAvatarUrl } from "@/avatar/catalog";
