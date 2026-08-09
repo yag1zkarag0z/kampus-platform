@@ -46,12 +46,16 @@ test("reduced motion freezes looping homepage demos", async ({ page }) => {
   const typingAnimation = await page
     .getByTestId("composer-typing-line")
     .evaluate((element) => getComputedStyle(element).animationName);
+  const messageAnimation = await page
+    .getByTestId("homepage-message-reply")
+    .evaluate((element) => getComputedStyle(element).animationName);
   const followTransition = await page
     .getByTestId("follow-suggestion-card")
     .evaluate((element) => getComputedStyle(element).transitionDuration);
 
   expect(notificationAnimation).toBe("none");
   expect(typingAnimation).toBe("none");
+  expect(messageAnimation).toBe("none");
   expect(followTransition).toBe("0s");
 });
 

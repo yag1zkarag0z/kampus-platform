@@ -232,41 +232,261 @@
   }
 }
 
-.exploreCanvas {
+.messageCanvas {
   position: absolute;
   inset: 0;
-  padding: 1rem;
+  display: grid;
+  place-items: center;
+  padding: 0.9rem;
   background: var(--surface);
 }
 
-.exploreCard {
-  position: absolute;
+.messageSurface {
+  display: flex;
+  width: min(25rem, 96%);
+  height: 100%;
+  flex-direction: column;
   overflow: hidden;
   border: 1px solid rgb(255 255 255 / 10%);
   border-radius: 1rem;
   background: var(--surface-raised);
-  box-shadow: none;
-  transition: border-color 180ms ease;
 }
 
-.explorePrimary {
-  inset: 4.7rem 37% 1rem 1rem;
+.messageThread {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  padding: 0.7rem 0.8rem 0.45rem;
+  background:
+    linear-gradient(rgb(255 255 255 / 1.5%) 1px, transparent 1px),
+    var(--surface-raised);
+  background-size: 100% 3.5rem;
 }
 
-.exploreSecondary {
-  top: 4.7rem;
-  right: 1rem;
-  bottom: 52%;
-  left: 65%;
+.messageBubble {
+  width: fit-content;
+  max-width: 78%;
+  padding: 0.48rem 0.65rem 0.38rem;
+  border-radius: 0.9rem;
+  font-size: 0.68rem;
+  font-weight: 650;
+  line-height: 1.2rem;
+  will-change: opacity, transform;
 }
 
-.exploreTertiary {
-  inset: 51% 1rem 1rem 65%;
+.messageBubble time {
+  display: block;
+  margin-top: 0.08rem;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.45rem;
+  font-weight: 700;
+  line-height: 0.7rem;
+  opacity: 0.42;
+  text-align: right;
 }
 
-.bentoCard:hover .explorePrimary,
-.bentoCard:focus-within .explorePrimary {
-  border-color: rgb(255 107 61 / 35%);
+.messageIncoming,
+.messageClosing {
+  align-self: flex-start;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-bottom-left-radius: 0.25rem;
+  background: var(--surface-hover);
+  color: rgb(255 255 255 / 82%);
+}
+
+.messageIncoming {
+  animation: messageIncoming 6.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.messageOutgoing {
+  align-self: flex-end;
+  border-bottom-right-radius: 0.25rem;
+  background: var(--brand);
+  color: #17110f;
+  opacity: 0;
+  animation: messageOutgoing 6.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.messageClosing {
+  opacity: 0;
+  animation: messageClosing 6.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.messageTyping {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.22rem;
+  align-self: flex-start;
+  min-height: 1.65rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 0.9rem 0.9rem 0.9rem 0.25rem;
+  background: var(--surface-hover);
+  opacity: 0;
+  animation: messageTyping 6.4s ease infinite;
+}
+
+.messageTyping span {
+  width: 0.28rem;
+  height: 0.28rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 42%);
+  animation: messageTypingDot 780ms ease-in-out infinite alternate;
+}
+
+.messageTyping span:nth-child(2) {
+  animation-delay: 130ms;
+}
+
+.messageTyping span:nth-child(3) {
+  animation-delay: 260ms;
+}
+
+.messageRead {
+  align-self: flex-end;
+  margin-right: 0.25rem;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.47rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: rgb(255 255 255 / 35%);
+  opacity: 0;
+  animation: messageRead 6.4s ease infinite;
+}
+
+.messageComposer {
+  display: flex;
+  min-height: 2.65rem;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0 0.65rem 0.65rem;
+  padding: 0.35rem 0.4rem 0.35rem 0.8rem;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 999px;
+  color: rgb(255 255 255 / 30%);
+  font-size: 0.62rem;
+  font-weight: 650;
+}
+
+.messageSend {
+  display: grid;
+  width: 1.8rem;
+  height: 1.8rem;
+  place-items: center;
+  margin-left: auto;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #17110f;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+@keyframes messageIncoming {
+  0% {
+    opacity: 0;
+    transform: translateX(-0.7rem) translateY(0.35rem);
+  }
+
+  5%,
+  90% {
+    opacity: 1;
+    transform: translate(0);
+  }
+
+  96%,
+  100% {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+}
+
+@keyframes messageTyping {
+  0%,
+  10%,
+  30%,
+  100% {
+    opacity: 0;
+    transform: translateY(0.25rem);
+  }
+
+  14%,
+  26% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes messageOutgoing {
+  0%,
+  29% {
+    opacity: 0;
+    transform: translateX(0.7rem) translateY(0.35rem);
+  }
+
+  35%,
+  90% {
+    opacity: 1;
+    transform: translate(0);
+  }
+
+  96%,
+  100% {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+}
+
+@keyframes messageRead {
+  0%,
+  43% {
+    opacity: 0;
+  }
+
+  49%,
+  90% {
+    opacity: 1;
+  }
+
+  96%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes messageClosing {
+  0%,
+  59% {
+    opacity: 0;
+    transform: translateX(-0.7rem) translateY(0.35rem);
+  }
+
+  65%,
+  90% {
+    opacity: 1;
+    transform: translate(0);
+  }
+
+  96%,
+  100% {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+}
+
+@keyframes messageTypingDot {
+  from {
+    opacity: 0.28;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0.9;
+    transform: translateY(-0.16rem);
+  }
 }
 
 .followStage {
@@ -372,13 +592,12 @@
     height: clamp(17rem, 88vw, 19rem);
   }
 
-  .explorePrimary {
-    right: 35%;
+  .messageCanvas {
+    padding: 0.75rem;
   }
 
-  .exploreSecondary,
-  .exploreTertiary {
-    left: 67%;
+  .messageSurface {
+    width: 100%;
   }
 
   .followStage {
@@ -409,7 +628,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .bentoCard,
-  .exploreCard,
   .decisionBadge,
   .followCard {
     transition: none;
@@ -426,12 +644,30 @@
   .typingLine,
   .composerOption,
   .composerToggle,
-  .composerSubmit {
+  .composerSubmit,
+  .messageIncoming,
+  .messageTyping,
+  .messageTyping span,
+  .messageOutgoing,
+  .messageRead,
+  .messageClosing {
     animation: none;
   }
 
   .typingLine {
     width: 29ch;
     border-right: 0;
+  }
+
+  .messageIncoming,
+  .messageOutgoing,
+  .messageRead,
+  .messageClosing {
+    opacity: 1;
+    transform: none;
+  }
+
+  .messageTyping {
+    display: none;
   }
 }

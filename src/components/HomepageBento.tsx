@@ -249,61 +249,61 @@ function ComposerDemo() {
   );
 }
 
-function ExploreDemo() {
+function MessagesDemo() {
   return (
-    <div className={styles.exploreCanvas} aria-hidden="true">
-      <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-4 py-2.5 text-[11px] text-white/35">
-        <span className="size-2 rounded-full border border-white/35" />
-        Başlık, kategori veya kullanıcı ara
-      </div>
-
-      <div className={`${styles.exploreCard} ${styles.explorePrimary}`}>
-        <div className="flex items-center gap-2.5 border-b border-white/8 p-3.5">
-          <DemoAvatar src={avatarUrl("canberk")} size="sm" />
-          <div>
-            <p className="font-mono text-[8px] font-black uppercase tracking-[0.11em] text-brand">
-              Soru · @canberk
-            </p>
-            <p className="mt-1 text-[9px] text-white/35">Kampüs rehberi</p>
-          </div>
-        </div>
-        <div className="p-3.5">
-          <p className="text-sm font-black leading-5 text-white">
-            Kampüste en iyi çalışma köşesi neresi?
-          </p>
-          <p className="mt-2 text-[10px] leading-4 text-white/46">
-            Sessiz, priz bulunan ve uzun süre rahatça çalışılabilen yerleri
-            toplayalım.
-          </p>
-          <div className="mt-4 h-24 rounded-lg bg-surface-hover p-3">
-            <span className="inline-flex rounded-full bg-black/40 px-2 py-1 font-mono text-[8px] text-white/70">
-              61 beğeni · 14 yanıt
+    <div className={styles.messageCanvas} aria-hidden="true">
+      <div
+        className={styles.messageSurface}
+        data-testid="homepage-message-thread"
+      >
+        <div className="flex items-center gap-2.5 border-b border-white/8 px-3.5 py-2.5">
+          <span className="relative">
+            <DemoAvatar src={avatarUrl("ecearslan")} size="sm" />
+            <span className="absolute bottom-0 right-0 size-2.5 rounded-full border-2 border-surface-raised bg-[#75d394]" />
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-[11px] font-black text-white/88 sm:text-xs">
+              Ece Arslan
             </span>
+            <span className="block text-[9px] font-semibold text-white/35">
+              çevrimiçi
+            </span>
+          </span>
+          <span className="ml-auto font-mono text-[8px] uppercase tracking-[0.1em] text-brand">
+            KAMPÜS
+          </span>
+        </div>
+
+        <div className={styles.messageThread}>
+          <div className={`${styles.messageBubble} ${styles.messageIncoming}`}>
+            <p>Kütüphanede misin?</p>
+            <time>10:24</time>
+          </div>
+
+          <div className={styles.messageTyping}>
+            <span />
+            <span />
+            <span />
+          </div>
+
+          <div
+            className={`${styles.messageBubble} ${styles.messageOutgoing}`}
+            data-testid="homepage-message-reply"
+          >
+            <p>Evet, üst kattayım.</p>
+            <time>10:25</time>
+          </div>
+          <span className={styles.messageRead}>Okundu ✓✓</span>
+
+          <div className={`${styles.messageBubble} ${styles.messageClosing}`}>
+            <p>Geliyorum 👋</p>
+            <time>10:25</time>
           </div>
         </div>
-      </div>
 
-      <div className={`${styles.exploreCard} ${styles.exploreSecondary}`}>
-        <div className="h-full bg-surface-hover p-3">
-          <span className="font-mono text-[8px] font-black uppercase tracking-[0.1em] text-[#ff8968]">
-            Etkinlik
-          </span>
-          <p className="mt-3 text-[11px] font-black leading-4 text-white">
-            Kulüpler tanışma günü
-          </p>
-          <p className="mt-2 text-[9px] text-white/45">Bugün · Avlu</p>
-        </div>
-      </div>
-
-      <div className={`${styles.exploreCard} ${styles.exploreTertiary}`}>
-        <div className="h-full bg-surface-hover p-3">
-          <span className="font-mono text-[8px] font-black uppercase tracking-[0.1em] text-[#9fd2b2]">
-            Kayıp eşya
-          </span>
-          <p className="mt-3 text-[11px] font-black leading-4 text-white">
-            Amfi C’de kulaklık bulundu
-          </p>
-          <p className="mt-2 text-[9px] text-white/45">26 dk önce</p>
+        <div className={styles.messageComposer}>
+          <span>Mesaj yaz</span>
+          <span className={styles.messageSend}>↑</span>
         </div>
       </div>
     </div>
@@ -574,8 +574,8 @@ export default function HomepageBento() {
             <ComposerDemo />
           </BentoCard>
 
-          <BentoCard id="homepage-explore" title="Keşfet">
-            <ExploreDemo />
+          <BentoCard id="homepage-messages" title="Mesajlaş">
+            <MessagesDemo />
           </BentoCard>
 
           <BentoCard id="homepage-follow" title="Takip önerileri">
