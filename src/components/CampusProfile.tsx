@@ -14,6 +14,7 @@ import CampusFollowConnections from "@/components/CampusFollowConnections";
 import CampusListingMeta from "@/components/CampusListingMeta";
 import CampusProfileHero from "@/components/CampusProfileHero";
 import CampusPoll from "@/components/CampusPoll";
+import CampusSavedPosts from "@/components/CampusSavedPosts";
 import {
   campusCategoryBadgeBase,
   campusCategoryStyles,
@@ -32,7 +33,7 @@ import {
 const focusRing =
   "outline-none focus-visible:ring-3 focus-visible:ring-brand/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
-type ProfileTab = "topics" | "comments";
+type ProfileTab = "topics" | "comments" | "saved";
 
 function normalizeAuthor(author: string) {
   return author.trim().replace(/^@/, "").toLocaleLowerCase("tr-TR");
@@ -58,6 +59,9 @@ export default function CampusProfile() {
     useCampusAccount();
   const { posts, isHydrated: isDataHydrated } = useCampusData();
   const [activeTab, setActiveTab] = useState<ProfileTab>("topics");
+  const profileTabs: readonly ProfileTab[] = isGuest
+    ? ["topics", "comments"]
+    : ["topics", "comments", "saved"];
 
   const authoredTopics = useMemo(
     () =>
@@ -113,13 +117,17 @@ export default function CampusProfile() {
     currentTab: ProfileTab,
   ) => {
     let nextTab: ProfileTab | undefined;
+    const currentIndex = profileTabs.indexOf(currentTab);
 
-    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-      nextTab = currentTab === "topics" ? "comments" : "topics";
+    if (event.key === "ArrowRight") {
+      nextTab = profileTabs[(currentIndex + 1) % profileTabs.length];
+    } else if (event.key === "ArrowLeft") {
+      nextTab =
+        profileTabs[(currentIndex - 1 + profileTabs.length) % profileTabs.length];
     } else if (event.key === "Home") {
-      nextTab = "topics";
+      nextTab = profileTabs[0];
     } else if (event.key === "End") {
-      nextTab = "comments";
+      nextTab = profileTabs.at(-1);
     }
 
     if (!nextTab) {
@@ -128,13 +136,12 @@ export default function CampusProfile() {
 
     event.preventDefault();
     setActiveTab(nextTab);
-    document
-      .getElementById(
-        nextTab === "topics"
-          ? "profile-topics-tab"
-          : "profile-comments-tab",
-      )
-      ?.focus();
+    const tabIds: Record<ProfileTab, string> = {
+      topics: "profile-topics-tab",
+      comments: "profile-comments-tab",
+      saved: "profile-saved-tab",
+    };
+    document.getElementById(tabIds[nextTab])?.focus();
   };
 
   if (!isHydrated) {
@@ -229,7 +236,9 @@ export default function CampusProfile() {
         <div
           role="tablist"
           aria-label="Profil içerikleri"
-          className="grid grid-cols-2 border-b border-white/9 px-[8px] sm:px-[16px]"
+          className={`grid border-b border-white/9 px-[8px] sm:px-[16px] ${
+            isGuest ? "grid-cols-2" : "grid-cols-3"
+          }`}
         >
           <ProfileTabButton
             id="profile-topics-tab"
@@ -249,6 +258,16 @@ export default function CampusProfile() {
             onClick={() => setActiveTab("comments")}
             onKeyDown={(event) => handleTabKeyDown(event, "comments")}
           />
+          {!isGuest && (
+            <ProfileTabButton
+              id="profile-saved-tab"
+              panelId="profile-saved-panel"
+              label="Kaydedilenler"
+              isActive={activeTab === "saved"}
+              onClick={() => setActiveTab("saved")}
+              onKeyDown={(event) => handleTabKeyDown(event, "saved")}
+            />
+          )}
         </div>
 
         {activeTab === "topics" ? (
@@ -355,7 +374,7 @@ export default function CampusProfile() {
               />
             )}
           </div>
-        ) : (
+        ) : activeTab === "comments" ? (
           <div
             id="profile-comments-panel"
             role="tabpanel"
@@ -411,6 +430,16 @@ export default function CampusProfile() {
               />
             )}
           </div>
+        ) : (
+          <div
+            id="profile-saved-panel"
+            role="tabpanel"
+            aria-labelledby="profile-saved-tab"
+            tabIndex={0}
+            className={focusRing}
+          >
+            <CampusSavedPosts variant="profile" />
+          </div>
         )}
       </div>
     </section>
@@ -430,7 +459,7 @@ function ProfileTabButton({
   id: string;
   panelId: string;
   label: string;
-  count: number;
+  count?: number;
   isActive: boolean;
   onClick: () => void;
   onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
@@ -452,9 +481,11 @@ function ProfileTabButton({
       } ${focusRing}`}
     >
       {label}
-      <span className="font-mono text-[10px] text-white/55">
-        {count}
-      </span>
+      {typeof count === "number" && (
+        <span className="font-mono text-[10px] text-white/55">
+          {count}
+        </span>
+      )}
     </button>
   );
 }

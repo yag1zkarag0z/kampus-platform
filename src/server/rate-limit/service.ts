@@ -25,7 +25,9 @@ export type RateLimitAction =
   | "block"
   | "interaction"
   | "username_change"
-  | "avatar_change";
+  | "avatar_change"
+  | "message_start"
+  | "message_send";
 
 type RateLimitWindow = {
   windowSeconds: number;
@@ -61,6 +63,13 @@ const ACTION_WINDOWS: Record<RateLimitAction, RateLimitWindow[]> = {
   // Moderasyon yakalamadan önce uygunsuz bir görseli kısaca gösterip hemen
   // değiştirmeyi zorlaştırır; günlük birkaç deneme için yine de yeterli.
   avatar_change: [{ windowSeconds: DAY, limit: 3 }],
+  // Yeni konuşma açmak, mevcut bir konuşmada yazmaktan daha sıkı tutulur.
+  // Mesaj limiti normal bir sohbeti kesmeden otomasyon/spam patlamasını durdurur.
+  message_start: [{ windowSeconds: DAY, limit: 30 }],
+  message_send: [
+    { windowSeconds: MINUTE, limit: 60 },
+    { windowSeconds: DAY, limit: 1_000 },
+  ],
 };
 
 /** Genel mesajın yetersiz kaldığı, kullanıcıya doğrudan gösterilecek özel durumlar. */

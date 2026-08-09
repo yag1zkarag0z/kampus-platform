@@ -12,6 +12,8 @@ kaynağı `src/server/maintenance/policy.ts` dosyasıdır. Politika değişiklik
 | Süresi dolmuş veya iptal edilmiş session | İnaktif olduktan sonra 7 gün | Hard-delete |
 | Rate-limit hit | 31 gün | Hard-delete; 30 günlük kullanıcı adı penceresini korur |
 | Bildirim | 90 gün | Hard-delete |
+| Mesaj gönderilmemiş konuşma taslağı | 7 gün | Hard-delete; iki katılımcının okunma satırları cascade silinir |
+| Aktif bire bir mesaj | Hesap/konuşma yaşam döngüsü boyunca | Kullanıcı silince konuşma cascade silinir; kullanıcı tarafından silinen mesajın içeriği anında boşaltılır |
 | Soft-delete gönderi ve yorum | 30 gün | Audit bağı yoksa hard-delete |
 | Silinmiş hesap | En az 30 gün | PII hemen tombstone edilir; audit bağı bitince hard-delete |
 | Bağlanmamış yükleme | 24 saat | DB kaydı ve object birlikte silinir |

@@ -1,5 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
+import { seedMemberSession } from "./helpers/session";
+
 const phoneViewports = [
   { width: 320, height: 568 },
   { width: 390, height: 844 },
@@ -51,6 +53,9 @@ test("profile hero stays usable across phone widths", async ({ page }) => {
     await expect(profileHeading).toBeVisible();
     await expect(loginAction).toBeVisible();
     await expect(registerAction).toBeVisible();
+    await expect(
+      page.getByRole("tab", { name: "Kaydedilenler" }),
+    ).toHaveCount(0);
     await expectInsideViewport(displayName, viewport.width);
     await expectInsideViewport(loginAction, viewport.width);
     await expectInsideViewport(registerAction, viewport.width);
@@ -62,4 +67,34 @@ test("profile hero stays usable across phone widths", async ({ page }) => {
       )
       .toBe("relative");
   }
+
+  await page.goto("/kaydedilenler");
+  await page.waitForURL("**/akis");
+});
+
+test("saved posts live only on the member profile and mobile profile stays last", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seedMemberSession(page);
+  await page.goto("/profil");
+
+  const savedTab = page.getByRole("tab", { name: "Kaydedilenler" });
+  await expect(savedTab).toBeVisible();
+  await savedTab.click();
+  await expect(
+    page.getByRole("region", { name: "Kaydedilen gönderiler" }),
+  ).toBeVisible();
+
+  const mobileNavigation = page.getByRole("navigation", {
+    name: "Mobil uygulama menüsü",
+  });
+  const links = mobileNavigation.getByRole("link");
+
+  await expect(links).toHaveCount(5);
+  await expect(links.nth(0)).toHaveAttribute("href", "/akis");
+  await expect(links.nth(1)).toHaveAttribute("href", "/kesfet");
+  await expect(links.nth(2)).toHaveAttribute("href", "/konu-olustur");
+  await expect(links.nth(3)).toHaveAttribute("href", "/mesajlar");
+  await expect(links.nth(4)).toHaveAttribute("href", "/profil");
 });

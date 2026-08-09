@@ -13,6 +13,7 @@ import ActionStatusText from "@/components/ActionStatusText";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import CampusLogo from "@/components/CampusLogo";
+import { useCampusMessaging } from "@/components/CampusMessagingProvider";
 import { useCampusNotifications } from "@/components/CampusNotificationProvider";
 import { useFeedback } from "@/components/FeedbackProvider";
 import { useActionStatus } from "@/components/useActionStatus";
@@ -24,7 +25,7 @@ type NavigationIconName =
   | "discover"
   | "share"
   | "notifications"
-  | "saved"
+  | "messages"
   | "calendar"
   | "profile"
   | "admin"
@@ -46,7 +47,7 @@ const navigationItems: readonly NavigationItem[] = [
     label: "Bildirimler",
     icon: "notifications",
   },
-  { href: "/kaydedilenler", label: "Kaydedilenler", icon: "saved" },
+  { href: "/mesajlar", label: "Mesajlar", icon: "messages" },
   { href: "/takvim", label: "Kampüs takvimi", icon: "calendar" },
   { href: "/profil", label: "Profil", icon: "profile" },
   {
@@ -61,10 +62,8 @@ const mobileNavigationItems: readonly NavigationItem[] = [
   { href: "/akis", label: "Ana sayfa", icon: "home" },
   { href: "/kesfet", label: "Keşfet", icon: "discover" },
   { href: "/konu-olustur", label: "Konu", icon: "share", primary: true },
-  // Bildirimler üst bara (kalp simgesi) taşındı; burada öneriler var.
-  { href: "/takip", label: "Öneriler", icon: "follow" },
-  // Profil, üst bardaki hesap menüsüne taşındı; alt sırada kaydedilenler var.
-  { href: "/kaydedilenler", label: "Kayıtlar", icon: "saved" },
+  { href: "/mesajlar", label: "Mesajlar", icon: "messages" },
+  { href: "/profil", label: "Profil", icon: "profile" },
 ];
 
 function isActivePath(pathname: string, href: string) {
@@ -111,8 +110,13 @@ function NavigationIconGlyph({ name }: { name: NavigationIconName }) {
       return (
         <path d="M12 19.4s-7.2-4.3-7.2-9.6a4.2 4.2 0 0 1 7.2-2.9 4.2 4.2 0 0 1 7.2 2.9c0 5.3-7.2 9.6-7.2 9.6Z" />
       );
-    case "saved":
-      return <path d="M6.2 4.2h11.6v15.6L12 16.4l-5.8 3.4V4.2Z" />;
+    case "messages":
+      return (
+        <>
+          <rect x="4.3" y="5.2" width="15.4" height="13.6" rx="2.2" />
+          <path d="m5.4 7 6.6 5.2L18.6 7" />
+        </>
+      );
     case "calendar":
       return (
         <>
@@ -206,6 +210,49 @@ function NotificationHeartIcon({
   );
 }
 
+function MessageNotificationIcon({
+  isUnread,
+  className = "size-6",
+}: {
+  isUnread: boolean;
+  className?: string;
+}) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`campus-notification-heart ${
+        isUnread
+          ? "campus-notification-heart--unread campus-notification-heart--arriving text-[#ff5a3d]"
+          : ""
+      } ${className}`}
+    >
+      <path
+        className="campus-notification-heart__shape"
+        d="M6.5 5.2h11A2.2 2.2 0 0 1 19.7 7.4v9.2a2.2 2.2 0 0 1-2.2 2.2h-11a2.2 2.2 0 0 1-2.2-2.2V7.4a2.2 2.2 0 0 1 2.2-2.2Z"
+      />
+      <path
+        d="m5.5 7.2 6.5 5.1 6.5-5.1"
+        fill="none"
+        stroke={isUnread ? "var(--canvas)" : "currentColor"}
+      />
+      <circle
+        className="campus-notification-heart__dot"
+        cx="18.4"
+        cy="4.8"
+        r="1.55"
+        fill="#ff6b3d"
+        stroke="none"
+      />
+    </svg>
+  );
+}
+
 function ShareIcon({ className = "size-5" }: { className?: string }) {
   return (
     <svg
@@ -250,6 +297,10 @@ export default function AppNavigation() {
     isUnreadCountHydrated: areNotificationsHydrated,
     unreadCount,
   } = useCampusNotifications();
+  const {
+    unreadMessageCount,
+    isUnreadMessageCountHydrated,
+  } = useCampusMessaging();
   const { confirm: confirmAction } = useFeedback();
   const [isDesktopNavigationOpen, setIsDesktopNavigationOpen] =
     useState(true);
@@ -258,9 +309,13 @@ export default function AppNavigation() {
   const [guestNavAnchor, setGuestNavAnchor] = useState<string | null>(null);
   const [notificationAnimationVersion, setNotificationAnimationVersion] =
     useState(0);
+  const [messageAnimationVersion, setMessageAnimationVersion] = useState(0);
   const previousUnreadCount = useRef<number | null>(null);
+  const previousUnreadMessageCount = useRef<number | null>(null);
   const hasUnreadNotifications =
     areNotificationsHydrated && unreadCount > 0;
+  const hasUnreadMessages =
+    isUnreadMessageCountHydrated && unreadMessageCount > 0;
 
   useEffect(() => {
     if (!areNotificationsHydrated) {
@@ -277,6 +332,22 @@ export default function AppNavigation() {
 
     previousUnreadCount.current = unreadCount;
   }, [areNotificationsHydrated, unreadCount]);
+
+  useEffect(() => {
+    if (!isUnreadMessageCountHydrated) {
+      previousUnreadMessageCount.current = null;
+      return;
+    }
+
+    if (
+      previousUnreadMessageCount.current !== null &&
+      unreadMessageCount > previousUnreadMessageCount.current
+    ) {
+      setMessageAnimationVersion((current) => current + 1);
+    }
+
+    previousUnreadMessageCount.current = unreadMessageCount;
+  }, [isUnreadMessageCountHydrated, unreadMessageCount]);
 
   const notificationIconClassName = (size: string) =>
     `${size} transition-colors duration-200`;
@@ -635,6 +706,10 @@ export default function AppNavigation() {
                             item.icon === "notifications" &&
                             hasUnreadNotifications
                               ? `${item.label}, ${unreadCount} okunmamış bildirim`
+                              : item.icon === "messages" &&
+                                  isUnreadMessageCountHydrated &&
+                                  unreadMessageCount > 0
+                                ? `${item.label}, ${unreadMessageCount} okunmamış mesaj`
                               : item.label
                           }
                           title={item.label}
@@ -649,6 +724,14 @@ export default function AppNavigation() {
                               <NotificationHeartIcon
                                 key={`desktop-notifications-${notificationAnimationVersion}`}
                                 isUnread={hasUnreadNotifications}
+                                className={notificationIconClassName(
+                                  "size-[1.35rem] xl:size-7",
+                                )}
+                              />
+                            ) : item.icon === "messages" ? (
+                              <MessageNotificationIcon
+                                key={`desktop-messages-${messageAnimationVersion}`}
+                                isUnread={hasUnreadMessages}
                                 className={notificationIconClassName(
                                   "size-[1.35rem] xl:size-7",
                                 )}
@@ -837,6 +920,10 @@ export default function AppNavigation() {
                       : item.icon === "notifications" &&
                           hasUnreadNotifications
                         ? `${item.label}, ${unreadCount} okunmamış bildirim`
+                        : item.icon === "messages" &&
+                            isUnreadMessageCountHydrated &&
+                            unreadMessageCount > 0
+                          ? `${item.label}, ${unreadMessageCount} okunmamış mesaj`
                         : undefined
                   }
                   className={`flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-[2px] text-[10px] font-bold leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-brand/40 min-[360px]:text-[11px] ${
@@ -858,6 +945,14 @@ export default function AppNavigation() {
                       <NotificationHeartIcon
                         key={`bottom-notifications-${notificationAnimationVersion}`}
                         isUnread={hasUnreadNotifications}
+                        className={notificationIconClassName(
+                          "size-6 shrink-0",
+                        )}
+                      />
+                    ) : item.icon === "messages" ? (
+                      <MessageNotificationIcon
+                        key={`bottom-messages-${messageAnimationVersion}`}
+                        isUnread={hasUnreadMessages}
                         className={notificationIconClassName(
                           "size-6 shrink-0",
                         )}

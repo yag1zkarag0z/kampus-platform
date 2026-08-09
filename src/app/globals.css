@@ -952,6 +952,31 @@ textarea {
   }
 }
 
+/* Mesajlar iki panelli bir çalışma alanı. Bu rotada sağ rayı kaldırıp orta
+   sütunu genişletiyoruz; aksi halde konuşmalar akış genişliğine sıkışıyor. */
+@media (min-width: 768px) {
+  .platform-shell:has(.campus-messages-page) {
+    grid-template-columns: 4rem minmax(0, calc(100vw - 4rem));
+  }
+}
+
+@media (min-width: 1280px) {
+  .platform-shell:has(.campus-messages-page) {
+    grid-template-columns: 12rem minmax(0, min(61.5rem, calc(100vw - 12rem)));
+  }
+
+  .platform-shell:has(.campus-messages-page)
+    .platform-right-rail-column {
+    display: none;
+  }
+}
+
+@media (min-width: 1536px) {
+  .platform-shell:has(.campus-messages-page) {
+    grid-template-columns: clamp(15rem, 16vw, 17rem) minmax(0, 64rem);
+  }
+}
+
 /* Akışa giren kartlar hafifçe yükselsin. */
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {

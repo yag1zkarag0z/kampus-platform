@@ -387,6 +387,19 @@ describe("engelleme her iki yönde de görünürlüğü kaldırır", () => {
     expect(resultIds).toContain(visible.id);
     expect(resultIds).not.toContain(hidden.id);
     expect(resultIds).not.toContain(viewer.id);
+
+    const underscoredUsername = `ece_${randomUUID().replaceAll("-", "").slice(0, 8)}`;
+    await pool.query("update users set username = $1 where id = $2", [
+      underscoredUsername,
+      visible.id,
+    ]);
+    const exactUsernameResults = await searchMembers(
+      viewer.id,
+      underscoredUsername,
+    );
+    expect(exactUsernameResults.map((member) => member.id)).toContain(
+      visible.id,
+    );
   });
 
   it("engelden önce üretilmiş bildirimleri de listeden düşürür", async () => {

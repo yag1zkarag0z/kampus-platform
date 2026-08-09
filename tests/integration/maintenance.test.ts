@@ -119,6 +119,7 @@ async function rowExists(table: string, id: string) {
     "users",
     "reports",
     "moderation_actions",
+    "direct_conversations",
   ]);
 
   if (!allowedTables.has(table)) throw new Error("Unsafe test table name.");
@@ -201,6 +202,13 @@ describe("maintenance worker with PostgreSQL", () => {
       before(now, 31 * DAY),
     );
     const storage = new MemoryStorage();
+    const oldEmptyConversationId = randomUUID();
+    await pool.query(
+      `insert into direct_conversations (
+        id, participant_low_id, participant_high_id, created_by_id, created_at
+      ) values ($1, least($2::uuid, $3::uuid), greatest($2::uuid, $3::uuid), $2, $4)`,
+      [oldEmptyConversationId, ownerId, actorId, before(now, 8 * DAY)],
+    );
     const oldOtpId = randomUUID();
     const freshOtpId = randomUUID();
     const oldOtpCreatedAt = before(now, 2 * DAY);
@@ -405,6 +413,7 @@ describe("maintenance worker with PostgreSQL", () => {
       sessions: 1,
       rateLimitHits: 1,
       notifications: 1,
+      emptyConversations: 1,
       posts: 1,
       mediaAssets: 1,
       users: 1,
@@ -428,6 +437,9 @@ describe("maintenance worker with PostgreSQL", () => {
     await expect(rowExists("rate_limit_hits", freshRateLimitId)).resolves.toBe(true);
     await expect(rowExists("notifications", oldNotificationId)).resolves.toBe(false);
     await expect(rowExists("notifications", freshNotificationId)).resolves.toBe(true);
+    await expect(
+      rowExists("direct_conversations", oldEmptyConversationId),
+    ).resolves.toBe(false);
     await expect(rowExists("posts", oldPostId)).resolves.toBe(false);
     await expect(rowExists("posts", freshPostId)).resolves.toBe(true);
     await expect(rowExists("media_assets", oldImageId)).resolves.toBe(false);

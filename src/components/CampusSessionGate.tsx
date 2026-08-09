@@ -33,7 +33,7 @@ export default function CampusSessionGate({
     pathname === "/akis" ||
     pathname === "/kesfet" ||
     pathname === "/bildirimler" ||
-    pathname === "/kaydedilenler" ||
+    pathname === "/mesajlar" ||
     pathname === "/takip" ||
     pathname === "/takvim" ||
     isGuestProfileRoute ||

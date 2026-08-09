@@ -399,6 +399,7 @@ export default function CampusMemberProfile({
               authorId={resolvedAuthorId}
               author={author}
               displayName={displayName}
+              username={username}
               isBlocked={isBlocked}
             />
           ) : null
@@ -522,11 +523,13 @@ function MemberProfileActions({
   authorId,
   author,
   displayName,
+  username,
   isBlocked,
 }: {
   authorId: string;
   author: string;
   displayName: string;
+  username: string;
   isBlocked: boolean;
 }) {
   const router = useRouter();
@@ -602,41 +605,51 @@ function MemberProfileActions({
   };
 
   return (
-    <div ref={menuRef} className="relative justify-self-end">
-      <button
-        type="button"
-        aria-haspopup="menu"
-        aria-expanded={isOpen}
-        aria-label={`${displayName} için işlemler`}
-        onClick={() => setIsOpen((open) => !open)}
-        className={`grid size-11 place-items-center rounded-full text-white/62 transition-colors hover:bg-white/8 hover:text-white ${focusRing}`}
-      >
-        <BlockIcon />
-      </button>
-
-      {isOpen && (
-        <div
-          role="menu"
-          className="absolute right-0 z-40 mt-1 w-56 border border-white/12 bg-surface-raised py-1 shadow-[0_16px_40px_rgba(0,0,0,0.3)]"
+    <div className="flex items-center gap-2 justify-self-end">
+      {!isBlocked && (
+        <Link
+          href={`/mesajlar?kullanici=${encodeURIComponent(username)}`}
+          className={campusButton.secondary}
         >
-          <button
-            type="button"
-            role="menuitem"
-            disabled={isSubmitting}
-            onClick={() => void toggleBlock()}
-            className={`flex min-h-11 w-full items-center px-4 text-left text-xs font-bold text-brand transition-colors hover:bg-brand/8 disabled:cursor-wait disabled:opacity-60 ${focusRing}`}
-          >
-            {isBlocked ? "Engeli kaldır" : "Engelle"}
-          </button>
-        </div>
+          Mesaj gönder
+        </Link>
       )}
+      <div ref={menuRef} className="relative">
+        <button
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          aria-label={`${displayName} için işlemler`}
+          onClick={() => setIsOpen((open) => !open)}
+          className={`grid size-11 place-items-center rounded-full text-white/62 transition-colors hover:bg-white/8 hover:text-white ${focusRing}`}
+        >
+          <BlockIcon />
+        </button>
 
-      {status && (
-        <ActionStatusText
-          status={status}
-          className="absolute top-full right-0 z-40 mt-1 w-56 text-right"
-        />
-      )}
+        {isOpen && (
+          <div
+            role="menu"
+            className="absolute right-0 z-40 mt-1 w-56 border border-white/12 bg-surface-raised py-1 shadow-[0_16px_40px_rgba(0,0,0,0.3)]"
+          >
+            <button
+              type="button"
+              role="menuitem"
+              disabled={isSubmitting}
+              onClick={() => void toggleBlock()}
+              className={`flex min-h-11 w-full items-center px-4 text-left text-xs font-bold text-brand transition-colors hover:bg-brand/8 disabled:cursor-wait disabled:opacity-60 ${focusRing}`}
+            >
+              {isBlocked ? "Engeli kaldır" : "Engelle"}
+            </button>
+          </div>
+        )}
+
+        {status && (
+          <ActionStatusText
+            status={status}
+            className="absolute top-full right-0 z-40 mt-1 w-56 text-right"
+          />
+        )}
+      </div>
     </div>
   );
 }

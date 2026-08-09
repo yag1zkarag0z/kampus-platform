@@ -22,6 +22,7 @@ export type CleanupReport = {
   sessions: number;
   rateLimitHits: number;
   notifications: number;
+  emptyConversations: number;
   moderationActions: number;
   reports: number;
   posts: number;
@@ -84,6 +85,7 @@ function emptyCleanupReport(): CleanupReport {
     sessions: 0,
     rateLimitHits: 0,
     notifications: 0,
+    emptyConversations: 0,
     moderationActions: 0,
     reports: 0,
     posts: 0,
@@ -207,6 +209,10 @@ async function runCleanup(
   );
   const rateLimitCutoff = retentionCutoff(now, policy.rateLimitHitMs);
   const notificationCutoff = retentionCutoff(now, policy.notificationMs);
+  const emptyConversationCutoff = retentionCutoff(
+    now,
+    policy.emptyConversationMs,
+  );
   const auditCutoff = retentionCutoff(now, policy.moderationAuditMs);
   const contentCutoff = retentionCutoff(
     now,
@@ -222,6 +228,7 @@ async function runCleanup(
       | "sessions"
       | "rateLimitHits"
       | "notifications"
+      | "emptyConversations"
       | "moderationActions"
       | "reports"
     >;
@@ -285,6 +292,22 @@ async function runCleanup(
         for update skip locked
       )
       delete from notifications where id in (select id from candidates)
+      returning id`,
+    },
+    {
+      key: "emptyConversations",
+      cutoff: emptyConversationCutoff,
+      count: `select count(*)::text as total from direct_conversations
+        where last_message_at is null and created_at <= $1`,
+      remove: `with candidates as (
+        select id from direct_conversations
+        where last_message_at is null and created_at <= $1
+        order by created_at, id
+        limit ${BATCH_MARKER}
+        for update skip locked
+      )
+      delete from direct_conversations
+      where id in (select id from candidates)
       returning id`,
     },
     {

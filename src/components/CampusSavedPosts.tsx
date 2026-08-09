@@ -53,14 +53,20 @@ import {
 const focusRing =
   "outline-none focus-visible:ring-3 focus-visible:ring-brand/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
-export default function CampusSavedPosts() {
+type SavedPostsVariant = "page" | "profile";
+
+export default function CampusSavedPosts({
+  variant = "page",
+}: {
+  variant?: SavedPostsVariant;
+}) {
   const { sessionMode } = useCampusAccount();
 
   if (sessionMode === "member") {
-    return <MemberSavedPosts />;
+    return <MemberSavedPosts variant={variant} />;
   }
 
-  return <LocalSavedPosts />;
+  return <LocalSavedPosts variant={variant} />;
 }
 
 function insertPostAt(
@@ -269,7 +275,7 @@ function useSavedBookmarks() {
   };
 }
 
-function MemberSavedPosts() {
+function MemberSavedPosts({ variant }: { variant: SavedPostsVariant }) {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [pendingRemoval, setPendingRemoval] =
     usePendingRemoval<CampusPost>();
@@ -335,6 +341,7 @@ function MemberSavedPosts() {
 
   return (
     <SavedPostsView
+      variant={variant}
       titleRef={titleRef}
       posts={posts}
       isHydrated={isHydrated}
@@ -359,7 +366,7 @@ function MemberSavedPosts() {
   );
 }
 
-function LocalSavedPosts() {
+function LocalSavedPosts({ variant }: { variant: SavedPostsVariant }) {
   const router = useRouter();
   const { isGuest } = useCampusAccount();
   const { posts, isHydrated, toggleBookmark } = useCampusData();
@@ -413,6 +420,7 @@ function LocalSavedPosts() {
 
   return (
     <SavedPostsView
+      variant={variant}
       titleRef={titleRef}
       posts={savedPosts}
       isHydrated={isHydrated}
@@ -426,6 +434,7 @@ function LocalSavedPosts() {
 }
 
 function SavedPostsView({
+  variant,
   titleRef,
   posts,
   isHydrated,
@@ -442,6 +451,7 @@ function SavedPostsView({
   guestStatus = null,
   guestStatusAnchor = null,
 }: {
+  variant: SavedPostsVariant;
   titleRef: RefObject<HTMLHeadingElement | null>;
   posts: CampusPost[];
   isHydrated: boolean;
@@ -486,39 +496,46 @@ function SavedPostsView({
 
   return (
     <section
-      aria-labelledby="saved-posts-title"
+      aria-labelledby={variant === "page" ? "saved-posts-title" : undefined}
+      aria-label={variant === "profile" ? "Kaydedilen gönderiler" : undefined}
       aria-busy={!isHydrated}
-      className="min-h-[calc(100svh-4rem)] min-w-0 bg-canvas text-white md:min-h-svh"
+      className={
+        variant === "page"
+          ? "min-h-[calc(100svh-4rem)] min-w-0 bg-canvas text-white md:min-h-svh"
+          : "min-w-0 bg-canvas text-white"
+      }
     >
-      <header className="sticky top-0 z-30 border-b border-white/12 bg-canvas/95 backdrop-blur-xl">
-        <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 sm:px-6">
-          <span aria-hidden="true" />
-          <div className="min-w-0 justify-self-center text-center">
-            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-brand">
-              Kişisel alan
-            </p>
-            <h1
-              ref={titleRef}
-              id="saved-posts-title"
-              tabIndex={-1}
-              className="mt-0.5 truncate text-2xl font-black tracking-[-0.04em] outline-none sm:text-3xl"
-            >
-              Kaydedilenler
-            </h1>
-          </div>
+      {variant === "page" && (
+        <header className="sticky top-0 z-30 border-b border-white/12 bg-canvas/95 backdrop-blur-xl">
+          <div className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 sm:px-6">
+            <span aria-hidden="true" />
+            <div className="min-w-0 justify-self-center text-center">
+              <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-brand">
+                Kişisel alan
+              </p>
+              <h1
+                ref={titleRef}
+                id="saved-posts-title"
+                tabIndex={-1}
+                className="mt-0.5 truncate text-2xl font-black tracking-[-0.04em] outline-none sm:text-3xl"
+              >
+                Kaydedilenler
+              </h1>
+            </div>
 
-          <p
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-            className="sr-only shrink-0 justify-self-end text-right text-xs font-bold text-white/55 min-[420px]:not-sr-only"
-          >
-            {isHydrated
-              ? `${posts.length}${hasMore ? "+" : ""} kayıt`
-              : "Kayıtlar yükleniyor"}
-          </p>
-        </div>
-      </header>
+            <p
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              className="sr-only shrink-0 justify-self-end text-right text-xs font-bold text-white/55 min-[420px]:not-sr-only"
+            >
+              {isHydrated
+                ? `${posts.length}${hasMore ? "+" : ""} kayıt`
+                : "Kayıtlar yükleniyor"}
+            </p>
+          </div>
+        </header>
+      )}
 
       {listStatus && (
         <ActionStatusText status={listStatus} className="px-4 py-2 sm:px-6" />

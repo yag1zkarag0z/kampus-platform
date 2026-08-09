@@ -6,7 +6,6 @@ import {
   count,
   desc,
   eq,
-  ilike,
   isNull,
   lt,
   ne,
@@ -55,8 +54,11 @@ function normalizeMemberSearchQuery(value: string) {
   return value
     .normalize("NFKC")
     .trim()
-    .replace(/[%_\\]/gu, " ")
     .replace(/\s+/gu, " ");
+}
+
+function escapeLikePattern(value: string) {
+  return value.replace(/[\\%_]/gu, (character) => `\\${character}`);
 }
 
 function userNotFoundError() {
@@ -182,8 +184,9 @@ export async function searchMembers(
   }
 
   const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 20);
-  const prefixPattern = `${query}%`;
-  const containsPattern = `%${query}%`;
+  const escapedQuery = escapeLikePattern(query);
+  const prefixPattern = `${escapedQuery}%`;
+  const containsPattern = `%${escapedQuery}%`;
   const rows = await getDatabase()
     .select({
       id: users.id,
@@ -199,16 +202,16 @@ export async function searchMembers(
         isNull(users.deletedAt),
         noBlockBetween(viewerId, users.id),
         or(
-          ilike(users.username, prefixPattern),
-          ilike(users.displayName, containsPattern),
+          sql`${users.username}::text ilike ${prefixPattern} escape '\\'`,
+          sql`${users.displayName} ilike ${containsPattern} escape '\\'`,
         ),
       ),
     )
     .orderBy(
       sql`case
         when lower(${users.username}::text) = lower(${query}) then 0
-        when ${users.username} ilike ${prefixPattern} then 1
-        when ${users.displayName} ilike ${prefixPattern} then 2
+        when ${users.username}::text ilike ${prefixPattern} escape '\\' then 1
+        when ${users.displayName} ilike ${prefixPattern} escape '\\' then 2
         else 3
       end`,
       asc(users.username),
