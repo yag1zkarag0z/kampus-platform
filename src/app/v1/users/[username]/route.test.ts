@@ -139,6 +139,7 @@ describe("GET /v1/users/[username]", () => {
         code: "USER_NOT_FOUND",
         message: "Profil bulunamadı.",
         fieldErrors: {},
+        requestId: expect.any(String),
       },
     });
   });

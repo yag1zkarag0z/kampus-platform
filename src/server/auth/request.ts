@@ -2,9 +2,19 @@ import "server-only";
 
 import { isIP } from "node:net";
 
+import { headers as requestHeaders } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { getAuthEnvironment } from "@/server/env";
+import {
+  errorLogFields,
+  logEvent,
+} from "@/server/observability/logger";
+import {
+  createRequestId,
+  requestIdFromHeaders,
+  REQUEST_ID_HEADER,
+} from "@/server/observability/request-id";
 
 import { SESSION_COOKIE_NAME } from "./constants";
 import { AuthError } from "./errors";
@@ -217,7 +227,18 @@ export async function readJsonBody(request: Request) {
   }
 }
 
-export function authErrorResponse(error: unknown) {
+async function activeRequestId() {
+  try {
+    return requestIdFromHeaders(await requestHeaders()) ?? createRequestId();
+  } catch {
+    // Route unit tests call handlers without a Next request context. They still
+    // receive a valid correlation id instead of failing while formatting an error.
+    return createRequestId();
+  }
+}
+
+export async function authErrorResponse(error: unknown) {
+  const requestId = await activeRequestId();
   const normalizedError =
     error instanceof AuthError
       ? error
@@ -227,6 +248,27 @@ export function authErrorResponse(error: unknown) {
           { status: 500 },
         );
   const headers = new Headers(noStoreHeaders);
+
+  headers.set(REQUEST_ID_HEADER, requestId);
+
+  if (normalizedError.status >= 500) {
+    logEvent("error", "http.request.failed", {
+      requestId,
+      status: normalizedError.status,
+      errorCode: normalizedError.code,
+      ...errorLogFields(error),
+    });
+  } else {
+    logEvent(
+      normalizedError.status === 429 ? "warn" : "info",
+      "http.request.rejected",
+      {
+        requestId,
+        status: normalizedError.status,
+        errorCode: normalizedError.code,
+      },
+    );
+  }
 
   if (normalizedError.retryAfterSeconds !== undefined) {
     headers.set(
@@ -241,6 +283,7 @@ export function authErrorResponse(error: unknown) {
         code: normalizedError.code,
         message: normalizedError.message,
         fieldErrors: normalizedError.fieldErrors,
+        requestId,
         ...(normalizedError.attemptsLeft === undefined
           ? {}
           : { attemptsLeft: normalizedError.attemptsLeft }),

@@ -96,14 +96,20 @@ describe("PATCH /v1/moderation/users/[id]/status", () => {
     expect(response.status).toBe(204);
   });
 
-  it("requires a reason when restoring the target user", async () => {
+  it("requires a reason for every account status transition", async () => {
     const response = await PATCH(
       createRequest({ status: "active" }),
       context(),
     );
+    const suspendResponse = await PATCH(
+      createRequest({ status: "suspended" }),
+      context(),
+    );
 
     expect(response.status).toBe(400);
+    expect(suspendResponse.status).toBe(400);
     expect(mockedRestoreUser).not.toHaveBeenCalled();
+    expect(mockedSuspendUser).not.toHaveBeenCalled();
   });
 
   it("propagates a role-hierarchy rejection", async () => {
@@ -114,7 +120,7 @@ describe("PATCH /v1/moderation/users/[id]/status", () => {
     );
 
     const response = await PATCH(
-      createRequest({ status: "suspended" }),
+      createRequest({ status: "suspended", note: "Yetki testi." }),
       context(),
     );
 

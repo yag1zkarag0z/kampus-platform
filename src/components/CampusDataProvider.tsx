@@ -55,6 +55,7 @@ import { useCampusAccount } from "@/components/CampusAccountProvider";
 import { useCampusModeration } from "@/components/CampusModerationProvider";
 
 const STORAGE_KEY = "kampus-posts-v2";
+const NEW_POST_POLL_INTERVAL_MS = 45_000;
 const guestPreviewPosts = guestCampusPosts;
 const validCategories = new Set<CampusPostCategory>([
   "Sohbet",
@@ -120,6 +121,8 @@ type CampusDataContextValue = {
   hasMore: boolean;
   isLoadingMore: boolean;
   loadMore: () => Promise<void>;
+  pendingNewPostCount: number;
+  revealNewPosts: () => number;
   feedScope: CampusFeedScope;
   setFeedScope: (scope: CampusFeedScope) => void;
   createPost: (input: CreateCampusPostInput) => Promise<string>;
@@ -417,11 +420,14 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [pendingNewPosts, setPendingNewPostsState] = useState<CampusPost[]>([]);
   const [feedScope, setFeedScope] = useState<CampusFeedScope>("global");
   const isLoadingMoreRef = useRef(false);
+  const isCheckingNewPostsRef = useRef(false);
   const feedRequestVersionRef = useRef(0);
   const interactionVersionsRef = useRef(new Map<string, number>());
   const latestCreatedAtRef = useRef(getLatestCreatedAt(campusPosts));
+  const pendingNewPostsRef = useRef<CampusPost[]>([]);
   const replacePosts = useCallback((nextPosts: CampusPost[]) => {
     postsRef.current = nextPosts;
     setPostsState(nextPosts);
@@ -432,11 +438,26 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
     },
     [replacePosts],
   );
+  const replacePendingNewPosts = useCallback((nextPosts: CampusPost[]) => {
+    pendingNewPostsRef.current = nextPosts;
+    setPendingNewPostsState(nextPosts);
+  }, []);
+  const updatePendingNewPosts = useCallback(
+    (updater: (currentPosts: CampusPost[]) => CampusPost[]) => {
+      replacePendingNewPosts(updater(pendingNewPostsRef.current));
+    },
+    [replacePendingNewPosts],
+  );
 
   useEffect(() => {
     let isCancelled = false;
     const requestVersion = ++feedRequestVersionRef.current;
     isLoadingMoreRef.current = false;
+    queueMicrotask(() => {
+      if (!isCancelled) {
+        replacePendingNewPosts([]);
+      }
+    });
 
     if (sessionMode === "member" && accountId) {
       queueMicrotask(() => {
@@ -536,6 +557,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
     accountId,
     feedScope,
     replacePosts,
+    replacePendingNewPosts,
     retrySession,
     sessionMode,
   ]);
@@ -551,6 +573,142 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
       // The in-memory experience should continue when storage is unavailable.
     }
   }, [isHydrated, posts, sessionMode]);
+
+  useEffect(() => {
+    if (
+      sessionMode !== "member" ||
+      !accountId ||
+      !isHydrated
+    ) {
+      return;
+    }
+
+    let isCancelled = false;
+    const requestVersion = feedRequestVersionRef.current;
+
+    const checkForNewPosts = async () => {
+      if (
+        isCancelled ||
+        document.visibilityState === "hidden" ||
+        isCheckingNewPostsRef.current
+      ) {
+        return;
+      }
+
+      isCheckingNewPostsRef.current = true;
+
+      try {
+        const response = await listContentPostsRequest({
+          limit: 50,
+          scope: feedScope,
+        });
+
+        if (
+          isCancelled ||
+          requestVersion !== feedRequestVersionRef.current
+        ) {
+          return;
+        }
+
+        const knownIds = new Set([
+          ...postsRef.current.map((post) => post.id),
+          ...pendingNewPostsRef.current.map((post) => post.id),
+        ]);
+        const latestCreatedAt = latestCreatedAtRef.current;
+        const nextPosts = response.data
+          .map(toCampusPost)
+          .filter(
+            (post) =>
+              !knownIds.has(post.id) &&
+              post.createdAt >= latestCreatedAt,
+          );
+
+        if (nextPosts.length > 0) {
+          updatePendingNewPosts((currentPosts) => {
+            const nextIds = new Set(nextPosts.map((post) => post.id));
+
+            return [
+              ...nextPosts,
+              ...currentPosts.filter((post) => !nextIds.has(post.id)),
+            ];
+          });
+        }
+      } catch (error) {
+        if (
+          !isCancelled &&
+          requestVersion === feedRequestVersionRef.current &&
+          error instanceof AuthClientError &&
+          error.status === 401
+        ) {
+          void retrySession();
+        }
+      } finally {
+        isCheckingNewPostsRef.current = false;
+      }
+    };
+
+    const handleWindowFocus = () => {
+      void checkForNewPosts();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void checkForNewPosts();
+      }
+    };
+    const intervalId = window.setInterval(
+      () => void checkForNewPosts(),
+      NEW_POST_POLL_INTERVAL_MS,
+    );
+
+    window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      isCancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange,
+      );
+    };
+  }, [
+    accountId,
+    feedScope,
+    isHydrated,
+    retrySession,
+    sessionMode,
+    updatePendingNewPosts,
+  ]);
+
+  const revealNewPosts = useCallback(() => {
+    const nextPosts = pendingNewPostsRef.current;
+
+    if (nextPosts.length === 0) {
+      return 0;
+    }
+
+    updatePosts((currentPosts) => {
+      const knownIds = new Set(currentPosts.map((post) => post.id));
+      const uniqueNewPosts = nextPosts.filter((post) => {
+        if (knownIds.has(post.id)) {
+          return false;
+        }
+
+        knownIds.add(post.id);
+        return true;
+      });
+
+      return [...uniqueNewPosts, ...currentPosts];
+    });
+    latestCreatedAtRef.current = Math.max(
+      latestCreatedAtRef.current,
+      getLatestCreatedAt(nextPosts),
+    );
+    replacePendingNewPosts([]);
+
+    return nextPosts.length;
+  }, [replacePendingNewPosts, updatePosts]);
 
   const loadMore = useCallback(async () => {
     if (
@@ -682,6 +840,9 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
       const post = toCampusPost(created);
 
       updatePosts((currentPosts) => [post, ...currentPosts]);
+      updatePendingNewPosts((currentPosts) =>
+        currentPosts.filter((currentPost) => currentPost.id !== post.id),
+      );
       latestCreatedAtRef.current = Math.max(
         latestCreatedAtRef.current,
         post.createdAt,
@@ -689,7 +850,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
 
       return post.id;
     },
-    [sessionMode, updatePosts],
+    [sessionMode, updatePendingNewPosts, updatePosts],
   );
 
   const toggleLike = useCallback((postId: string) => {
@@ -1459,6 +1620,7 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
     setNextCursor(null);
     setHasMore(false);
     setIsLoadingMore(false);
+    replacePendingNewPosts([]);
 
     void listContentPostsRequest({ scope: feedScope })
       .then((response) => {
@@ -1485,7 +1647,13 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
           void retrySession();
         }
       });
-  }, [feedScope, replacePosts, retrySession, sessionMode]);
+  }, [
+    feedScope,
+    replacePendingNewPosts,
+    replacePosts,
+    retrySession,
+    sessionMode,
+  ]);
 
   const visiblePosts = useMemo(() => {
     const accountDetail = settings.showDepartment
@@ -1577,6 +1745,8 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
       hasMore: !isGuest && hasMore,
       isLoadingMore: !isGuest && isLoadingMore,
       loadMore,
+      pendingNewPostCount: isGuest ? 0 : pendingNewPosts.length,
+      revealNewPosts,
       feedScope,
       setFeedScope,
       createPost,
@@ -1603,6 +1773,8 @@ export function CampusDataProvider({ children }: { children: ReactNode }) {
       hasMore,
       isLoadingMore,
       loadMore,
+      pendingNewPosts.length,
+      revealNewPosts,
       feedScope,
       createPost,
       toggleLike,

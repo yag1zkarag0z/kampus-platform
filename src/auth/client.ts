@@ -77,6 +77,9 @@ function normalizeApiError(value: unknown): AuthApiError["error"] {
     code: value.error.code,
     message: value.error.message,
     fieldErrors: normalizeFieldErrors(value.error.fieldErrors),
+    ...(typeof value.error.requestId === "string"
+      ? { requestId: value.error.requestId }
+      : {}),
     ...(typeof value.error.attemptsLeft === "number" &&
     Number.isFinite(value.error.attemptsLeft)
       ? { attemptsLeft: value.error.attemptsLeft }
@@ -92,6 +95,7 @@ export class AuthClientError extends Error {
   readonly attemptsLeft?: number;
   readonly code: string;
   readonly fieldErrors: Record<string, string[]>;
+  readonly requestId?: string;
   readonly retryAfterSeconds?: number;
   readonly status: number;
 
@@ -101,6 +105,7 @@ export class AuthClientError extends Error {
     this.status = status;
     this.code = payload.code;
     this.fieldErrors = payload.fieldErrors;
+    this.requestId = payload.requestId;
     this.attemptsLeft = payload.attemptsLeft;
     this.retryAfterSeconds = payload.retryAfterSeconds;
   }

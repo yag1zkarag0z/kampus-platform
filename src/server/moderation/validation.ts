@@ -22,6 +22,7 @@ const MEMBER_ROLES = ["member", "moderator", "admin"] as const;
 const noteSchema = z
   .string({ error: "Not metni geçersiz." })
   .trim()
+  .min(3, "Moderasyon gerekçesi en az 3 karakter olmalıdır.")
   .max(240, "Not en fazla 240 karakter olabilir.");
 
 export const submitReportSchema = z
@@ -46,7 +47,7 @@ export const resolveReportSchema = z
     resolution: z.enum(REPORT_RESOLUTIONS, {
       error: "Karar dismissed, content_removed veya user_suspended olmalıdır.",
     }),
-    note: noteSchema.optional(),
+    note: noteSchema,
   })
   .strict();
 
@@ -55,16 +56,7 @@ export const updateUserStatusSchema = z
     status: z.enum(ACCOUNT_STATUSES, {
       error: "Durum active veya suspended olmalıdır.",
     }),
-    note: noteSchema.optional(),
-  })
-  .superRefine((input, context) => {
-    if (input.status === "active" && !input.note?.trim()) {
-      context.addIssue({
-        code: "custom",
-        path: ["note"],
-        message: "Hesabı yeniden etkinleştirmek için bir gerekçe yazmalısın.",
-      });
-    }
+    note: noteSchema,
   })
   .strict();
 

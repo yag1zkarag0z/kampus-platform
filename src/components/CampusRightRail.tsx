@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 
 import { useCampusData } from "@/components/CampusDataProvider";
+import CampusMemberSearch from "@/components/CampusMemberSearch";
 import {
   getCampusPostCommentCount,
   type CampusPostCategory,
@@ -74,32 +75,7 @@ export default function CampusRightRail() {
   return (
     <aside className="hidden min-w-0 min-[1280px]:block">
       <div className="sticky top-0 h-svh overflow-y-auto px-5 py-5 xl:px-6">
-        <Link
-          href="/kesfet#kampus-search"
-          className="flex min-h-12 items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 text-sm text-white/58 outline-none transition-colors hover:border-brand/35 hover:bg-white/8 focus-visible:ring-3 focus-visible:ring-brand/40"
-        >
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            fill="none"
-            className="size-4.5"
-          >
-            <circle
-              cx="10.8"
-              cy="10.8"
-              r="6.3"
-              stroke="currentColor"
-              strokeWidth="1.7"
-            />
-            <path
-              d="m15.6 15.6 4 4"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              strokeLinecap="round"
-            />
-          </svg>
-          Kampüste ara
-        </Link>
+        <CampusMemberSearch />
 
         <section
           aria-labelledby="topic-hubs-title"

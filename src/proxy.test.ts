@@ -25,8 +25,13 @@ describe("upload proxy body limits", () => {
 
     expect(response.status).toBe(413);
     expect(response.headers.get("cache-control")).toBe("no-store");
+    const requestId = response.headers.get("x-request-id");
+
+    expect(requestId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
+    );
     await expect(response.json()).resolves.toMatchObject({
-      error: { code: "INVALID_REQUEST" },
+      error: { code: "INVALID_REQUEST", requestId },
     });
   });
 
@@ -38,6 +43,27 @@ describe("upload proxy body limits", () => {
       proxy(uploadRequest("/v1/media/documents", betweenLimits)).status,
     ).toBe(200);
     expect(betweenLimits).toBeLessThan(DOCUMENT_MULTIPART_MAX_BYTES);
+  });
+
+  it("assigns a fresh request id to every API request", () => {
+    const incomingId = crypto.randomUUID();
+    const first = proxy(
+      new NextRequest(`${appOrigin}/v1/posts`, {
+        headers: { "X-Request-ID": incomingId },
+      }),
+    );
+    const second = proxy(new NextRequest(`${appOrigin}/v1/posts`));
+    const firstId = first.headers.get("x-request-id");
+    const secondId = second.headers.get("x-request-id");
+
+    expect(firstId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
+    );
+    expect(secondId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
+    );
+    expect(firstId).not.toBe(incomingId);
+    expect(firstId).not.toBe(secondId);
   });
 
   it("does not apply upload limits to non-POST requests", () => {

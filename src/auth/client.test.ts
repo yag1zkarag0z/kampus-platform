@@ -82,6 +82,7 @@ describe("auth client response validation", () => {
             code: "OTP_INCORRECT",
             message: "Kod eşleşmedi.",
             fieldErrors: { code: ["Kod geçersiz."] },
+            requestId: "ccbf6a10-47eb-4c74-a9e5-b7a1488454db",
             attemptsLeft: 2,
           },
         }),
@@ -98,6 +99,7 @@ describe("auth client response validation", () => {
       attemptsLeft: 2,
       code: "OTP_INCORRECT",
       fieldErrors: { code: ["Kod geçersiz."] },
+      requestId: "ccbf6a10-47eb-4c74-a9e5-b7a1488454db",
       status: 400,
     } satisfies Partial<AuthClientError>);
   });

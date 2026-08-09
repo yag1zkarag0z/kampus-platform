@@ -860,12 +860,94 @@ textarea {
   }
 }
 
+@keyframes campus-notification-heart-arrive {
+  0%,
+  34% {
+    fill-opacity: 0;
+    transform: scale(1);
+  }
+  46% {
+    fill-opacity: 1;
+    transform: scale(0.91);
+  }
+  69% {
+    fill-opacity: 1;
+    transform: scale(1.14);
+  }
+  85% {
+    fill-opacity: 1;
+    transform: scale(0.97);
+  }
+  100% {
+    fill-opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes campus-notification-dot-arrive {
+  0% {
+    opacity: 0;
+    transform: translate(1px, -2px) scale(0.55);
+  }
+  12% {
+    opacity: 1;
+  }
+  39% {
+    opacity: 1;
+    transform: translate(-6.2px, 6.8px) scale(1);
+  }
+  48%,
+  100% {
+    opacity: 0;
+    transform: translate(-6.2px, 6.8px) scale(0.2);
+  }
+}
+
+.campus-notification-heart__shape {
+  fill: currentColor;
+  fill-opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: fill-opacity 180ms ease-out;
+}
+
+.campus-notification-heart--unread .campus-notification-heart__shape {
+  fill-opacity: 1;
+}
+
+.campus-notification-heart__dot {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.campus-notification-heart--arriving .campus-notification-heart__shape {
+  animation: campus-notification-heart-arrive 460ms
+    cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.campus-notification-heart--arriving .campus-notification-heart__dot {
+  animation: campus-notification-dot-arrive 460ms
+    cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 .campus-pop-on-active[aria-pressed="true"] svg {
   animation: campus-pop 320ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .campus-pop-on-active[aria-pressed="true"] svg {
+    animation: none;
+  }
+
+  .campus-notification-heart__shape {
+    transition: none;
+  }
+
+  .campus-notification-heart--arriving
+    .campus-notification-heart__shape,
+  .campus-notification-heart--arriving
+    .campus-notification-heart__dot {
     animation: none;
   }
 }

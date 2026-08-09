@@ -464,4 +464,92 @@ describe("otomatik gizleme", () => {
     );
     expect(audit.rowCount).toBe(1);
   });
+
+  it("yalnızca aktif otomatik gizleme kaydı bulunan gönderiyi geri açar", async () => {
+    const author = await insertUser("Restore Provenance Author");
+    const moderator = await insertUser("Restore Provenance Moderator");
+    const post = await createMediaPost(author.id);
+    const [reporter] = await insertAgedReporters(1);
+
+    await pool.query("update users set role = 'moderator' where id = $1", [
+      moderator.id,
+    ]);
+    await reportPostFrom([reporter], post.id);
+    // Başka bir görünürlük politikasıyla gizlenmiş gibi davran; buna karşılık
+    // `content_hidden` audit kaydı özellikle yok.
+    await pool.query("update posts set hidden_at = now() where id = $1", [
+      post.id,
+    ]);
+
+    const pending = await pool.query<{ id: string }>(
+      "select id from reports where target_id = $1 and status = 'pending'",
+      [post.id],
+    );
+    await resolveReport(
+      moderator.id,
+      pending.rows[0]!.id,
+      "dismissed",
+      "Otomatik gizleme kaydı bulunmuyor.",
+    );
+
+    const state = await pool.query<{ hidden_at: Date | null }>(
+      "select hidden_at from posts where id = $1",
+      [post.id],
+    );
+    expect(state.rows[0]!.hidden_at).not.toBeNull();
+
+    const restores = await pool.query(
+      `select id from moderation_actions
+       where post_id = $1 and action = 'content_restored'`,
+      [post.id],
+    );
+    expect(restores.rowCount).toBe(0);
+  });
+
+  it("eşzamanlı kararları gönderi kilidiyle sıralayıp restore'u kaçırmaz", async () => {
+    const author = await insertUser("Concurrent Restore Author");
+    const moderator = await insertUser("Concurrent Restore Moderator");
+    const post = await createMediaPost(author.id);
+    const reporters = await insertAgedReporters(4);
+
+    await pool.query("update users set role = 'moderator' where id = $1", [
+      moderator.id,
+    ]);
+    await reportPostFrom(reporters, post.id);
+
+    const pending = await pool.query<{ id: string }>(
+      `select id from reports
+       where target_id = $1 and status = 'pending'
+       order by created_at, id`,
+      [post.id],
+    );
+
+    await Promise.all([
+      resolveReport(
+        moderator.id,
+        pending.rows[0]!.id,
+        "dismissed",
+        "Birinci eşzamanlı karar.",
+      ),
+      resolveReport(
+        moderator.id,
+        pending.rows[1]!.id,
+        "dismissed",
+        "İkinci eşzamanlı karar.",
+      ),
+    ]);
+
+    const state = await pool.query<{ hidden_at: Date | null }>(
+      "select hidden_at from posts where id = $1",
+      [post.id],
+    );
+    expect(state.rows[0]!.hidden_at).toBeNull();
+
+    const restores = await pool.query(
+      `select id from moderation_actions
+       where post_id = $1 and action = 'content_restored'`,
+      [post.id],
+    );
+    expect(restores.rowCount).toBe(1);
+  });
 });

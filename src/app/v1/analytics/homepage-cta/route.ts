@@ -12,6 +12,8 @@ import {
   noStoreHeaders,
   readJsonBody,
 } from "@/server/auth/request";
+import { logEvent } from "@/server/observability/logger";
+import { requestIdFromRequest } from "@/server/observability/request-id";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,15 +41,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.info(
-      JSON.stringify({
-        type: "analytics_event",
-        name: parsed.data.event,
-        source: parsed.data.source,
-        target: parsed.data.target,
-        occurredAt: new Date().toISOString(),
-      }),
-    );
+    logEvent("info", "analytics.homepage_cta_clicked", {
+      requestId: requestIdFromRequest(request),
+      source: parsed.data.source,
+      target: parsed.data.target,
+    });
 
     return NextResponse.json(
       { data: { accepted: true } },

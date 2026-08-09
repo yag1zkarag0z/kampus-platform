@@ -2,14 +2,23 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { revokeMemberSession } from "@/server/auth/session";
+import { logEvent } from "@/server/observability/logger";
 
 import { POST } from "./route";
 
 vi.mock("@/server/auth/session", () => ({
   revokeMemberSession: vi.fn(),
 }));
+vi.mock("@/server/observability/logger", () => ({
+  errorLogFields: vi.fn(() => ({
+    errorName: "Error",
+    errorMessage: "database unavailable",
+  })),
+  logEvent: vi.fn(),
+}));
 
 const mockedRevokeMemberSession = vi.mocked(revokeMemberSession);
+const mockedLogEvent = vi.mocked(logEvent);
 
 describe("POST /v1/auth/logout", () => {
   beforeEach(() => {
@@ -23,6 +32,7 @@ describe("POST /v1/auth/logout", () => {
     process.env.SMTP_PASSWORD = "";
     process.env.EMAIL_FROM = "KAMPUS Test <no-reply@kampus.local>";
     mockedRevokeMemberSession.mockReset().mockResolvedValue(undefined);
+    mockedLogEvent.mockReset();
   });
 
   it("revokes the database session and expires the cookie", async () => {
@@ -52,9 +62,6 @@ describe("POST /v1/auth/logout", () => {
     mockedRevokeMemberSession.mockRejectedValueOnce(
       new Error("database unavailable"),
     );
-    const consoleError = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => undefined);
     const request = new NextRequest(
       "http://localhost:3000/v1/auth/logout",
       {
@@ -72,7 +79,13 @@ describe("POST /v1/auth/logout", () => {
     expect(response.status).toBe(204);
     expect(cookie).toContain("kampus_session=");
     expect(cookie).toContain("Max-Age=0");
-    expect(consoleError).toHaveBeenCalledOnce();
-    consoleError.mockRestore();
+    expect(mockedLogEvent).toHaveBeenCalledWith(
+      "error",
+      "auth.session_revocation_failed",
+      expect.objectContaining({
+        requestId: expect.any(String),
+        errorMessage: "database unavailable",
+      }),
+    );
   });
 });

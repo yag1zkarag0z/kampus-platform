@@ -18,6 +18,7 @@ import {
   getFollowSummary,
   listFollowers,
   listFollowing,
+  searchMembers,
 } from "@/server/social/service";
 import {
   getUnreadNotificationCount,
@@ -371,6 +372,21 @@ describe("engelleme her iki yönde de görünürlüğü kaldırır", () => {
     expect(followers.map((member) => member.id)).not.toContain(hidden.id);
     expect(following.map((member) => member.id)).toContain(visible.id);
     expect(following.map((member) => member.id)).not.toContain(hidden.id);
+  });
+
+  it("kişi aramasında engelli hesapları ve görüntüleyenin kendisini gizler", async () => {
+    const viewer = await insertUser("Ece Viewer");
+    const visible = await insertUser("Ece Arslan");
+    const hidden = await insertUser("Ece Hidden");
+
+    await block(hidden.id, viewer.id);
+
+    const results = await searchMembers(viewer.id, "Ece");
+    const resultIds = results.map((member) => member.id);
+
+    expect(resultIds).toContain(visible.id);
+    expect(resultIds).not.toContain(hidden.id);
+    expect(resultIds).not.toContain(viewer.id);
   });
 
   it("engelden önce üretilmiş bildirimleri de listeden düşürür", async () => {

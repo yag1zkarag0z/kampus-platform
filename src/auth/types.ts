@@ -50,6 +50,7 @@ export type AuthApiError = {
     code: string;
     message: string;
     fieldErrors: Record<string, string[]>;
+    requestId?: string;
     attemptsLeft?: number;
     retryAfterSeconds?: number;
   };

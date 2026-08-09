@@ -2,9 +2,11 @@ import "server-only";
 
 import {
   and,
+  asc,
   count,
   desc,
   eq,
+  ilike,
   isNull,
   lt,
   ne,
@@ -28,6 +30,7 @@ import { hasBlockBetween, noBlockBetween } from "@/server/social/blocking";
 
 const FOLLOW_LIST_LIMIT = 200;
 const SUGGESTION_LIMIT = 8;
+const MEMBER_SEARCH_LIMIT = 8;
 
 export type FollowSummary = {
   followerCount: number;
@@ -47,6 +50,14 @@ export type SuggestedMemberSummary = FollowMemberSummary & {
   department: string;
   bio: string;
 };
+
+function normalizeMemberSearchQuery(value: string) {
+  return value
+    .normalize("NFKC")
+    .trim()
+    .replace(/[%_\\]/gu, " ")
+    .replace(/\s+/gu, " ");
+}
 
 function userNotFoundError() {
   return new AuthError(
@@ -157,6 +168,54 @@ function toFollowMemberSummary(row: {
       ? `/v1/users/${row.username}/avatar`
       : null,
   };
+}
+
+export async function searchMembers(
+  viewerId: string,
+  value: string,
+  limit = MEMBER_SEARCH_LIMIT,
+): Promise<FollowMemberSummary[]> {
+  const query = normalizeMemberSearchQuery(value);
+
+  if (query.length < 2) {
+    return [];
+  }
+
+  const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 20);
+  const prefixPattern = `${query}%`;
+  const containsPattern = `%${query}%`;
+  const rows = await getDatabase()
+    .select({
+      id: users.id,
+      username: users.username,
+      displayName: users.displayName,
+      avatarObjectKey: users.avatarObjectKey,
+    })
+    .from(users)
+    .where(
+      and(
+        ne(users.id, viewerId),
+        eq(users.status, "active"),
+        isNull(users.deletedAt),
+        noBlockBetween(viewerId, users.id),
+        or(
+          ilike(users.username, prefixPattern),
+          ilike(users.displayName, containsPattern),
+        ),
+      ),
+    )
+    .orderBy(
+      sql`case
+        when lower(${users.username}::text) = lower(${query}) then 0
+        when ${users.username} ilike ${prefixPattern} then 1
+        when ${users.displayName} ilike ${prefixPattern} then 2
+        else 3
+      end`,
+      asc(users.username),
+    )
+    .limit(safeLimit);
+
+  return rows.map(toFollowMemberSummary);
 }
 
 export async function followUser(

@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type MouseEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
 
 import ActionStatusText from "@/components/ActionStatusText";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
@@ -163,6 +168,44 @@ function NavigationIcon({
   );
 }
 
+function NotificationHeartIcon({
+  isUnread,
+  className = "size-6",
+}: {
+  isUnread: boolean;
+  className?: string;
+}) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`campus-notification-heart ${
+        isUnread
+          ? "campus-notification-heart--unread campus-notification-heart--arriving text-[#ff5a3d]"
+          : ""
+      } ${className}`}
+    >
+      <path
+        className="campus-notification-heart__shape"
+        d="M12 19.4s-7.2-4.3-7.2-9.6a4.2 4.2 0 0 1 7.2-2.9 4.2 4.2 0 0 1 7.2 2.9c0 5.3-7.2 9.6-7.2 9.6Z"
+      />
+      <circle
+        className="campus-notification-heart__dot"
+        cx="18.4"
+        cy="4.8"
+        r="1.55"
+        fill="#ff6b3d"
+        stroke="none"
+      />
+    </svg>
+  );
+}
+
 function ShareIcon({ className = "size-5" }: { className?: string }) {
   return (
     <svg
@@ -198,18 +241,6 @@ function SignInIcon({ className = "size-5" }: { className?: string }) {
   );
 }
 
-// Instagram tarzı: sayı yok, yalnızca "okunmamış var" noktası. Gerçek sayı
-// ekran okuyucular için yine de kayboluyor değil — çağıran yerlerdeki
-// aria-label'lar unreadCount'u sözel olarak veriyor.
-function NotificationBadge() {
-  return (
-    <span
-      aria-hidden="true"
-      className="absolute -right-0.5 -top-0.5 size-2.5 animate-[campus-pop_320ms_cubic-bezier(0.16,1,0.3,1)] rounded-full bg-brand ring-2 ring-canvas motion-reduce:animate-none"
-    />
-  );
-}
-
 export default function AppNavigation() {
   const pathname = usePathname();
   const router = useRouter();
@@ -225,6 +256,30 @@ export default function AppNavigation() {
   const [signOutStatus, setSignOutStatus] = useActionStatus();
   const [guestNavStatus, setGuestNavStatus] = useActionStatus();
   const [guestNavAnchor, setGuestNavAnchor] = useState<string | null>(null);
+  const [notificationAnimationVersion, setNotificationAnimationVersion] =
+    useState(0);
+  const previousUnreadCount = useRef<number | null>(null);
+  const hasUnreadNotifications =
+    areNotificationsHydrated && unreadCount > 0;
+
+  useEffect(() => {
+    if (!areNotificationsHydrated) {
+      previousUnreadCount.current = null;
+      return;
+    }
+
+    if (
+      previousUnreadCount.current !== null &&
+      unreadCount > previousUnreadCount.current
+    ) {
+      setNotificationAnimationVersion((current) => current + 1);
+    }
+
+    previousUnreadCount.current = unreadCount;
+  }, [areNotificationsHydrated, unreadCount]);
+
+  const notificationIconClassName = (size: string) =>
+    `${size} transition-colors duration-200`;
 
   useEffect(() => {
     if (!isDesktopNavigationOpen) {
@@ -458,7 +513,7 @@ export default function AppNavigation() {
           <Link
             href="/bildirimler"
             aria-label={
-              areNotificationsHydrated && unreadCount > 0
+              hasUnreadNotifications
                 ? `Bildirimler, ${unreadCount} okunmamış`
                 : "Bildirimleri aç"
             }
@@ -471,19 +526,17 @@ export default function AppNavigation() {
                 : "text-white/58 hover:bg-white/8 hover:text-white"
             }`}
           >
-            <NavigationIcon name="notifications" className="size-6" />
-            {areNotificationsHydrated && unreadCount > 0 && (
-              // key={unreadCount}: sayı gerçekten değişince (backend'den
-              // geliyor, bkz. CampusNotificationProvider) rozet yeniden
-              // takılıp pop animasyonu tekrar oynar.
-              <NotificationBadge key={unreadCount} />
-            )}
+            <NotificationHeartIcon
+              key={`mobile-notifications-${notificationAnimationVersion}`}
+              isUnread={hasUnreadNotifications}
+              className={notificationIconClassName("size-6")}
+            />
           </Link>
         </div>
       </header>
 
       <div className="relative z-40 hidden min-w-0 text-white md:col-start-1 md:row-start-1 md:flex md:justify-end">
-        <div className="sticky top-0 flex h-svh min-h-0 w-full max-w-[15rem] flex-col items-center px-2 py-2 xl:items-stretch xl:px-3">
+        <div className="sticky top-0 flex h-svh min-h-0 w-full max-w-[15rem] flex-col items-center px-2 py-2 xl:items-stretch xl:px-3 2xl:max-w-[17rem]">
           <button
             type="button"
             aria-label={
@@ -580,8 +633,7 @@ export default function AppNavigation() {
                           aria-current={isActive ? "page" : undefined}
                           aria-label={
                             item.icon === "notifications" &&
-                            areNotificationsHydrated &&
-                            unreadCount > 0
+                            hasUnreadNotifications
                               ? `${item.label}, ${unreadCount} okunmamış bildirim`
                               : item.label
                           }
@@ -593,15 +645,20 @@ export default function AppNavigation() {
                           }`}
                         >
                           <span className="relative grid size-[1.35rem] shrink-0 place-items-center xl:size-7">
-                            <NavigationIcon
-                              name={item.icon}
-                              className="size-[1.35rem] xl:size-7"
-                            />
-                            {item.icon === "notifications" &&
-                              areNotificationsHydrated &&
-                              unreadCount > 0 && (
-                                <NotificationBadge key={unreadCount} />
-                              )}
+                            {item.icon === "notifications" ? (
+                              <NotificationHeartIcon
+                                key={`desktop-notifications-${notificationAnimationVersion}`}
+                                isUnread={hasUnreadNotifications}
+                                className={notificationIconClassName(
+                                  "size-[1.35rem] xl:size-7",
+                                )}
+                              />
+                            ) : (
+                              <NavigationIcon
+                                name={item.icon}
+                                className="size-[1.35rem] xl:size-7"
+                              />
+                            )}
                           </span>
                           <span className="hidden max-w-full truncate xl:inline">
                             {item.label}
@@ -778,8 +835,7 @@ export default function AppNavigation() {
                     item.primary
                       ? "Yeni konu aç"
                       : item.icon === "notifications" &&
-                          areNotificationsHydrated &&
-                          unreadCount > 0
+                          hasUnreadNotifications
                         ? `${item.label}, ${unreadCount} okunmamış bildirim`
                         : undefined
                   }
@@ -798,19 +854,24 @@ export default function AppNavigation() {
                         : "relative grid size-9 place-items-center"
                     }
                   >
-                    <NavigationIcon
-                      name={item.icon}
-                      className={
-                        item.primary
-                          ? "size-5 shrink-0"
-                          : "size-6 shrink-0"
-                      }
-                    />
-                    {item.icon === "notifications" &&
-                      areNotificationsHydrated &&
-                      unreadCount > 0 && (
-                        <NotificationBadge key={unreadCount} />
-                      )}
+                    {item.icon === "notifications" ? (
+                      <NotificationHeartIcon
+                        key={`bottom-notifications-${notificationAnimationVersion}`}
+                        isUnread={hasUnreadNotifications}
+                        className={notificationIconClassName(
+                          "size-6 shrink-0",
+                        )}
+                      />
+                    ) : (
+                      <NavigationIcon
+                        name={item.icon}
+                        className={
+                          item.primary
+                            ? "size-5 shrink-0"
+                            : "size-6 shrink-0"
+                        }
+                      />
+                    )}
                   </span>
                   <span className="max-w-full truncate">{item.label}</span>
                 </Link>

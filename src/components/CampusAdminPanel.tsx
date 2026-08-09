@@ -112,6 +112,12 @@ export default function CampusAdminPanel() {
   const [userActionAnchor, setUserActionAnchor] = useState<string | null>(
     null,
   );
+  const [reportDecisionNotes, setReportDecisionNotes] = useState<
+    Record<string, string>
+  >({});
+  const [userActionNotes, setUserActionNotes] = useState<
+    Record<string, string>
+  >({});
 
   const isHydrated = isAccountHydrated && isModerationHydrated;
   const sortedReports = useMemo(
@@ -203,6 +209,16 @@ export default function CampusAdminPanel() {
     report: ReportSummaryDto,
     resolution: CampusModerationResolution,
   ) => {
+    const decisionNote = reportDecisionNotes[report.id]?.trim() ?? "";
+
+    if (decisionNote.length < 3) {
+      setReportStatus({
+        message: "Kararı kaydetmek için kısa bir gerekçe yaz.",
+        tone: "error",
+      });
+      return;
+    }
+
     const isDangerous = resolution !== "dismissed";
     const descriptions: Record<CampusModerationResolution, string> = {
       dismissed:
@@ -241,10 +257,16 @@ export default function CampusAdminPanel() {
     const wasResolved = await resolveReport(
       report.id,
       resolution,
-      resolution === "dismissed"
-        ? "Topluluk kuralları ihlali bulunmadı."
-        : undefined,
+      decisionNote,
     );
+
+    if (wasResolved) {
+      setReportDecisionNotes((current) => {
+        const next = { ...current };
+        delete next[report.id];
+        return next;
+      });
+    }
 
     setReportStatus({
       message: wasResolved
@@ -269,6 +291,17 @@ export default function CampusAdminPanel() {
   };
 
   const handleSuspendUser = async (user: ManagedUserDto) => {
+    const actionNote = userActionNotes[user.id]?.trim() ?? "";
+    setUserActionAnchor(user.id);
+
+    if (actionNote.length < 3) {
+      setUserActionStatus({
+        message: "Hesap işlemi için kısa bir gerekçe yaz.",
+        tone: "error",
+      });
+      return;
+    }
+
     const confirmed = await confirmAction({
       title: `@${user.username} askıya alınsın mı?`,
       description:
@@ -281,11 +314,10 @@ export default function CampusAdminPanel() {
       return;
     }
 
-    const wasSuspended = await suspendUser(
-      user.id,
-      "Kullanıcı yönetiminden askıya alındı.",
-    );
-    setUserActionAnchor(user.id);
+    const wasSuspended = await suspendUser(user.id, actionNote);
+    if (wasSuspended) {
+      setUserActionNotes((current) => ({ ...current, [user.id]: "" }));
+    }
     setUserActionStatus({
       message: wasSuspended
         ? `@${user.username} askıya alındı.`
@@ -295,6 +327,17 @@ export default function CampusAdminPanel() {
   };
 
   const handleRestoreUser = async (user: ManagedUserDto) => {
+    const actionNote = userActionNotes[user.id]?.trim() ?? "";
+    setUserActionAnchor(user.id);
+
+    if (actionNote.length < 3) {
+      setUserActionStatus({
+        message: "Hesap işlemi için kısa bir gerekçe yaz.",
+        tone: "error",
+      });
+      return;
+    }
+
     const confirmed = await confirmAction({
       title: `@${user.username} yeniden etkinleştirilsin mi?`,
       description:
@@ -306,11 +349,10 @@ export default function CampusAdminPanel() {
       return;
     }
 
-    const wasRestored = await restoreUser(
-      user.id,
-      "Kullanıcı yönetiminden yeniden etkinleştirildi.",
-    );
-    setUserActionAnchor(user.id);
+    const wasRestored = await restoreUser(user.id, actionNote);
+    if (wasRestored) {
+      setUserActionNotes((current) => ({ ...current, [user.id]: "" }));
+    }
     setUserActionStatus({
       message: wasRestored
         ? `@${user.username} yeniden etkinleştirildi.`
@@ -714,41 +756,62 @@ export default function CampusAdminPanel() {
                 </div>
 
                 {selectedReport.status === "pending" ? (
-                  <div className="mt-5 grid gap-2 sm:grid-cols-3">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleReportAction(selectedReport, "dismissed")
-                      }
-                      className={`min-h-11 border border-white/12 px-3 text-xs font-black transition-colors hover:bg-white/7 ${focusRing}`}
-                    >
-                      Yok say
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleReportAction(
-                          selectedReport,
-                          "content_removed",
-                        )
-                      }
-                      className={`min-h-11 border border-danger/38 px-3 text-xs font-black text-danger transition-colors hover:bg-danger/9 ${focusRing}`}
-                    >
-                      İçeriği kaldır
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!selectedReport.target.authorId}
-                      onClick={() =>
-                        handleReportAction(
-                          selectedReport,
-                          "user_suspended",
-                        )
-                      }
-                      className={`min-h-11 bg-danger px-3 text-xs font-black text-[#0b0b0c] transition-colors hover:bg-danger/85 disabled:cursor-not-allowed disabled:bg-danger/25 disabled:text-white/38 ${focusRing}`}
-                    >
-                      Kullanıcıyı askıya al
-                    </button>
+                  <div className="mt-5">
+                    <label className="block">
+                      <span className="text-[10px] font-black uppercase tracking-[0.11em] text-white/55">
+                        Karar gerekçesi
+                      </span>
+                      <textarea
+                        value={reportDecisionNotes[selectedReport.id] ?? ""}
+                        onChange={(event) =>
+                          setReportDecisionNotes((current) => ({
+                            ...current,
+                            [selectedReport.id]: event.target.value,
+                          }))
+                        }
+                        minLength={3}
+                        maxLength={240}
+                        rows={3}
+                        placeholder="Kararın nedenini kısa ve somut biçimde yaz"
+                        className={`mt-2 w-full resize-y border border-white/12 bg-white/[0.025] px-3 py-2.5 text-xs leading-5 text-white placeholder:text-white/38 ${focusRing}`}
+                      />
+                    </label>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleReportAction(selectedReport, "dismissed")
+                        }
+                        className={`min-h-11 border border-white/12 px-3 text-xs font-black transition-colors hover:bg-white/7 ${focusRing}`}
+                      >
+                        Yok say
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleReportAction(
+                            selectedReport,
+                            "content_removed",
+                          )
+                        }
+                        className={`min-h-11 border border-danger/38 px-3 text-xs font-black text-danger transition-colors hover:bg-danger/9 ${focusRing}`}
+                      >
+                        İçeriği kaldır
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!selectedReport.target.authorId}
+                        onClick={() =>
+                          handleReportAction(
+                            selectedReport,
+                            "user_suspended",
+                          )
+                        }
+                        className={`min-h-11 bg-danger px-3 text-xs font-black text-[#0b0b0c] transition-colors hover:bg-danger/85 disabled:cursor-not-allowed disabled:bg-danger/25 disabled:text-white/38 ${focusRing}`}
+                      >
+                        Kullanıcıyı askıya al
+                      </button>
+                    </div>
                   </div>
                 ) : null}
 
@@ -846,6 +909,27 @@ export default function CampusAdminPanel() {
                     </div>
 
                     <div className="grid gap-2 min-[420px]:grid-cols-2 sm:grid-cols-[9rem_8rem]">
+                      {!isCurrentAdmin && (
+                        <label className="min-[420px]:col-span-2">
+                          <span className="sr-only">
+                            @{user.username} için işlem gerekçesi
+                          </span>
+                          <input
+                            type="text"
+                            value={userActionNotes[user.id] ?? ""}
+                            onChange={(event) =>
+                              setUserActionNotes((current) => ({
+                                ...current,
+                                [user.id]: event.target.value,
+                              }))
+                            }
+                            minLength={3}
+                            maxLength={240}
+                            placeholder="Askıya alma veya etkinleştirme gerekçesi"
+                            className={`min-h-11 w-full border border-white/12 bg-white/[0.025] px-3 text-xs placeholder:text-white/38 ${focusRing}`}
+                          />
+                        </label>
+                      )}
                       <label>
                         <span className="sr-only">
                           @{user.username} için rol seç

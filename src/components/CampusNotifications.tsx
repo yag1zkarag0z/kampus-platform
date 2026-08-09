@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import ActionStatusText from "@/components/ActionStatusText";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
@@ -173,7 +173,20 @@ export default function CampusNotifications() {
     markAllAsRead,
   } = useCampusNotifications();
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const hasRequestedAutoRead = useRef(false);
   const [loadMoreStatus, setLoadMoreStatus] = useActionStatus();
+
+  useEffect(() => {
+    if (unreadCount === 0) {
+      hasRequestedAutoRead.current = false;
+      return;
+    }
+
+    if (!hasRequestedAutoRead.current) {
+      hasRequestedAutoRead.current = true;
+      void markAllAsRead();
+    }
+  }, [markAllAsRead, unreadCount]);
 
   const mentionCount = useMemo(
     () =>
@@ -201,15 +214,6 @@ export default function CampusNotifications() {
     [visibleNotifications],
   );
 
-  const handleMarkAllAsRead = async () => {
-    if (unreadCount === 0) {
-      return;
-    }
-
-    // Rozetler ve okunmadı vurguları ekranda temizlendiği için toast yok.
-    await markAllAsRead();
-  };
-
   const getFilterCount = (filter: NotificationFilter) => {
     if (filter === "unread") {
       return unreadCount;
@@ -229,7 +233,7 @@ export default function CampusNotifications() {
       className="min-h-[calc(100svh-4rem)] min-w-0 bg-canvas text-white md:min-h-svh"
     >
       <header className="sticky top-0 z-30 border-b border-white/8 bg-canvas/95 backdrop-blur-xl">
-        <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-3.5">
+        <div className="flex items-center px-4 py-3 sm:px-6 sm:py-3.5">
           <h1
             ref={titleRef}
             id="notifications-title"
@@ -239,16 +243,6 @@ export default function CampusNotifications() {
             Bildirimler
           </h1>
 
-          <button
-            type="button"
-            disabled={!isNotificationsHydrated || unreadCount === 0}
-            onClick={() => void handleMarkAllAsRead()}
-            aria-label="Tüm bildirimleri okundu olarak işaretle"
-            className={`inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-full px-2.5 text-xs font-black text-brand transition-colors hover:bg-brand/8 disabled:cursor-not-allowed disabled:opacity-38 sm:px-3 sm:text-sm ${focusRing}`}
-          >
-            <ReadAllIcon />
-            <span className="hidden min-[460px]:inline">Tümünü oku</span>
-          </button>
         </div>
 
         <div
@@ -565,25 +559,6 @@ function NotificationKindIcon({ kind }: { kind: NotificationKindDto }) {
         <CommentIcon className="size-2.5" />
       )}
     </span>
-  );
-}
-
-function ReadAllIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 20 20"
-      fill="none"
-      className="size-[17px]"
-    >
-      <path
-        d="m3 10 3 3 5-6m-1 5 2 2 5-7"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
 

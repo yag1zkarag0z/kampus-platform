@@ -8,6 +8,11 @@ import {
   noStoreHeaders,
 } from "@/server/auth/request";
 import { revokeMemberSession } from "@/server/auth/session";
+import {
+  errorLogFields,
+  logEvent,
+} from "@/server/observability/logger";
+import { requestIdFromRequest } from "@/server/observability/request-id";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,10 +24,11 @@ export async function POST(request: NextRequest) {
       await revokeMemberSession(
         request.cookies.get(SESSION_COOKIE_NAME)?.value,
       );
-    } catch {
-      console.error(
-        "[auth] Database session revocation failed during logout.",
-      );
+    } catch (error) {
+      logEvent("error", "auth.session_revocation_failed", {
+        requestId: requestIdFromRequest(request),
+        ...errorLogFields(error),
+      });
     }
 
     const response = new NextResponse(null, {

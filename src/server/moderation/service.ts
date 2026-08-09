@@ -194,6 +194,20 @@ function authorizationRequiredError() {
   );
 }
 
+function requiredModerationNote(note: string | undefined) {
+  const trimmedNote = note?.trim().slice(0, 240) ?? "";
+
+  if (trimmedNote.length < 3) {
+    throw new AuthError(
+      "INVALID_REQUEST",
+      "Moderasyon işlemi için en az 3 karakterlik bir gerekçe yazmalısın.",
+      { status: 400 },
+    );
+  }
+
+  return trimmedNote;
+}
+
 function formatJoinedLabel(createdAt: Date) {
   return new Intl.DateTimeFormat("tr-TR", {
     month: "long",
@@ -758,6 +772,42 @@ async function hasAutoHideThreshold(
   return (usage?.reporters ?? 0) >= AUTO_HIDE_REPORT_THRESHOLD;
 }
 
+/**
+ * `hidden_at` tek başına restore yetkisi vermez. Son otomatik görünürlük
+ * işlemi gerçekten `content_hidden` olmalı; aksi hâlde elle veya başka bir
+ * politika ile gizlenmiş içerik, ilgisiz bir şikâyet reddedilince açılamaz.
+ */
+async function hasActiveAutoHideCycle(
+  transaction: ModerationTransaction,
+  postId: string,
+) {
+  const [latestVisibilityAction] = await transaction
+    .select({ action: moderationActions.action })
+    .from(moderationActions)
+    .where(
+      and(
+        eq(moderationActions.postId, postId),
+        inArray(moderationActions.action, [
+          "content_hidden",
+          "content_restored",
+        ]),
+      ),
+    )
+    .orderBy(
+      desc(moderationActions.createdAt),
+      // Milisaniye hassasiyetinde eşitlik olursa güvenli tarafta kal: restore
+      // kaydını daha yeni say ve içeriği yanlışlıkla yeniden açma.
+      desc(sql<number>`case
+        when ${moderationActions.action} = 'content_restored' then 1
+        else 0
+      end`),
+      desc(moderationActions.id),
+    )
+    .limit(1);
+
+  return latestVisibilityAction?.action === "content_hidden";
+}
+
 export async function resolveReport(
   moderatorId: string,
   reportId: string,
@@ -765,7 +815,7 @@ export async function resolveReport(
   note?: string,
 ) {
   const now = new Date();
-  const trimmedNote = note?.trim().slice(0, 240) || null;
+  const trimmedNote = requiredModerationNote(note);
 
   await getDatabase().transaction(async (transaction) => {
     await assertActiveModerator(transaction, moderatorId);
@@ -782,6 +832,16 @@ export async function resolveReport(
     if (!report) {
       throw reportNotFoundError();
     }
+
+    // Aynı gönderiye ait farklı şikâyetler farklı satırlar olduğu için yalnız
+    // report kilidi yeterli değildir. Post kilidi tüm kararları aynı sıraya
+    // sokar; son karar güncel eşik üzerinden restore yapabilir.
+    await transaction
+      .select({ id: posts.id })
+      .from(posts)
+      .where(eq(posts.id, report.postId))
+      .for("update")
+      .limit(1);
 
     await transaction
       .update(reports)
@@ -801,6 +861,7 @@ export async function resolveReport(
     if (
       resolution === "dismissed" &&
       report.targetType === "post" &&
+      (await hasActiveAutoHideCycle(transaction, report.targetId)) &&
       !(await hasAutoHideThreshold(transaction, report.targetId))
     ) {
       const restored = await transaction
@@ -1009,7 +1070,7 @@ export async function suspendUser(
   note?: string,
 ) {
   const now = new Date();
-  const trimmedNote = note?.trim().slice(0, 240) || null;
+  const trimmedNote = requiredModerationNote(note);
 
   await getDatabase().transaction(async (transaction) => {
     const target = await assertCanModerateTarget(
@@ -1053,15 +1114,7 @@ export async function restoreUser(
   targetUserId: string,
   note?: string,
 ) {
-  const trimmedNote = note?.trim().slice(0, 240) || null;
-
-  if (!trimmedNote) {
-    throw new AuthError(
-      "INVALID_REQUEST",
-      "Hesabı yeniden etkinleştirmek için bir gerekçe yazmalısın.",
-      { status: 400 },
-    );
-  }
+  const trimmedNote = requiredModerationNote(note);
 
   await getDatabase().transaction(async (transaction) => {
     const target = await assertCanModerateTarget(

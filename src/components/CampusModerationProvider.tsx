@@ -70,14 +70,14 @@ type CampusModerationContextValue = {
   resolveReport: (
     reportId: string,
     resolution: CampusModerationResolution,
-    note?: string,
+    note: string,
   ) => Promise<boolean>;
   setUserRole: (
     userId: string,
     role: "member" | "moderator" | "admin",
   ) => Promise<boolean>;
-  suspendUser: (userId: string, note?: string) => Promise<boolean>;
-  restoreUser: (userId: string, note?: string) => Promise<boolean>;
+  suspendUser: (userId: string, note: string) => Promise<boolean>;
+  restoreUser: (userId: string, note: string) => Promise<boolean>;
   blockUser: (authorId: string, author: string) => Promise<boolean>;
   unblockUser: (authorId: string) => Promise<boolean>;
   resetModeration: () => void;
@@ -401,7 +401,7 @@ export function CampusModerationProvider({
     async (
       reportId: string,
       resolution: CampusModerationResolution,
-      note?: string,
+      note: string,
     ) => {
       if (sessionMode !== "member" || accountRole === "member") {
         return false;
@@ -438,7 +438,7 @@ export function CampusModerationProvider({
   );
 
   const suspendUser = useCallback(
-    async (userId: string, note?: string) => {
+    async (userId: string, note: string) => {
       if (sessionMode !== "member" || accountRole === "member") {
         return false;
       }
@@ -456,7 +456,7 @@ export function CampusModerationProvider({
   );
 
   const restoreUser = useCallback(
-    async (userId: string, note?: string) => {
+    async (userId: string, note: string) => {
       if (sessionMode !== "member" || accountRole === "member") {
         return false;
       }

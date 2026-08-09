@@ -5,6 +5,9 @@ import CampusFeed from "@/components/CampusFeed";
 
 const campusFeedState = vi.hoisted(() => ({
   createPost: vi.fn(),
+  pendingNewPostCount: 0,
+  revealNewPosts: vi.fn(),
+  setFeedScope: vi.fn(),
   push: vi.fn(),
 }));
 
@@ -28,6 +31,10 @@ vi.mock("@/components/CampusDataProvider", () => ({
     hasMore: false,
     isLoadingMore: false,
     loadMore: vi.fn(),
+    pendingNewPostCount: campusFeedState.pendingNewPostCount,
+    revealNewPosts: campusFeedState.revealNewPosts,
+    feedScope: "global",
+    setFeedScope: campusFeedState.setFeedScope,
     createPost: campusFeedState.createPost,
     toggleLike: vi.fn(),
     toggleBookmark: vi.fn(),
@@ -46,6 +53,10 @@ describe("CampusFeed composer", () => {
   beforeEach(() => {
     campusFeedState.createPost.mockReset();
     campusFeedState.createPost.mockResolvedValue("post-1");
+    campusFeedState.pendingNewPostCount = 0;
+    campusFeedState.revealNewPosts.mockReset();
+    campusFeedState.revealNewPosts.mockReturnValue(0);
+    campusFeedState.setFeedScope.mockReset();
     campusFeedState.push.mockReset();
   });
 
@@ -73,6 +84,23 @@ describe("CampusFeed composer", () => {
     expect(screen.getByRole("textbox", { name: "Gönderi metni" })).toHaveValue(
       "👍",
     );
+  });
+
+  it("reveals staged posts from the themed feed notice", () => {
+    campusFeedState.pendingNewPostCount = 3;
+    campusFeedState.revealNewPosts.mockReturnValue(3);
+
+    render(<CampusFeed />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "3 yeni gönderiyi göster" }),
+    );
+
+    expect(campusFeedState.revealNewPosts).toHaveBeenCalledTimes(1);
+    expect(window.scrollTo).toHaveBeenCalledWith({
+      top: 0,
+      behavior: "smooth",
+    });
   });
 
   it("creates an inline poll with its options", async () => {

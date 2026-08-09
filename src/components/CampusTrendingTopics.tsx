@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { useId, useMemo } from "react";
 
+import { useCampusAccount } from "@/components/CampusAccountProvider";
 import { useCampusData } from "@/components/CampusDataProvider";
-import { getCampusPostCommentCount } from "@/data/campusPosts";
-
-const HOUR_IN_MS = 60 * 60 * 1000;
+import { useCampusPostQuery } from "@/components/useCampusPostQuery";
+import {
+  getCampusTrendingMetrics,
+  rankCampusTrendingPosts,
+} from "@/content/trending";
 
 export default function CampusTrendingTopics({
   variant = "rail",
@@ -14,31 +17,32 @@ export default function CampusTrendingTopics({
   variant?: "rail" | "mobile";
 }) {
   const { posts } = useCampusData();
-  const titleId = useId();
+  const { isGuest } = useCampusAccount();
   const isMobile = variant === "mobile";
-  const trendingPosts = useMemo(() => {
-    const newestPostTime = posts.reduce(
-      (latest, post) => Math.max(latest, post.createdAt),
-      0,
-    );
+  const topicLimit = isMobile ? 3 : 4;
+  const { posts: memberTrendingPosts, isLoading } = useCampusPostQuery({
+    sort: "trending",
+    limit: topicLimit,
+    enabled: !isGuest,
+  });
+  const titleId = useId();
+  const trendingPosts = useMemo(
+    () => {
+      if (isGuest) {
+        return rankCampusTrendingPosts(posts, { limit: topicLimit });
+      }
 
-    return posts
-      .map((post) => {
-        const comments = getCampusPostCommentCount(post);
-        const ageInHours = Number.isFinite(post.createdAt)
-          ? Math.max(0, (newestPostTime - post.createdAt) / HOUR_IN_MS)
-          : 48;
-        const recencyBoost = Math.max(0, 24 - ageInHours) * 2.5;
-
-        return {
-          post,
-          interactions: post.likes + comments,
-          score: post.likes + comments * 2.25 + recencyBoost,
-        };
-      })
-      .sort((left, right) => right.score - left.score)
-      .slice(0, 3);
-  }, [posts]);
+      // Sunucu cursor'daki sabit İstanbul tarihine göre sıraladı; burada
+      // yeniden sıralamak gece yarısında sonucu oynatabilir. Sırayı koru,
+      // yalnızca ekranda gösterilecek etkileşim toplamını hesapla.
+      return memberTrendingPosts.map((post) => ({
+        post,
+        ...getCampusTrendingMetrics(post),
+        dayRank: 0,
+      }));
+    },
+    [isGuest, memberTrendingPosts, posts, topicLimit],
+  );
 
   return (
     <section
@@ -60,7 +64,16 @@ export default function CampusTrendingTopics({
         </h2>
       </header>
 
-      {trendingPosts.length > 0 ? (
+      {!isGuest && isLoading ? (
+        <div className="space-y-px" aria-label="Kampüs gündemi yükleniyor">
+          {Array.from({ length: topicLimit }, (_, item) => item).map((item) => (
+            <div
+              key={item}
+              className={`${isMobile ? "h-[88px]" : "h-[75px]"} animate-pulse border-b border-white/7 bg-white/[0.018] last:border-0`}
+            />
+          ))}
+        </div>
+      ) : trendingPosts.length > 0 ? (
         <ol>
           {trendingPosts.map(({ post, interactions }, index) => (
             <li key={post.id} className="border-b border-white/7 last:border-0">

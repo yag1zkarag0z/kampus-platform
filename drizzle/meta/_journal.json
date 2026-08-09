@@ -183,6 +183,13 @@
       "when": 1786274952580,
       "tag": "0025_melodic_abomination",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1786300000000,
+      "tag": "0026_careful_moderation_audit",
+      "breakpoints": true
     }
   ]
 }

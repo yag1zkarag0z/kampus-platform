@@ -28,6 +28,15 @@ import type {
   ContentPostDetailDto,
   ContentPostDto,
 } from "@/content/types";
+import {
+  CAMPUS_TIME_ZONE,
+  CAMPUS_TRENDING_COMMENT_WEIGHT,
+  CAMPUS_TRENDING_LIKE_WEIGHT,
+  CAMPUS_TRENDING_POLL_VOTE_WEIGHT,
+  CAMPUS_TRENDING_WINDOW_DAYS,
+  getCampusDateKey,
+  isCampusDateKey,
+} from "@/content/trending";
 import { AuthError } from "@/server/auth/errors";
 import {
   commentInteractableByViewer,
@@ -82,8 +91,7 @@ const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 // hasDocument filtresi eklendi; eski biçimli cursor'lar burada geçersiz
 // sayılır (sayfalama baştan başlar), sessizce yanlış yorumlanmaz.
-const CURSOR_VERSION = 5;
-const TRENDING_WINDOW_DAYS = 7;
+const CURSOR_VERSION = 6;
 const BOOKMARK_CURSOR_VERSION = 1;
 const POST_COMMENT_TOTAL_LIMIT = 500;
 
@@ -99,6 +107,10 @@ type FeedCursor = {
   id: string;
   /** popular sıralamasında beğeni, trending sıralamasında etkileşim puanı. */
   rank: number | null;
+  /** Trending sayfaları gece yarısından sonra da aynı tarih penceresinde kalır. */
+  trendingAnchorDate: string | null;
+  /** Bugün 6, yedi günlük pencerenin son günü 0. */
+  trendingDayRank: number | null;
 };
 
 type BookmarkCursor = {
@@ -353,8 +365,10 @@ function feedRowRank(
 function encodeFeedCursor(
   row: Pick<PostRow, "createdAt" | "id" | "likeCount"> & {
     trendingScore?: number;
+    trendingDayRank?: number;
   },
   query: FeedCursorBinding,
+  trendingAnchorDate: string | null,
 ) {
   return Buffer.from(
     JSON.stringify({
@@ -368,6 +382,11 @@ function encodeFeedCursor(
       createdAt: row.createdAt.toISOString(),
       id: row.id,
       rank: feedRowRank(row, query.sort),
+      trendingAnchorDate,
+      trendingDayRank:
+        query.sort === "trending"
+          ? Number(row.trendingDayRank ?? 0)
+          : null,
     }),
     "utf8",
   ).toString("base64url");
@@ -411,7 +430,16 @@ function decodeFeedCursor(
       (decoded.rank !== null &&
         (typeof decoded.rank !== "number" ||
           !Number.isSafeInteger(decoded.rank) ||
-          decoded.rank < 0))
+          decoded.rank < 0)) ||
+      !("trendingAnchorDate" in decoded) ||
+      (decoded.trendingAnchorDate !== null &&
+        !isCampusDateKey(decoded.trendingAnchorDate)) ||
+      !("trendingDayRank" in decoded) ||
+      (decoded.trendingDayRank !== null &&
+        (typeof decoded.trendingDayRank !== "number" ||
+          !Number.isSafeInteger(decoded.trendingDayRank) ||
+          decoded.trendingDayRank < 0 ||
+          decoded.trendingDayRank >= CAMPUS_TRENDING_WINDOW_DAYS))
     ) {
       throw invalidCursorError();
     }
@@ -423,7 +451,13 @@ function decodeFeedCursor(
       decoded.sort !== query.sort ||
       decoded.scope !== query.scope ||
       decoded.q !== (query.q ?? null) ||
-      (query.sort === "newest") !== (decoded.rank === null)
+      (query.sort === "newest") !== (decoded.rank === null) ||
+      (query.sort === "trending") !==
+        (decoded.trendingAnchorDate !== null &&
+          decoded.trendingDayRank !== null) ||
+      (query.sort !== "trending" &&
+        (decoded.trendingAnchorDate !== null ||
+          decoded.trendingDayRank !== null))
     ) {
       throw invalidCursorError();
     }
@@ -448,6 +482,8 @@ function decodeFeedCursor(
       createdAt,
       id: decoded.id,
       rank: decoded.rank,
+      trendingAnchorDate: decoded.trendingAnchorDate,
+      trendingDayRank: decoded.trendingDayRank,
     };
   } catch (error) {
     if (error instanceof AuthError) {
@@ -522,12 +558,22 @@ function escapeSearchPattern(value: string) {
 }
 
 /**
- * Arama, `kampus_search_text` ile normalize edilmiş başlık ve gövde üzerinde
- * yapılır; aynı ifade `posts_search_trgm_idx` indeksinde tanımlıdır.
+ * Arama, `kampus_search_text` ile normalize edilmiş başlık/gövde ve herkese
+ * açık gönderilerde yazar adı üzerinde yapılır. Anonim gönderiler yazar
+ * eşleşmesine dahil edilmez; arama anonimliği dolaylı biçimde sızdıramaz.
  */
 function postSearchFilter(term: string): SQL {
-  return sql`kampus_search_text(${posts.title} || ' ' || ${posts.body})
-    like '%' || kampus_search_text(${escapeSearchPattern(term)}) || '%'`;
+  const escapedTerm = escapeSearchPattern(term);
+
+  return or(
+    sql`kampus_search_text(${posts.title} || ' ' || ${posts.body})
+      like '%' || kampus_search_text(${escapedTerm}) || '%'`,
+    and(
+      eq(posts.isAnonymous, false),
+      sql`kampus_search_text(${users.displayName} || ' ' || ${users.username})
+        like '%' || kampus_search_text(${escapedTerm}) || '%'`,
+    ),
+  )!;
 }
 
 function anonymousAuthor(): ContentAuthorDto {
@@ -928,6 +974,18 @@ export async function listContentPosts(
   viewerId: string,
   query: FeedQueryInput,
 ) {
+  const cursor = query.cursor
+    ? decodeFeedCursor(query.cursor, query)
+    : null;
+  const trendingAnchorDate =
+    query.sort === "trending"
+      ? (cursor?.trendingAnchorDate ?? getCampusDateKey(new Date()))
+      : null;
+
+  if (query.sort === "trending" && !trendingAnchorDate) {
+    throw invalidCursorError();
+  }
+
   const filters: SQL[] = [
     postVisibleToViewer(viewerId),
   ];
@@ -936,22 +994,35 @@ export async function listContentPosts(
     from ${postLikes}
     where ${postLikes.postId} = ${posts.id}
   )`;
-  // Etkileşim puanı: yorum, beğeniden daha güçlü bir ilgi sinyali sayılır.
-  // Cursor karşılaştırmasında kullanıldığı için toplama değil, skaler alt
-  // sorgu olmak zorunda.
+  // Aynı gün içindeki sıralama: yorum 4, beğeni 2, anket oyu 1 puan.
+  // Skaler alt sorgular cursor karşılaştırması ile ana sorgu sırasının birebir
+  // aynı kalmasını sağlar.
   const trendingScore = sql<number>`(
     (
       select count(*)::int
       from ${postLikes}
       where ${postLikes.postId} = ${posts.id}
-    ) * 3 + (
+    ) * ${CAMPUS_TRENDING_LIKE_WEIGHT} + (
       select count(*)::int
       from ${comments}
       where ${comments.postId} = ${posts.id}
         and ${comments.deletedAt} is null
         and ${commentVisibleToViewer(viewerId)}
-    ) * 2
+    ) * ${CAMPUS_TRENDING_COMMENT_WEIGHT} + (
+      select count(*)::int
+      from ${pollVotes}
+      where ${pollVotes.pollId} = ${posts.id}
+    ) * ${CAMPUS_TRENDING_POLL_VOTE_WEIGHT}
   )`;
+  const campusPostDate = sql`timezone(${CAMPUS_TIME_ZONE}, ${posts.createdAt})::date`;
+  const anchorDate = sql`cast(${trendingAnchorDate} as date)`;
+  const trendingDayRank =
+    query.sort === "trending"
+      ? sql<number>`(
+          ${CAMPUS_TRENDING_WINDOW_DAYS - 1} -
+          (${anchorDate} - ${campusPostDate})
+        )::int`
+      : sql<number>`0`;
   const feedRank = query.sort === "trending" ? trendingScore : likeCount;
 
   if (query.q) {
@@ -960,9 +1031,11 @@ export async function listContentPosts(
 
   if (query.sort === "trending") {
     filters.push(
-      sql`${posts.createdAt} >= now() - interval '${sql.raw(
-        String(TRENDING_WINDOW_DAYS),
-      )} days'`,
+      sql`${campusPostDate} between
+        (${anchorDate} - ${sql.raw(
+          String(CAMPUS_TRENDING_WINDOW_DAYS - 1),
+        )})
+        and ${anchorDate}`,
     );
   }
 
@@ -1006,28 +1079,54 @@ export async function listContentPosts(
     );
   }
 
-  if (query.cursor) {
-    const cursor = decodeFeedCursor(query.cursor, query);
-    const cursorFilter = cursor.rank !== null
-      ? or(
-          lt(feedRank, cursor.rank),
-          and(
-            eq(feedRank, cursor.rank),
-            lt(posts.createdAt, cursor.createdAt),
-          ),
-          and(
-            eq(feedRank, cursor.rank),
-            eq(posts.createdAt, cursor.createdAt),
-            lt(posts.id, cursor.id),
-          ),
-        )
-      : or(
+  if (cursor) {
+    let cursorFilter: SQL | undefined;
+
+    if (query.sort === "trending") {
+      if (cursor.rank === null || cursor.trendingDayRank === null) {
+        throw invalidCursorError();
+      }
+
+      cursorFilter = or(
+        lt(trendingDayRank, cursor.trendingDayRank),
+        and(
+          eq(trendingDayRank, cursor.trendingDayRank),
+          lt(trendingScore, cursor.rank),
+        ),
+        and(
+          eq(trendingDayRank, cursor.trendingDayRank),
+          eq(trendingScore, cursor.rank),
           lt(posts.createdAt, cursor.createdAt),
-          and(
-            eq(posts.createdAt, cursor.createdAt),
-            lt(posts.id, cursor.id),
-          ),
-        );
+        ),
+        and(
+          eq(trendingDayRank, cursor.trendingDayRank),
+          eq(trendingScore, cursor.rank),
+          eq(posts.createdAt, cursor.createdAt),
+          lt(posts.id, cursor.id),
+        ),
+      );
+    } else if (cursor.rank !== null) {
+      cursorFilter = or(
+        lt(feedRank, cursor.rank),
+        and(
+          eq(feedRank, cursor.rank),
+          lt(posts.createdAt, cursor.createdAt),
+        ),
+        and(
+          eq(feedRank, cursor.rank),
+          eq(posts.createdAt, cursor.createdAt),
+          lt(posts.id, cursor.id),
+        ),
+      );
+    } else {
+      cursorFilter = or(
+        lt(posts.createdAt, cursor.createdAt),
+        and(
+          eq(posts.createdAt, cursor.createdAt),
+          lt(posts.id, cursor.id),
+        ),
+      );
+    }
 
     if (cursorFilter) {
       filters.push(cursorFilter);
@@ -1069,6 +1168,7 @@ export async function listContentPosts(
       commentCount,
       likeCount,
       trendingScore,
+      trendingDayRank,
       liked,
       bookmarked,
     })
@@ -1088,7 +1188,14 @@ export async function listContentPosts(
     .orderBy(
       ...(query.sort === "newest"
         ? [desc(posts.createdAt), desc(posts.id)]
-        : [desc(feedRank), desc(posts.createdAt), desc(posts.id)]),
+        : query.sort === "trending"
+          ? [
+              desc(trendingDayRank),
+              desc(trendingScore),
+              desc(posts.createdAt),
+              desc(posts.id),
+            ]
+          : [desc(likeCount), desc(posts.createdAt), desc(posts.id)]),
     )
     .limit(query.limit + 1);
 
@@ -1118,7 +1225,7 @@ export async function listContentPosts(
     page: {
       nextCursor:
         hasMore && lastVisibleRow
-          ? encodeFeedCursor(lastVisibleRow, query)
+          ? encodeFeedCursor(lastVisibleRow, query, trendingAnchorDate)
           : null,
       hasMore,
     },

@@ -347,7 +347,10 @@ describe("moderation routes with PostgreSQL", () => {
     const response = await postResolveReport(
       jsonRequest(`/v1/moderation/reports/${reportId}/resolve`, "POST", {
         cookie: moderatorCookie,
-        body: { resolution: "content_removed" },
+        body: {
+          resolution: "content_removed",
+          note: "Topluluk kuralı ihlali doğrulandı.",
+        },
       }),
       { params: Promise.resolve({ id: reportId }) },
     );
@@ -391,7 +394,10 @@ describe("moderation routes with PostgreSQL", () => {
     const response = await postResolveReport(
       jsonRequest(`/v1/moderation/reports/${reportId}/resolve`, "POST", {
         cookie: moderatorCookie,
-        body: { resolution: "user_suspended" },
+        body: {
+          resolution: "user_suspended",
+          note: "Ağır topluluk kuralı ihlali.",
+        },
       }),
       { params: Promise.resolve({ id: reportId }) },
     );
@@ -416,7 +422,10 @@ describe("moderation routes with PostgreSQL", () => {
       jsonRequest(
         `/v1/moderation/users/${moderatorB.id}/status`,
         "PATCH",
-        { cookie: cookieA, body: { status: "suspended" } },
+        {
+          cookie: cookieA,
+          body: { status: "suspended", note: "Yetki sınırı testi." },
+        },
       ),
       { params: Promise.resolve({ id: moderatorB.id }) },
     );
@@ -537,6 +546,33 @@ describe("moderation routes with PostgreSQL", () => {
         [member.id],
       ),
     ).rejects.toMatchObject({ code: "55000" });
+  });
+
+  it("rejects audit rows without content and report provenance", async () => {
+    const moderator = await insertAccount("moderator");
+    const author = await insertAccount();
+    const post = await createContentPost(author.id, {
+      category: "chat",
+      title: "Audit provenance gönderisi",
+      body: "",
+      isAnonymous: false,
+    });
+
+    await expect(
+      pool.query(
+        `insert into moderation_actions (
+           actor_id, action, post_id, note
+         ) values ($1, 'content_restored', $2, 'Eksik rapor bağlantısı.')`,
+        [moderator.id, post.id],
+      ),
+    ).rejects.toMatchObject({ code: "23514" });
+
+    await expect(
+      pool.query(
+        `insert into moderation_actions (action, note)
+         values ('content_hidden', 'Eksik gönderi bağlantısı.')`,
+      ),
+    ).rejects.toMatchObject({ code: "23514" });
   });
 
   it("does not restore a deleted account", async () => {

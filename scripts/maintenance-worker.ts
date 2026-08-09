@@ -6,6 +6,10 @@ import {
   type MaintenanceMode,
 } from "../src/server/maintenance/service";
 import { DATA_RETENTION_POLICY } from "../src/server/maintenance/policy";
+import {
+  errorLogFields,
+  logEvent,
+} from "../src/server/observability/logger";
 
 function numericOption(name: string, fallback: number) {
   const argument = process.argv
@@ -72,21 +76,28 @@ async function main() {
   do {
     const report = await runMaintenance({ dryRun, mode, batchSize });
 
-    console.log(
-      JSON.stringify({ event: "maintenance.completed", ...report }),
-    );
+    logEvent("info", "maintenance.completed", {
+      dryRun: report.dryRun,
+      mode: report.mode,
+      status: report.status,
+      durationMs:
+        Date.parse(report.finishedAt) - Date.parse(report.startedAt),
+      deletedUsers: report.cleanup.users,
+      deletedPosts: report.cleanup.posts,
+      deletedComments: report.cleanup.comments,
+      deletedMedia:
+        report.cleanup.mediaAssets + report.cleanup.documentAssets,
+      orphanObjectsDeleted: report.reconciliation.orphanObjectsDeleted,
+    });
 
     if (maintenanceHasFailures(report)) {
       if (once) process.exitCode = 1;
-      console.error(
-        JSON.stringify({
-          event: "maintenance.anomaly",
-          storageDeleteFailures:
-            report.cleanup.storageDeleteFailures +
-            report.reconciliation.orphanDeleteFailures,
-          sizeMismatches: report.reconciliation.sizeMismatches,
-        }),
-      );
+      logEvent("error", "maintenance.anomaly", {
+        storageDeleteFailures:
+          report.cleanup.storageDeleteFailures +
+          report.reconciliation.orphanDeleteFailures,
+        sizeMismatches: report.reconciliation.sizeMismatches,
+      });
     }
 
     if (once || controller.signal.aborted) return;
@@ -95,11 +106,6 @@ async function main() {
 }
 
 void main().catch((error: unknown) => {
-  console.error(
-    JSON.stringify({
-      event: "maintenance.failed",
-      message: error instanceof Error ? error.message : "Unknown error",
-    }),
-  );
+  logEvent("error", "maintenance.failed", errorLogFields(error));
   process.exitCode = 1;
 });

@@ -587,6 +587,21 @@ export const moderationActions = pgTable(
       sql`${table.action} not in ('user_suspended', 'user_restored', 'role_changed')
         or ${table.targetUserId} is not null`,
     ),
+    check(
+      "moderation_actions_content_post_check",
+      sql`${table.action} not in ('report_dismissed', 'content_removed', 'content_hidden', 'content_restored')
+        or ${table.postId} is not null`,
+    ),
+    check(
+      "moderation_actions_report_provenance_check",
+      sql`${table.action} not in ('report_dismissed', 'content_removed', 'content_restored')
+        or ${table.reportId} is not null`,
+    ),
+    check(
+      "moderation_actions_report_scope_check",
+      sql`${table.reportId} is null
+        or ${table.action} in ('report_dismissed', 'content_removed', 'content_restored', 'user_suspended')`,
+    ),
   ],
 );
 

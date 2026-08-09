@@ -131,7 +131,7 @@ export function getModerationReports(
 
 export function resolveModerationReport(
   reportId: string,
-  input: { resolution: ReportResolutionDto; note?: string },
+  input: { resolution: ReportResolutionDto; note: string },
 ) {
   return requestApi<void>(
     `/v1/moderation/reports/${encodeURIComponent(reportId)}/resolve`,
@@ -148,7 +148,7 @@ export function getManagedUsers(cursor?: string) {
 
 export function updateUserStatus(
   userId: string,
-  input: { status: "active" | "suspended"; note?: string },
+  input: { status: "active" | "suspended"; note: string },
 ) {
   return requestApi<void>(
     `/v1/moderation/users/${encodeURIComponent(userId)}/status`,

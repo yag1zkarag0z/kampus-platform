@@ -133,6 +133,32 @@ afterAll(async () => {
 });
 
 describe("content service with PostgreSQL", () => {
+  it("searches public posts by author without exposing anonymous authors", async () => {
+    const viewer = await insertUser("Search Viewer");
+    const author = await insertUser("Ece Arama");
+    const publicPost = await createContentPost(author.id, {
+      category: "chat",
+      title: "Final programı hakkında",
+      body: "Takvim bugün güncellendi.",
+      isAnonymous: false,
+    });
+    const anonymousPost = await createContentPost(author.id, {
+      category: "confession",
+      title: "Kütüphanedeki sessizlik",
+      body: "Bugün herkes çok sakindi.",
+      isAnonymous: true,
+    });
+
+    const result = await listContentPosts(
+      viewer.id,
+      newestFeed({ q: "Ece Arama" }),
+    );
+    const resultIds = result.data.map((post) => post.id);
+
+    expect(resultIds).toContain(publicPost.id);
+    expect(resultIds).not.toContain(anonymousPost.id);
+  });
+
   it("persists a validated image, links it once, and removes it with its post", async () => {
     const owner = await insertUser("Image Owner");
     const source = await sharp({
@@ -593,9 +619,11 @@ describe("content service with PostgreSQL", () => {
     const commented = await createPost("Yorumlu gönderi");
     const liked = await createPost("Beğenilen gönderi");
     const quiet = await createPost("Sessiz gönderi");
+    const yesterdayPopular = await createPost("Dünün popüler gönderisi");
     const stale = await createPost("Eski ama popüler gönderi");
 
-    // Yorum 2, beğeni 3 puan: iki beğeni bir yorumu geçmeli.
+    // Yorum 4, beğeni 2 puan: iki beğeniyle bir yorum eşitlenir; daha yeni
+    // olan gönderi eşitliği kazanır.
     await createContentComment(voters[0].id, commented.id, {
       body: "Tek yorum",
       isAnonymous: false,
@@ -606,9 +634,14 @@ describe("content service with PostgreSQL", () => {
     }
 
     for (const voter of voters) {
+      await setContentPostLike(voter.id, yesterdayPopular.id, true);
       await setContentPostLike(voter.id, stale.id, true);
     }
 
+    await pool.query(
+      "update posts set created_at = now() - interval '1 day' where id = $1",
+      [yesterdayPopular.id],
+    );
     await pool.query(
       "update posts set created_at = now() - interval '30 days' where id = $1",
       [stale.id],
@@ -623,6 +656,11 @@ describe("content service with PostgreSQL", () => {
 
     expect(ids.indexOf(liked.id)).toBeLessThan(ids.indexOf(commented.id));
     expect(ids.indexOf(commented.id)).toBeLessThan(ids.indexOf(quiet.id));
+    // Bugünün sessiz gönderisi bile dünkü yüksek etkileşimli gönderiden önce
+    // gelir; bugün azsa sonuçlar haftadan tamamlanır.
+    expect(ids.indexOf(quiet.id)).toBeLessThan(
+      ids.indexOf(yesterdayPopular.id),
+    );
     // Pencere dışındaki gönderi puanı yüksek olsa da listede olmamalı.
     expect(ids).not.toContain(stale.id);
   });

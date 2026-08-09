@@ -23,6 +23,35 @@ import {
 } from "@/notifications/client";
 
 const UNREAD_COUNT_POLL_INTERVAL_MS = 45_000;
+const GUEST_NOTIFICATIONS_READ_KEY = "kampus:guest-notifications-read";
+
+function hasReadGuestNotifications() {
+  try {
+    return window.sessionStorage.getItem(GUEST_NOTIFICATIONS_READ_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function rememberGuestNotificationsRead() {
+  try {
+    window.sessionStorage.setItem(GUEST_NOTIFICATIONS_READ_KEY, "1");
+  } catch {
+    // Storage can be unavailable in strict privacy modes. In-memory state still
+    // behaves correctly for the current page lifetime.
+  }
+}
+
+function initialGuestNotifications() {
+  if (!hasReadGuestNotifications()) {
+    return guestNotifications;
+  }
+
+  return guestNotifications.map((notification) => ({
+    ...notification,
+    isRead: true,
+  }));
+}
 
 type CampusNotificationContextValue = {
   notifications: NotificationDto[];
@@ -68,8 +97,11 @@ export function CampusNotificationProvider({
         }
 
         setUnreadCount(
-          guestNotifications.filter((notification) => !notification.isRead)
-            .length,
+          hasReadGuestNotifications()
+            ? 0
+            : guestNotifications.filter(
+                (notification) => !notification.isRead,
+              ).length,
         );
         setIsUnreadCountHydrated(true);
       });
@@ -130,7 +162,14 @@ export function CampusNotificationProvider({
       // hazır — /bildirimler'e hiç uğramadan da rozet doğru sayıyı gösterir.
       queueMicrotask(() => {
         if (!isCancelled) {
-          setNotifications(guestNotifications);
+          setNotifications((current) =>
+            current.length > 0 &&
+            current.every((notification) =>
+              notification.id.startsWith("guest-notif-"),
+            )
+              ? current
+              : initialGuestNotifications(),
+          );
           setNextCursor(null);
           setIsNotificationsHydrated(true);
         }
@@ -240,17 +279,21 @@ export function CampusNotificationProvider({
     const unreadNotifications = notifications.filter(
       (notification) => !notification.isRead,
     );
+    const unreadTotal = Math.max(unreadCount, unreadNotifications.length);
 
-    if (unreadNotifications.length === 0) {
+    if (unreadTotal === 0) {
       return 0;
     }
 
     if (sessionMode !== "member") {
+      if (sessionMode === "guest") {
+        rememberGuestNotificationsRead();
+      }
       setNotifications((current) =>
         current.map((notification) => ({ ...notification, isRead: true })),
       );
       setUnreadCount(0);
-      return unreadNotifications.length;
+      return unreadTotal;
     }
 
     setNotifications((current) =>
@@ -262,9 +305,9 @@ export function CampusNotificationProvider({
       const result = await markAllNotificationsRead();
       return result.markedCount;
     } catch {
-      return unreadNotifications.length;
+      return unreadTotal;
     }
-  }, [notifications, sessionMode]);
+  }, [notifications, sessionMode, unreadCount]);
 
   const value = useMemo<CampusNotificationContextValue>(
     () => ({

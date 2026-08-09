@@ -1775,6 +1775,18 @@
         "moderation_actions_target_check": {
           "name": "moderation_actions_target_check",
           "value": "\"moderation_actions\".\"action\" not in ('user_suspended', 'user_restored', 'role_changed')\n        or \"moderation_actions\".\"target_user_id\" is not null"
+        },
+        "moderation_actions_content_post_check": {
+          "name": "moderation_actions_content_post_check",
+          "value": "\"moderation_actions\".\"action\" not in ('report_dismissed', 'content_removed', 'content_hidden', 'content_restored')\n        or \"moderation_actions\".\"post_id\" is not null"
+        },
+        "moderation_actions_report_provenance_check": {
+          "name": "moderation_actions_report_provenance_check",
+          "value": "\"moderation_actions\".\"action\" not in ('report_dismissed', 'content_removed', 'content_restored')\n        or \"moderation_actions\".\"report_id\" is not null"
+        },
+        "moderation_actions_report_scope_check": {
+          "name": "moderation_actions_report_scope_check",
+          "value": "\"moderation_actions\".\"report_id\" is null\n        or \"moderation_actions\".\"action\" in ('report_dismissed', 'content_removed', 'content_restored', 'user_suspended')"
         }
       },
       "isRLSEnabled": false

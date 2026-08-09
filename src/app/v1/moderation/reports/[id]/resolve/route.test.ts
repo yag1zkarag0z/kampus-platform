@@ -34,7 +34,7 @@ function configureEnvironment() {
 }
 
 function createRequest(
-  body: unknown = { resolution: "dismissed" },
+  body: unknown = { resolution: "dismissed", note: "İhlal bulunamadı." },
   origin = appOrigin,
 ) {
   return new NextRequest(
@@ -73,13 +73,13 @@ describe("POST /v1/moderation/reports/[id]/resolve", () => {
       moderatorId,
       reportId,
       "dismissed",
-      undefined,
+      "İhlal bulunamadı.",
     );
     expect(response.status).toBe(204);
     expect(response.headers.get("cache-control")).toBe("no-store");
   });
 
-  it("forwards an optional note", async () => {
+  it("forwards the decision note", async () => {
     await POST(
       createRequest({ resolution: "content_removed", note: "Kurallara aykırı." }),
       context(),
@@ -91,6 +91,16 @@ describe("POST /v1/moderation/reports/[id]/resolve", () => {
       "content_removed",
       "Kurallara aykırı.",
     );
+  });
+
+  it("requires an audit note for every resolution", async () => {
+    const response = await POST(
+      createRequest({ resolution: "content_removed" }),
+      context(),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mockedResolveReport).not.toHaveBeenCalled();
   });
 
   it("rejects malformed input and cross-origin requests", async () => {

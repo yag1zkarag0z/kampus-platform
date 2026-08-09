@@ -309,6 +309,52 @@ describe("CampusDataProvider", () => {
     });
   });
 
+  it("stages newer posts without moving the feed until they are revealed", async () => {
+    const currentPost = makePostDto({
+      id: "current-post",
+      createdAt: "2026-07-29T09:00:00.000Z",
+    });
+    const newPost = makePostDto({
+      id: "new-post",
+      createdAt: "2026-07-29T09:05:00.000Z",
+    });
+
+    contentClientMocks.listContentPosts
+      .mockReset()
+      .mockResolvedValueOnce(makePostListDto([currentPost]))
+      .mockResolvedValueOnce(makePostListDto([newPost, currentPost]));
+
+    const { result } = renderHook(() => useCampusData(), { wrapper });
+
+    await waitFor(() => expect(result.current.isHydrated).toBe(true));
+
+    act(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+
+    await waitFor(() => {
+      expect(result.current.pendingNewPostCount).toBe(1);
+    });
+
+    expect(contentClientMocks.listContentPosts).toHaveBeenNthCalledWith(2, {
+      limit: 50,
+      scope: "global",
+    });
+    expect(result.current.posts.map((post) => post.id)).toEqual([
+      "current-post",
+    ]);
+
+    act(() => {
+      expect(result.current.revealNewPosts()).toBe(1);
+    });
+
+    expect(result.current.pendingNewPostCount).toBe(0);
+    expect(result.current.posts.map((post) => post.id)).toEqual([
+      "new-post",
+      "current-post",
+    ]);
+  });
+
   it("loads the next cursor page and appends only new post IDs", async () => {
     contentClientMocks.listContentPosts
       .mockReset()

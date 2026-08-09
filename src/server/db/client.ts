@@ -5,6 +5,10 @@ import { Pool } from "pg";
 
 import { getServerEnvironment } from "@/server/env";
 import * as schema from "@/server/db/schema";
+import {
+  errorLogFields,
+  logEvent,
+} from "@/server/observability/logger";
 
 function createDatabaseConnection() {
   const { DATABASE_URL } = getServerEnvironment();
@@ -17,8 +21,10 @@ function createDatabaseConnection() {
     application_name: "kampus-web",
   });
 
-  pool.on("error", () => {
-    console.error("[database] Unexpected error on an idle PostgreSQL client.");
+  pool.on("error", (error) => {
+    logEvent("error", "database.idle_client_error", {
+      ...errorLogFields(error),
+    });
   });
 
   return {

@@ -1,7 +1,15 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { logEvent } from "@/server/observability/logger";
+
 import { POST } from "./route";
+
+vi.mock("@/server/observability/logger", () => ({
+  logEvent: vi.fn(),
+}));
+
+const mockedLogEvent = vi.mocked(logEvent);
 
 function createRequest(body: unknown, origin = "http://localhost:3000") {
   return new NextRequest(
@@ -26,12 +34,10 @@ describe("POST /v1/analytics/homepage-cta", () => {
     process.env.SMTP_PORT = "1025";
     process.env.SMTP_SECURE = "false";
     process.env.EMAIL_FROM = "KAMPUS Test <no-reply@kampus.local>";
+    mockedLogEvent.mockReset();
   });
 
   it("accepts a privacy-minimal homepage CTA event", async () => {
-    const consoleInfo = vi
-      .spyOn(console, "info")
-      .mockImplementation(() => undefined);
     const response = await POST(
       createRequest({
         event: "homepage_cta_click",
@@ -44,20 +50,20 @@ describe("POST /v1/analytics/homepage-cta", () => {
     await expect(response.json()).resolves.toEqual({
       data: { accepted: true },
     });
-    expect(consoleInfo).toHaveBeenCalledOnce();
+    expect(mockedLogEvent).toHaveBeenCalledWith(
+      "info",
+      "analytics.homepage_cta_clicked",
+      expect.objectContaining({
+        requestId: expect.any(String),
+        source: "hero_register",
+        target: "register",
+      }),
+    );
 
-    const loggedEvent = JSON.parse(
-      String(consoleInfo.mock.calls[0]?.[0]),
-    ) as Record<string, unknown>;
+    const fields = mockedLogEvent.mock.calls[0]?.[2];
 
-    expect(loggedEvent).toMatchObject({
-      type: "analytics_event",
-      name: "homepage_cta_click",
-      source: "hero_register",
-      target: "register",
-    });
-    expect(loggedEvent).not.toHaveProperty("ip");
-    expect(loggedEvent).not.toHaveProperty("userAgent");
+    expect(fields).not.toHaveProperty("ip");
+    expect(fields).not.toHaveProperty("userAgent");
   });
 
   it("rejects unknown event values", async () => {

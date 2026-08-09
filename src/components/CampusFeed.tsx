@@ -251,6 +251,8 @@ export default function CampusFeed() {
     hasMore,
     isLoadingMore,
     loadMore,
+    pendingNewPostCount,
+    revealNewPosts,
     feedScope,
     setFeedScope,
     createPost,
@@ -728,6 +730,20 @@ export default function CampusFeed() {
     }
   };
 
+  const showNewPosts = () => {
+    if (revealNewPosts() === 0) {
+      return;
+    }
+
+    setActiveCategory("Tümü");
+    window.scrollTo({
+      top: 0,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+    });
+  };
+
   return (
     <section
       aria-labelledby="campus-feed-title"
@@ -845,6 +861,27 @@ export default function CampusFeed() {
             )}
           </div>
         </div>
+
+        {!isGuest && pendingNewPostCount > 0 && (
+          <div className="border-t border-brand/15 bg-brand/[0.055] px-3 py-2 sm:px-5">
+            <button
+              type="button"
+              onClick={showNewPosts}
+              className={`mx-auto flex min-h-10 w-fit items-center justify-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-4 text-sm font-black text-brand transition-colors hover:border-brand/45 hover:bg-brand/16 ${focusRing}`}
+            >
+              <span
+                aria-hidden="true"
+                className="size-1.5 rotate-45 bg-brand motion-safe:animate-pulse"
+              />
+              {pendingNewPostCount === 1
+                ? "Yeni gönderiyi göster"
+                : `${pendingNewPostCount} yeni gönderiyi göster`}
+              <span aria-hidden="true" className="text-base leading-none">
+                ↑
+              </span>
+            </button>
+          </div>
+        )}
       </header>
 
       {guestStatus &&

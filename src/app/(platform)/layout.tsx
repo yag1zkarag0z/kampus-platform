@@ -28,9 +28,10 @@ export default function PlatformLayout({
               >
                 İçeriğe geç
               </a>
-              {/* Büyük masaüstünde X'e yakın 300 / 720 / 460 px oranı:
-                  akış okunabilir kalırken navigasyon ve sağ panel dolgun durur. */}
-              <div className="min-h-svh w-full md:grid md:justify-center md:grid-cols-[4rem_minmax(0,35rem)] xl:grid-cols-[12rem_minmax(0,35rem)_16.5rem] 2xl:grid-cols-[15rem_minmax(0,36rem)_23rem]">
+              {/* 1536 px'de X'e yakın 300 / 720 / 460 px tabanı korunur.
+                  Daha geniş ekranlarda üç sütun birlikte kontrollü büyür;
+                  akış 800 px'i geçmez ve kartlar gereksiz yere yayılmaz. */}
+              <div className="min-h-svh w-full md:grid md:justify-center md:grid-cols-[4rem_minmax(0,35rem)] xl:grid-cols-[12rem_minmax(0,35rem)_16.5rem] 2xl:grid-cols-[clamp(15rem,16vw,17rem)_clamp(36rem,39vw,40rem)_clamp(23rem,25vw,25rem)]">
                 <AppNavigation />
                 <main
                   id="platform-content"

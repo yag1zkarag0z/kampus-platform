@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import CampusMemberSearch from "@/components/CampusMemberSearch";
 import CampusTrendingTopics from "@/components/CampusTrendingTopics";
 import FollowSuggestions from "@/components/FollowSuggestions";
 
@@ -57,6 +58,7 @@ export default function PlatformRightRail() {
           telafisi yok. Takip önerisi her zaman geçerli, altta kalabilir. */}
       <div id="platform-right-rail-content" hidden={!isOpen}>
         <div className="space-y-5">
+          <CampusMemberSearch />
           <CampusTrendingTopics />
           <FollowSuggestions />
         </div>

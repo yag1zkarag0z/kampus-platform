@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import { AuthClientError } from "@/auth/client";
 import ActionStatusText from "@/components/ActionStatusText";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
@@ -29,6 +30,7 @@ import {
 } from "@/components/useCampusPostQuery";
 import { toContentCategory } from "@/content/adapter";
 import type { ContentPostSort } from "@/content/client";
+import { rankCampusTrendingPosts } from "@/content/trending";
 import {
   campusCategoryBadgeBase,
   campusCategoryStyles,
@@ -37,6 +39,11 @@ import {
   getCampusPostCommentCount,
   isAnonymousCampusAuthor,
 } from "@/data/campusPosts";
+import { campusFollowMembers } from "@/data/campusFollows";
+import {
+  searchMembers as searchCampusMembers,
+  type FollowMemberDto,
+} from "@/social/client";
 
 const SEARCH_MIN_LENGTH = 2;
 
@@ -55,7 +62,7 @@ export default function CampusExplore() {
   const [guestStatusAnchor, setGuestStatusAnchor] = useState<string | null>(
     null,
   );
-  const { isGuest } = useCampusAccount();
+  const { isGuest, retrySession, sessionMode } = useCampusAccount();
   const {
     posts: dataPosts,
     toggleLike,
@@ -80,6 +87,13 @@ export default function CampusExplore() {
     return true;
   };
   const [query, setQuery] = useState("");
+  const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
+  const [memberSearchResults, setMemberSearchResults] = useState<
+    FollowMemberDto[]
+  >([]);
+  const [isMemberSearchLoading, setIsMemberSearchLoading] = useState(false);
+  const [hasMemberSearchFailed, setHasMemberSearchFailed] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   const [activeCategory, setActiveCategory] =
     useState<CampusCategoryFilter>("Tümü");
   const [activeSort, setActiveSort] =
@@ -88,6 +102,33 @@ export default function CampusExplore() {
   const debouncedQuery = useDebouncedValue(query.trim());
   const searchTerm =
     debouncedQuery.length >= SEARCH_MIN_LENGTH ? debouncedQuery : undefined;
+  const isMemberSearchWaiting =
+    query.trim().length >= SEARCH_MIN_LENGTH &&
+    query.trim() !== debouncedQuery;
+  const guestMemberSearchResults = useMemo<FollowMemberDto[]>(() => {
+    if (!isGuest || !searchTerm) {
+      return [];
+    }
+
+    const normalizedQuery = searchTerm.toLocaleLowerCase("tr-TR");
+
+    return campusFollowMembers
+      .filter((member) =>
+        `${member.displayName} ${member.username}`
+          .toLocaleLowerCase("tr-TR")
+          .includes(normalizedQuery),
+      )
+      .slice(0, 6)
+      .map((member) => ({
+        id: member.authorId,
+        username: member.username,
+        displayName: member.displayName,
+        avatarUrl: member.avatarDataUrl ?? null,
+      }));
+  }, [isGuest, searchTerm]);
+  const profileSearchResults = isGuest
+    ? guestMemberSearchResults
+    : memberSearchResults;
 
   const {
     posts: queriedPosts,
@@ -118,6 +159,80 @@ export default function CampusExplore() {
     registerPosts(queriedPosts);
   }, [queriedPosts, registerPosts]);
 
+  useEffect(() => {
+    const closeSearchDropdown = (event: PointerEvent) => {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(event.target as Node)
+      ) {
+        setIsSearchDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeSearchDropdown);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeSearchDropdown);
+    };
+  }, []);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    if (
+      !isSearchDropdownOpen ||
+      sessionMode !== "member" ||
+      !searchTerm
+    ) {
+      queueMicrotask(() => {
+        if (!isCancelled) {
+          setMemberSearchResults([]);
+          setIsMemberSearchLoading(false);
+          setHasMemberSearchFailed(false);
+        }
+      });
+
+      return () => {
+        isCancelled = true;
+      };
+    }
+
+    queueMicrotask(() => {
+      if (!isCancelled) {
+        setIsMemberSearchLoading(true);
+        setHasMemberSearchFailed(false);
+      }
+    });
+
+    searchCampusMembers(searchTerm)
+      .then((members) => {
+        if (!isCancelled) {
+          setMemberSearchResults(members.slice(0, 6));
+        }
+      })
+      .catch((error: unknown) => {
+        if (isCancelled) {
+          return;
+        }
+
+        setMemberSearchResults([]);
+        setHasMemberSearchFailed(true);
+
+        if (error instanceof AuthClientError && error.status === 401) {
+          void retrySession();
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsMemberSearchLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isSearchDropdownOpen, retrySession, searchTerm, sessionMode]);
+
   // Misafirde gerçek API'ye hiç gidilmiyor; aynı arama/kategori/sıralama
   // sabit misafir verisi üzerinde istemci tarafında uygulanıyor.
   const guestVisiblePosts = useMemo(() => {
@@ -140,11 +255,17 @@ export default function CampusExplore() {
         return true;
       }
 
-      const haystack = `${post.title} ${post.body}`.toLocaleLowerCase(
-        "tr-TR",
-      );
+      const publicAuthorText = post.isAnonymous
+        ? ""
+        : `${post.author} ${post.detail ?? ""}`;
+      const haystack = `${post.title} ${post.body} ${publicAuthorText}`
+        .toLocaleLowerCase("tr-TR");
       return haystack.includes(normalizedQuery);
     });
+
+    if (activeSort === "trending") {
+      return rankCampusTrendingPosts(filtered).map(({ post }) => post);
+    }
 
     return [...filtered].sort((first, second) =>
       activeSort === "popular"
@@ -166,6 +287,17 @@ export default function CampusExplore() {
     setQuery("");
     setActiveCategory("Tümü");
     setHasDocumentOnly(false);
+  };
+
+  const submitPostSearch = () => {
+    if (query.trim().length < SEARCH_MIN_LENGTH) {
+      return;
+    }
+
+    setActiveSort("newest");
+    setActiveCategory("Tümü");
+    setHasDocumentOnly(false);
+    setIsSearchDropdownOpen(false);
   };
 
   return (
@@ -203,13 +335,23 @@ export default function CampusExplore() {
           <label htmlFor="campus-search" className="sr-only">
             Kampüs gönderilerinde ara
           </label>
-          <div className="relative">
+          <div ref={searchContainerRef} className="relative">
             <SearchIcon />
             <input
               id="campus-search"
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
+              onFocus={() => setIsSearchDropdownOpen(true)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  setIsSearchDropdownOpen(false);
+                  event.currentTarget.blur();
+                } else if (event.key === "Enter") {
+                  event.preventDefault();
+                  submitPostSearch();
+                }
+              }}
               placeholder="Kampüste ara"
               autoComplete="off"
               className={`min-h-14 w-full rounded-full border border-white/12 bg-white/5 py-3 pr-12 pl-12 text-base font-medium text-white placeholder:text-white/45 ${focusRing}`}
@@ -223,6 +365,94 @@ export default function CampusExplore() {
               >
                 <CloseIcon />
               </button>
+            )}
+
+            {isSearchDropdownOpen && (
+              <div
+                id="campus-profile-search-results"
+                role="region"
+                aria-label="Kişi ve gönderi arama önerileri"
+                className="absolute inset-x-0 top-[calc(100%+8px)] z-50 max-h-[min(70svh,34rem)] overflow-y-auto rounded-2xl border border-white/12 bg-surface-raised shadow-[0_18px_42px_rgba(0,0,0,0.34)]"
+              >
+                {query.trim().length < SEARCH_MIN_LENGTH ? (
+                  <p className="min-h-24 px-5 py-5 text-sm leading-6 text-white/58">
+                    Gönderi veya kişi aramak için yazmaya başla.
+                  </p>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={submitPostSearch}
+                      className="flex min-h-14 w-full items-center gap-3 px-5 text-left text-sm font-bold text-white outline-none transition-colors hover:bg-white/6 focus-visible:bg-white/6"
+                    >
+                      <span className="grid size-8 shrink-0 place-items-center text-white/70">
+                        <SearchIcon standalone />
+                      </span>
+                      <span className="min-w-0 truncate">
+                        “{query.trim()}” gönderilerinde ara
+                      </span>
+                    </button>
+
+                    <div className="border-t border-white/10 py-2">
+                      <p className="px-5 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.13em] text-white/42">
+                        Kişiler
+                      </p>
+
+                      {isMemberSearchWaiting ||
+                      (!isGuest && isMemberSearchLoading) ? (
+                        <div
+                          role="status"
+                          className="flex min-h-20 items-center gap-3 px-5 text-sm text-white/55"
+                        >
+                          <span className="size-4 animate-spin rounded-full border-2 border-white/15 border-t-brand motion-reduce:animate-none" />
+                          Kişiler aranıyor
+                        </div>
+                      ) : hasMemberSearchFailed ? (
+                        <p className="min-h-20 px-5 py-3 text-sm leading-6 text-white/55">
+                          Kişi araması şu anda tamamlanamadı.
+                        </p>
+                      ) : profileSearchResults.length === 0 ? (
+                        <p className="min-h-20 px-5 py-3 text-sm leading-6 text-white/55">
+                          Eşleşen profil bulunamadı.
+                        </p>
+                      ) : (
+                        <ul>
+                          {profileSearchResults.map((member) => (
+                            <li key={member.id}>
+                              <Link
+                                href={`/profil/${encodeURIComponent(member.username)}`}
+                                onClick={() => setIsSearchDropdownOpen(false)}
+                                className="flex min-h-16 items-center gap-3 px-5 py-2.5 outline-none transition-colors hover:bg-white/6 focus-visible:bg-white/6"
+                              >
+                                <CampusAuthorAvatar
+                                  author={member.displayName}
+                                  authorId={member.id}
+                                  avatarUrl={member.avatarUrl}
+                                  size="md"
+                                />
+                                <span className="min-w-0">
+                                  <span className="block truncate text-sm font-black tracking-[-0.02em] text-white">
+                                    {member.displayName}
+                                  </span>
+                                  <span className="mt-0.5 block truncate text-xs text-white/45">
+                                    @{member.username}
+                                  </span>
+                                </span>
+                                <span
+                                  aria-hidden="true"
+                                  className="ml-auto text-sm text-white/28"
+                                >
+                                  →
+                                </span>
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
           </div>
         </div>

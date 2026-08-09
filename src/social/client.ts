@@ -81,3 +81,12 @@ export function getSuggestedFollows() {
     cache: "no-store",
   });
 }
+
+export function searchMembers(query: string) {
+  const searchParams = new URLSearchParams({ q: query });
+
+  return requestApi<FollowMemberDto[]>(
+    `/v1/users/search?${searchParams.toString()}`,
+    { cache: "no-store" },
+  );
+}
