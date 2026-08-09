@@ -101,6 +101,26 @@ test("notification filters and mobile navigation fit at 320px", async ({
     expect(width.scrollWidth).toBeLessThanOrEqual(width.clientWidth + 1);
   }
 
+  await expect(page.locator("#notifications-list h2").first()).toBeVisible();
+
+  const firstNotification = page.locator("#notifications-list li").first();
+  const mobileTime = firstNotification.locator("time:visible");
+  const actorLine = firstNotification.locator("span.block.truncate").first();
+  const [timeBox, actorBox] = await Promise.all([
+    mobileTime.boundingBox(),
+    actorLine.boundingBox(),
+  ]);
+
+  expect(timeBox).not.toBeNull();
+  expect(actorBox).not.toBeNull();
+  expect(timeBox?.y ?? 0).toBeGreaterThan(actorBox?.y ?? 0);
+
+  const unreadBackground = await page
+    .locator('#notifications-list a[aria-label*="Okunmamış"]')
+    .first()
+    .evaluate((element) => getComputedStyle(element).backgroundColor);
+  expect(unreadBackground).not.toBe("rgba(0, 0, 0, 0)");
+
   await expectNoHorizontalOverflow(page);
 });
 

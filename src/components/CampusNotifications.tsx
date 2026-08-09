@@ -311,14 +311,12 @@ export default function CampusNotifications() {
 
           {notificationSections.map((section) => (
             <section key={section.id} aria-labelledby={`notifications-${section.id}`}>
-              {notificationSections.length > 1 && (
-                <h2
-                  id={`notifications-${section.id}`}
-                  className="px-4 pt-4 pb-1 text-[11px] font-bold uppercase tracking-wide text-white/40 sm:px-6"
-                >
-                  {section.label}
-                </h2>
-              )}
+              <h2
+                id={`notifications-${section.id}`}
+                className="px-[14px] pt-4 pb-1.5 text-[10px] font-bold tracking-[0.16em] text-white/42 uppercase sm:px-6 sm:text-[11px]"
+              >
+                {section.label}
+              </h2>
               <ol>
                 {section.items.map((notification) => (
                   <NotificationItem
@@ -387,7 +385,11 @@ function NotificationItem({
         aria-label={`${copy.actorLabel} ${copy.action} ${copy.preview}. ${
           isRead ? "" : "Okunmamış. "
         }${time}. ${targetLabel}`}
-        className={`flex min-h-19 items-center gap-[10px] px-[14px] py-3 transition-colors hover:bg-white/3 sm:gap-3 sm:px-6 ${focusRing}`}
+        className={`flex min-h-19 items-center gap-[10px] px-[14px] py-3 transition-colors sm:gap-3 sm:px-6 ${focusRing} ${
+          isRead
+            ? "hover:bg-white/3"
+            : "bg-brand/[0.035] hover:bg-brand/[0.065]"
+        }`}
       >
         <span className="relative shrink-0">
           <CampusAuthorAvatar
@@ -406,22 +408,50 @@ function NotificationItem({
           </span>
           {copy.preview && (
             <span
-              className={`mt-0.5 block truncate text-sm ${
+              className={`mt-0.5 hidden truncate text-sm sm:block ${
                 isRead ? "text-white/45" : "text-white/62"
               }`}
             >
               {copy.preview}
             </span>
           )}
+
+          <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[11px] sm:hidden">
+            {copy.preview && (
+              <span
+                className={`min-w-0 truncate ${
+                  isRead ? "text-white/45" : "text-white/62"
+                }`}
+              >
+                {copy.preview}
+              </span>
+            )}
+            {copy.preview && (
+              <span aria-hidden="true" className="shrink-0 text-white/25">
+                ·
+              </span>
+            )}
+            <time
+              dateTime={notification.createdAt}
+              className="shrink-0 text-white/45"
+            >
+              {compactTime}
+            </time>
+            {!isRead && (
+              <span
+                aria-hidden="true"
+                className="size-1.5 shrink-0 rounded-full bg-brand"
+              />
+            )}
+          </span>
         </span>
 
-        <span className="flex shrink-0 flex-col items-end gap-1.5">
+        <span className="hidden shrink-0 flex-col items-end gap-1.5 sm:flex">
           <time
             dateTime={notification.createdAt}
-            className="text-[11px] text-white/45 sm:text-xs"
+            className="text-xs text-white/45"
           >
-            <span className="sm:hidden">{compactTime}</span>
-            <span className="hidden sm:inline">{time}</span>
+            {time}
           </time>
           {!isRead && (
             <span

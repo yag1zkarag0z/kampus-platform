@@ -75,9 +75,8 @@ function NavigationIconGlyph({ name }: { name: NavigationIconName }) {
     case "home":
       return (
         <>
-          <path d="M4 11.5 12 4l8 7.5" />
-          <path d="M6 9.8V20h12V9.8" />
-          <path d="M10 20v-5.5h4V20" />
+          <path d="m4.4 11.3 6.3-5.7a1.95 1.95 0 0 1 2.6 0l6.3 5.7c.45.4.7.98.7 1.58v5.22a2.3 2.3 0 0 1-2.3 2.3H6a2.3 2.3 0 0 1-2.3-2.3v-5.22c0-.6.25-1.18.7-1.58Z" />
+          <path d="M9.2 20.4v-4.65a2.8 2.8 0 0 1 5.6 0v4.65" />
         </>
       );
     case "feed":
@@ -632,7 +631,7 @@ export default function AppNavigation() {
                     : undefined
                 }
                 title="Konu aç"
-                className="mt-3 inline-flex min-h-14 w-full items-center justify-center rounded-xl bg-brand px-1 text-[10px] font-black leading-none text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/45 xl:min-h-12 xl:gap-2 xl:px-4 xl:text-sm"
+                className="mt-3 inline-flex min-h-14 w-full items-center justify-center rounded-full border border-white/12 bg-brand px-1 text-[10px] font-black leading-none text-[#101012] shadow-[0_8px_22px_rgba(255,107,61,0.09)] outline-none transition-[transform,background-color,box-shadow] hover:-translate-y-px hover:bg-brand-hover hover:shadow-[0_10px_28px_rgba(255,107,61,0.14)] active:translate-y-0 focus-visible:ring-3 focus-visible:ring-brand/45 motion-reduce:transform-none xl:min-h-12 xl:gap-2 xl:px-4 xl:text-sm"
               >
                 <ShareIcon className="size-[1.35rem] shrink-0 xl:size-5" />
                 <span className="hidden xl:inline">Konu aç</span>
