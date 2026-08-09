@@ -46,7 +46,11 @@ export default function CampusGif({ gif, compact = false }: { gif: CampusGifData
           isLoaded ? "opacity-100" : "opacity-0"
         }`}
       />
-      <figcaption className="sr-only">GIPHY tarafından sağlanan GIF</figcaption>
+      <figcaption className="sr-only">
+        {gif.src.startsWith("https://media.giphy.com/")
+          ? "GIPHY tarafından sağlanan GIF"
+          : "KAMPÜS için hazırlanmış hareketli görsel"}
+      </figcaption>
     </figure>
   );
 }

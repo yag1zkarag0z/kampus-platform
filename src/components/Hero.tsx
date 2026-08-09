@@ -62,6 +62,10 @@ export default function Hero() {
         </header>
 
         <div className="mx-auto flex max-w-4xl flex-col items-center px-2 pb-12 pt-16 text-center sm:pb-14 sm:pt-20 lg:pb-16 lg:pt-24">
+          <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.025] px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.13em] text-white/58 sm:text-[11px]">
+            <span aria-hidden="true" className="size-1.5 rounded-full bg-brand" />
+            Bağımsız öğrenci ağı
+          </p>
           <h1 className="text-[clamp(3.15rem,7.8vw,6.45rem)] font-semibold leading-[0.95] tracking-[-0.06em]">
             Yaşar kampüsü,
             <span className="block">

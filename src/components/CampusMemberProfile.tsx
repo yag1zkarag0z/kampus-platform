@@ -291,7 +291,7 @@ export default function CampusMemberProfile({
     isSelf
       ? profile.joinedLabel
       : isOfficial
-        ? "Resmî topluluk hesabı"
+        ? "KAMPÜS topluluk hesabı"
         : managedUser?.joinedLabel ??
           suggestedMember?.joinedLabel ??
           "KAMPÜS topluluğu";
@@ -299,7 +299,7 @@ export default function CampusMemberProfile({
     isSelf && profile.bio
       ? profile.bio
       : isOfficial
-        ? "Yaşar Üniversitesi öğrencileri için duyuru, güvenlik ve topluluk güncellemeleri."
+        ? "Bağımsız öğrenci ağı için duyuru, güvenlik ve topluluk güncellemeleri."
         : suggestedMember?.bio ??
           "Yaşar Üniversitesi kampüs topluluğu üyesi.";
   const receivedLikes = authoredPosts.reduce(

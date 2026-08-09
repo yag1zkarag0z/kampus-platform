@@ -37,7 +37,7 @@ export const guestNotifications: NotificationDto[] = [
     ],
     post: {
       id: "campus-welcome",
-      title: "Yeni döneme 'merhaba' demenin en iyi yolu neymiş",
+      title: "Yeni döneme birlikte merhaba diyelim",
       isDeleted: false,
     },
     comment: null,

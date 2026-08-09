@@ -31,9 +31,9 @@ export const campusFollowMembers: CampusFollowMember[] = [
     author: "KAMPÜS",
     displayName: "KAMPÜS",
     username: "kampus",
-    detail: "Resmî topluluk hesabı",
+    detail: "KAMPÜS topluluk hesabı",
     bio: "Kampüsten duyurular, topluluk haberleri ve önemli güncellemeler.",
-    joinedLabel: "Resmî topluluk hesabı",
+    joinedLabel: "KAMPÜS topluluk hesabı",
   },
   {
     authorId: "seed-ecearslan",

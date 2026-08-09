@@ -57,7 +57,7 @@ const notifications = [
     avatarUrl: avatarUrl("deniz-akin"),
     title: "Deniz Akın ve 2 kişi",
     action: "gönderini beğendi.",
-    detail: "Yeni döneme ‘merhaba’ demenin en iyi yolu neymiş",
+    detail: "Yeni döneme birlikte merhaba diyelim",
     time: "7 dk",
   },
   {
