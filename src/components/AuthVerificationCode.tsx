@@ -277,7 +277,7 @@ export function VerificationCodePanel({
           : "Doğrulama kodu e-postana gönderildi.";
 
   return (
-    <div className="mt-[16px] space-y-[10px] sm:space-y-[12px]">
+    <div className="mt-[16px] space-y-[10px] sm:space-y-[12px] lg:mx-auto lg:w-[400px]">
       <p
         className="sr-only"
         role={isExpired || isLocked ? "alert" : "status"}
@@ -320,7 +320,7 @@ export function VerificationCodePanel({
         onClick={onResend}
         disabled={!canResend || isResending}
         aria-controls={inputId}
-        className="min-h-[44px] w-full rounded-[12px] border border-white/12 px-[16px] text-[12px] font-black text-white outline-none transition-colors hover:border-brand/35 hover:bg-brand/8 focus-visible:ring-3 focus-visible:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-48 lg:mx-auto lg:block lg:min-h-[50px] lg:w-[272px] lg:text-[14px]"
+        className="min-h-[44px] w-full rounded-[12px] border border-white/12 px-[16px] text-[12px] font-black text-white outline-none transition-colors hover:border-brand/35 hover:bg-brand/8 focus-visible:ring-3 focus-visible:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-48 lg:min-h-[50px] lg:text-[14px]"
       >
         {resendLabel}
       </button>

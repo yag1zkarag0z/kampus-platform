@@ -40,8 +40,8 @@ test("homepage stays inside the viewport with stable card dimensions", async ({
 });
 
 test("reduced motion freezes looping homepage demos", async ({ page }) => {
-  const notificationAnimation = await page
-    .getByTestId("notification-rail")
+  const discoverAnimation = await page
+    .getByTestId("discover-rail")
     .evaluate((element) => getComputedStyle(element).animationName);
   const typingAnimation = await page
     .getByTestId("composer-typing-line")
@@ -53,7 +53,7 @@ test("reduced motion freezes looping homepage demos", async ({ page }) => {
     .getByTestId("follow-suggestion-card")
     .evaluate((element) => getComputedStyle(element).transitionDuration);
 
-  expect(notificationAnimation).toBe("none");
+  expect(discoverAnimation).toBe("none");
   expect(typingAnimation).toBe("none");
   expect(messageAnimation).toBe("none");
   expect(followTransition).toBe("0s");

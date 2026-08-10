@@ -96,6 +96,14 @@ export default function Hero() {
               Kayıt ol
             </HomepageTrackedLink>
           </div>
+
+          <p className="mt-4 text-xs leading-5 text-white/42 sm:text-[13px]">
+            Kayıt için{" "}
+            <strong className="font-semibold text-white/62">
+              @stu.yasar.edu.tr
+            </strong>{" "}
+            adresin gerekir.
+          </p>
         </div>
       </div>
     </section>

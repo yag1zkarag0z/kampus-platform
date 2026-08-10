@@ -10,6 +10,8 @@ import {
   type ReactNode,
 } from "react";
 import { campusAvatarUrl as avatarUrl } from "@/avatar/catalog";
+import { campusCategoryStyles } from "@/data/campusCategoryStyles";
+import type { CampusPostCategory } from "@/data/campusPosts";
 import styles from "./HomepageBento.module.css";
 
 type SwipeDirection = "follow" | "skip";
@@ -52,34 +54,62 @@ function DemoAvatar({
   );
 }
 
-const notifications = [
-  {
-    avatarUrl: avatarUrl("deniz-akin"),
-    title: "Deniz Akın ve 2 kişi",
-    action: "gönderini beğendi.",
-    detail: "Yeni döneme birlikte merhaba diyelim",
-    time: "7 dk",
-  },
-  {
-    avatarUrl: avatarUrl("ece-yilmaz"),
-    title: "Ece Yılmaz",
-    action: "gönderine yorum yaptı:",
-    detail: "Notları PDF olarak da paylaşabilir misin?",
-    time: "21 dk",
-  },
+/* Alanlar /kesfet akışındaki gönderi kartıyla birebir: kategori rozeti,
+   yazar, üst bilgi satırı, başlık, gövde, beğeni ve yorum sayısı. */
+const discoverPosts: {
+  avatarUrl: string;
+  author: string;
+  category: CampusPostCategory;
+  detail: string;
+  title: string;
+  body: string;
+  likes: number;
+  comments: number;
+  time: string;
+}[] = [
   {
     avatarUrl: avatarUrl("irem-ozturk"),
-    title: "İrem Öztürk",
-    action: "seni takip etmeye başladı.",
-    detail: "@iremozturk artık paylaşımlarını takip ediyor.",
-    time: "46 dk",
+    author: "@iremozturk",
+    category: "Anket",
+    detail: "Topluluk anketi",
+    title: "Final haftasında hangisisin?",
+    body: "Çalışma düzenimizin bilimsel olmayan ama gerçekçi özeti.",
+    likes: 112,
+    comments: 1,
+    time: "5 sa",
   },
   {
     avatarUrl: avatarUrl("deniz-ari"),
-    title: "Deniz Arı",
-    action: "bir yorumda senden bahsetti:",
-    detail: "@sen geçen hafta bu hocanın kaynaklarını bulmuştun.",
-    time: "3 sa",
+    author: "@denizari",
+    category: "Kayıp Eşya",
+    detail: "Ortak alan",
+    title: "Ortak alanda bırakılan şarj kablosu",
+    body: "Sabahtan beri masada duruyor, sahibi arıyorsa bende.",
+    likes: 58,
+    comments: 4,
+    time: "31 dk",
+  },
+  {
+    avatarUrl: avatarUrl("ece-yilmaz"),
+    author: "@eceyilmaz",
+    category: "Sohbet",
+    detail: "Kampüs",
+    title: "Kantinde yeni menü nasıl olmuş?",
+    body: "Fiyatlar değişmiş, tadı hakkında ne düşünüyorsunuz?",
+    likes: 76,
+    comments: 9,
+    time: "1 sa",
+  },
+  {
+    avatarUrl: avatarUrl("deniz-akin"),
+    author: "@denizakin",
+    category: "Etkinlik",
+    detail: "Bahar şenliği",
+    title: "Sahne için hangi kulüp sırada?",
+    body: "Program taslağı çıktı, önerilerinizi buraya bırakın.",
+    likes: 93,
+    comments: 12,
+    time: "2 sa",
   },
 ];
 
@@ -145,33 +175,53 @@ function BentoCard({
   );
 }
 
-function NotificationsDemo() {
+function DiscoverDemo() {
   return (
-    <div className={styles.notificationViewport} aria-hidden="true">
-      <div className={styles.notificationRail} data-testid="notification-rail">
+    <div className={styles.discoverViewport} aria-hidden="true">
+      <div className={styles.discoverRail} data-testid="discover-rail">
         {[0, 1].map((group) => (
-          <div key={group} className={styles.notificationGroup}>
-            {notifications.map((notification) => (
-              <div
-                key={`${group}-${notification.title}-${notification.action}`}
-                className={styles.notificationItem}
+          <div key={group} className={styles.discoverGroup}>
+            {discoverPosts.map((post) => (
+              <article
+                key={`${group}-${post.title}`}
+                className={styles.discoverPost}
               >
-                <DemoAvatar src={notification.avatarUrl} />
-                <div className="min-w-0">
-                  <p className="truncate text-[12px] leading-5 text-white/70 sm:text-[13px]">
-                    <strong className="font-black text-white">
-                      {notification.title}
-                    </strong>{" "}
-                    {notification.action}
-                  </p>
-                  <p className="truncate text-[11px] leading-5 text-white/40 sm:text-xs">
-                    {notification.detail}
-                  </p>
+                <div className={styles.discoverHead}>
+                  <DemoAvatar src={post.avatarUrl} size="sm" />
+                  <span className={styles.discoverIdentity}>
+                    <span className={styles.discoverBadgeRow}>
+                      <span
+                        className={`${styles.discoverBadge} ${campusCategoryStyles[post.category].badge}`}
+                      >
+                        <span aria-hidden="true">
+                          {campusCategoryStyles[post.category].glyph}
+                        </span>
+                        {post.category}
+                      </span>
+                      <span className={styles.discoverDiamond} />
+                      <span className={styles.discoverAuthor}>
+                        {post.author}
+                      </span>
+                    </span>
+                    <span className={styles.discoverDetail}>{post.detail}</span>
+                  </span>
+                  <span className={styles.discoverTime}>{post.time}</span>
                 </div>
-                <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-white/35">
-                  {notification.time}
-                </span>
-              </div>
+
+                <p className={styles.discoverTitle}>{post.title}</p>
+                <p className={styles.discoverBody}>{post.body}</p>
+
+                <div className={styles.discoverActions}>
+                  <span className={styles.discoverAction}>
+                    <span aria-hidden="true">♡</span>
+                    {post.likes} beğeni
+                  </span>
+                  <span className={styles.discoverAction}>
+                    <span aria-hidden="true">💬</span>
+                    {post.comments} yorum
+                  </span>
+                </div>
+              </article>
             ))}
           </div>
         ))}
@@ -275,29 +325,50 @@ function MessagesDemo() {
         </div>
 
         <div className={styles.messageThread}>
-          <div className={`${styles.messageBubble} ${styles.messageIncoming}`}>
-            <p>Kütüphanede misin?</p>
-            <time>10:24</time>
-          </div>
-
-          <div className={styles.messageTyping}>
-            <span />
-            <span />
-            <span />
+          <div
+            className={`${styles.messageRow} ${styles.messageRowStart} ${styles.messageRowIncoming}`}
+          >
+            <div className={`${styles.messageBubble} ${styles.messageIncoming}`}>
+              <p>Kütüphanede misin?</p>
+              <time>10:24</time>
+            </div>
           </div>
 
           <div
-            className={`${styles.messageBubble} ${styles.messageOutgoing}`}
-            data-testid="homepage-message-reply"
+            className={`${styles.messageRow} ${styles.messageRowStart} ${styles.messageRowTyping}`}
           >
-            <p>Evet, üst kattayım.</p>
-            <time>10:25</time>
+            <div className={styles.messageTyping}>
+              <span />
+              <span />
+              <span />
+            </div>
           </div>
-          <span className={styles.messageRead}>Okundu ✓✓</span>
 
-          <div className={`${styles.messageBubble} ${styles.messageClosing}`}>
-            <p>Geliyorum 👋</p>
-            <time>10:25</time>
+          <div
+            className={`${styles.messageRow} ${styles.messageRowEnd} ${styles.messageRowOutgoing}`}
+          >
+            <div
+              className={`${styles.messageBubble} ${styles.messageOutgoing}`}
+              data-testid="homepage-message-reply"
+            >
+              <p>Evet, üst kattayım.</p>
+              <time>10:25</time>
+            </div>
+          </div>
+
+          <div
+            className={`${styles.messageRow} ${styles.messageRowEnd} ${styles.messageRowRead}`}
+          >
+            <span className={styles.messageRead}>Okundu ✓✓</span>
+          </div>
+
+          <div
+            className={`${styles.messageRow} ${styles.messageRowStart} ${styles.messageRowClosing}`}
+          >
+            <div className={`${styles.messageBubble} ${styles.messageClosing}`}>
+              <p>Geliyorum 👋</p>
+              <time>10:25</time>
+            </div>
           </div>
         </div>
 
@@ -557,17 +628,27 @@ export default function HomepageBento() {
   return (
     <section
       id="kampus-nabzi"
-      aria-label="KAMPÜS özellikleri"
+      aria-labelledby="kampus-nabzi-title"
       className={`${styles.section} relative overflow-x-clip text-white`}
       data-testid="homepage-bento"
     >
       <div className="relative mx-auto w-full max-w-[1180px] px-5 pb-10 sm:px-8 sm:pb-12 lg:px-10 lg:pb-14">
+        {/* Kartlar saf aksiyon demosu; "kapalı ağ" mesajını slot harcamadan
+            bu başlık çerçeveliyor. */}
+        <h2
+          id="kampus-nabzi-title"
+          className="mb-6 text-center text-[clamp(1.6rem,5.2vw,2.7rem)] font-semibold leading-[1.34] tracking-[-0.05em] text-white sm:mb-9"
+        >
+          Sadece <span className={styles.brandUnderline}>Yaşar öğrencileri</span>{" "}
+          girebilir<span className="text-brand">.</span>
+        </h2>
+
         <div
           className="grid min-w-0 gap-3 sm:grid-cols-2 sm:gap-4"
           data-testid="homepage-bento-grid"
         >
-          <BentoCard id="homepage-notifications" title="Bildirimler">
-            <NotificationsDemo />
+          <BentoCard id="homepage-discover" title="Keşfet">
+            <DiscoverDemo />
           </BentoCard>
 
           <BentoCard id="homepage-composer" title="Gönderi oluştur">

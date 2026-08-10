@@ -23,6 +23,7 @@ import {
   VerificationCodePanel,
 } from "@/components/AuthVerificationCode";
 import {
+  authControlClassName,
   authFlowBodyClassName,
   authFlowCardClassName,
   authFlowHeaderClassName,
@@ -299,7 +300,10 @@ export default function RegisterFlow({
   return (
     <div className={authFlowCardClassName}>
       <div className={authFlowHeaderClassName}>
-        <ol className="grid grid-cols-4 gap-[6px] sm:gap-[8px]" aria-label="Kayıt adımları">
+        <ol
+          className="grid grid-cols-4 gap-[6px] sm:gap-[8px] lg:flex lg:justify-center lg:gap-[10px]"
+          aria-label="Kayıt adımları"
+        >
           {stepLabels.map((label, index) => {
             const number = index + 1;
             const isCurrent = number === step;
@@ -308,10 +312,12 @@ export default function RegisterFlow({
             return (
               <li
                 key={label.full}
-                className={`min-w-0 rounded-full border px-[5px] py-[7px] text-center text-[10px] font-bold transition-colors sm:px-[8px] sm:py-[8px] sm:text-[11px] lg:px-[12px] lg:py-[10px] lg:text-[12px] ${
-                  isCurrent || isDone
-                    ? "border-brand/45 bg-brand/10 text-[#ff8968]"
-                    : "border-white/8 text-white/48 sm:text-white/35"
+                className={`min-w-0 rounded-full border px-[5px] py-[7px] text-center text-[10px] font-bold transition-colors sm:px-[8px] sm:py-[8px] sm:text-[11px] lg:px-[26px] lg:py-[9px] lg:text-[12px] ${
+                  isCurrent
+                    ? "border-brand/50 bg-brand/12 text-[#ff8968]"
+                    : isDone
+                      ? "border-brand/22 bg-brand/5 text-[#ff8968]/60"
+                      : "border-white/8 text-white/48 sm:text-white/35"
                 }`}
                 aria-current={isCurrent ? "step" : undefined}
               >
@@ -349,7 +355,7 @@ export default function RegisterFlow({
             </h2>
             <Link
               href="/akis"
-              className="mt-[24px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[16px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[272px]"
+              className="mt-[24px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[16px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px]"
             >
               Akışa geç
             </Link>
@@ -385,7 +391,7 @@ export default function RegisterFlow({
               type="button"
               onClick={() => void saveAvatar()}
               disabled={isSavingAvatar}
-              className="relative mt-[18px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[16px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65 sm:mx-auto sm:mt-[24px] sm:flex sm:min-h-[50px] sm:w-auto sm:min-w-[210px] sm:px-[22px] lg:mt-[18px] lg:min-h-[52px] lg:w-[272px] lg:min-w-[272px]"
+              className="relative mt-[18px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[16px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65 sm:mx-auto sm:mt-[24px] sm:flex sm:min-h-[50px] sm:w-auto sm:min-w-[210px] sm:px-[22px] lg:mt-[18px] lg:min-h-[52px] lg:w-[400px] lg:min-w-[400px]"
             >
               {isSavingAvatar ? "Kaydediliyor…" : "Bu avatarı kullan"}
               <span aria-hidden="true" className="absolute right-[18px]">→</span>
@@ -429,7 +435,7 @@ export default function RegisterFlow({
                 clearMessage();
               }}
               placeholder="öğrenci.no@stu.yasar.edu.tr"
-              className={`${authInputClassName} mt-2`}
+              className={`${authInputClassName} ${authControlClassName} mt-2`}
               aria-invalid={invalidField === "email"}
               aria-describedby="register-email-help register-message"
               required
@@ -439,7 +445,7 @@ export default function RegisterFlow({
             <button
               type="submit"
               disabled={verification.isRequesting}
-              className="mt-[16px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[272px]"
+              className="mt-[16px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px]"
             >
               {verification.isRequesting
                 ? "Kod gönderiliyor…"
@@ -502,7 +508,7 @@ export default function RegisterFlow({
                 verification.isResending ||
                 verification.isVerifying
               }
-              className={`${authInputClassName} mt-[8px] text-center font-mono text-[20px] font-bold tracking-[0.3em] disabled:cursor-not-allowed disabled:opacity-55 lg:text-[24px]`}
+              className={`${authInputClassName} ${authControlClassName} mt-[8px] text-center font-mono text-[20px] font-bold tracking-[0.3em] disabled:cursor-not-allowed disabled:opacity-55 lg:text-[24px]`}
               aria-invalid={invalidField === "code"}
               aria-describedby="register-code-help register-message"
               required
@@ -542,7 +548,7 @@ export default function RegisterFlow({
                 verification.isResending ||
                 verification.isVerifying
               }
-              className="relative mt-[18px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:opacity-55 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[272px]"
+              className="relative mt-[18px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:opacity-55 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px]"
             >
               {verification.isVerifying ? "Doğrulanıyor…" : "Kodu doğrula"}
               <span aria-hidden="true" className="absolute right-[18px]">→</span>
@@ -812,7 +818,7 @@ export default function RegisterFlow({
             <button
               type="submit"
               disabled={isRegistering}
-              className="relative mt-[20px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65 sm:mt-[24px] sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[272px]"
+              className="relative mt-[20px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65 sm:mt-[24px] sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px]"
             >
               {isRegistering ? "Hesap oluşturuluyor…" : "Kaydı tamamla"}
               <span aria-hidden="true" className="absolute right-[18px]">→</span>
@@ -836,8 +842,8 @@ export default function RegisterFlow({
       </div>
 
       {!complete && step !== 4 && (
-        <div className="hidden border-t border-white/8 bg-surface-raised px-[24px] py-[16px] text-center text-white/62 sm:flex sm:items-center sm:justify-center lg:min-h-[84px] lg:text-[13px]">
-          Zaten hesabın var mı?{" "}
+        <div className="hidden border-t border-white/8 bg-surface-raised px-[24px] py-[16px] text-center text-white/62 sm:flex sm:items-center sm:justify-center sm:gap-[6px] lg:min-h-[84px] lg:text-[13px]">
+          <span>Zaten hesabın var mı?</span>
           <Link
             href="/giris"
             className="font-bold text-brand underline decoration-brand/35 underline-offset-4"

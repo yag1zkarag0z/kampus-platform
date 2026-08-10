@@ -39,57 +39,148 @@
   background: var(--surface-raised);
 }
 
-.notificationViewport {
+/* Keşfet kartı: /kesfet akışındaki gönderi kartının sıkıştırılmış hâli
+   (kategori rozeti + yazar + başlık + gövde + beğeni/yorum). Liste iki kez
+   basılıyor; şerit -50%'ten 0'a inerken ikinci kopya birincinin yerine
+   oturduğu için döngü dikişsiz — eski bildirim şeridiyle aynı mekanik. */
+.discoverViewport {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  padding: 0.9rem;
+  background: var(--surface);
 }
 
-.notificationRail {
+.discoverRail {
   display: grid;
-  animation: notificationFall 16s linear infinite;
+  animation: discoverFall 22s linear infinite;
   will-change: transform;
 }
 
-.notificationGroup {
+.discoverGroup {
   display: grid;
-  gap: 0.7rem;
-  padding-block: 0.35rem;
 }
 
-.notificationItem {
-  position: relative;
+.discoverPost {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 0.75rem;
+  gap: 0.22rem;
+  padding: 0.65rem 0.8rem;
+  border-bottom: 1px solid rgb(255 255 255 / 8%);
+}
+
+.discoverHead {
+  display: flex;
   align-items: center;
-  min-height: 4.35rem;
-  padding: 0.7rem;
-  border: 1px solid rgb(255 255 255 / 9%);
-  border-radius: 1rem;
-  background: var(--surface-raised);
-  box-shadow: none;
+  gap: 0.45rem;
+  min-width: 0;
 }
 
-.notificationItem::after {
-  position: absolute;
-  top: 50%;
-  right: 0.45rem;
-  width: 0.28rem;
-  height: 0.28rem;
-  border-radius: 999px;
-  background: var(--brand);
-  content: "";
-  transform: translateY(-50%);
+.discoverIdentity {
+  display: grid;
+  min-width: 0;
+  gap: 0.1rem;
 }
 
-.bentoCard:hover .notificationRail,
-.bentoCard:focus-within .notificationRail {
+.discoverBadgeRow {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.discoverBadge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.04rem 0.32rem;
+  border: 1px solid rgb(255 255 255 / 10%);
+  background: rgb(255 255 255 / 4%);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 68%);
+}
+
+.discoverDiamond {
+  width: 0.22rem;
+  height: 0.22rem;
+  flex-shrink: 0;
+  background: rgb(255 107 61 / 55%);
+  transform: rotate(45deg);
+}
+
+.discoverAuthor {
+  overflow: hidden;
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: rgb(255 255 255 / 88%);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.discoverDetail {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.48rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 45%);
+}
+
+.discoverTime {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-size: 0.56rem;
+  font-weight: 600;
+  color: rgb(255 255 255 / 50%);
+}
+
+.discoverTitle {
+  overflow: hidden;
+  margin-top: 0.14rem;
+  font-size: 0.86rem;
+  font-weight: 900;
+  line-height: 1.15rem;
+  letter-spacing: -0.025em;
+  color: rgb(255 255 255 / 96%);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.discoverBody {
+  overflow: hidden;
+  font-size: 0.66rem;
+  font-weight: 500;
+  line-height: 1rem;
+  color: rgb(255 255 255 / 60%);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.discoverActions {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 0.16rem;
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: rgb(255 255 255 / 50%);
+}
+
+.discoverAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+}
+
+.bentoCard:hover .discoverRail,
+.bentoCard:focus-within .discoverRail {
   animation-play-state: paused;
 }
 
-@keyframes notificationFall {
+@keyframes discoverFall {
   from {
     transform: translateY(-50%);
   }
@@ -232,6 +323,47 @@
   }
 }
 
+/* Başlıkta "Yaşar öğrencileri" ifadesinin altına akan turuncu vurgu.
+   Renk durakları palindrom ve zemin 200% genişlikte; tam bir kutu boyu
+   kaydırınca desen kendini tekrarladığı için döngü dikişsiz. */
+.brandUnderline {
+  position: relative;
+  white-space: nowrap;
+}
+
+.brandUnderline::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -0.16em;
+  left: 0;
+  height: 0.09em;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    #ffc94a,
+    #ff9b3c,
+    var(--brand),
+    #ff4d6d,
+    var(--brand),
+    #ff9b3c,
+    #ffc94a
+  );
+  background-size: 200% 100%;
+  box-shadow: 0 0 14px rgb(255 107 61 / 38%);
+  animation: brandUnderlineFlow 5s linear infinite;
+}
+
+@keyframes brandUnderlineFlow {
+  from {
+    background-position: 0% 50%;
+  }
+
+  to {
+    background-position: -200% 50%;
+  }
+}
+
 .messageCanvas {
   position: absolute;
   inset: 0;
@@ -258,12 +390,63 @@
   flex: 1;
   flex-direction: column;
   justify-content: flex-end;
-  gap: 0.35rem;
+  overflow: hidden;
   padding: 0.7rem 0.8rem 0.45rem;
   background:
     linear-gradient(rgb(255 255 255 / 1.5%) 1px, transparent 1px),
     var(--surface-raised);
   background-size: 100% 3.5rem;
+  mask-image: linear-gradient(to bottom, transparent, #000 1.5rem);
+}
+
+/* Her satır kendi yüksekliğini de animasyonluyor: kapalıyken yer kaplamıyor,
+   açılınca üstündeki mesajları yukarı itiyor. `auto` yüksekliğe animasyon
+   yapılamadığı için max-height kullanıyoruz; değerler satırın doğal
+   yüksekliğinin (sırasıyla ~3.29rem / 2rem / 1.25rem) biraz üstünde, böylece
+   yazı tipi metrikleri oynasa da içerik kırpılmıyor. */
+.messageRow {
+  display: flex;
+  flex-shrink: 0;
+  align-items: flex-start;
+  max-height: 0;
+  overflow: hidden;
+
+  /* İsimsiz `animation` kısayolu bu derleyicide düşüyor, longhand şart. */
+  animation-duration: 6.4s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-iteration-count: infinite;
+}
+
+.messageRow > * {
+  margin-block-start: 0.35rem;
+}
+
+.messageRowStart {
+  justify-content: flex-start;
+}
+
+.messageRowEnd {
+  justify-content: flex-end;
+}
+
+.messageRowIncoming {
+  animation-name: messageRowIncoming;
+}
+
+.messageRowTyping {
+  animation-name: messageRowTyping;
+}
+
+.messageRowOutgoing {
+  animation-name: messageRowOutgoing;
+}
+
+.messageRowRead {
+  animation-name: messageRowRead;
+}
+
+.messageRowClosing {
+  animation-name: messageRowClosing;
 }
 
 .messageBubble {
@@ -290,7 +473,6 @@
 
 .messageIncoming,
 .messageClosing {
-  align-self: flex-start;
   border: 1px solid rgb(255 255 255 / 8%);
   border-bottom-left-radius: 0.25rem;
   background: var(--surface-hover);
@@ -302,7 +484,6 @@
 }
 
 .messageOutgoing {
-  align-self: flex-end;
   border-bottom-right-radius: 0.25rem;
   background: var(--brand);
   color: #17110f;
@@ -320,7 +501,6 @@
   width: fit-content;
   align-items: center;
   gap: 0.22rem;
-  align-self: flex-start;
   min-height: 1.65rem;
   padding: 0.45rem 0.65rem;
   border: 1px solid rgb(255 255 255 / 8%);
@@ -347,11 +527,11 @@
 }
 
 .messageRead {
-  align-self: flex-end;
   margin-right: 0.25rem;
   font-family: var(--font-geist-mono), monospace;
   font-size: 0.47rem;
   font-weight: 800;
+  line-height: 0.9rem;
   letter-spacing: 0.04em;
   color: rgb(255 255 255 / 35%);
   opacity: 0;
@@ -392,15 +572,15 @@
   }
 
   5%,
-  90% {
+  59% {
     opacity: 1;
     transform: translate(0);
   }
 
-  96%,
+  65%,
   100% {
     opacity: 0;
-    transform: translateY(-0.25rem);
+    transform: translateY(-0.35rem);
   }
 }
 
@@ -474,6 +654,89 @@
   100% {
     opacity: 0;
     transform: translateY(-0.25rem);
+  }
+}
+
+/* İlk mesaj, sohbet dolunca yukarı kayıp gitsin diye kapanış balonuyla
+   birlikte kapanıyor; böylece dört satır asla aynı anda sığmaya çalışmıyor. */
+@keyframes messageRowIncoming {
+  0% {
+    max-height: 0;
+  }
+
+  5%,
+  59% {
+    max-height: 3.6rem;
+  }
+
+  65%,
+  100% {
+    max-height: 0;
+  }
+}
+
+@keyframes messageRowTyping {
+  0%,
+  10%,
+  30%,
+  100% {
+    max-height: 0;
+  }
+
+  14%,
+  26% {
+    max-height: 2.2rem;
+  }
+}
+
+@keyframes messageRowOutgoing {
+  0%,
+  29% {
+    max-height: 0;
+  }
+
+  35%,
+  90% {
+    max-height: 3.6rem;
+  }
+
+  96%,
+  100% {
+    max-height: 0;
+  }
+}
+
+@keyframes messageRowRead {
+  0%,
+  43% {
+    max-height: 0;
+  }
+
+  49%,
+  90% {
+    max-height: 1.4rem;
+  }
+
+  96%,
+  100% {
+    max-height: 0;
+  }
+}
+
+@keyframes messageRowClosing {
+  0%,
+  59% {
+    max-height: 0;
+  }
+
+  65%,
+  90% {
+    max-height: 3.6rem;
+  }
+
+  96%,
+  100% {
+    max-height: 0;
   }
 }
 
@@ -640,11 +903,13 @@
     will-change: auto;
   }
 
-  .notificationRail,
+  .discoverRail,
   .typingLine,
   .composerOption,
   .composerToggle,
   .composerSubmit,
+  .brandUnderline::after,
+  .messageRow,
   .messageIncoming,
   .messageTyping,
   .messageTyping span,
@@ -652,6 +917,17 @@
   .messageRead,
   .messageClosing {
     animation: none;
+  }
+
+  /* Hareket kapalıyken sohbetin son hâli duruyor. Yazıyor göstergesi ve
+     kapanış balonu gizli, çünkü dördü birden karta sığmıyor. */
+  .messageRow {
+    max-height: none;
+  }
+
+  .messageRowTyping,
+  .messageRowClosing {
+    display: none;
   }
 
   .typingLine {

@@ -46,12 +46,9 @@ export default function AuthShell({
           </div>
         </header>
 
-        <div className="flex flex-1 flex-col sm:items-center sm:justify-center sm:py-[48px] lg:py-[56px]">
+        <div className="flex flex-1 flex-col sm:items-center sm:justify-center sm:py-[48px] lg:py-[40px]">
           <div className="flex w-full flex-1 flex-col sm:block sm:max-w-[760px]">
             <section className="px-[16px] pt-[26px] pb-[24px] text-center sm:mb-[32px] sm:px-0 sm:pt-0 sm:pb-0">
-              <p className="mb-[10px] font-mono text-[10px] font-bold tracking-[0.24em] text-brand uppercase sm:mb-[14px] sm:text-[11px]">
-                Yaşar · Bornova
-              </p>
               <h1 className="text-[clamp(38px,11vw,48px)] font-semibold leading-[0.96] tracking-[-0.055em] sm:text-[clamp(43px,6vw,64px)] sm:leading-[0.98]">
                 {title}
               </h1>

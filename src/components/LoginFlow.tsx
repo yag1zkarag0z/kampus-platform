@@ -10,6 +10,7 @@ import {
   VerificationCodePanel,
 } from "@/components/AuthVerificationCode";
 import {
+  authControlClassName,
   authFlowBodyClassName,
   authFlowCardClassName,
   authFlowHeaderClassName,
@@ -144,7 +145,10 @@ export default function LoginFlow() {
   return (
     <div className={authFlowCardClassName}>
       <div className={authFlowHeaderClassName}>
-        <ol className="grid grid-cols-2 gap-[8px]" aria-label="Giriş adımları">
+        <ol
+          className="grid grid-cols-2 gap-[8px] lg:flex lg:justify-center lg:gap-[10px]"
+          aria-label="Giriş adımları"
+        >
           {["E-posta", "Giriş kodu"].map((label, index) => {
             const number = index + 1;
             const isCurrent = number === step;
@@ -153,10 +157,12 @@ export default function LoginFlow() {
             return (
               <li
                 key={label}
-                className={`rounded-full border px-[8px] py-[7px] text-center text-[10px] font-bold transition-colors sm:px-[12px] sm:py-[8px] sm:text-[11px] lg:px-[16px] lg:py-[10px] lg:text-[12px] ${
-                  isCurrent || isDone
-                    ? "border-brand/45 bg-brand/10 text-[#ff8968]"
-                    : "border-white/8 text-white/48 sm:text-white/35"
+                className={`rounded-full border px-[8px] py-[7px] text-center text-[10px] font-bold transition-colors sm:px-[12px] sm:py-[8px] sm:text-[11px] lg:px-[26px] lg:py-[9px] lg:text-[12px] ${
+                  isCurrent
+                    ? "border-brand/50 bg-brand/12 text-[#ff8968]"
+                    : isDone
+                      ? "border-brand/22 bg-brand/5 text-[#ff8968]/60"
+                      : "border-white/8 text-white/48 sm:text-white/35"
                 }`}
                 aria-current={isCurrent ? "step" : undefined}
               >
@@ -189,7 +195,7 @@ export default function LoginFlow() {
             </h2>
             <Link
               href="/akis"
-              className="mt-[24px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[16px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[272px]"
+              className="mt-[24px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[16px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px]"
             >
               Akışa geç
             </Link>
@@ -224,7 +230,7 @@ export default function LoginFlow() {
                 setMessage(null);
               }}
               placeholder="öğrenci.no@stu.yasar.edu.tr"
-              className={`${authInputClassName} mt-2`}
+              className={`${authInputClassName} ${authControlClassName} mt-2`}
               aria-invalid={message !== null}
               aria-errormessage={message ? "login-message" : undefined}
               aria-describedby="login-message"
@@ -236,7 +242,7 @@ export default function LoginFlow() {
             <button
               type="submit"
               disabled={verification.isRequesting}
-              className="mt-[16px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[272px]"
+              className="mt-[16px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px]"
             >
               {verification.isRequesting
                 ? "Kod gönderiliyor…"
@@ -292,7 +298,7 @@ export default function LoginFlow() {
                 verification.isResending ||
                 verification.isVerifying
               }
-              className={`${authInputClassName} mt-[8px] text-center font-mono text-[20px] font-bold tracking-[0.3em] disabled:cursor-not-allowed disabled:opacity-55 lg:text-[24px]`}
+              className={`${authInputClassName} ${authControlClassName} mt-[8px] text-center font-mono text-[20px] font-bold tracking-[0.3em] disabled:cursor-not-allowed disabled:opacity-55 lg:text-[24px]`}
               aria-invalid={message !== null}
               aria-errormessage={message ? "login-message" : undefined}
               aria-describedby="login-code-help login-message"
@@ -333,7 +339,7 @@ export default function LoginFlow() {
                 verification.isResending ||
                 verification.isVerifying
               }
-              className="relative mt-[18px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:opacity-55 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[272px]"
+              className="relative mt-[18px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:opacity-55 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px]"
             >
               {verification.isVerifying ? "Doğrulanıyor…" : "Giriş yap"}
               <span aria-hidden="true" className="absolute right-[18px]">→</span>
@@ -364,7 +370,7 @@ export default function LoginFlow() {
             }}
             disabled={isOpeningGuestView}
             aria-busy={isOpeningGuestView}
-            className="group relative inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] border border-white/8 bg-white/[0.04] px-[16px] font-sans text-[15px] font-medium leading-none tracking-normal text-white/78 outline-none transition-colors hover:border-white/14 hover:bg-white/[0.075] hover:text-white focus-visible:ring-2 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-60 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[300px] lg:text-[16px]"
+            className="group relative inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] border border-white/8 bg-white/[0.04] px-[16px] font-sans text-[15px] font-medium leading-none tracking-normal text-white/78 outline-none transition-colors hover:border-white/14 hover:bg-white/[0.075] hover:text-white focus-visible:ring-2 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-60 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px] lg:text-[16px]"
           >
             <span>
               {isOpeningGuestView
