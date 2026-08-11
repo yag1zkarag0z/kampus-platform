@@ -13,15 +13,16 @@ kaynağı `src/server/maintenance/policy.ts` dosyasıdır. Politika değişiklik
 | Rate-limit hit | 31 gün | Hard-delete; 30 günlük kullanıcı adı penceresini korur |
 | Bildirim | 90 gün | Hard-delete |
 | Mesaj gönderilmemiş konuşma taslağı | 7 gün | Hard-delete; iki katılımcının okunma satırları cascade silinir |
+| Reddedilmiş mesaj isteği bekleme kaydı | Retten sonra 30 gün | Süre dolunca hard-delete; yalnızca aynı gönderici→alıcı yönünü sınırlar |
 | Aktif bire bir mesaj | Hesap/konuşma yaşam döngüsü boyunca | Kullanıcı silince konuşma cascade silinir; kullanıcı tarafından silinen mesajın içeriği anında boşaltılır |
 | Soft-delete gönderi ve yorum | 30 gün | Audit bağı yoksa hard-delete |
 | Silinmiş hesap | En az 30 gün | PII hemen tombstone edilir; audit bağı bitince hard-delete |
 | Bağlanmamış yükleme | 24 saat | DB kaydı ve object birlikte silinir |
-| Çözülmüş rapor ve moderasyon audit kaydı | 365 gün | Audit satırı güncellenemez; süre dolunca bakım görevi hard-delete eder |
+| Çözülmüş rapor, raporlama anındaki içerik özeti ve moderasyon audit kaydı | 365 gün | Mesaj sonradan silinse de karar kanıtı korunur; audit satırı güncellenemez ve süre dolunca bakım görevi hard-delete eder |
 | DB kaydı olmayan storage object | 24 saat grace | Object silinir |
 | Storage object'i olmayan DB asset kaydı | 24 saat grace | Attachment kaldırılır, asset kaydı silinir |
 
-Pending raporlar otomatik silinmez. Bir gönderi, yorum veya hesap aktif bir
+Pending raporlar otomatik silinmez. Bir gönderi, yorum, mesaj veya hesap aktif bir
 rapor/audit kaydına bağlıysa kısa saklama süresi dolmuş olsa bile audit süresi
 tamamlanana kadar tombstone olarak kalır. Hesap silme anında e-posta, kullanıcı
 adı, görünen ad, biyografi ve avatar zaten anonimleştirilir.

@@ -138,6 +138,8 @@ for (const viewport of [
   { width: 768, height: 1024 },
   { width: 1024, height: 900 },
   { width: 1440, height: 900 },
+  { width: 1920, height: 1080 },
+  { width: 2560, height: 1440 },
 ]) {
   test(`auth layouts stay bounded at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport);
@@ -149,11 +151,24 @@ for (const viewport of [
       const formSection = page.locator('section[aria-label$="formu"]');
       const card = formSection.locator(":scope > div");
       const box = await card.boundingBox();
+      const maximumCardWidth =
+        viewport.width >= 1536
+          ? 901
+          : viewport.width >= 1280
+            ? 861
+            : viewport.width >= 1024
+              ? 721
+              : 545;
 
       expect(box).not.toBeNull();
-      expect(box?.width ?? 0).toBeLessThanOrEqual(
-        viewport.width >= 1024 ? 721 : 545,
-      );
+      expect(box?.width ?? 0).toBeLessThanOrEqual(maximumCardWidth);
+
+      if (viewport.width >= 1536) {
+        expect(box?.width ?? 0).toBeGreaterThanOrEqual(899);
+      } else if (viewport.width >= 1280) {
+        expect(box?.width ?? 0).toBeGreaterThanOrEqual(859);
+      }
+
       await expectInsideViewport(card, viewport.width);
 
       if (viewport.width >= 1024) {
@@ -224,6 +239,7 @@ test("login and registration share the same desktop geometry", async ({
     0,
   );
   expect(login.cardBox?.y).toBeCloseTo(registration.cardBox?.y ?? 0, 0);
+  expect(login.cardBox?.y ?? 0).toBeGreaterThan(220);
   expect((login.cardBox?.x ?? 0) + (login.cardBox?.width ?? 0) / 2).toBeCloseTo(
     720,
     0,
@@ -242,4 +258,7 @@ test("login and registration share the same desktop geometry", async ({
   );
   expect(login.alignments).toEqual(["center", "center", "center"]);
   expect(registration.alignments).toEqual(["center", "center", "center"]);
+  await expect(
+    page.getByRole("button", { name: "Misafir olarak göz at" }),
+  ).toBeVisible();
 });

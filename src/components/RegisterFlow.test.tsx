@@ -10,6 +10,10 @@ import {
 } from "@/auth/client";
 import RegisterFlow from "@/components/RegisterFlow";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 vi.mock("@/auth/client", async () => {
   const actual =
     await vi.importActual<typeof import("@/auth/client")>(

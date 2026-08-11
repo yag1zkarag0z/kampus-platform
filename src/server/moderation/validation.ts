@@ -27,8 +27,8 @@ const noteSchema = z
 
 export const submitReportSchema = z
   .object({
-    targetType: z.enum(["post", "comment"], {
-      error: "Şikâyet hedefi gönderi veya yorum olmalıdır.",
+    targetType: z.enum(["post", "comment", "message"], {
+      error: "Şikâyet hedefi gönderi, yorum veya mesaj olmalıdır.",
     }),
     targetId: z.uuid("Şikâyet edilen içerik kimliği geçersiz."),
     reason: z.enum(REPORT_REASONS, {

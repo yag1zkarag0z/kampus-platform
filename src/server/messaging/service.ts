@@ -6,6 +6,7 @@ import {
   desc,
   eq,
   gt,
+  ilike,
   isNull,
   lt,
   ne,
@@ -20,18 +21,22 @@ import { getDatabase } from "@/server/db/client";
 import {
   directConversationReads,
   directConversations,
+  directMessageRequestCooldowns,
   directMessages,
+  follows,
   users,
 } from "@/server/db/schema";
 import {
   buildCursorPage,
   decodeTimelineCursor,
 } from "@/server/pagination/cursor";
+import { DATA_RETENTION_POLICY } from "@/server/maintenance/policy";
 import { consumeRateLimit } from "@/server/rate-limit/service";
 import {
   hasBlockBetween,
   noBlockBetween,
 } from "@/server/social/blocking";
+import { applyUserBlock } from "@/server/social/block-user";
 
 type MessagingDatabase = ReturnType<typeof getDatabase>;
 type MessagingTransaction = Parameters<
@@ -40,6 +45,7 @@ type MessagingTransaction = Parameters<
 type MessagingExecutor = MessagingDatabase | MessagingTransaction;
 
 const DEFAULT_MESSAGE_LIMIT = 50;
+const DEFAULT_CONVERSATION_LIMIT = 20;
 const MAX_CONVERSATION_LIMIT = 50;
 const MESSAGE_CURSOR_SCOPE = "direct-messages";
 const DELETED_MESSAGE_PREVIEW = "Bu mesaj silindi.";
@@ -63,8 +69,13 @@ export type DirectConversationSummary = {
     createdAt: string;
   } | null;
   unreadCount: number;
+  requestStatus: "pending" | "accepted";
+  requestDirection: "incoming" | "outgoing" | null;
   createdAt: string;
 };
+
+export type DirectConversationBox = "inbox" | "requests";
+export type DirectMessageRequestAction = "accept" | "delete" | "block";
 
 export type DirectMessageSummary = {
   id: string;
@@ -72,8 +83,17 @@ export type DirectMessageSummary = {
   body: string;
   isMine: boolean;
   isDeleted: boolean;
+  isSeen: boolean;
   createdAt: string;
 };
+
+function normalizeConversationSearch(value?: string) {
+  return value?.normalize("NFKC").trim().replace(/\s+/gu, " ") ?? "";
+}
+
+function escapeLikePattern(value: string) {
+  return value.replace(/[\\%_]/gu, (character) => `\\${character}`);
+}
 
 function conversationNotFoundError() {
   return new AuthError(
@@ -94,6 +114,42 @@ function blockedMessagingError() {
     "CONTENT_FORBIDDEN",
     "Bu kullanıcıyla mesajlaşamazsın.",
     { status: 403 },
+  );
+}
+
+function messageIdempotencyConflictError() {
+  return new AuthError(
+    "INVALID_REQUEST",
+    "Bu mesaj kimli\u011fi farkl\u0131 bir g\u00f6nderim i\u00e7in kullan\u0131lm\u0131\u015f.",
+    {
+      fieldErrors: {
+        clientMessageId: ["Mesaj\u0131 yeniden yaz\u0131p tekrar dene."],
+      },
+      status: 409,
+    },
+  );
+}
+
+function pendingRequestSendError(isSender: boolean) {
+  return new AuthError(
+    "CONTENT_FORBIDDEN",
+    isSender
+      ? "Mesaj isteği kabul edilene kadar yalnızca bir mesaj gönderebilirsin."
+      : "Yanıtlamak için önce mesaj isteğini kabul et.",
+    { status: 403 },
+  );
+}
+
+function requestCooldownError(cooldownUntil: Date, now: Date) {
+  const retryAfterSeconds = Math.max(
+    1,
+    Math.ceil((cooldownUntil.getTime() - now.getTime()) / 1_000),
+  );
+
+  return new AuthError(
+    "CONTENT_RATE_LIMITED",
+    "Bu kişiye yeni bir mesaj isteği göndermeden önce biraz beklemelisin.",
+    { retryAfterSeconds, status: 429 },
   );
 }
 
@@ -122,6 +178,30 @@ function otherParticipantId(viewerId: string) {
       then ${directConversations.participantHighId}
     else ${directConversations.participantLowId}
   end`;
+}
+
+async function areMutualFollowers(
+  executor: MessagingExecutor,
+  firstId: string,
+  secondId: string,
+) {
+  const [row] = await executor
+    .select({ total: count() })
+    .from(follows)
+    .where(
+      or(
+        and(
+          eq(follows.followerId, firstId),
+          eq(follows.followingId, secondId),
+        ),
+        and(
+          eq(follows.followerId, secondId),
+          eq(follows.followingId, firstId),
+        ),
+      ),
+    );
+
+  return Number(row?.total ?? 0) === 2;
 }
 
 async function resolveMessageTarget(
@@ -176,7 +256,11 @@ async function assertConversationAccess(
       id: directConversations.id,
       participantLowId: directConversations.participantLowId,
       participantHighId: directConversations.participantHighId,
+      createdById: directConversations.createdById,
+      requestStatus: directConversations.requestStatus,
+      requestResolvedAt: directConversations.requestResolvedAt,
       lastMessageId: directConversations.lastMessageId,
+      lastMessageAt: directConversations.lastMessageAt,
     })
     .from(directConversations)
     .where(
@@ -227,13 +311,90 @@ async function lockConversation(
   );
 }
 
+async function lockConversationPair(
+  transaction: MessagingTransaction,
+  participantLowId: string,
+  participantHighId: string,
+) {
+  await transaction.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${`direct-conversation-pair:${participantLowId}:${participantHighId}`}, 0))`,
+  );
+}
+
+async function lockMessageAttempt(
+  transaction: MessagingTransaction,
+  viewerId: string,
+  clientMessageId: string,
+) {
+  await transaction.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${`direct-message-client:${viewerId}:${clientMessageId}`}, 0))`,
+  );
+}
+
+function unreadAfterReadCursor(): SQL {
+  return or(
+    isNull(directConversationReads.lastReadMessageId),
+    gt(directMessages.createdAt, directConversationReads.lastReadAt),
+    and(
+      eq(directMessages.createdAt, directConversationReads.lastReadAt),
+      gt(directMessages.id, directConversationReads.lastReadMessageId),
+    ),
+  )!;
+}
+
+async function advanceReadCursor(
+  executor: MessagingExecutor,
+  viewerId: string,
+  conversationId: string,
+  message: { id: string; createdAt: Date },
+) {
+  await executor
+    .insert(directConversationReads)
+    .values({
+      conversationId,
+      userId: viewerId,
+      lastReadAt: message.createdAt,
+      lastReadMessageId: message.id,
+    })
+    .onConflictDoUpdate({
+      target: [
+        directConversationReads.conversationId,
+        directConversationReads.userId,
+      ],
+      set: {
+        lastReadAt: message.createdAt,
+        lastReadMessageId: message.id,
+      },
+      setWhere: or(
+        lt(directConversationReads.lastReadAt, message.createdAt),
+        and(
+          eq(directConversationReads.lastReadAt, message.createdAt),
+          or(
+            isNull(directConversationReads.lastReadMessageId),
+            lt(directConversationReads.lastReadMessageId, message.id),
+          ),
+        ),
+      )!,
+    });
+}
+
 const conversationPeer = alias(users, "direct_conversation_peer");
 
 async function selectConversationSummaries(
   viewerId: string,
   conversationId?: string,
+  box: DirectConversationBox = "inbox",
+  query: { cursor?: string; limit?: number; search?: string } = {},
 ) {
   const peerId = otherParticipantId(viewerId);
+  const sortAt = sql<Date>`coalesce(
+    ${directConversations.lastMessageAt},
+    ${directConversations.createdAt}
+  )`.mapWith(directConversations.createdAt);
+  const normalizedSearch = normalizeConversationSearch(query.search);
+  const scope = normalizedSearch
+    ? `direct-conversations:${box}:search:${normalizedSearch.toLocaleLowerCase("tr-TR")}`
+    : `direct-conversations:${box}`;
   const filters = [
     participantFilter(viewerId),
     eq(conversationPeer.status, "active"),
@@ -243,12 +404,51 @@ async function selectConversationSummaries(
 
   if (conversationId) {
     filters.push(eq(directConversations.id, conversationId));
-  } else {
-    // Mesaj gönderilmemiş taslak konuşmayı yalnızca başlatan kişi görür.
+  } else if (box === "requests") {
     filters.push(
+      eq(directConversations.requestStatus, "pending"),
+      ne(directConversations.createdById, viewerId),
+      sql`${directConversations.lastMessageAt} is not null`,
+    );
+  } else {
+    // Gönderilmiş istekler gönderenin ana kutusunda kalır. Gelen istekler ise
+    // alıcı kabul edene kadar ayrı istekler kutusunda gösterilir.
+    filters.push(
+      or(
+        eq(directConversations.requestStatus, "accepted"),
+        and(
+          eq(directConversations.requestStatus, "pending"),
+          eq(directConversations.createdById, viewerId),
+        ),
+      )!,
       or(
         sql`${directConversations.lastMessageAt} is not null`,
         eq(directConversations.createdById, viewerId),
+      )!,
+    );
+  }
+
+  if (!conversationId && normalizedSearch) {
+    const pattern = `%${escapeLikePattern(normalizedSearch)}%`;
+    filters.push(
+      or(
+        ilike(conversationPeer.displayName, pattern),
+        ilike(conversationPeer.username, pattern),
+        ilike(directConversations.lastMessagePreview, pattern),
+      )!,
+    );
+  }
+
+  if (!conversationId && query.cursor) {
+    const cursor = decodeTimelineCursor(scope, query.cursor);
+
+    filters.push(
+      or(
+        lt(sortAt, cursor.createdAt),
+        and(
+          eq(sortAt, cursor.createdAt),
+          lt(directConversations.id, cursor.id),
+        ),
       )!,
     );
   }
@@ -259,16 +459,16 @@ async function selectConversationSummaries(
     where ${directMessages.conversationId} = ${directConversations.id}
       and ${directMessages.senderId} <> ${viewerId}
       and ${directMessages.deletedAt} is null
-      and ${directMessages.createdAt} > coalesce(
-        ${directConversationReads.lastReadAt},
-        ${directConversations.createdAt}
-      )
+      and ${unreadAfterReadCursor()}
   )`;
 
   return getDatabase()
     .select({
       id: directConversations.id,
-      createdAt: directConversations.createdAt,
+      createdAt: sortAt,
+      conversationCreatedAt: directConversations.createdAt,
+      createdById: directConversations.createdById,
+      requestStatus: directConversations.requestStatus,
       lastMessageId: directConversations.lastMessageId,
       lastMessageSenderId: directConversations.lastMessageSenderId,
       lastMessagePreview: directConversations.lastMessagePreview,
@@ -293,12 +493,17 @@ async function selectConversationSummaries(
     )
     .where(and(...filters))
     .orderBy(
-      desc(
-        sql`coalesce(${directConversations.lastMessageAt}, ${directConversations.createdAt})`,
-      ),
+      desc(sortAt),
       desc(directConversations.id),
     )
-    .limit(conversationId ? 1 : MAX_CONVERSATION_LIMIT);
+    .limit(
+      conversationId
+        ? 1
+        : Math.min(
+            query.limit ?? DEFAULT_CONVERSATION_LIMIT,
+            MAX_CONVERSATION_LIMIT,
+          ) + 1,
+    );
 }
 
 function toConversationSummary(
@@ -329,15 +534,44 @@ function toConversationSummary(
           }
         : null,
     unreadCount: Number(row.unreadCount),
-    createdAt: row.createdAt.toISOString(),
+    requestStatus:
+      row.requestStatus === "pending" ? "pending" : "accepted",
+    requestDirection:
+      row.requestStatus === "pending"
+        ? row.createdById === viewerId
+          ? "outgoing"
+          : "incoming"
+        : null,
+    createdAt: row.conversationCreatedAt.toISOString(),
   };
 }
 
 export async function listDirectConversations(
   viewerId: string,
-): Promise<DirectConversationSummary[]> {
-  const rows = await selectConversationSummaries(viewerId);
-  return rows.map((row) => toConversationSummary(row, viewerId));
+  box: DirectConversationBox = "inbox",
+  query: { cursor?: string; limit?: number; search?: string } = {},
+) {
+  const limit = Math.min(
+    query.limit ?? DEFAULT_CONVERSATION_LIMIT,
+    MAX_CONVERSATION_LIMIT,
+  );
+  const normalizedSearch = normalizeConversationSearch(query.search);
+  const scope = normalizedSearch
+    ? `direct-conversations:${box}:search:${normalizedSearch.toLocaleLowerCase("tr-TR")}`
+    : `direct-conversations:${box}`;
+  const rows = await selectConversationSummaries(
+    viewerId,
+    undefined,
+    box,
+    { ...query, limit },
+  );
+
+  return buildCursorPage({
+    rows,
+    limit,
+    scope,
+    toDto: (row) => toConversationSummary(row, viewerId),
+  });
 }
 
 export async function getDirectConversation(
@@ -367,41 +601,23 @@ export async function startDirectConversation(
       );
       const [participantLowId, participantHighId] =
         canonicalParticipantIds(viewerId, targetId);
-      const [inserted] = await transaction
-        .insert(directConversations)
-        .values({
-          participantLowId,
-          participantHighId,
-          createdById: viewerId,
-        })
-        .onConflictDoNothing({
-          target: [
-            directConversations.participantLowId,
-            directConversations.participantHighId,
-          ],
-        })
-        .returning({ id: directConversations.id });
+      await lockConversationPair(
+        transaction,
+        participantLowId,
+        participantHighId,
+      );
 
-      if (inserted) {
-        await consumeRateLimit(transaction, viewerId, "message_start");
-        const unreadBaseline = new Date(0);
-        await transaction.insert(directConversationReads).values([
-          {
-            conversationId: inserted.id,
-            userId: participantLowId,
-            lastReadAt: unreadBaseline,
-          },
-          {
-            conversationId: inserted.id,
-            userId: participantHighId,
-            lastReadAt: unreadBaseline,
-          },
-        ]);
-        return inserted.id;
-      }
-
+      const mutualFollow = await areMutualFollowers(
+        transaction,
+        viewerId,
+        targetId,
+      );
       const [existing] = await transaction
-        .select({ id: directConversations.id })
+        .select({
+          id: directConversations.id,
+          createdById: directConversations.createdById,
+          requestStatus: directConversations.requestStatus,
+        })
         .from(directConversations)
         .where(
           and(
@@ -417,11 +633,85 @@ export async function startDirectConversation(
         )
         .limit(1);
 
-      if (!existing) {
+      if (existing) {
+        if (
+          existing.requestStatus === "pending" &&
+          (mutualFollow || existing.createdById !== viewerId)
+        ) {
+          await transaction
+            .update(directConversations)
+            .set({
+              requestStatus: "accepted",
+              requestResolvedAt: new Date(),
+            })
+            .where(eq(directConversations.id, existing.id));
+        }
+
+        return existing.id;
+      }
+
+      const now = new Date();
+      if (!mutualFollow) {
+        const [cooldown] = await transaction
+          .select({
+            cooldownUntil: directMessageRequestCooldowns.cooldownUntil,
+          })
+          .from(directMessageRequestCooldowns)
+          .where(
+            and(
+              eq(directMessageRequestCooldowns.senderId, viewerId),
+              eq(directMessageRequestCooldowns.recipientId, targetId),
+            ),
+          )
+          .limit(1);
+
+        if (cooldown && cooldown.cooldownUntil > now) {
+          throw requestCooldownError(cooldown.cooldownUntil, now);
+        }
+
+        if (cooldown) {
+          await transaction
+            .delete(directMessageRequestCooldowns)
+            .where(
+              and(
+                eq(directMessageRequestCooldowns.senderId, viewerId),
+                eq(directMessageRequestCooldowns.recipientId, targetId),
+              ),
+            );
+        }
+      }
+
+      const [inserted] = await transaction
+        .insert(directConversations)
+        .values({
+          participantLowId,
+          participantHighId,
+          createdById: viewerId,
+          requestStatus: mutualFollow ? "accepted" : "pending",
+          requestResolvedAt: mutualFollow ? now : null,
+          createdAt: now,
+        })
+        .returning({ id: directConversations.id });
+
+      if (!inserted) {
         throw conversationNotFoundError();
       }
 
-      return existing.id;
+      await consumeRateLimit(transaction, viewerId, "message_start");
+      const unreadBaseline = new Date(0);
+      await transaction.insert(directConversationReads).values([
+        {
+          conversationId: inserted.id,
+          userId: participantLowId,
+          lastReadAt: unreadBaseline,
+        },
+        {
+          conversationId: inserted.id,
+          userId: participantHighId,
+          lastReadAt: unreadBaseline,
+        },
+      ]);
+      return inserted.id;
     },
   );
 
@@ -433,7 +723,25 @@ export async function listDirectMessages(
   conversationId: string,
   query: { cursor?: string; limit?: number } = {},
 ) {
-  await assertConversationAccess(getDatabase(), viewerId, conversationId);
+  const database = getDatabase();
+  const conversation = await assertConversationAccess(
+    database,
+    viewerId,
+    conversationId,
+  );
+  const [peerReadCursor] = await database
+    .select({
+      lastReadAt: directConversationReads.lastReadAt,
+      lastReadMessageId: directConversationReads.lastReadMessageId,
+    })
+    .from(directConversationReads)
+    .where(
+      and(
+        eq(directConversationReads.conversationId, conversationId),
+        eq(directConversationReads.userId, conversation.otherUserId),
+      ),
+    )
+    .limit(1);
 
   const limit = query.limit ?? DEFAULT_MESSAGE_LIMIT;
   const filters = [eq(directMessages.conversationId, conversationId)];
@@ -455,7 +763,7 @@ export async function listDirectMessages(
     );
   }
 
-  const rows = await getDatabase()
+  const rows = await database
     .select({
       id: directMessages.id,
       conversationId: directMessages.conversationId,
@@ -479,6 +787,15 @@ export async function listDirectMessages(
       body: row.deletedAt ? "" : row.body,
       isMine: row.senderId === viewerId,
       isDeleted: row.deletedAt !== null,
+      isSeen:
+        row.senderId === viewerId &&
+        Boolean(
+          peerReadCursor &&
+            (peerReadCursor.lastReadAt > row.createdAt ||
+              (peerReadCursor.lastReadAt.getTime() === row.createdAt.getTime() &&
+                peerReadCursor.lastReadMessageId !== null &&
+                peerReadCursor.lastReadMessageId >= row.id)),
+        ),
       createdAt: row.createdAt.toISOString(),
     }),
   });
@@ -488,17 +805,86 @@ export async function sendDirectMessage(
   viewerId: string,
   conversationId: string,
   body: string,
+  clientMessageId: string,
 ): Promise<DirectMessageSummary> {
-  const now = new Date();
+  if (!UUID_PATTERN.test(clientMessageId)) {
+    throw messageIdempotencyConflictError();
+  }
 
   return getDatabase().transaction(async (transaction) => {
+    await lockMessageAttempt(transaction, viewerId, clientMessageId);
     await lockConversation(transaction, conversationId);
-    await assertConversationAccess(transaction, viewerId, conversationId);
-    await consumeRateLimit(transaction, viewerId, "message_send", now);
+    const conversation = await assertConversationAccess(
+      transaction,
+      viewerId,
+      conversationId,
+    );
+
+    const [existingMessage] = await transaction
+      .select({
+        id: directMessages.id,
+        conversationId: directMessages.conversationId,
+        body: directMessages.body,
+        createdAt: directMessages.createdAt,
+        deletedAt: directMessages.deletedAt,
+      })
+      .from(directMessages)
+      .where(
+        and(
+          eq(directMessages.senderId, viewerId),
+          eq(directMessages.clientMessageId, clientMessageId),
+        ),
+      )
+      .limit(1);
+
+    if (existingMessage) {
+      if (
+        existingMessage.conversationId !== conversationId ||
+        (!existingMessage.deletedAt && existingMessage.body !== body)
+      ) {
+        throw messageIdempotencyConflictError();
+      }
+
+      return {
+        id: existingMessage.id,
+        conversationId: existingMessage.conversationId,
+        body: existingMessage.deletedAt ? "" : existingMessage.body,
+        isMine: true,
+        isDeleted: existingMessage.deletedAt !== null,
+        isSeen: false,
+        createdAt: existingMessage.createdAt.toISOString(),
+      };
+    }
+
+    if (conversation.requestStatus === "pending") {
+      const isRequestSender = conversation.createdById === viewerId;
+
+      if (!isRequestSender || conversation.lastMessageId) {
+        throw pendingRequestSendError(isRequestSender);
+      }
+    }
+
+    await consumeRateLimit(transaction, viewerId, "message_send");
+
+    // Create the timestamp after acquiring the lock so waiting requests cannot
+    // move the conversation clock backwards. Advancing at least 1 ms beyond
+    // the previous message also protects ordering if the system clock shifts.
+    const now = new Date(
+      Math.max(
+        Date.now(),
+        (conversation.lastMessageAt?.getTime() ?? -1) + 1,
+      ),
+    );
 
     const [message] = await transaction
       .insert(directMessages)
-      .values({ conversationId, senderId: viewerId, body, createdAt: now })
+      .values({
+        conversationId,
+        senderId: viewerId,
+        clientMessageId,
+        body,
+        createdAt: now,
+      })
       .returning({
         id: directMessages.id,
         conversationId: directMessages.conversationId,
@@ -523,16 +909,7 @@ export async function sendDirectMessage(
         lastMessageAt: now,
       })
       .where(eq(directConversations.id, conversationId));
-    await transaction
-      .insert(directConversationReads)
-      .values({ conversationId, userId: viewerId, lastReadAt: now })
-      .onConflictDoUpdate({
-        target: [
-          directConversationReads.conversationId,
-          directConversationReads.userId,
-        ],
-        set: { lastReadAt: now },
-      });
+    await advanceReadCursor(transaction, viewerId, conversationId, message);
 
     return {
       id: message.id,
@@ -540,28 +917,139 @@ export async function sendDirectMessage(
       body: message.body,
       isMine: true,
       isDeleted: false,
+      isSeen: false,
       createdAt: message.createdAt.toISOString(),
     };
   });
 }
 
+export async function resolveDirectMessageRequest(
+  viewerId: string,
+  conversationId: string,
+  action: DirectMessageRequestAction,
+): Promise<DirectConversationSummary | null> {
+  const acceptedConversationId = await getDatabase().transaction(
+    async (transaction) => {
+      await lockConversation(transaction, conversationId);
+      const conversation = await assertConversationAccess(
+        transaction,
+        viewerId,
+        conversationId,
+      );
+
+      if (
+        conversation.requestStatus !== "pending" ||
+        conversation.createdById === viewerId ||
+        !conversation.lastMessageId
+      ) {
+        throw new AuthError(
+          "CONTENT_FORBIDDEN",
+          "Bu mesaj isteği için bu işlemi yapamazsın.",
+          { status: 403 },
+        );
+      }
+
+      if (action === "accept") {
+        await transaction
+          .update(directConversations)
+          .set({
+            requestStatus: "accepted",
+            requestResolvedAt: new Date(),
+          })
+          .where(eq(directConversations.id, conversationId));
+        await transaction
+          .delete(directMessageRequestCooldowns)
+          .where(
+            and(
+              eq(
+                directMessageRequestCooldowns.senderId,
+                conversation.createdById,
+              ),
+              eq(directMessageRequestCooldowns.recipientId, viewerId),
+            ),
+          );
+
+        return conversationId;
+      }
+
+      if (action === "block") {
+        await applyUserBlock(
+          transaction,
+          viewerId,
+          conversation.otherUserId,
+        );
+      } else {
+        const rejectedAt = new Date();
+        const cooldownUntil = new Date(
+          rejectedAt.getTime() +
+            DATA_RETENTION_POLICY.messageRequestCooldownMs,
+        );
+        await transaction
+          .insert(directMessageRequestCooldowns)
+          .values({
+            senderId: conversation.createdById,
+            recipientId: viewerId,
+            rejectedAt,
+            cooldownUntil,
+          })
+          .onConflictDoUpdate({
+            target: [
+              directMessageRequestCooldowns.senderId,
+              directMessageRequestCooldowns.recipientId,
+            ],
+            set: { rejectedAt, cooldownUntil },
+          });
+      }
+
+      await transaction
+        .delete(directConversations)
+        .where(eq(directConversations.id, conversationId));
+
+      return null;
+    },
+  );
+
+  return acceptedConversationId
+    ? getDirectConversation(viewerId, acceptedConversationId)
+    : null;
+}
+
 export async function markDirectConversationRead(
   viewerId: string,
   conversationId: string,
+  messageId: string,
 ) {
-  await assertConversationAccess(getDatabase(), viewerId, conversationId);
-  const now = new Date();
+  if (!UUID_PATTERN.test(messageId)) {
+    throw messageNotFoundError();
+  }
 
-  await getDatabase()
-    .insert(directConversationReads)
-    .values({ conversationId, userId: viewerId, lastReadAt: now })
-    .onConflictDoUpdate({
-      target: [
-        directConversationReads.conversationId,
-        directConversationReads.userId,
-      ],
-      set: { lastReadAt: now },
-    });
+  await getDatabase().transaction(async (transaction) => {
+    await assertConversationAccess(transaction, viewerId, conversationId);
+    const [message] = await transaction
+      .select({
+        id: directMessages.id,
+        createdAt: directMessages.createdAt,
+      })
+      .from(directMessages)
+      .where(
+        and(
+          eq(directMessages.id, messageId),
+          eq(directMessages.conversationId, conversationId),
+        ),
+      )
+      .limit(1);
+
+    if (!message) {
+      throw messageNotFoundError();
+    }
+
+    await advanceReadCursor(
+      transaction,
+      viewerId,
+      conversationId,
+      message,
+    );
+  });
 }
 
 export async function deleteDirectMessage(
@@ -622,7 +1110,7 @@ export async function getUnreadDirectMessageCount(
       eq(directConversations.id, directMessages.conversationId),
     )
     .innerJoin(conversationPeer, eq(conversationPeer.id, peerId))
-    .innerJoin(
+    .leftJoin(
       directConversationReads,
       and(
         eq(
@@ -637,10 +1125,7 @@ export async function getUnreadDirectMessageCount(
         participantFilter(viewerId),
         ne(directMessages.senderId, viewerId),
         isNull(directMessages.deletedAt),
-        gt(
-          directMessages.createdAt,
-          directConversationReads.lastReadAt,
-        ),
+        unreadAfterReadCursor(),
         eq(conversationPeer.status, "active"),
         isNull(conversationPeer.deletedAt),
         noBlockBetween(viewerId, conversationPeer.id),

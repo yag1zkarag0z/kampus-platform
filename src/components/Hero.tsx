@@ -13,40 +13,40 @@ const navItems = [
 export default function Hero() {
   return (
     <section className="bg-canvas text-white">
-      <div className="mx-auto w-full max-w-[1180px] px-5 sm:px-8 lg:px-10">
-        <header className="flex min-h-18 items-center justify-between border-b border-white/8">
+      <div className="mx-auto w-full max-w-[1320px] px-5 sm:px-8 lg:px-10 2xl:max-w-[1480px]">
+        <header className="flex min-h-18 items-center justify-between border-b border-white/8 xl:min-h-20 2xl:min-h-[88px]">
           <Link
             href="/"
             aria-label="KAMPÜS ana sayfa"
-            className="inline-flex min-h-11 items-center outline-none transition-opacity hover:opacity-80 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-white"
+            className="inline-flex min-h-11 items-center outline-none transition-opacity hover:opacity-80 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-white xl:min-h-12 2xl:min-h-[52px]"
           >
             <CampusLogo
               idPrefix="hero-logo"
-              wordmarkClassName="text-xl"
+              wordmarkClassName="text-xl xl:text-[22px] 2xl:text-2xl"
             />
           </Link>
 
           <nav
             aria-label="Ana menü"
-            className="hidden items-center gap-6 text-xs font-semibold text-white/58 md:flex"
+            className="hidden items-center gap-7 text-[13px] font-semibold text-white/68 md:flex xl:gap-8 xl:text-[14px] 2xl:gap-9 2xl:text-[15px]"
           >
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="inline-flex min-h-11 items-center outline-none transition-colors hover:text-white focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-white"
+                className="inline-flex min-h-11 items-center outline-none transition-colors hover:text-white focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-white xl:min-h-12 2xl:min-h-[52px]"
               >
                 {item.label}
               </Link>
             ))}
           </nav>
 
-          <div className="flex items-center gap-2 text-sm font-bold">
+          <div className="flex items-center gap-2 text-sm font-bold xl:gap-3 xl:text-[15px] 2xl:text-[16px]">
             <HomepageTrackedLink
               href="/giris"
               source="header_login"
               target="login"
-              className="inline-flex min-h-11 items-center rounded-full px-3 text-white/72 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white sm:px-4"
+              className="inline-flex min-h-11 items-center rounded-full px-3 text-white/72 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white sm:px-4 xl:min-h-12 xl:px-5 2xl:min-h-[52px] 2xl:px-6"
             >
               Giriş yap
             </HomepageTrackedLink>
@@ -54,7 +54,7 @@ export default function Hero() {
               href="/kayit"
               source="header_register"
               target="register"
-              className="inline-flex min-h-11 items-center rounded-full bg-white px-4 text-[#101012] outline-none transition-colors hover:bg-white/88 focus-visible:ring-3 focus-visible:ring-white/35 sm:px-5"
+              className="inline-flex min-h-11 items-center rounded-full bg-white px-4 text-[#101012] outline-none transition-colors hover:bg-white/88 focus-visible:ring-3 focus-visible:ring-white/35 sm:px-5 xl:min-h-12 xl:px-6 2xl:min-h-[52px] 2xl:px-7"
             >
               Kayıt ol
             </HomepageTrackedLink>

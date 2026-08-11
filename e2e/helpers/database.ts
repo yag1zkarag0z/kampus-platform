@@ -74,6 +74,66 @@ export async function cleanupE2eAuthData() {
         [emailPattern],
       );
       await client.query(
+        `delete from moderation_actions action
+         where action.actor_id in (
+           select id from users where lower(email::text) like $1
+         )
+         or action.target_user_id in (
+           select id from users where lower(email::text) like $1
+         )
+         or action.message_id in (
+           select message.id
+           from direct_messages message
+           join users sender on sender.id = message.sender_id
+           where lower(sender.email::text) like $1
+         )
+         or action.post_id in (
+           select post.id
+           from posts post
+           join users author on author.id = post.author_id
+           where lower(author.email::text) like $1
+         )
+         or action.report_id in (
+           select report.id
+           from reports report
+           left join direct_messages message on message.id = report.message_id
+           left join posts post on post.id = report.post_id
+           left join users message_sender on message_sender.id = message.sender_id
+           left join users post_author on post_author.id = post.author_id
+           where report.reporter_id in (
+             select id from users where lower(email::text) like $1
+           )
+           or report.resolved_by in (
+             select id from users where lower(email::text) like $1
+           )
+           or lower(message_sender.email::text) like $1
+           or lower(post_author.email::text) like $1
+         )`,
+        [emailPattern],
+      );
+      await client.query(
+        `delete from reports report
+         where report.reporter_id in (
+           select id from users where lower(email::text) like $1
+         )
+         or report.resolved_by in (
+           select id from users where lower(email::text) like $1
+         )
+         or report.message_id in (
+           select message.id
+           from direct_messages message
+           join users sender on sender.id = message.sender_id
+           where lower(sender.email::text) like $1
+         )
+         or report.post_id in (
+           select post.id
+           from posts post
+           join users author on author.id = post.author_id
+           where lower(author.email::text) like $1
+         )`,
+        [emailPattern],
+      );
+      await client.query(
         `delete from comments
          where author_id in (
            select id from users where lower(email::text) like $1

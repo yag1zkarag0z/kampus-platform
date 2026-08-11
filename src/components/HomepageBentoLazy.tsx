@@ -11,7 +11,7 @@ function HomepageBentoPlaceholder() {
       className="bg-canvas text-white"
       data-testid="homepage-bento-placeholder"
     >
-      <div className="mx-auto w-full max-w-[1180px] px-5 pb-10 sm:px-8 sm:pb-12 lg:px-10 lg:pb-14">
+      <div className="mx-auto w-full max-w-[1320px] px-5 pb-10 sm:px-8 sm:pb-12 lg:px-10 lg:pb-14">
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 sm:gap-4">
           {Array.from({ length: 4 }, (_, index) => (
             <div

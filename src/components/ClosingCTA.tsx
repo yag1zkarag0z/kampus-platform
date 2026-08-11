@@ -7,7 +7,7 @@ export default function ClosingCTA() {
       aria-labelledby="closing-title"
       className="border-b border-white/8 bg-canvas text-white"
     >
-      <div className="mx-auto w-full max-w-[1180px] px-5 pb-16 sm:px-8 sm:pb-20 lg:px-10">
+      <div className="mx-auto w-full max-w-[1320px] px-5 pb-16 sm:px-8 sm:pb-20 lg:px-10">
         <div className="flex flex-col gap-5 rounded-2xl border border-white/9 bg-surface p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <h2
             id="closing-title"

@@ -57,6 +57,7 @@ export async function POST(
       member.userId,
       id,
       input.body,
+      input.clientMessageId,
     );
 
     return NextResponse.json(

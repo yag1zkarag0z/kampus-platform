@@ -14,6 +14,7 @@ export const DATA_RETENTION_POLICY = Object.freeze({
   rateLimitHitMs: 31 * DAY,
   notificationMs: 90 * DAY,
   emptyConversationMs: 7 * DAY,
+  messageRequestCooldownMs: 30 * DAY,
   softDeletedContentMs: 30 * DAY,
   deletedAccountMs: 30 * DAY,
   unattachedUploadMs: DAY,

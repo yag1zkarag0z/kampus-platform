@@ -13,7 +13,9 @@ import {
   authControlClassName,
   authFlowBodyClassName,
   authFlowCardClassName,
+  authFlowFooterClassName,
   authFlowHeaderClassName,
+  authGuestButtonClassName,
   authInputClassName,
   authStepDescriptionClassName,
   authStepTitleClassName,
@@ -157,12 +159,12 @@ export default function LoginFlow() {
             return (
               <li
                 key={label}
-                className={`rounded-full border px-[8px] py-[7px] text-center text-[10px] font-bold transition-colors sm:px-[12px] sm:py-[8px] sm:text-[11px] lg:px-[26px] lg:py-[9px] lg:text-[12px] ${
+                className={`rounded-full border px-[8px] py-[7px] text-center text-[10px] font-bold transition-colors sm:px-[12px] sm:py-[8px] sm:text-[11px] lg:px-[26px] lg:py-[9px] lg:text-[12px] xl:px-[32px] xl:py-[10px] xl:text-[13px] 2xl:text-[14px] ${
                   isCurrent
                     ? "border-brand/50 bg-brand/12 text-[#ff8968]"
                     : isDone
                       ? "border-brand/22 bg-brand/5 text-[#ff8968]/60"
-                      : "border-white/8 text-white/48 sm:text-white/35"
+                      : "border-white/10 text-white/52 sm:text-white/48"
                 }`}
                 aria-current={isCurrent ? "step" : undefined}
               >
@@ -195,7 +197,7 @@ export default function LoginFlow() {
             </h2>
             <Link
               href="/akis"
-              className="mt-[24px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[16px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px]"
+              className="mt-[24px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[16px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px] xl:min-h-[56px] xl:w-[500px] xl:text-[17px] 2xl:min-h-[58px] 2xl:w-[520px] 2xl:text-[18px]"
             >
               Akışa geç
             </Link>
@@ -214,7 +216,7 @@ export default function LoginFlow() {
 
             <label
               htmlFor="login-email"
-              className="mt-[22px] block text-[13px] font-bold sm:mt-[28px] lg:mt-[24px] lg:text-center lg:text-[14px]"
+              className="mt-[22px] block text-[13px] font-bold sm:mt-[28px] lg:mt-[24px] lg:text-center lg:text-[14px] xl:text-[15px] 2xl:text-[16px]"
             >
               Yaşar öğrenci e-postan
             </label>
@@ -242,7 +244,7 @@ export default function LoginFlow() {
             <button
               type="submit"
               disabled={verification.isRequesting}
-              className="mt-[16px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px]"
+              className="mt-[16px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px] xl:min-h-[56px] xl:w-[500px] xl:text-[17px] 2xl:min-h-[58px] 2xl:w-[520px] 2xl:text-[18px]"
             >
               {verification.isRequesting
                 ? "Kod gönderiliyor…"
@@ -261,7 +263,7 @@ export default function LoginFlow() {
 
             <label
               htmlFor="login-code"
-              className="mt-[22px] block text-[13px] font-bold sm:mt-[28px] lg:mt-[24px] lg:text-center lg:text-[14px]"
+              className="mt-[22px] block text-[13px] font-bold sm:mt-[28px] lg:mt-[24px] lg:text-center lg:text-[14px] xl:text-[15px] 2xl:text-[16px]"
             >
               Giriş kodu
             </label>
@@ -339,7 +341,7 @@ export default function LoginFlow() {
                 verification.isResending ||
                 verification.isVerifying
               }
-              className="relative mt-[18px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:opacity-55 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px]"
+              className="relative mt-[18px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:opacity-55 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px] xl:min-h-[56px] xl:w-[500px] xl:text-[17px] 2xl:min-h-[58px] 2xl:w-[520px] 2xl:text-[18px]"
             >
               {verification.isVerifying ? "Doğrulanıyor…" : "Giriş yap"}
               <span aria-hidden="true" className="absolute right-[18px]">→</span>
@@ -362,7 +364,7 @@ export default function LoginFlow() {
       </div>
 
       {!complete && (
-        <div className="border-t border-white/8 px-[16px] py-[12px] sm:px-[24px] sm:py-[16px] lg:min-h-[84px]">
+        <div className={authFlowFooterClassName}>
           <button
             type="button"
             onClick={() => {
@@ -370,7 +372,7 @@ export default function LoginFlow() {
             }}
             disabled={isOpeningGuestView}
             aria-busy={isOpeningGuestView}
-            className="group relative inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] border border-white/8 bg-white/[0.04] px-[16px] font-sans text-[15px] font-medium leading-none tracking-normal text-white/78 outline-none transition-colors hover:border-white/14 hover:bg-white/[0.075] hover:text-white focus-visible:ring-2 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-60 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px] lg:text-[16px]"
+            className={authGuestButtonClassName}
           >
             <span>
               {isOpeningGuestView

@@ -33,7 +33,7 @@ const STORAGE_KEY = "kampus-moderation-v1";
 
 export type CampusReportReason = ReportReasonDto;
 export type CampusModerationResolution = ReportResolutionDto;
-export type CampusModerationTargetType = "post" | "comment";
+export type CampusModerationTargetType = "post" | "comment" | "message";
 
 export type BlockedCampusUser = {
   authorId: string;

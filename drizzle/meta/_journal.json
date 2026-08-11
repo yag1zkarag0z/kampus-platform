@@ -197,6 +197,34 @@
       "when": 1786304161639,
       "tag": "0027_sharp_thundra",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1786449299546,
+      "tag": "0028_romantic_cyclops",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1786450114172,
+      "tag": "0029_silky_solo",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1786451187651,
+      "tag": "0030_fancy_black_bolt",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1786453760105,
+      "tag": "0031_foamy_george_stacy",
+      "breakpoints": true
     }
   ]
 }

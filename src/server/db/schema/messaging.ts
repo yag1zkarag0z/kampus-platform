@@ -1,10 +1,12 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  foreignKey,
   index,
   pgTable,
   primaryKey,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
   varchar,
@@ -37,6 +39,10 @@ export const directConversations = pgTable(
     createdById: uuid("created_by_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    requestStatus: varchar("request_status", { length: 16 })
+      .default("accepted")
+      .notNull(),
+    requestResolvedAt: timestampWithTimezone("request_resolved_at"),
     lastMessageId: uuid("last_message_id"),
     lastMessageSenderId: uuid("last_message_sender_id").references(
       () => users.id,
@@ -68,6 +74,17 @@ export const directConversations = pgTable(
       sql`${table.createdById} in (${table.participantLowId}, ${table.participantHighId})`,
     ),
     check(
+      "direct_conversations_request_state_check",
+      sql`(
+          ${table.requestStatus} = 'pending'
+          and ${table.requestResolvedAt} is null
+        ) or (
+          ${table.requestStatus} = 'accepted'
+          and ${table.requestResolvedAt} is not null
+          and ${table.requestResolvedAt} >= ${table.createdAt}
+        )`,
+    ),
+    check(
       "direct_conversations_last_message_shape_check",
       sql`(
           ${table.lastMessageId} is null
@@ -89,27 +106,33 @@ export const directConversations = pgTable(
   ],
 );
 
-export const directConversationReads = pgTable(
-  "direct_conversation_reads",
+export const directMessageRequestCooldowns = pgTable(
+  "direct_message_request_cooldowns",
   {
-    conversationId: uuid("conversation_id")
-      .notNull()
-      .references(() => directConversations.id, { onDelete: "cascade" }),
-    userId: uuid("user_id")
+    senderId: uuid("sender_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    lastReadAt: timestampWithTimezone("last_read_at")
-      .defaultNow()
-      .notNull(),
+    recipientId: uuid("recipient_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    rejectedAt: timestampWithTimezone("rejected_at").notNull(),
+    cooldownUntil: timestampWithTimezone("cooldown_until").notNull(),
   },
   (table) => [
     primaryKey({
-      name: "direct_conversation_reads_pk",
-      columns: [table.conversationId, table.userId],
+      name: "direct_message_request_cooldowns_pk",
+      columns: [table.senderId, table.recipientId],
     }),
-    index("direct_conversation_reads_user_idx").on(
-      table.userId,
-      table.lastReadAt,
+    index("direct_message_request_cooldowns_expiry_idx").on(
+      table.cooldownUntil,
+    ),
+    check(
+      "direct_message_request_cooldowns_not_self_check",
+      sql`${table.senderId} <> ${table.recipientId}`,
+    ),
+    check(
+      "direct_message_request_cooldowns_order_check",
+      sql`${table.cooldownUntil} > ${table.rejectedAt}`,
     ),
   ],
 );
@@ -124,11 +147,20 @@ export const directMessages = pgTable(
     senderId: uuid("sender_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    clientMessageId: uuid("client_message_id").notNull(),
     body: varchar("body", { length: 1000 }).notNull(),
     createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
     deletedAt: timestampWithTimezone("deleted_at"),
   },
   (table) => [
+    unique("direct_messages_id_conversation_unique").on(
+      table.id,
+      table.conversationId,
+    ),
+    unique("direct_messages_sender_client_id_unique").on(
+      table.senderId,
+      table.clientMessageId,
+    ),
     index("direct_messages_conversation_cursor_idx").on(
       table.conversationId,
       table.createdAt.desc(),
@@ -150,6 +182,40 @@ export const directMessages = pgTable(
   ],
 );
 
+export const directConversationReads = pgTable(
+  "direct_conversation_reads",
+  {
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => directConversations.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    lastReadAt: timestampWithTimezone("last_read_at")
+      .defaultNow()
+      .notNull(),
+    lastReadMessageId: uuid("last_read_message_id"),
+  },
+  (table) => [
+    primaryKey({
+      name: "direct_conversation_reads_pk",
+      columns: [table.conversationId, table.userId],
+    }),
+    foreignKey({
+      name: "direct_conversation_reads_message_conversation_fk",
+      columns: [table.lastReadMessageId, table.conversationId],
+      foreignColumns: [directMessages.id, directMessages.conversationId],
+    }),
+    index("direct_conversation_reads_user_idx").on(
+      table.userId,
+      table.lastReadAt,
+      table.lastReadMessageId,
+    ),
+  ],
+);
+
 export type DirectConversation = typeof directConversations.$inferSelect;
 export type DirectConversationRead = typeof directConversationReads.$inferSelect;
+export type DirectMessageRequestCooldown =
+  typeof directMessageRequestCooldowns.$inferSelect;
 export type DirectMessage = typeof directMessages.$inferSelect;

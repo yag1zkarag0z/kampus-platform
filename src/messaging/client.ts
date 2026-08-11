@@ -20,6 +20,8 @@ export type DirectConversationDto = {
     createdAt: string;
   } | null;
   unreadCount: number;
+  requestStatus: "pending" | "accepted";
+  requestDirection: "incoming" | "outgoing" | null;
   createdAt: string;
 };
 
@@ -29,13 +31,35 @@ export type DirectMessageDto = {
   body: string;
   isMine: boolean;
   isDeleted: boolean;
+  isSeen?: boolean;
   createdAt: string;
 };
 
-export function listDirectConversations() {
-  return requestApi<DirectConversationDto[]>(
-    "/v1/messages/conversations",
+export function listDirectConversations(
+  box: "inbox" | "requests" = "inbox",
+  cursor?: string,
+  search?: string,
+) {
+  const searchParams = new URLSearchParams({ box, limit: "20" });
+  if (cursor) searchParams.set("cursor", cursor);
+  if (search?.trim()) searchParams.set("search", search.trim());
+
+  return requestApiPayload<CursorPage<DirectConversationDto>>(
+    `/v1/messages/conversations?${searchParams.toString()}`,
     { cache: "no-store" },
+  );
+}
+
+export function resolveDirectMessageRequest(
+  conversationId: string,
+  action: "accept" | "delete" | "block",
+) {
+  return requestApi<DirectConversationDto | void>(
+    `/v1/messages/conversations/${encodeURIComponent(conversationId)}/request`,
+    {
+      method: "POST",
+      body: JSON.stringify({ action }),
+    },
   );
 }
 
@@ -70,17 +94,27 @@ export function listDirectMessages(
   );
 }
 
-export function sendDirectMessage(conversationId: string, body: string) {
+export function sendDirectMessage(
+  conversationId: string,
+  body: string,
+  clientMessageId: string,
+) {
   return requestApi<DirectMessageDto>(
     `/v1/messages/conversations/${encodeURIComponent(conversationId)}/messages`,
-    { method: "POST", body: JSON.stringify({ body }) },
+    {
+      method: "POST",
+      body: JSON.stringify({ body, clientMessageId }),
+    },
   );
 }
 
-export function markDirectConversationRead(conversationId: string) {
+export function markDirectConversationRead(
+  conversationId: string,
+  messageId: string,
+) {
   return requestApi<void>(
     `/v1/messages/conversations/${encodeURIComponent(conversationId)}/read`,
-    { method: "POST" },
+    { method: "POST", body: JSON.stringify({ messageId }) },
   );
 }
 

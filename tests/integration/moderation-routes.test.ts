@@ -103,6 +103,58 @@ function plainRequest(
   });
 }
 
+async function insertAcceptedMessage(
+  senderId: string,
+  recipientId: string,
+  body: string,
+) {
+  const createdAt = new Date();
+  const conversationResult = await pool.query<{ id: string }>(
+    `insert into direct_conversations (
+       participant_low_id,
+       participant_high_id,
+       created_by_id,
+       request_status,
+       request_resolved_at,
+       created_at
+     ) values (
+       least($1::uuid, $2::uuid),
+       greatest($1::uuid, $2::uuid),
+       $1,
+       'accepted',
+       $3,
+       $3
+     )
+     returning id`,
+    [senderId, recipientId, createdAt],
+  );
+  const conversationId = conversationResult.rows[0]!.id;
+  const messageResult = await pool.query<{ id: string }>(
+    `insert into direct_messages (
+       conversation_id,
+       sender_id,
+       client_message_id,
+       body,
+       created_at
+     ) values ($1, $2, $3, $4, $5)
+     returning id`,
+    [conversationId, senderId, randomUUID(), body, createdAt],
+  );
+  const messageId = messageResult.rows[0]!.id;
+
+  await pool.query(
+    `update direct_conversations
+     set last_message_id = $1,
+         last_message_sender_id = $2,
+         last_message_preview = $3,
+         last_message_at = $4
+     where id = $5`,
+    [messageId, senderId, body, createdAt, conversationId],
+  );
+
+  return { conversationId, messageId };
+}
+
 afterEach(async () => {
   if (testEmails.size === 0) {
     return;
@@ -219,6 +271,147 @@ describe("moderation routes with PostgreSQL", () => {
           entry.actor.username === moderator.username,
       ),
     ).toBe(true);
+  });
+
+  it("reports a participant message and records content removal in the moderation audit", async () => {
+    const sender = await insertAccount();
+    const recipient = await insertAccount();
+    const outsider = await insertAccount();
+    const moderator = await insertAccount("moderator");
+    const originalBody = "Bu mesaj moderasyon incelemesine gidecek.";
+    const { conversationId, messageId } = await insertAcceptedMessage(
+      sender.id,
+      recipient.id,
+      originalBody,
+    );
+
+    const recipientCookie = await createMemberCookie(recipient.id);
+    const submitResponse = await postReport(
+      jsonRequest("/v1/reports", "POST", {
+        cookie: recipientCookie,
+        body: {
+          targetType: "message",
+          targetId: messageId,
+          reason: "harassment",
+          detail: "Mesajın incelenmesini istiyorum.",
+        },
+      }),
+    );
+    expect(submitResponse.status).toBe(201);
+
+    const outsiderCookie = await createMemberCookie(outsider.id);
+    const outsiderResponse = await postReport(
+      jsonRequest("/v1/reports", "POST", {
+        cookie: outsiderCookie,
+        body: { targetType: "message", targetId: messageId, reason: "spam" },
+      }),
+    );
+    expect(outsiderResponse.status).toBe(404);
+
+    const senderCookie = await createMemberCookie(sender.id);
+    const selfReportResponse = await postReport(
+      jsonRequest("/v1/reports", "POST", {
+        cookie: senderCookie,
+        body: { targetType: "message", targetId: messageId, reason: "other" },
+      }),
+    );
+    expect(selfReportResponse.status).toBe(400);
+
+    const moderatorCookie = await createMemberCookie(
+      moderator.id,
+      "moderator",
+    );
+    const listResponse = await getReports(
+      plainRequest("/v1/moderation/reports?status=pending", {
+        cookie: moderatorCookie,
+      }),
+    );
+    const listPayload = (await listResponse.json()) as {
+      data: Array<{
+        id: string;
+        targetId: string;
+        targetType: string;
+        postId: string | null;
+        target: { excerpt: string; authorId: string };
+      }>;
+    };
+    const report = listPayload.data.find(
+      (entry) => entry.targetId === messageId,
+    );
+    expect(report).toMatchObject({
+      targetType: "message",
+      postId: null,
+      target: { excerpt: originalBody, authorId: sender.id },
+    });
+
+    const resolveResponse = await postResolveReport(
+      jsonRequest(
+        `/v1/moderation/reports/${report!.id}/resolve`,
+        "POST",
+        {
+          cookie: moderatorCookie,
+          body: {
+            resolution: "content_removed",
+            note: "Mesaj topluluk kurallarını ihlal ediyor.",
+          },
+        },
+      ),
+      { params: Promise.resolve({ id: report!.id }) },
+    );
+    expect(resolveResponse.status).toBe(204);
+
+    const messageState = await pool.query<{
+      body: string;
+      deleted_at: Date | null;
+    }>("select body, deleted_at from direct_messages where id = $1", [
+      messageId,
+    ]);
+    expect(messageState.rows[0]?.body).toBe("");
+    expect(messageState.rows[0]?.deleted_at).not.toBeNull();
+
+    const conversationState = await pool.query<{
+      last_message_preview: string;
+    }>(
+      "select last_message_preview from direct_conversations where id = $1",
+      [conversationId],
+    );
+    expect(conversationState.rows[0]?.last_message_preview).toBe(
+      "Bu mesaj silindi.",
+    );
+
+    const audit = await pool.query<{
+      action: string;
+      message_id: string | null;
+      post_id: string | null;
+      target_snapshot: string;
+    }>(
+      `select action.message_id,
+              action.post_id,
+              action.action,
+              report.target_snapshot
+       from moderation_actions action
+       join reports report on report.id = action.report_id
+       where action.report_id = $1`,
+      [report!.id],
+    );
+    expect(audit.rows).toEqual([
+      {
+        action: "content_removed",
+        message_id: messageId,
+        post_id: null,
+        target_snapshot: originalBody,
+      },
+    ]);
+
+    const historyResponse = await getHistory(
+      plainRequest("/v1/moderation/history", { cookie: moderatorCookie }),
+    );
+    const historyPayload = (await historyResponse.json()) as {
+      data: Array<{ reportId: string | null; messageId: string | null }>;
+    };
+    expect(historyPayload.data).toContainEqual(
+      expect.objectContaining({ reportId: report!.id, messageId }),
+    );
   });
 
   it("does not create a duplicate report for the same target", async () => {

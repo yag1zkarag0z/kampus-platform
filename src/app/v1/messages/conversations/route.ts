@@ -6,6 +6,7 @@ import {
   authErrorResponse,
   noStoreHeaders,
   readJsonBody,
+  readQueryParams,
 } from "@/server/auth/request";
 import {
   listDirectConversations,
@@ -13,6 +14,7 @@ import {
 } from "@/server/messaging/service";
 import {
   parseMessagingInput,
+  conversationListQuerySchema,
   startConversationSchema,
 } from "@/server/messaging/validation";
 
@@ -22,12 +24,17 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     const member = await requireActiveMember(request);
-    const conversations = await listDirectConversations(member.userId);
-
-    return NextResponse.json(
-      { data: conversations },
-      { headers: noStoreHeaders },
+    const query = parseMessagingInput(
+      conversationListQuerySchema,
+      readQueryParams(request.nextUrl.searchParams),
     );
+    const conversations = await listDirectConversations(
+      member.userId,
+      query.box,
+      { cursor: query.cursor, limit: query.limit, search: query.search },
+    );
+
+    return NextResponse.json(conversations, { headers: noStoreHeaders });
   } catch (error) {
     return authErrorResponse(error);
   }

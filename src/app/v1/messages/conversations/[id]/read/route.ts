@@ -5,8 +5,13 @@ import {
   assertSameOrigin,
   authErrorResponse,
   noStoreHeaders,
+  readJsonBody,
 } from "@/server/auth/request";
 import { markDirectConversationRead } from "@/server/messaging/service";
+import {
+  markConversationReadSchema,
+  parseMessagingInput,
+} from "@/server/messaging/validation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +28,9 @@ export async function POST(
     assertSameOrigin(request);
     const member = await requireActiveMember(request);
     const { id } = await context.params;
-    await markDirectConversationRead(member.userId, id);
+    const body = await readJsonBody(request);
+    const input = parseMessagingInput(markConversationReadSchema, body);
+    await markDirectConversationRead(member.userId, id, input.messageId);
 
     return new NextResponse(null, {
       status: 204,

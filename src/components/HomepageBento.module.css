@@ -323,45 +323,24 @@
   }
 }
 
-/* Başlıkta "Yaşar öğrencileri" ifadesinin altına akan turuncu vurgu.
-   Renk durakları palindrom ve zemin 200% genişlikte; tam bir kutu boyu
-   kaydırınca desen kendini tekrarladığı için döngü dikişsiz. */
+/* Başlığın tamamını kaplayan sabit turuncu gradient vurgu. Inline arka plan ve
+   box-decoration-break sayesinde dar ekranda satır kırılırsa her satır kendi
+   alt çizgisini koruyor. */
 .brandUnderline {
-  position: relative;
-  white-space: nowrap;
-}
-
-.brandUnderline::after {
-  content: "";
-  position: absolute;
-  right: 0;
-  bottom: -0.16em;
-  left: 0;
-  height: 0.09em;
-  border-radius: 999px;
-  background: linear-gradient(
+  padding-bottom: 0.16em;
+  background-image: linear-gradient(
     90deg,
-    #ffc94a,
-    #ff9b3c,
-    var(--brand),
-    #ff4d6d,
-    var(--brand),
-    #ff9b3c,
-    #ffc94a
+    #ffc06a 0%,
+    #ff974f 32%,
+    var(--brand) 58%,
+    #ff7b43 78%,
+    #ff9a52 100%
   );
-  background-size: 200% 100%;
-  box-shadow: 0 0 14px rgb(255 107 61 / 38%);
-  animation: brandUnderlineFlow 5s linear infinite;
-}
-
-@keyframes brandUnderlineFlow {
-  from {
-    background-position: 0% 50%;
-  }
-
-  to {
-    background-position: -200% 50%;
-  }
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 100% 0.09em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
 .messageCanvas {
@@ -908,7 +887,6 @@
   .composerOption,
   .composerToggle,
   .composerSubmit,
-  .brandUnderline::after,
   .messageRow,
   .messageIncoming,
   .messageTyping,

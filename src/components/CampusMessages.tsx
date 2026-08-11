@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  Fragment,
   useCallback,
   useEffect,
+  useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -17,11 +20,14 @@ import ActionStatusText from "@/components/ActionStatusText";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import CampusEmojiPicker from "@/components/CampusEmojiPicker";
+import CampusMessageReportDialog from "@/components/CampusMessageReportDialog";
 import { useCampusMessaging } from "@/components/CampusMessagingProvider";
+import { useCampusModeration } from "@/components/CampusModerationProvider";
 import { campusButton, campusFocusRing } from "@/components/campusButtonStyles";
 import { useFeedback } from "@/components/FeedbackProvider";
 import { useActionStatus } from "@/components/useActionStatus";
 import { useAutoGrowTextarea } from "@/components/useAutoGrowTextarea";
+import { useDebouncedValue } from "@/components/useCampusPostQuery";
 import {
   guestDirectConversations,
   type GuestDirectConversation,
@@ -32,6 +38,7 @@ import {
   listDirectConversations,
   listDirectMessages,
   markDirectConversationRead,
+  resolveDirectMessageRequest,
   sendDirectMessage,
   startDirectConversation,
   type DirectConversationDto,
@@ -50,6 +57,18 @@ const listDateFormatter = new Intl.DateTimeFormat("tr-TR", {
   day: "numeric",
   month: "short",
 });
+const messageDayFormatter = new Intl.DateTimeFormat("tr-TR", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+const MESSAGE_GROUP_WINDOW_MS = 5 * 60 * 1000;
+const SCROLL_BOTTOM_THRESHOLD_PX = 96;
+
+type ThreadMessage = DirectMessageDto & {
+  deliveryStatus: "sent" | "sending" | "failed";
+  clientMessageId?: string;
+};
 
 function isSameDay(first: Date, second: Date) {
   return (
@@ -68,7 +87,7 @@ function formatConversationTime(value: string) {
     : listDateFormatter.format(date);
 }
 
-function sortMessages(messages: DirectMessageDto[]) {
+function sortMessages<TMessage extends DirectMessageDto>(messages: TMessage[]) {
   return [...messages].sort(
     (first, second) =>
       new Date(first.createdAt).getTime() -
@@ -77,13 +96,51 @@ function sortMessages(messages: DirectMessageDto[]) {
   );
 }
 
-function mergeMessages(
-  current: DirectMessageDto[],
-  incoming: DirectMessageDto[],
+function mergeMessages<TMessage extends DirectMessageDto>(
+  current: TMessage[],
+  incoming: TMessage[],
 ) {
   const byId = new Map(current.map((message) => [message.id, message]));
   for (const message of incoming) byId.set(message.id, message);
   return sortMessages([...byId.values()]);
+}
+
+function toThreadMessages(messages: DirectMessageDto[]): ThreadMessage[] {
+  return messages.map((message) => ({
+    ...message,
+    deliveryStatus: "sent",
+  }));
+}
+
+function messageDayKey(value: string) {
+  const date = new Date(value);
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
+function formatMessageDay(value: string) {
+  const date = new Date(value);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  if (isSameDay(date, today)) return "Bugün";
+  if (isSameDay(date, yesterday)) return "Dün";
+  return messageDayFormatter.format(date);
+}
+
+function belongsToMessageGroup(
+  message: ThreadMessage,
+  adjacent?: ThreadMessage,
+) {
+  if (!adjacent || message.isDeleted || adjacent.isDeleted) return false;
+  return (
+    message.isMine === adjacent.isMine &&
+    messageDayKey(message.createdAt) === messageDayKey(adjacent.createdAt) &&
+    Math.abs(
+      new Date(message.createdAt).getTime() -
+        new Date(adjacent.createdAt).getTime(),
+    ) <= MESSAGE_GROUP_WINDOW_MS
+  );
 }
 
 function mergeConversation(
@@ -93,6 +150,16 @@ function mergeConversation(
   return [incoming, ...current.filter((item) => item.id !== incoming.id)];
 }
 
+function mergeConversationPage(
+  current: DirectConversationDto[],
+  incoming: DirectConversationDto[],
+  prepend = false,
+) {
+  const incomingIds = new Set(incoming.map((item) => item.id));
+  const remaining = current.filter((item) => !incomingIds.has(item.id));
+  return prepend ? [...incoming, ...remaining] : [...remaining, ...incoming];
+}
+
 export default function CampusMessages() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -100,17 +167,45 @@ export default function CampusMessages() {
   const { markGuestMessagesRead, refreshUnreadMessageCount } =
     useCampusMessaging();
   const [conversations, setConversations] = useState<DirectConversationDto[]>([]);
+  const [messageRequests, setMessageRequests] = useState<DirectConversationDto[]>([]);
+  const [openedConversation, setOpenedConversation] =
+    useState<DirectConversationDto | null>(null);
+  const [activeBox, setActiveBox] = useState<"inbox" | "requests">("inbox");
+  const [inboxCursor, setInboxCursor] = useState<string | null>(null);
+  const [requestCursor, setRequestCursor] = useState<string | null>(null);
+  const [loadingMoreBox, setLoadingMoreBox] = useState<
+    "inbox" | "requests" | null
+  >(null);
   const [isLoading, setIsLoading] = useState(sessionMode === "member");
   const [hasFailed, setHasFailed] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [conversationSearch, setConversationSearch] = useState("");
+  const debouncedConversationSearch = useDebouncedValue(
+    conversationSearch,
+    250,
+  ).trim();
   const [startStatus, setStartStatus] = useActionStatus();
   const startedUsernameRef = useRef<string | null>(null);
   const conversationId = searchParams.get("sohbet");
   const requestedUsername = searchParams.get("kullanici")?.trim() ?? "";
   const selectedConversation = useMemo(
-    () => conversations.find((item) => item.id === conversationId) ?? null,
-    [conversationId, conversations],
+    () => {
+      if (!conversationId) return null;
+      return (
+        [...conversations, ...messageRequests].find(
+          (item) => item.id === conversationId,
+        ) ??
+        (openedConversation?.id === conversationId
+          ? openedConversation
+          : null)
+      );
+    },
+    [conversationId, conversations, messageRequests, openedConversation],
   );
+  const visibleConversations =
+    activeBox === "requests" ? messageRequests : conversations;
+  const visibleCursor =
+    activeBox === "requests" ? requestCursor : inboxCursor;
 
   useEffect(() => {
     if (sessionMode === "guest") {
@@ -123,8 +218,24 @@ export default function CampusMessages() {
     if (!silent) setIsLoading(true);
 
     try {
-      const result = await listDirectConversations();
-      setConversations(result);
+      const [inboxResult, requestResult] = await Promise.all([
+        listDirectConversations("inbox", undefined, debouncedConversationSearch),
+        listDirectConversations("requests", undefined, debouncedConversationSearch),
+      ]);
+      setConversations((current) =>
+        silent
+          ? mergeConversationPage(current, inboxResult.data, true)
+          : inboxResult.data,
+      );
+      setMessageRequests((current) =>
+        silent
+          ? mergeConversationPage(current, requestResult.data, true)
+          : requestResult.data,
+      );
+      if (!silent) {
+        setInboxCursor(inboxResult.page.nextCursor);
+        setRequestCursor(requestResult.page.nextCursor);
+      }
       setHasFailed(false);
     } catch (error) {
       if (!silent) setHasFailed(true);
@@ -134,7 +245,7 @@ export default function CampusMessages() {
     } finally {
       if (!silent) setIsLoading(false);
     }
-  }, [retrySession, sessionMode]);
+  }, [debouncedConversationSearch, retrySession, sessionMode]);
 
   useEffect(() => {
     queueMicrotask(() => void refreshConversations());
@@ -194,9 +305,17 @@ export default function CampusMessages() {
 
     getDirectConversation(conversationId)
       .then((conversation) => {
-        setConversations((current) =>
-          mergeConversation(current, conversation),
-        );
+        setOpenedConversation(conversation);
+        if (conversation.requestDirection === "incoming") {
+          setMessageRequests((current) =>
+            mergeConversation(current, conversation),
+          );
+          setActiveBox("requests");
+        } else {
+          setConversations((current) =>
+            mergeConversation(current, conversation),
+          );
+        }
       })
       .catch(() => {
         router.replace("/mesajlar", { scroll: false });
@@ -204,11 +323,14 @@ export default function CampusMessages() {
   }, [conversationId, isLoading, router, selectedConversation, sessionMode]);
 
   const openConversation = (conversation: DirectConversationDto) => {
-    setConversations((current) =>
+    setConversationSearch("");
+    setOpenedConversation(conversation);
+    const updateUnread = (current: DirectConversationDto[]) =>
       current.map((item) =>
         item.id === conversation.id ? { ...item, unreadCount: 0 } : item,
-      ),
-    );
+      );
+    setConversations(updateUnread);
+    setMessageRequests(updateUnread);
     router.push(
       `/mesajlar?sohbet=${encodeURIComponent(conversation.id)}`,
       { scroll: false },
@@ -217,10 +339,66 @@ export default function CampusMessages() {
 
   const handleConversationChanged = useCallback(
     (conversation: DirectConversationDto) => {
-      setConversations((current) => mergeConversation(current, conversation));
+      setOpenedConversation(conversation);
+      if (conversation.requestDirection === "incoming") {
+        setMessageRequests((current) =>
+          mergeConversation(current, conversation),
+        );
+      } else {
+        setMessageRequests((current) =>
+          current.filter((item) => item.id !== conversation.id),
+        );
+        setConversations((current) =>
+          mergeConversation(current, conversation),
+        );
+      }
     },
     [],
   );
+
+  const handleRequestRemoved = useCallback((removedId: string) => {
+    setMessageRequests((current) =>
+      current.filter((item) => item.id !== removedId),
+    );
+    setOpenedConversation(null);
+    router.replace("/mesajlar", { scroll: false });
+  }, [router]);
+
+  const loadMoreConversations = async () => {
+    if (loadingMoreBox) return;
+    const cursor = activeBox === "inbox" ? inboxCursor : requestCursor;
+    if (!cursor) return;
+
+    setLoadingMoreBox(activeBox);
+    try {
+      const result = await listDirectConversations(
+        activeBox,
+        cursor,
+        debouncedConversationSearch,
+      );
+      if (activeBox === "inbox") {
+        setConversations((current) =>
+          mergeConversationPage(current, result.data),
+        );
+        setInboxCursor(result.page.nextCursor);
+      } else {
+        setMessageRequests((current) =>
+          mergeConversationPage(current, result.data),
+        );
+        setRequestCursor(result.page.nextCursor);
+      }
+    } catch (error) {
+      setStartStatus({
+        tone: "error",
+        message:
+          error instanceof AuthClientError
+            ? error.message
+            : "Daha eski konuşmalar yüklenemedi.",
+      });
+    } finally {
+      setLoadingMoreBox(null);
+    }
+  };
 
   if (sessionMode === "signed-out") {
     return (
@@ -279,6 +457,64 @@ export default function CampusMessages() {
             </button>
           </header>
 
+          <div className="border-b border-white/10 px-3 py-2.5">
+            <label className="flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 transition-colors focus-within:border-brand/38 focus-within:bg-white/[0.05]">
+              <SearchIcon />
+              <span className="sr-only">Konuşmalarda ara</span>
+              <input
+                type="search"
+                value={conversationSearch}
+                onChange={(event) => setConversationSearch(event.target.value)}
+                placeholder="Konuşmalarda ara"
+                className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-white outline-none placeholder:text-white/35"
+              />
+              {conversationSearch && (
+                <button
+                  type="button"
+                  aria-label="Konuşma aramasını temizle"
+                  onClick={() => setConversationSearch("")}
+                  className={`grid size-7 place-items-center rounded-full text-white/42 hover:bg-white/8 hover:text-white ${campusFocusRing}`}
+                >
+                  <CloseIcon />
+                </button>
+              )}
+            </label>
+          </div>
+
+          <nav
+            aria-label="Mesaj kutuları"
+            className="grid grid-cols-2 border-b border-white/10 px-2"
+          >
+            {(["inbox", "requests"] as const).map((box) => {
+              const isActive = activeBox === box;
+              const label = box === "inbox" ? "Mesajlar" : "İstekler";
+
+              return (
+                <button
+                  key={box}
+                  type="button"
+                  onClick={() => {
+                    setActiveBox(box);
+                    router.replace("/mesajlar", { scroll: false });
+                  }}
+                  className={`relative min-h-12 px-2 text-sm font-black transition-colors ${
+                    isActive ? "text-white" : "text-white/42 hover:text-white/70"
+                  } ${campusFocusRing}`}
+                >
+                  {label}
+                  {box === "requests" && messageRequests.length > 0 && (
+                    <span className="ml-1.5 rounded-full bg-brand/14 px-1.5 py-0.5 text-[10px] text-brand">
+                      {Math.min(messageRequests.length, 99)}
+                    </span>
+                  )}
+                  {isActive && (
+                    <span className="absolute inset-x-5 bottom-0 h-0.5 rounded-full bg-brand" />
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
           {isPickerOpen && (
             <NewConversationPicker
               onClose={() => setIsPickerOpen(false)}
@@ -314,27 +550,40 @@ export default function CampusMessages() {
                   </button>
                 </div>
               </div>
-            ) : conversations.length === 0 ? (
+            ) : visibleConversations.length === 0 ? (
               <div className="grid min-h-64 place-items-center px-6 text-center">
                 <div>
                   <MessageIcon className="mx-auto size-10 text-white/25" />
-                  <p className="mt-4 text-base font-black">Henüz konuşma yok</p>
-                  <p className="mt-1 text-sm leading-5 text-white/48">
-                    Kampüsten birini bulup ilk mesajı gönder.
+                  <p className="mt-4 text-base font-black">
+                    {debouncedConversationSearch
+                      ? "Eşleşen konuşma yok"
+                      : activeBox === "requests"
+                        ? "Yeni mesaj isteği yok"
+                        : "Henüz konuşma yok"}
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => setIsPickerOpen(true)}
-                    className="mt-4 text-sm font-black text-brand outline-none hover:text-brand-hover focus-visible:ring-2 focus-visible:ring-brand/40"
-                  >
-                    Yeni mesaj →
-                  </button>
+                  <p className="mt-1 text-sm leading-5 text-white/48">
+                    {debouncedConversationSearch
+                      ? "İsim, kullanıcı adı veya son mesajla tekrar ara."
+                      : activeBox === "requests"
+                        ? "Takip etmediğin kişilerden gelen mesajlar burada görünür."
+                        : "Kampüsten birini bulup ilk mesajı gönder."}
+                  </p>
+                  {activeBox === "inbox" && !debouncedConversationSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setIsPickerOpen(true)}
+                      className="mt-4 text-sm font-black text-brand outline-none hover:text-brand-hover focus-visible:ring-2 focus-visible:ring-brand/40"
+                    >
+                      Yeni mesaj →
+                    </button>
+                  )}
                 </div>
               </div>
             ) : (
-              <ol>
-                {conversations.map((conversation) => (
-                  <li key={conversation.id}>
+              <>
+                <ol>
+                  {visibleConversations.map((conversation) => (
+                    <li key={conversation.id}>
                     <button
                       type="button"
                       onClick={() => openConversation(conversation)}
@@ -383,9 +632,24 @@ export default function CampusMessages() {
                         </span>
                       </span>
                     </button>
-                  </li>
-                ))}
-              </ol>
+                    </li>
+                  ))}
+                </ol>
+                {visibleCursor && (
+                  <div className="border-t border-white/8 px-4 py-4 text-center">
+                    <button
+                      type="button"
+                      onClick={() => void loadMoreConversations()}
+                      disabled={loadingMoreBox !== null}
+                      className="rounded-full border border-white/12 px-4 py-2 text-xs font-black text-white/62 outline-none transition-colors hover:border-white/22 hover:bg-white/[0.045] hover:text-white disabled:cursor-wait disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-brand/40"
+                    >
+                      {loadingMoreBox === activeBox
+                        ? "Yükleniyor..."
+                        : "Daha eski konuşmaları göster"}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </aside>
@@ -399,6 +663,7 @@ export default function CampusMessages() {
               conversation={selectedConversation}
               onBack={() => router.push("/mesajlar", { scroll: false })}
               onConversationChanged={handleConversationChanged}
+              onRequestRemoved={handleRequestRemoved}
               refreshConversations={refreshConversations}
               refreshUnreadCount={refreshUnreadMessageCount}
             />
@@ -431,6 +696,25 @@ function GuestMessagesPreview({
   onOpen: (conversation: GuestDirectConversation) => void;
 }) {
   const [isListOpen, setIsListOpen] = useState(conversationId === null);
+  const [conversationSearch, setConversationSearch] = useState("");
+  const [conversations, setConversations] = useState(() =>
+    guestDirectConversations.map((conversation) => ({ ...conversation })),
+  );
+  const [messagesByConversation, setMessagesByConversation] = useState<
+    Record<string, ThreadMessage[]>
+  >(() =>
+    Object.fromEntries(
+      guestDirectConversations.map((conversation) => [
+        conversation.id,
+        sortMessages(
+          conversation.messages.map((message) => ({
+            ...message,
+            deliveryStatus: message.deliveryStatus ?? "sent",
+          })),
+        ),
+      ]),
+    ),
+  );
   const [unreadByConversation, setUnreadByConversation] = useState(() =>
     Object.fromEntries(
       guestDirectConversations.map((conversation) => [
@@ -439,20 +723,163 @@ function GuestMessagesPreview({
       ]),
     ),
   );
+  const [newMessageCount, setNewMessageCount] = useState(0);
+  const [menuMessageId, setMenuMessageId] = useState<string | null>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const shouldScrollToBottomRef = useRef(true);
+  const injectedConversationIdsRef = useRef(new Set<string>());
+  const normalizedSearch = conversationSearch.trim().toLocaleLowerCase("tr-TR");
+  const visibleConversations = useMemo(
+    () =>
+      conversations.filter((conversation) => {
+        if (!normalizedSearch) return true;
+        return [
+          conversation.member.displayName,
+          conversation.member.username,
+          conversation.lastMessage?.preview ?? "",
+        ].some((value) =>
+          value.toLocaleLowerCase("tr-TR").includes(normalizedSearch),
+        );
+      }),
+    [conversations, normalizedSearch],
+  );
   const selectedConversation =
-    guestDirectConversations.find(
+    conversations.find(
       (conversation) => conversation.id === conversationId,
     ) ?? null;
   const displayedConversation =
-    selectedConversation ?? guestDirectConversations[0];
+    selectedConversation ?? visibleConversations[0] ?? null;
+  const displayedMessages = useMemo(
+    () =>
+      displayedConversation
+        ? messagesByConversation[displayedConversation.id] ?? []
+        : [],
+    [displayedConversation, messagesByConversation],
+  );
+  const menuMessage = displayedMessages.find(
+    (message) => message.id === menuMessageId,
+  );
 
   const openConversation = (conversation: GuestDirectConversation) => {
+    shouldScrollToBottomRef.current = true;
+    setNewMessageCount(0);
+    setConversationSearch("");
     setUnreadByConversation((current) => ({
       ...current,
       [conversation.id]: 0,
     }));
     setIsListOpen(false);
     onOpen(conversation);
+  };
+
+  useLayoutEffect(() => {
+    if (!displayedConversation || !shouldScrollToBottomRef.current) return;
+    const scroller = scrollerRef.current;
+    if (scroller) {
+      scroller.scrollTo({ top: scroller.scrollHeight, behavior: "auto" });
+    }
+    shouldScrollToBottomRef.current = false;
+  }, [conversationId, displayedConversation, displayedMessages, isListOpen]);
+
+  useEffect(() => {
+    if (
+      !conversationId ||
+      !displayedConversation ||
+      injectedConversationIdsRef.current.has(displayedConversation.id)
+    ) {
+      return;
+    }
+
+    const activeConversation = displayedConversation;
+    injectedConversationIdsRef.current.add(activeConversation.id);
+    const timer = window.setTimeout(() => {
+      const scroller = scrollerRef.current;
+      const shouldStickToBottom =
+        !scroller ||
+        scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <=
+          SCROLL_BOTTOM_THRESHOLD_PX;
+      shouldScrollToBottomRef.current = shouldStickToBottom;
+
+      const incomingMessage: ThreadMessage = {
+        id: `${activeConversation.id}-live-preview`,
+        conversationId: activeConversation.id,
+        body:
+          activeConversation.id === "guest-conversation-ece"
+            ? "Sunum dosyasını da güncelledim."
+            : "Tamamdır, görüşürüz.",
+        isMine: false,
+        isDeleted: false,
+        isSeen: false,
+        deliveryStatus: "sent",
+        createdAt: new Date().toISOString(),
+      };
+
+      setMessagesByConversation((current) => ({
+        ...current,
+        [activeConversation.id]: mergeMessages(
+          current[activeConversation.id] ?? [],
+          [incomingMessage],
+        ),
+      }));
+      setConversations((current) =>
+        current.map((conversation) =>
+          conversation.id === activeConversation.id
+            ? {
+                ...conversation,
+                lastMessage: {
+                  id: incomingMessage.id,
+                  preview: incomingMessage.body,
+                  isMine: false,
+                  createdAt: incomingMessage.createdAt,
+                },
+              }
+            : conversation,
+        ),
+      );
+      if (!shouldStickToBottom) {
+        setNewMessageCount((current) => current + 1);
+        setUnreadByConversation((current) => ({
+          ...current,
+          [activeConversation.id]:
+            (current[activeConversation.id] ?? 0) + 1,
+        }));
+      }
+    }, 3_200);
+
+    return () => window.clearTimeout(timer);
+  }, [conversationId, displayedConversation]);
+
+  useEffect(() => {
+    if (!menuMessageId) return;
+    const handleEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setMenuMessageId(null);
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [menuMessageId]);
+
+  const handleThreadScroll = () => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const isAtBottom =
+      scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <=
+      SCROLL_BOTTOM_THRESHOLD_PX;
+    if (isAtBottom) {
+      setNewMessageCount(0);
+      if (displayedConversation) {
+        setUnreadByConversation((current) => ({
+          ...current,
+          [displayedConversation.id]: 0,
+        }));
+      }
+    }
+  };
+
+  const scrollToLatestMessage = () => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    setNewMessageCount(0);
+    scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
   };
 
   return (
@@ -472,8 +899,32 @@ function GuestMessagesPreview({
             </span>
           </header>
 
+          <div className="border-b border-white/10 px-3 py-2.5">
+            <label className="flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 transition-colors focus-within:border-brand/38 focus-within:bg-white/[0.05]">
+              <SearchIcon />
+              <span className="sr-only">Konuşmalarda ara</span>
+              <input
+                type="search"
+                value={conversationSearch}
+                onChange={(event) => setConversationSearch(event.target.value)}
+                placeholder="Konuşmalarda ara"
+                className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-white outline-none placeholder:text-white/35"
+              />
+              {conversationSearch && (
+                <button
+                  type="button"
+                  aria-label="Konuşma aramasını temizle"
+                  onClick={() => setConversationSearch("")}
+                  className={`grid size-7 place-items-center rounded-full text-white/42 hover:bg-white/8 hover:text-white ${campusFocusRing}`}
+                >
+                  <CloseIcon />
+                </button>
+              )}
+            </label>
+          </div>
+
           <ol className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-            {guestDirectConversations.map((conversation) => {
+            {visibleConversations.map((conversation) => {
               const unreadCount = unreadByConversation[conversation.id] ?? 0;
 
               return (
@@ -527,6 +978,11 @@ function GuestMessagesPreview({
                 </li>
               );
             })}
+            {visibleConversations.length === 0 && (
+              <li className="px-5 py-10 text-center text-sm font-semibold text-white/42">
+                Eşleşen konuşma bulunamadı.
+              </li>
+            )}
           </ol>
 
           <footer className="shrink-0 border-t border-white/10 bg-canvas p-3 md:hidden">
@@ -556,52 +1012,172 @@ function GuestMessagesPreview({
                 >
                   <BackIcon />
                 </button>
-                <CampusAuthorAvatar
-                  author={displayedConversation.member.displayName}
-                  authorId={displayedConversation.member.id}
-                  avatarUrl={displayedConversation.member.avatarUrl}
-                  size="md"
+                <Link
+                  href={`/profil/${encodeURIComponent(displayedConversation.member.username)}`}
+                  className={`flex min-w-0 items-center gap-3 rounded-xl px-1.5 py-1 transition-colors hover:bg-white/5 ${campusFocusRing}`}
+                >
+                  <CampusAuthorAvatar
+                    author={displayedConversation.member.displayName}
+                    authorId={displayedConversation.member.id}
+                    avatarUrl={displayedConversation.member.avatarUrl}
+                    size="md"
+                  />
+                  <span className="min-w-0">
+                    <span className="block truncate text-[15px] font-black tracking-[-0.025em]">
+                      {displayedConversation.member.displayName}
+                    </span>
+                    <span className="block truncate text-[11px] font-semibold text-white/42">
+                      @{displayedConversation.member.username}
+                    </span>
+                  </span>
+                </Link>
+                <ConversationHeaderMenu
+                  displayName={displayedConversation.member.displayName}
+                  username={displayedConversation.member.username}
+                  isGuest
                 />
-                <span className="min-w-0">
-                  <span className="block truncate text-[15px] font-black tracking-[-0.025em]">
-                    {displayedConversation.member.displayName}
-                  </span>
-                  <span className="block truncate text-[11px] font-semibold text-white/42">
-                    @{displayedConversation.member.username}
-                  </span>
-                </span>
               </header>
 
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4">
-                <ol className="flex min-h-full flex-col justify-end gap-1.5">
-                  {displayedConversation.messages.map((message) => (
-                    <li
-                      key={message.id}
-                      className={`flex ${message.isMine ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`max-w-[86%] rounded-[1.15rem] px-3.5 py-2.5 sm:max-w-[78%] ${
-                          message.isMine
-                            ? "rounded-br-[0.35rem] bg-brand text-[#15110f]"
-                            : "rounded-bl-[0.35rem] bg-surface-raised text-white"
-                        }`}
-                      >
-                        <p className="whitespace-pre-wrap break-words text-[14px] leading-[1.42] font-medium">
-                          {message.body}
-                        </p>
-                        <time
-                          className={`mt-1 block text-right text-[9px] font-bold ${
-                            message.isMine ? "text-black/48" : "text-white/32"
-                          }`}
+              <div
+                ref={scrollerRef}
+                onScroll={handleThreadScroll}
+                aria-label="Mesaj geçmişi"
+                className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4"
+              >
+                <ol className="flex min-h-full flex-col justify-end">
+                  {displayedMessages.map((message, index) => {
+                    const previousMessage = displayedMessages[index - 1];
+                    const nextMessage = displayedMessages[index + 1];
+                    const groupedWithPrevious = belongsToMessageGroup(
+                      message,
+                      previousMessage,
+                    );
+                    const groupedWithNext = belongsToMessageGroup(
+                      message,
+                      nextMessage,
+                    );
+                    const showDaySeparator =
+                      !previousMessage ||
+                      messageDayKey(previousMessage.createdAt) !==
+                        messageDayKey(message.createdAt);
+                    const isLastMessage = index === displayedMessages.length - 1;
+                    const showMeta =
+                      !groupedWithNext || message.deliveryStatus !== "sent";
+
+                    return (
+                      <Fragment key={message.id}>
+                        {showDaySeparator && (
+                          <li
+                            role="separator"
+                            aria-label={formatMessageDay(message.createdAt)}
+                            className="my-4 flex items-center gap-3"
+                          >
+                            <span className="h-px flex-1 bg-white/8" />
+                            <time className="text-[10px] font-black uppercase tracking-[0.09em] text-white/32">
+                              {formatMessageDay(message.createdAt)}
+                            </time>
+                            <span className="h-px flex-1 bg-white/8" />
+                          </li>
+                        )}
+                        <li
+                          className={`group flex ${
+                            groupedWithPrevious ? "mt-0.5" : "mt-2"
+                          } ${message.isMine ? "justify-end" : "justify-start"}`}
                         >
-                          {compactDateFormatter.format(
-                            new Date(message.createdAt),
-                          )}
-                        </time>
-                      </div>
-                    </li>
-                  ))}
+                          <div className="flex max-w-[88%] items-end gap-1 sm:max-w-[76%]">
+                            <div
+                              className={`rounded-[1.15rem] px-3.5 py-2.5 ${
+                                message.isMine
+                                  ? `rounded-br-[0.38rem] bg-brand text-[#15110f] ${
+                                      groupedWithPrevious
+                                        ? "rounded-tr-[0.38rem]"
+                                        : ""
+                                    }`
+                                  : `rounded-bl-[0.38rem] bg-surface-raised text-white ${
+                                      groupedWithPrevious
+                                        ? "rounded-tl-[0.38rem]"
+                                        : ""
+                                    }`
+                              } ${
+                                message.deliveryStatus === "sending"
+                                  ? "opacity-72"
+                                  : ""
+                              }`}
+                            >
+                              <p className="whitespace-pre-wrap break-words text-[14px] leading-[1.42] font-medium">
+                                {message.body}
+                              </p>
+                              {showMeta && (
+                                <span
+                                  className={`mt-1 flex items-center justify-end gap-1.5 text-[9px] font-bold ${
+                                    message.isMine
+                                      ? "text-black/48"
+                                      : "text-white/32"
+                                  }`}
+                                >
+                                  <time>
+                                    {compactDateFormatter.format(
+                                      new Date(message.createdAt),
+                                    )}
+                                  </time>
+                                  {message.deliveryStatus === "sending" && (
+                                    <span>Gönderiliyor…</span>
+                                  )}
+                                  {message.deliveryStatus === "failed" && (
+                                    <Link
+                                      href="/giris"
+                                      className="font-black text-[#8c1d10] underline decoration-current/35 underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-black/25"
+                                    >
+                                      Gönderilemedi · Tekrar dene
+                                    </Link>
+                                  )}
+                                  {isLastMessage &&
+                                    message.isMine &&
+                                    message.isSeen &&
+                                    message.deliveryStatus === "sent" && (
+                                      <span>Görüldü</span>
+                                    )}
+                                </span>
+                              )}
+                            </div>
+                            {message.deliveryStatus === "sent" && (
+                              <button
+                                type="button"
+                                aria-label="Mesaj menüsünü aç"
+                                aria-haspopup="menu"
+                                onClick={() => setMenuMessageId(message.id)}
+                                className={`mb-1 grid size-8 shrink-0 place-items-center rounded-full text-white/38 hover:bg-white/8 hover:text-white md:hidden ${campusFocusRing}`}
+                              >
+                                <MoreIcon />
+                              </button>
+                            )}
+                            {!message.isMine &&
+                              message.deliveryStatus === "sent" && (
+                                <Link
+                                  href="/giris"
+                                  aria-label="Mesajı bildirmek için giriş yap"
+                                  className="mb-1 hidden size-8 shrink-0 place-items-center rounded-full text-white/0 outline-none transition-colors hover:!bg-white/8 hover:!text-danger focus-visible:text-white/45 focus-visible:ring-2 focus-visible:ring-brand/40 md:grid md:group-hover:text-white/36"
+                                >
+                                  <FlagIcon />
+                                </Link>
+                              )}
+                          </div>
+                        </li>
+                      </Fragment>
+                    );
+                  })}
                 </ol>
+                {newMessageCount > 0 && (
+                  <div className="pointer-events-none sticky bottom-1 z-10 mt-3 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={scrollToLatestMessage}
+                      className={`pointer-events-auto rounded-full border border-brand/28 bg-[#171515]/96 px-4 py-2 text-xs font-black text-brand shadow-lg shadow-black/25 backdrop-blur-sm hover:bg-[#201a18] ${campusFocusRing}`}
+                    >
+                      Yeni mesajlar ↓
+                    </button>
+                  </div>
+                )}
               </div>
 
               <footer className="shrink-0 border-t border-white/10 bg-canvas p-3">
@@ -639,6 +1215,44 @@ function GuestMessagesPreview({
           )}
         </div>
       </div>
+
+      {menuMessage && (
+        <div className="fixed inset-0 z-[60] md:hidden">
+          <button
+            type="button"
+            aria-label="Mesaj menüsünü kapat"
+            onClick={() => setMenuMessageId(null)}
+            className="absolute inset-0 bg-black/58 backdrop-blur-[2px]"
+          />
+          <section
+            role="menu"
+            aria-label="Mesaj seçenekleri"
+            className="absolute inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] overflow-hidden rounded-[1.4rem] border border-white/12 bg-surface-raised p-2 shadow-2xl"
+          >
+            <p className="truncate px-3 pb-2 pt-1 text-xs font-semibold text-white/38">
+              {menuMessage.body}
+            </p>
+            <Link
+              href="/giris"
+              role="menuitem"
+              className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-black text-brand hover:bg-brand/8 ${campusFocusRing}`}
+            >
+              {menuMessage.isMine ? <TrashIcon /> : <FlagIcon />}
+              {menuMessage.isMine
+                ? "Silmek için giriş yap"
+                : "Bildirmek için giriş yap"}
+            </Link>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => setMenuMessageId(null)}
+              className={`mt-1 min-h-12 w-full rounded-xl px-3 text-sm font-black text-white/60 hover:bg-white/6 hover:text-white ${campusFocusRing}`}
+            >
+              Vazgeç
+            </button>
+          </section>
+        </div>
+      )}
     </section>
   );
 }
@@ -782,45 +1396,288 @@ function NewConversationPicker({
   );
 }
 
+function ConversationHeaderMenu({
+  displayName,
+  username,
+  isGuest = false,
+  canReport = true,
+  isBusy = false,
+  onReport,
+  onBlock,
+}: {
+  displayName: string;
+  username: string;
+  isGuest?: boolean;
+  canReport?: boolean;
+  isBusy?: boolean;
+  onReport?: () => void;
+  onBlock?: () => void;
+}) {
+  const headingId = useId();
+  const [isOpen, setIsOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLElement>(null);
+  const profileHref = `/profil/${encodeURIComponent(username)}`;
+
+  const closeMenu = useCallback((restoreFocus = true) => {
+    setIsOpen(false);
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => triggerRef.current?.focus());
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const focusFrame = window.requestAnimationFrame(() => {
+      menuRef.current
+        ?.querySelector<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        )
+        ?.focus();
+    });
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeMenu();
+      }
+    };
+
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [closeMenu, isOpen]);
+
+  const menuItemClass = `flex min-h-12 w-full items-center gap-3 rounded-xl px-3.5 text-left text-sm font-black text-white/76 transition-colors hover:bg-white/7 hover:text-white ${campusFocusRing}`;
+  const dangerItemClass = `flex min-h-12 w-full items-center gap-3 rounded-xl px-3.5 text-left text-sm font-black text-danger transition-colors hover:bg-danger/9 disabled:cursor-not-allowed disabled:opacity-35 ${campusFocusRing}`;
+
+  return (
+    <div className="relative ml-auto shrink-0">
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-label={`${displayName} için konuşma seçenekleri`}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        onClick={() => setIsOpen((open) => !open)}
+        className={`grid size-10 place-items-center rounded-full text-white/52 transition-colors hover:bg-white/8 hover:text-white ${campusFocusRing}`}
+      >
+        <MoreIcon />
+      </button>
+
+      {isOpen && (
+        <>
+          <button
+            type="button"
+            aria-label="Konuşma seçeneklerini kapat"
+            onClick={() => closeMenu()}
+            className="fixed inset-0 z-[64] cursor-default bg-black/58 backdrop-blur-[2px] md:bg-transparent md:backdrop-blur-none"
+          />
+          <section
+            ref={menuRef}
+            role="menu"
+            aria-labelledby={headingId}
+            className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-[65] overflow-hidden rounded-[1.4rem] border border-white/12 bg-surface-raised p-2 shadow-[0_24px_70px_rgba(0,0,0,0.48)] md:absolute md:inset-x-auto md:bottom-auto md:right-0 md:top-[calc(100%+0.5rem)] md:w-64 md:rounded-2xl"
+          >
+            <div className="px-3 pb-2 pt-1 md:pb-1">
+              <p
+                id={headingId}
+                className="truncate text-sm font-black tracking-[-0.02em] text-white"
+              >
+                {displayName}
+              </p>
+              <p className="mt-0.5 truncate text-xs font-semibold text-white/38">
+                @{username}
+              </p>
+            </div>
+
+            <Link
+              role="menuitem"
+              href={profileHref}
+              onClick={() => closeMenu(false)}
+              className={menuItemClass}
+            >
+              <ProfileIcon />
+              Profili gör
+            </Link>
+
+            {isGuest ? (
+              <>
+                <Link
+                  role="menuitem"
+                  href="/giris"
+                  onClick={() => closeMenu(false)}
+                  className={menuItemClass}
+                >
+                  <FlagIcon />
+                  Kullanıcıyı bildir
+                </Link>
+                <Link
+                  role="menuitem"
+                  href="/giris"
+                  onClick={() => closeMenu(false)}
+                  className={dangerItemClass}
+                >
+                  <BlockIcon />
+                  Kullanıcıyı engelle
+                </Link>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={!canReport || isBusy}
+                  title={
+                    canReport
+                      ? undefined
+                      : "Bildirilebilecek bir mesaj bulunamadı."
+                  }
+                  onClick={() => {
+                    closeMenu(false);
+                    onReport?.();
+                  }}
+                  className={menuItemClass}
+                >
+                  <FlagIcon />
+                  Kullanıcıyı bildir
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={isBusy}
+                  onClick={() => {
+                    closeMenu(false);
+                    onBlock?.();
+                  }}
+                  className={dangerItemClass}
+                >
+                  <BlockIcon />
+                  {isBusy ? "İşleniyor…" : "Kullanıcıyı engelle"}
+                </button>
+              </>
+            )}
+
+            <button
+              type="button"
+              onClick={() => closeMenu()}
+              className={`mt-1 min-h-12 w-full rounded-xl px-3 text-sm font-black text-white/48 transition-colors hover:bg-white/6 hover:text-white md:hidden ${campusFocusRing}`}
+            >
+              Vazgeç
+            </button>
+          </section>
+        </>
+      )}
+    </div>
+  );
+}
+
 function MessageThread({
   conversation,
   onBack,
   onConversationChanged,
+  onRequestRemoved,
   refreshConversations,
   refreshUnreadCount,
 }: {
   conversation: DirectConversationDto;
   onBack: () => void;
   onConversationChanged: (conversation: DirectConversationDto) => void;
+  onRequestRemoved: (conversationId: string) => void;
   refreshConversations: (silent?: boolean) => Promise<void>;
   refreshUnreadCount: () => Promise<void>;
 }) {
   const { confirm } = useFeedback();
-  const [messages, setMessages] = useState<DirectMessageDto[]>([]);
+  const { blockUser } = useCampusModeration();
+  const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const [body, setBody] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [newMessageCount, setNewMessageCount] = useState(0);
+  const [menuMessageId, setMenuMessageId] = useState<string | null>(null);
+  const [requestAction, setRequestAction] = useState<
+    "accept" | "delete" | "block" | null
+  >(null);
+  const [reportingMessageId, setReportingMessageId] = useState<string | null>(
+    null,
+  );
+  const [isReportingMember, setIsReportingMember] = useState(false);
+  const [headerAction, setHeaderAction] = useState<"block" | null>(null);
   const [isEmojiOpen, setIsEmojiOpen] = useState(false);
   const [status, setStatus] = useActionStatus();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const shouldScrollToBottomRef = useRef(true);
+  const scrollBehaviorRef = useRef<ScrollBehavior>("auto");
+  const isAtBottomRef = useRef(true);
+  const messagesRef = useRef<ThreadMessage[]>([]);
+  const lastMarkedReadMessageIdRef = useRef<string | null>(null);
   useAutoGrowTextarea(textareaRef, body);
+
+  const markLatestMessageRead = useCallback(async () => {
+    const latestMessage = messagesRef.current.at(-1);
+    if (
+      !latestMessage ||
+      latestMessage.deliveryStatus !== "sent" ||
+      lastMarkedReadMessageIdRef.current === latestMessage.id
+    ) {
+      return;
+    }
+
+    try {
+      await markDirectConversationRead(conversation.id, latestMessage.id);
+      lastMarkedReadMessageIdRef.current = latestMessage.id;
+      await refreshUnreadCount();
+    } catch {
+      // Polling or the next scroll-to-bottom pass retries the read cursor.
+    }
+  }, [conversation.id, refreshUnreadCount]);
 
   const loadLatest = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
       const result = await listDirectMessages(conversation.id);
-      setMessages((current) =>
-        silent
-          ? mergeMessages(current, result.data)
-          : sortMessages(result.data),
+      const latestMessages = sortMessages(toThreadMessages(result.data));
+      const knownMessageIds = new Set(
+        messagesRef.current.map((message) => message.id),
       );
+      const addedMessages = latestMessages.filter(
+        (message) => !knownMessageIds.has(message.id),
+      );
+      const scroller = scrollerRef.current;
+      const shouldStickToBottom =
+        !silent ||
+        !scroller ||
+        scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <=
+          SCROLL_BOTTOM_THRESHOLD_PX;
+      isAtBottomRef.current = shouldStickToBottom;
+      setMessages((current) => {
+        const localPendingMessages = current.filter(
+          (message) => message.deliveryStatus !== "sent",
+        );
+        const next = silent
+          ? mergeMessages(current, latestMessages)
+          : sortMessages([...latestMessages, ...localPendingMessages]);
+        messagesRef.current = next;
+        return next;
+      });
       if (!silent) setNextCursor(result.page.nextCursor);
-      await markDirectConversationRead(conversation.id);
-      await refreshUnreadCount();
+      if (addedMessages.length > 0) {
+        if (shouldStickToBottom) {
+          scrollBehaviorRef.current = "auto";
+          shouldScrollToBottomRef.current = true;
+        } else {
+          setNewMessageCount((current) =>
+            current +
+            addedMessages.filter((message) => !message.isMine).length,
+          );
+        }
+      }
+      if (shouldStickToBottom) await markLatestMessageRead();
       setStatus(null);
     } catch (error) {
       setStatus({
@@ -833,7 +1690,7 @@ function MessageThread({
     } finally {
       if (!silent) setIsLoading(false);
     }
-  }, [conversation.id, refreshUnreadCount, setStatus]);
+  }, [conversation.id, markLatestMessageRead, setStatus]);
 
   useEffect(() => {
     queueMicrotask(() => void loadLatest());
@@ -843,12 +1700,40 @@ function MessageThread({
     return () => window.clearInterval(timer);
   }, [loadLatest]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (isLoading || !shouldScrollToBottomRef.current) return;
     const scroller = scrollerRef.current;
-    if (scroller) scroller.scrollTop = scroller.scrollHeight;
+    if (scroller) {
+      scroller.scrollTo({
+        top: scroller.scrollHeight,
+        behavior: scrollBehaviorRef.current,
+      });
+      isAtBottomRef.current = true;
+      setNewMessageCount(0);
+      void markLatestMessageRead();
+    }
     shouldScrollToBottomRef.current = false;
-  }, [isLoading, messages]);
+  }, [isLoading, markLatestMessageRead, messages]);
+
+  const handleThreadScroll = () => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const isAtBottom =
+      scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <=
+      SCROLL_BOTTOM_THRESHOLD_PX;
+    isAtBottomRef.current = isAtBottom;
+    if (isAtBottom) {
+      setNewMessageCount(0);
+      void markLatestMessageRead();
+    }
+  };
+
+  const scrollToLatestMessage = () => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    setNewMessageCount(0);
+    scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
+  };
 
   const loadOlder = async () => {
     if (!nextCursor || isLoadingOlder) return;
@@ -857,7 +1742,12 @@ function MessageThread({
     setIsLoadingOlder(true);
     try {
       const result = await listDirectMessages(conversation.id, nextCursor);
-      setMessages((current) => mergeMessages(result.data, current));
+      const olderMessages = toThreadMessages(result.data);
+      setMessages((current) => {
+        const next = mergeMessages(olderMessages, current);
+        messagesRef.current = next;
+        return next;
+      });
       setNextCursor(result.page.nextCursor);
       window.requestAnimationFrame(() => {
         if (scroller) scroller.scrollTop += scroller.scrollHeight - previousHeight;
@@ -869,33 +1759,92 @@ function MessageThread({
     }
   };
 
-  const submit = async (event?: FormEvent) => {
-    event?.preventDefault();
-    const messageBody = body.trim();
-    if (!messageBody || isSending) return;
+  const sendPendingMessage = async (pendingMessage: ThreadMessage) => {
+    if (isSending) return;
+
     setIsSending(true);
+    setMessages((current) => {
+      const next = current.map((message) =>
+        message.id === pendingMessage.id
+          ? { ...message, deliveryStatus: "sending" as const }
+          : message,
+      );
+      messagesRef.current = next;
+      return next;
+    });
     try {
-      const message = await sendDirectMessage(conversation.id, messageBody);
-      setMessages((current) => mergeMessages(current, [message]));
-      setBody("");
-      setIsEmojiOpen(false);
+      const message = await sendDirectMessage(
+        conversation.id,
+        pendingMessage.body,
+        pendingMessage.clientMessageId!,
+      );
+      const sentMessage: ThreadMessage = {
+        ...message,
+        deliveryStatus: "sent",
+      };
+      setMessages((current) => {
+        const hasPendingMessage = current.some(
+          (item) => item.id === pendingMessage.id,
+        );
+        const next = hasPendingMessage
+          ? sortMessages(
+              current.map((item) =>
+                item.id === pendingMessage.id ? sentMessage : item,
+              ),
+            )
+          : mergeMessages(current, [sentMessage]);
+        messagesRef.current = next;
+        return next;
+      });
       shouldScrollToBottomRef.current = true;
       const updatedConversation = await getDirectConversation(conversation.id);
       onConversationChanged(updatedConversation);
       await refreshConversations(true);
       setStatus(null);
-    } catch (error) {
-      setStatus({
-        tone: "error",
-        message:
-          error instanceof AuthClientError
-            ? error.message
-            : "Mesaj gönderilemedi.",
+    } catch {
+      setMessages((current) => {
+        const next = current.map((message) =>
+          message.id === pendingMessage.id
+            ? { ...message, deliveryStatus: "failed" as const }
+            : message,
+        );
+        messagesRef.current = next;
+        return next;
       });
+      setStatus(null);
     } finally {
       setIsSending(false);
       textareaRef.current?.focus();
     }
+  };
+
+  const submit = async (event?: FormEvent) => {
+    event?.preventDefault();
+    const messageBody = body.trim();
+    if (!messageBody || isSending) return;
+    const clientMessageId = crypto.randomUUID();
+    const pendingMessage: ThreadMessage = {
+      id: `pending:${clientMessageId}`,
+      conversationId: conversation.id,
+      body: messageBody,
+      isMine: true,
+      isDeleted: false,
+      isSeen: false,
+      createdAt: new Date().toISOString(),
+      deliveryStatus: "sending",
+      clientMessageId,
+    };
+
+    setMessages((current) => {
+      const next = sortMessages([...current, pendingMessage]);
+      messagesRef.current = next;
+      return next;
+    });
+    setBody("");
+    setIsEmojiOpen(false);
+    scrollBehaviorRef.current = "auto";
+    shouldScrollToBottomRef.current = true;
+    await sendPendingMessage(pendingMessage);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -905,7 +1854,7 @@ function MessageThread({
     }
   };
 
-  const removeMessage = async (message: DirectMessageDto) => {
+  const removeMessage = async (message: ThreadMessage) => {
     const confirmed = await confirm({
       title: "Mesaj silinsin mi?",
       description: "Mesajın içeriği iki taraftan da kaldırılacak.",
@@ -935,6 +1884,116 @@ function MessageThread({
       });
     }
   };
+
+  const handleRequestAction = async (
+    action: "accept" | "delete" | "block",
+  ) => {
+    if (requestAction) return;
+
+    if (action !== "accept") {
+      const confirmed = await confirm({
+        title:
+          action === "block"
+            ? `${conversation.member.displayName} engellensin mi?`
+            : "Mesaj isteği silinsin mi?",
+        description:
+          action === "block"
+            ? "Konuşma silinir, karşılıklı takip kaldırılır ve bu kişi sana ulaşamaz."
+            : "Konuşma silinir ve bu kişi 30 gün boyunca yeni istek gönderemez.",
+        confirmLabel: action === "block" ? "Engelle" : "İsteği sil",
+        tone: "danger",
+      });
+      if (!confirmed) return;
+    }
+
+    setRequestAction(action);
+    try {
+      const updated = await resolveDirectMessageRequest(
+        conversation.id,
+        action,
+      );
+
+      if (updated) {
+        onConversationChanged(updated);
+        await refreshConversations(true);
+        setStatus({ tone: "success", message: "Mesaj isteği kabul edildi." });
+      } else {
+        onRequestRemoved(conversation.id);
+        await refreshConversations(true);
+      }
+    } catch (error) {
+      setStatus({
+        tone: "error",
+        message:
+          error instanceof AuthClientError
+            ? error.message
+            : "Mesaj isteği güncellenemedi.",
+      });
+    } finally {
+      setRequestAction(null);
+    }
+  };
+
+  const handleBlockMember = async () => {
+    if (headerAction) return;
+
+    const confirmed = await confirm({
+      title: `${conversation.member.displayName} engellensin mi?`,
+      description:
+        "Karşılıklı takip kaldırılır, konuşma kapanır ve bu kişi sana yeniden mesaj gönderemez.",
+      confirmLabel: "Engelle",
+      tone: "danger",
+    });
+    if (!confirmed) return;
+
+    setHeaderAction("block");
+    setStatus(null);
+    try {
+      const wasBlocked = await blockUser(
+        conversation.member.id,
+        `@${conversation.member.username}`,
+      );
+
+      if (!wasBlocked) {
+        setStatus({
+          tone: "error",
+          message: "Kullanıcı engellenemedi veya zaten engellenmiş.",
+        });
+        return;
+      }
+
+      onRequestRemoved(conversation.id);
+      await refreshConversations(true).catch(() => undefined);
+      onBack();
+    } finally {
+      setHeaderAction(null);
+    }
+  };
+
+  const isIncomingRequest = conversation.requestDirection === "incoming";
+  const isWaitingForAcceptance =
+    conversation.requestDirection === "outgoing" &&
+    conversation.lastMessage !== null;
+  const menuMessage = menuMessageId
+    ? messages.find((message) => message.id === menuMessageId) ?? null
+    : null;
+  const reportableMessageId = [...messages]
+    .reverse()
+    .find(
+      (message) =>
+        !message.isMine &&
+        !message.isDeleted &&
+        message.deliveryStatus === "sent",
+    )?.id;
+
+  useEffect(() => {
+    if (!menuMessageId) return;
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setMenuMessageId(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [menuMessageId]);
 
   return (
     <>
@@ -966,10 +2025,25 @@ function MessageThread({
             </span>
           </span>
         </Link>
+        <ConversationHeaderMenu
+          displayName={conversation.member.displayName}
+          username={conversation.member.username}
+          canReport={Boolean(reportableMessageId)}
+          isBusy={headerAction !== null}
+          onReport={() => {
+            if (reportableMessageId) {
+              setIsReportingMember(true);
+              setReportingMessageId(reportableMessageId);
+            }
+          }}
+          onBlock={() => void handleBlockMember()}
+        />
       </header>
 
       <div
         ref={scrollerRef}
+        onScroll={handleThreadScroll}
+        aria-label="Mesaj geçmişi"
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4"
       >
         {isLoading ? (
@@ -1009,49 +2083,168 @@ function MessageThread({
                 </div>
               </div>
             ) : (
-              <ol className="flex min-h-full flex-col justify-end gap-1.5">
-                {messages.map((message) => (
-                  <li
-                    key={message.id}
-                    className={`group flex ${message.isMine ? "justify-end" : "justify-start"}`}
-                  >
-                    <div className="flex max-w-[86%] items-end gap-1 sm:max-w-[78%]">
-                      {message.isMine && !message.isDeleted && (
-                        <button
-                          type="button"
-                          onClick={() => void removeMessage(message)}
-                          aria-label="Mesajı sil"
-                          className="mb-1 grid size-8 shrink-0 place-items-center rounded-full text-white/0 outline-none transition-colors group-hover:text-white/36 hover:!bg-white/8 hover:!text-danger focus-visible:text-white/45 focus-visible:ring-2 focus-visible:ring-brand/40"
+              <ol className="flex min-h-full flex-col justify-end">
+                {messages.map((message, index) => {
+                  const previousMessage = messages[index - 1];
+                  const nextMessage = messages[index + 1];
+                  const groupedWithPrevious = belongsToMessageGroup(
+                    message,
+                    previousMessage,
+                  );
+                  const groupedWithNext = belongsToMessageGroup(
+                    message,
+                    nextMessage,
+                  );
+                  const showDaySeparator =
+                    !previousMessage ||
+                    messageDayKey(previousMessage.createdAt) !==
+                      messageDayKey(message.createdAt);
+                  const isLastMessage = index === messages.length - 1;
+                  const showMeta =
+                    !groupedWithNext || message.deliveryStatus !== "sent";
+
+                  return (
+                    <Fragment key={message.id}>
+                      {showDaySeparator && (
+                        <li
+                          role="separator"
+                          aria-label={formatMessageDay(message.createdAt)}
+                          className="my-4 flex items-center gap-3"
                         >
-                          <TrashIcon />
-                        </button>
+                          <span className="h-px flex-1 bg-white/8" />
+                          <time className="text-[10px] font-black uppercase tracking-[0.09em] text-white/32">
+                            {formatMessageDay(message.createdAt)}
+                          </time>
+                          <span className="h-px flex-1 bg-white/8" />
+                        </li>
                       )}
-                      <div
-                        className={`rounded-[1.15rem] px-3.5 py-2.5 ${
-                          message.isDeleted
-                            ? "border border-white/10 bg-transparent text-white/38"
-                            : message.isMine
-                              ? "rounded-br-[0.35rem] bg-brand text-[#15110f]"
-                              : "rounded-bl-[0.35rem] bg-surface-raised text-white"
-                        }`}
+                      <li
+                        className={`group flex ${
+                          groupedWithPrevious ? "mt-0.5" : "mt-2"
+                        } ${message.isMine ? "justify-end" : "justify-start"}`}
                       >
-                        <p className={`whitespace-pre-wrap break-words text-[14px] leading-[1.42] ${message.isDeleted ? "italic" : "font-medium"}`}>
-                          {message.isDeleted ? "Bu mesaj silindi." : message.body}
-                        </p>
-                        <time
-                          className={`mt-1 block text-right text-[9px] font-bold ${
-                            message.isMine && !message.isDeleted
-                              ? "text-black/48"
-                              : "text-white/32"
-                          }`}
-                        >
-                          {compactDateFormatter.format(new Date(message.createdAt))}
-                        </time>
-                      </div>
-                    </div>
-                  </li>
-                ))}
+                        <div className="flex max-w-[88%] items-end gap-1 sm:max-w-[76%]">
+                          {message.isMine &&
+                            !message.isDeleted &&
+                            message.deliveryStatus === "sent" && (
+                              <button
+                                type="button"
+                                onClick={() => void removeMessage(message)}
+                                aria-label="Mesajı sil"
+                                className="mb-1 hidden size-8 shrink-0 place-items-center rounded-full text-white/0 outline-none transition-colors hover:!bg-white/8 hover:!text-danger focus-visible:text-white/45 focus-visible:ring-2 focus-visible:ring-brand/40 md:grid md:group-hover:text-white/36"
+                              >
+                                <TrashIcon />
+                              </button>
+                            )}
+                          <div
+                            className={`rounded-[1.15rem] px-3.5 py-2.5 transition-opacity ${
+                              message.isDeleted
+                                ? "border border-white/10 bg-transparent text-white/38"
+                                : message.isMine
+                                  ? `rounded-br-[0.38rem] bg-brand text-[#15110f] ${
+                                      groupedWithPrevious
+                                        ? "rounded-tr-[0.38rem]"
+                                        : ""
+                                    }`
+                                  : `rounded-bl-[0.38rem] bg-surface-raised text-white ${
+                                      groupedWithPrevious
+                                        ? "rounded-tl-[0.38rem]"
+                                        : ""
+                                    }`
+                            } ${
+                              message.deliveryStatus === "sending"
+                                ? "opacity-72"
+                                : ""
+                            }`}
+                          >
+                            <p
+                              className={`whitespace-pre-wrap break-words text-[14px] leading-[1.42] ${
+                                message.isDeleted ? "italic" : "font-medium"
+                              }`}
+                            >
+                              {message.isDeleted
+                                ? "Bu mesaj silindi."
+                                : message.body}
+                            </p>
+                            {showMeta && (
+                              <span
+                                className={`mt-1 flex items-center justify-end gap-1.5 text-[9px] font-bold ${
+                                  message.isMine && !message.isDeleted
+                                    ? "text-black/48"
+                                    : "text-white/32"
+                                }`}
+                              >
+                                <time>
+                                  {compactDateFormatter.format(
+                                    new Date(message.createdAt),
+                                  )}
+                                </time>
+                                {message.deliveryStatus === "sending" && (
+                                  <span>Gönderiliyor…</span>
+                                )}
+                                {message.deliveryStatus === "failed" && (
+                                  <button
+                                    type="button"
+                                    disabled={isSending}
+                                    onClick={() =>
+                                      void sendPendingMessage(message)
+                                    }
+                                    className="font-black text-[#8c1d10] underline decoration-current/35 underline-offset-2 outline-none disabled:cursor-wait disabled:opacity-55 focus-visible:ring-2 focus-visible:ring-black/25"
+                                  >
+                                    Gönderilemedi · Tekrar dene
+                                  </button>
+                                )}
+                                {isLastMessage &&
+                                  message.isMine &&
+                                  message.isSeen &&
+                                  message.deliveryStatus === "sent" && (
+                                    <span>Görüldü</span>
+                                  )}
+                              </span>
+                            )}
+                          </div>
+                          {!message.isDeleted &&
+                            message.deliveryStatus === "sent" && (
+                              <button
+                                type="button"
+                                aria-label="Mesaj menüsünü aç"
+                                aria-haspopup="menu"
+                                onClick={() => setMenuMessageId(message.id)}
+                                className={`mb-1 grid size-8 shrink-0 place-items-center rounded-full text-white/38 hover:bg-white/8 hover:text-white md:hidden ${campusFocusRing}`}
+                              >
+                                <MoreIcon />
+                              </button>
+                            )}
+                          {!message.isMine && !message.isDeleted && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsReportingMember(false);
+                                setReportingMessageId(message.id);
+                              }}
+                              aria-label="Mesajı bildir"
+                              className="mb-1 hidden size-8 shrink-0 place-items-center rounded-full text-white/0 outline-none transition-colors hover:!bg-white/8 hover:!text-danger focus-visible:text-white/45 focus-visible:ring-2 focus-visible:ring-brand/40 md:grid md:group-hover:text-white/36"
+                            >
+                              <FlagIcon />
+                            </button>
+                          )}
+                        </div>
+                      </li>
+                    </Fragment>
+                  );
+                })}
               </ol>
+            )}
+            {newMessageCount > 0 && (
+              <div className="pointer-events-none sticky bottom-1 z-10 mt-3 flex justify-center">
+                <button
+                  type="button"
+                  onClick={scrollToLatestMessage}
+                  className={`pointer-events-auto rounded-full border border-brand/28 bg-[#171515]/96 px-4 py-2 text-xs font-black text-brand shadow-lg shadow-black/25 backdrop-blur-sm hover:bg-[#201a18] ${campusFocusRing}`}
+                >
+                  Yeni mesajlar ↓
+                </button>
+              </div>
             )}
           </>
         )}
@@ -1059,6 +2252,45 @@ function MessageThread({
 
       <footer className="shrink-0 border-t border-white/10 bg-canvas p-2.5 sm:p-3">
         {status && <ActionStatusText status={status} className="mb-2" />}
+        {isIncomingRequest ? (
+          <div>
+            <p className="mb-2.5 text-center text-xs font-semibold leading-5 text-white/48">
+              Yanıtlamak için mesaj isteğini kabul et.
+            </p>
+            <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+              <button
+                type="button"
+                disabled={requestAction !== null}
+                onClick={() => void handleRequestAction("accept")}
+                className={`${campusButton.primary} min-h-11 !px-3`}
+              >
+                {requestAction === "accept" ? "Kabul ediliyor…" : "Kabul et"}
+              </button>
+              <button
+                type="button"
+                disabled={requestAction !== null}
+                onClick={() => void handleRequestAction("delete")}
+                className={`${campusButton.secondary} min-h-11 !px-3`}
+              >
+                Sil
+              </button>
+              <button
+                type="button"
+                disabled={requestAction !== null}
+                onClick={() => void handleRequestAction("block")}
+                className={`min-h-11 rounded-full px-3 text-xs font-black text-danger transition-colors hover:bg-danger/10 disabled:opacity-45 ${campusFocusRing}`}
+              >
+                Engelle
+              </button>
+            </div>
+          </div>
+        ) : isWaitingForAcceptance ? (
+          <div className="flex min-h-12 items-center justify-center rounded-[1.15rem] border border-white/10 bg-white/[0.035] px-4 text-center">
+            <p className="text-xs font-bold text-white/55">
+              Mesaj isteği gönderildi. Kabul edilince yazmaya devam edebilirsin.
+            </p>
+          </div>
+        ) : (
         <form onSubmit={(event) => void submit(event)} className="flex items-end gap-2">
           <div className="relative shrink-0">
             <button
@@ -1102,7 +2334,90 @@ function MessageThread({
             <SendIcon />
           </button>
         </form>
+        )}
       </footer>
+
+      {menuMessage && (
+        <div className="fixed inset-0 z-[60] md:hidden">
+          <button
+            type="button"
+            aria-label="Mesaj menüsünü kapat"
+            onClick={() => setMenuMessageId(null)}
+            className="absolute inset-0 bg-black/58 backdrop-blur-[2px]"
+          />
+          <section
+            role="menu"
+            aria-label="Mesaj seçenekleri"
+            className="absolute inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] overflow-hidden rounded-[1.4rem] border border-white/12 bg-surface-raised p-2 shadow-2xl"
+          >
+            <p className="truncate px-3 pb-2 pt-1 text-xs font-semibold text-white/38">
+              {menuMessage.body}
+            </p>
+            {menuMessage.isMine ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuMessageId(null);
+                  void removeMessage(menuMessage);
+                }}
+                className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-black text-danger hover:bg-danger/8 ${campusFocusRing}`}
+              >
+                <TrashIcon />
+                Mesajı sil
+              </button>
+            ) : (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuMessageId(null);
+                  setIsReportingMember(false);
+                  setReportingMessageId(menuMessage.id);
+                }}
+                className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-black text-danger hover:bg-danger/8 ${campusFocusRing}`}
+              >
+                <FlagIcon />
+                Mesajı bildir
+              </button>
+            )}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => setMenuMessageId(null)}
+              className={`mt-1 min-h-12 w-full rounded-xl px-3 text-sm font-black text-white/60 hover:bg-white/6 hover:text-white ${campusFocusRing}`}
+            >
+              Vazgeç
+            </button>
+          </section>
+        </div>
+      )}
+
+      {reportingMessageId && (
+        <CampusMessageReportDialog
+          messageId={reportingMessageId}
+          title={isReportingMember ? "Kullanıcıyı bildir" : undefined}
+          description={
+            isReportingMember
+              ? "Konuşmadaki son mesaj inceleme bağlamı olarak moderasyona gönderilir."
+              : undefined
+          }
+          onClose={() => {
+            setReportingMessageId(null);
+            setIsReportingMember(false);
+          }}
+          onReported={(created) => {
+            setReportingMessageId(null);
+            setIsReportingMember(false);
+            setStatus({
+              tone: "success",
+              message: created
+                ? "Mesaj moderasyon sırasına eklendi."
+                : "Bu mesajı daha önce bildirdin.",
+            });
+          }}
+        />
+      )}
     </>
   );
 }
@@ -1141,3 +2456,7 @@ function LockIcon() { return <svg aria-hidden="true" viewBox="0 0 20 20" fill="n
 function SmileIcon() { return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="size-5"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 14.2c.8 1.2 2 1.8 3.5 1.8s2.7-.6 3.5-1.8M9 9.5h.01M15 9.5h.01"/></svg>; }
 function SendIcon() { return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-5"><path d="m4 5 16 7-16 7 3-7-3-7Z"/><path d="M7 12h13"/></svg>; }
 function TrashIcon() { return <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="size-4"><path d="M4.8 6h10.4M8 3.8h4M7 8.5v5.8m3-5.8v5.8m3-5.8v5.8M6 6l.6 10h6.8L14 6"/></svg>; }
+function FlagIcon() { return <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="size-4"><path d="M5 16.5v-13m.5 1h7.8l-1.6 2.8 1.6 2.8H5.5"/></svg>; }
+function MoreIcon() { return <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="size-4"><circle cx="4" cy="10" r="1.35"/><circle cx="10" cy="10" r="1.35"/><circle cx="16" cy="10" r="1.35"/></svg>; }
+function ProfileIcon() { return <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="size-4"><circle cx="10" cy="6.5" r="3"/><path d="M4.5 16c.55-3 2.4-4.5 5.5-4.5s4.95 1.5 5.5 4.5"/></svg>; }
+function BlockIcon() { return <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="size-4"><circle cx="10" cy="10" r="6.5"/><path d="m5.4 5.4 9.2 9.2"/></svg>; }

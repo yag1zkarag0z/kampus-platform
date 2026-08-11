@@ -632,15 +632,17 @@ export default function HomepageBento() {
       className={`${styles.section} relative overflow-x-clip text-white`}
       data-testid="homepage-bento"
     >
-      <div className="relative mx-auto w-full max-w-[1180px] px-5 pb-10 sm:px-8 sm:pb-12 lg:px-10 lg:pb-14">
+      <div className="relative mx-auto w-full max-w-[1320px] px-5 pb-10 sm:px-8 sm:pb-12 lg:px-10 lg:pb-14">
         {/* Kartlar saf aksiyon demosu; "kapalı ağ" mesajını slot harcamadan
             bu başlık çerçeveliyor. */}
         <h2
           id="kampus-nabzi-title"
           className="mb-6 text-center text-[clamp(1.6rem,5.2vw,2.7rem)] font-semibold leading-[1.34] tracking-[-0.05em] text-white sm:mb-9"
         >
-          Sadece <span className={styles.brandUnderline}>Yaşar öğrencileri</span>{" "}
-          girebilir<span className="text-brand">.</span>
+          <span className={styles.brandUnderline}>
+            Kayıt yalnızca Yaşar öğrencilerine açık
+            <span className="text-brand">.</span>
+          </span>
         </h2>
 
         <div
@@ -659,7 +661,7 @@ export default function HomepageBento() {
             <MessagesDemo />
           </BentoCard>
 
-          <BentoCard id="homepage-follow" title="Takip önerileri">
+          <BentoCard id="homepage-follow" title="Takip et">
             <FollowDemo />
           </BentoCard>
         </div>

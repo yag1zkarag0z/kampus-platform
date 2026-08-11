@@ -23,6 +23,7 @@ export type CleanupReport = {
   rateLimitHits: number;
   notifications: number;
   emptyConversations: number;
+  messageRequestCooldowns: number;
   moderationActions: number;
   reports: number;
   posts: number;
@@ -86,6 +87,7 @@ function emptyCleanupReport(): CleanupReport {
     rateLimitHits: 0,
     notifications: 0,
     emptyConversations: 0,
+    messageRequestCooldowns: 0,
     moderationActions: 0,
     reports: 0,
     posts: 0,
@@ -229,6 +231,7 @@ async function runCleanup(
       | "rateLimitHits"
       | "notifications"
       | "emptyConversations"
+      | "messageRequestCooldowns"
       | "moderationActions"
       | "reports"
     >;
@@ -309,6 +312,26 @@ async function runCleanup(
       delete from direct_conversations
       where id in (select id from candidates)
       returning id`,
+    },
+    {
+      key: "messageRequestCooldowns",
+      cutoff: now,
+      count: `select count(*)::text as total
+        from direct_message_request_cooldowns
+        where cooldown_until <= $1`,
+      remove: `with candidates as (
+        select sender_id, recipient_id
+        from direct_message_request_cooldowns
+        where cooldown_until <= $1
+        order by cooldown_until, sender_id, recipient_id
+        limit ${BATCH_MARKER}
+        for update skip locked
+      )
+      delete from direct_message_request_cooldowns as cooldown
+      using candidates
+      where cooldown.sender_id = candidates.sender_id
+        and cooldown.recipient_id = candidates.recipient_id
+      returning cooldown.sender_id`,
     },
     {
       key: "moderationActions",
@@ -498,8 +521,20 @@ async function runCleanup(
       where r.reporter_id = u.id or r.resolved_by = u.id
     )
     and not exists (
+      select 1
+      from direct_messages message
+      join reports r on r.message_id = message.id
+      where message.sender_id = u.id
+    )
+    and not exists (
       select 1 from moderation_actions action
       where action.actor_id = u.id or action.target_user_id = u.id
+    )
+    and not exists (
+      select 1
+      from direct_messages message
+      join moderation_actions action on action.message_id = message.id
+      where message.sender_id = u.id
     )`;
   const userCount = `select count(*)::text as total from users u where ${userFilter}`;
   const userDelete = `with candidates as (

@@ -699,12 +699,14 @@ export default function CampusAdminPanel() {
                       Bildirim · {formatDate(selectedReport.createdAt)}
                     </p>
                   </div>
-                  <Link
-                    href={`/gonderi/${selectedReport.postId}`}
-                    className={`inline-flex min-h-11 items-center justify-center border border-white/12 px-3 text-xs font-black transition-colors hover:bg-white/6 ${focusRing}`}
-                  >
-                    İçeriğe git
-                  </Link>
+                  {selectedReport.postId && (
+                    <Link
+                      href={`/gonderi/${selectedReport.postId}`}
+                      className={`inline-flex min-h-11 items-center justify-center border border-white/12 px-3 text-xs font-black transition-colors hover:bg-white/6 ${focusRing}`}
+                    >
+                      İçeriğe git
+                    </Link>
+                  )}
                 </div>
 
                 <div className="mt-5 grid gap-4">
@@ -743,7 +745,9 @@ export default function CampusAdminPanel() {
                           <p className="mt-0.5 text-[10px] text-white/55">
                             {selectedReport.targetType === "post"
                               ? "Gönderi sahibi"
-                              : "Yorum sahibi"}
+                              : selectedReport.targetType === "comment"
+                                ? "Yorum sahibi"
+                                : "Mesajı gönderen"}
                           </p>
                         </div>
                       </div>
@@ -846,7 +850,7 @@ export default function CampusAdminPanel() {
                     ? "Çözülmüş şikâyet yok"
                     : "Henüz şikâyet yok"
               }
-              description="Topluluk üyelerinden gelen gönderi ve yorum bildirimleri burada incelenecek."
+              description="Topluluk üyelerinden gelen gönderi, yorum ve mesaj bildirimleri burada incelenecek."
             />
           )}
         </div>
@@ -1053,7 +1057,11 @@ export default function CampusAdminPanel() {
                           {entry.target
                             ? `@${entry.target.username} · `
                             : ""}
-                          {entry.postId ? "İçerik işlemi" : "Hesap işlemi"}
+                          {entry.postId
+                            ? "Gönderi işlemi"
+                            : entry.messageId
+                              ? "Mesaj işlemi"
+                              : "Hesap işlemi"}
                         </p>
                       </div>
                       <time
@@ -1164,10 +1172,12 @@ function TargetTypeBadge({
       className={`inline-flex min-h-6 shrink-0 items-center px-2 font-mono text-[9px] font-black uppercase tracking-[0.08em] ${
         type === "post"
           ? "bg-brand/12 text-brand"
-          : "bg-[#69c990]/11 text-[#9be4b4]"
+          : type === "comment"
+            ? "bg-[#69c990]/11 text-[#9be4b4]"
+            : "bg-[#86a8ff]/12 text-[#a9beff]"
       }`}
     >
-      {type === "post" ? "Gönderi" : "Yorum"}
+      {type === "post" ? "Gönderi" : type === "comment" ? "Yorum" : "Mesaj"}
     </span>
   );
 }

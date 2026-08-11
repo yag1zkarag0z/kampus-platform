@@ -16,6 +16,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { users } from "./accounts";
+import { directMessages } from "./messaging";
 
 const timestampWithTimezone = (name: string) =>
   timestamp(name, {
@@ -470,6 +471,7 @@ export const reportReason = pgEnum("report_reason", [
 export const reportTargetType = pgEnum("report_target_type", [
   "post",
   "comment",
+  "message",
 ]);
 
 export const reportStatus = pgEnum("report_status", [
@@ -493,8 +495,13 @@ export const reports = pgTable(
     targetType: reportTargetType("target_type").notNull(),
     targetId: uuid("target_id").notNull(),
     postId: uuid("post_id")
-      .notNull()
       .references(() => posts.id, { onDelete: "restrict" }),
+    messageId: uuid("message_id").references(() => directMessages.id, {
+      onDelete: "restrict",
+    }),
+    targetSnapshot: varchar("target_snapshot", { length: 1000 })
+      .default("")
+      .notNull(),
     reason: reportReason("reason").notNull(),
     detail: varchar("detail", { length: 300 }).default("").notNull(),
     status: reportStatus("status").default("pending").notNull(),
@@ -512,12 +519,30 @@ export const reports = pgTable(
     ),
     index("reports_status_idx").on(table.status),
     index("reports_post_id_idx").on(table.postId),
+    index("reports_message_id_idx").on(table.messageId),
     index("reports_resolved_at_idx")
       .on(table.resolvedAt)
       .where(sql`${table.resolvedAt} is not null`),
     check(
       "reports_detail_length_check",
       sql`char_length(${table.detail}) <= 300`,
+    ),
+    check(
+      "reports_target_snapshot_length_check",
+      sql`char_length(${table.targetSnapshot}) <= 1000`,
+    ),
+    check(
+      "reports_target_reference_check",
+      sql`(
+          ${table.targetType} in ('post', 'comment')
+          and ${table.postId} is not null
+          and ${table.messageId} is null
+        ) or (
+          ${table.targetType} = 'message'
+          and ${table.postId} is null
+          and ${table.messageId} is not null
+          and ${table.targetId} = ${table.messageId}
+        )`,
     ),
     check(
       "reports_resolution_state_check",
@@ -569,6 +594,9 @@ export const moderationActions = pgTable(
     postId: uuid("post_id").references(() => posts.id, {
       onDelete: "restrict",
     }),
+    messageId: uuid("message_id").references(() => directMessages.id, {
+      onDelete: "restrict",
+    }),
     note: varchar("note", { length: 240 }),
     createdAt: timestampWithTimezone("created_at").defaultNow().notNull(),
   },
@@ -577,6 +605,7 @@ export const moderationActions = pgTable(
     index("moderation_actions_target_user_id_idx").on(
       table.targetUserId,
     ),
+    index("moderation_actions_message_id_idx").on(table.messageId),
     check(
       "moderation_actions_actor_check",
       sql`(${table.action} = 'content_hidden' and ${table.actorId} is null)
@@ -589,8 +618,22 @@ export const moderationActions = pgTable(
     ),
     check(
       "moderation_actions_content_post_check",
-      sql`${table.action} not in ('report_dismissed', 'content_removed', 'content_hidden', 'content_restored')
-        or ${table.postId} is not null`,
+      sql`(
+          ${table.action} in ('content_hidden', 'content_restored')
+          and ${table.postId} is not null
+          and ${table.messageId} is null
+        ) or (
+          ${table.action} in ('report_dismissed', 'content_removed')
+          and (
+            (${table.postId} is not null and ${table.messageId} is null)
+            or (${table.postId} is null and ${table.messageId} is not null)
+          )
+        ) or ${table.action} not in (
+          'report_dismissed',
+          'content_removed',
+          'content_hidden',
+          'content_restored'
+        )`,
     ),
     check(
       "moderation_actions_report_provenance_check",

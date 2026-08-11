@@ -205,9 +205,24 @@ describe("maintenance worker with PostgreSQL", () => {
     const oldEmptyConversationId = randomUUID();
     await pool.query(
       `insert into direct_conversations (
-        id, participant_low_id, participant_high_id, created_by_id, created_at
-      ) values ($1, least($2::uuid, $3::uuid), greatest($2::uuid, $3::uuid), $2, $4)`,
+        id, participant_low_id, participant_high_id, created_by_id,
+        request_resolved_at, created_at
+      ) values (
+        $1, least($2::uuid, $3::uuid), greatest($2::uuid, $3::uuid),
+        $2, $4, $4
+      )`,
       [oldEmptyConversationId, ownerId, actorId, before(now, 8 * DAY)],
+    );
+    await pool.query(
+      `insert into direct_message_request_cooldowns (
+        sender_id, recipient_id, rejected_at, cooldown_until
+      ) values ($1, $2, $3, $4)`,
+      [
+        ownerId,
+        actorId,
+        before(now, 31 * DAY),
+        before(now, DAY),
+      ],
     );
     const oldOtpId = randomUUID();
     const freshOtpId = randomUUID();
@@ -414,6 +429,7 @@ describe("maintenance worker with PostgreSQL", () => {
       rateLimitHits: 1,
       notifications: 1,
       emptyConversations: 1,
+      messageRequestCooldowns: 1,
       posts: 1,
       mediaAssets: 1,
       users: 1,
@@ -440,6 +456,12 @@ describe("maintenance worker with PostgreSQL", () => {
     await expect(
       rowExists("direct_conversations", oldEmptyConversationId),
     ).resolves.toBe(false);
+    const remainingRequestCooldowns = await pool.query(
+      `select 1 from direct_message_request_cooldowns
+       where sender_id = $1 and recipient_id = $2`,
+      [ownerId, actorId],
+    );
+    expect(remainingRequestCooldowns.rowCount).toBe(0);
     await expect(rowExists("posts", oldPostId)).resolves.toBe(false);
     await expect(rowExists("posts", freshPostId)).resolves.toBe(true);
     await expect(rowExists("media_assets", oldImageId)).resolves.toBe(false);

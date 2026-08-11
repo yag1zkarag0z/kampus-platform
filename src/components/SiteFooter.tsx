@@ -17,7 +17,7 @@ const independenceNotice =
 export default function SiteFooter() {
   return (
     <footer className="bg-canvas text-white">
-      <div className="mx-auto w-full max-w-[1180px] px-5 py-8 sm:px-8 sm:py-10 lg:px-10">
+      <div className="mx-auto w-full max-w-[1320px] px-5 py-8 sm:px-8 sm:py-10 lg:px-10">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <Link
             href="/"
@@ -32,7 +32,7 @@ export default function SiteFooter() {
 
           <nav
             aria-label="Alt menü"
-            className="flex flex-wrap gap-x-5 gap-y-3 text-xs font-semibold text-white/52"
+            className="flex flex-wrap gap-x-5 gap-y-3 text-[13px] font-semibold text-white/62"
           >
             {footerLinks.map((item) => (
               <Link
@@ -46,11 +46,11 @@ export default function SiteFooter() {
           </nav>
         </div>
 
-        <div className="mt-7 flex flex-col gap-3 border-t border-white/10 pt-5 text-[11px] leading-5 text-white/38 sm:flex-row sm:items-center sm:justify-between sm:text-xs">
+        <div className="mt-7 flex flex-col gap-3 border-t border-white/10 pt-5 text-xs leading-5 text-white/46 sm:flex-row sm:items-center sm:justify-between sm:text-[13px]">
           <p className={`${styles.independenceNotice} max-w-2xl`}>
             {independenceNotice}
           </p>
-          <p className="flex shrink-0 items-center gap-1.5 text-white/38">
+          <p className="flex shrink-0 items-center gap-1.5 text-white/46">
             <span>© 2026 KAMPÜS</span>
             <span aria-hidden="true" className="text-white/20">
               ·

@@ -7,11 +7,13 @@ import {
   type FormEvent,
 } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import {
   AuthClientError,
   registerCampusAccount,
   setCurrentAvatarPreset,
+  startGuestSession,
 } from "@/auth/client";
 import {
   avatarPresets,
@@ -26,7 +28,9 @@ import {
   authControlClassName,
   authFlowBodyClassName,
   authFlowCardClassName,
+  authFlowFooterClassName,
   authFlowHeaderClassName,
+  authGuestButtonClassName,
   authInputClassName,
   authStepDescriptionClassName,
   authStepTitleClassName,
@@ -51,7 +55,7 @@ type RegisterField =
 
 const studentEmailPattern = /^\d+@stu\.yasar\.edu\.tr$/i;
 const helperTextClassName =
-  "mt-[8px] text-[11px] leading-[18px] text-white/58 lg:text-center lg:text-[13px] lg:leading-[20px]";
+  "mt-[8px] text-[11px] leading-[18px] text-white/60 lg:text-center lg:text-[13px] lg:leading-[20px] xl:text-[14px] xl:leading-[22px] 2xl:text-[15px] 2xl:leading-[24px]";
 
 export default function RegisterFlow({
   previewAvatarStep = false,
@@ -60,6 +64,7 @@ export default function RegisterFlow({
   previewAvatarStep?: boolean;
   previewProfileStep?: boolean;
 }) {
+  const router = useRouter();
   const [step, setStep] = useState<RegisterStep>(
     previewAvatarStep ? 4 : previewProfileStep ? 3 : 1,
   );
@@ -79,6 +84,7 @@ export default function RegisterFlow({
   const [complete, setComplete] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [isSavingAvatar, setIsSavingAvatar] = useState(false);
+  const [isOpeningGuestView, setIsOpeningGuestView] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState<AvatarPresetId>(
     avatarPresets[0].id,
   );
@@ -290,6 +296,25 @@ export default function RegisterFlow({
     }
   };
 
+  const continueAsGuest = async () => {
+    if (isOpeningGuestView) return;
+
+    clearMessage();
+    setIsOpeningGuestView(true);
+
+    try {
+      await startGuestSession();
+      router.push("/akis");
+    } catch (error) {
+      setMessage(
+        error instanceof AuthClientError
+          ? error.message
+          : "Misafir görünümü şu anda açılamıyor.",
+      );
+      setIsOpeningGuestView(false);
+    }
+  };
+
   const stepLabels = [
     { full: "E-posta", short: "E-posta" },
     { full: "Doğrulama", short: "Kod" },
@@ -312,12 +337,12 @@ export default function RegisterFlow({
             return (
               <li
                 key={label.full}
-                className={`min-w-0 rounded-full border px-[5px] py-[7px] text-center text-[10px] font-bold transition-colors sm:px-[8px] sm:py-[8px] sm:text-[11px] lg:px-[26px] lg:py-[9px] lg:text-[12px] ${
+                className={`min-w-0 rounded-full border px-[5px] py-[7px] text-center text-[10px] font-bold transition-colors sm:px-[8px] sm:py-[8px] sm:text-[11px] lg:px-[26px] lg:py-[9px] lg:text-[12px] xl:px-[30px] xl:py-[10px] xl:text-[13px] 2xl:text-[14px] ${
                   isCurrent
                     ? "border-brand/50 bg-brand/12 text-[#ff8968]"
                     : isDone
                       ? "border-brand/22 bg-brand/5 text-[#ff8968]/60"
-                      : "border-white/8 text-white/48 sm:text-white/35"
+                      : "border-white/10 text-white/52 sm:text-white/48"
                 }`}
                 aria-current={isCurrent ? "step" : undefined}
               >
@@ -355,7 +380,7 @@ export default function RegisterFlow({
             </h2>
             <Link
               href="/akis"
-              className="mt-[24px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[16px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px]"
+              className="mt-[24px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[16px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px] xl:min-h-[56px] xl:w-[500px] xl:text-[17px] 2xl:min-h-[58px] 2xl:w-[520px] 2xl:text-[18px]"
             >
               Akışa geç
             </Link>
@@ -391,7 +416,7 @@ export default function RegisterFlow({
               type="button"
               onClick={() => void saveAvatar()}
               disabled={isSavingAvatar}
-              className="relative mt-[18px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[16px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65 sm:mx-auto sm:mt-[24px] sm:flex sm:min-h-[50px] sm:w-auto sm:min-w-[210px] sm:px-[22px] lg:mt-[18px] lg:min-h-[52px] lg:w-[400px] lg:min-w-[400px]"
+              className="relative mt-[18px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[16px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65 sm:mx-auto sm:mt-[24px] sm:flex sm:min-h-[50px] sm:w-auto sm:min-w-[210px] sm:px-[22px] lg:mt-[18px] lg:min-h-[52px] lg:w-[400px] lg:min-w-[400px] xl:min-h-[56px] xl:w-[500px] xl:min-w-[500px] xl:text-[17px] 2xl:min-h-[58px] 2xl:w-[520px] 2xl:min-w-[520px] 2xl:text-[18px]"
             >
               {isSavingAvatar ? "Kaydediliyor…" : "Bu avatarı kullan"}
               <span aria-hidden="true" className="absolute right-[18px]">→</span>
@@ -419,7 +444,7 @@ export default function RegisterFlow({
 
             <label
               htmlFor="register-email"
-              className="mt-[22px] block text-[13px] font-bold sm:mt-[28px] lg:mt-[24px] lg:text-center lg:text-[14px]"
+              className="mt-[22px] block text-[13px] font-bold sm:mt-[28px] lg:mt-[24px] lg:text-center lg:text-[14px] xl:text-[15px] 2xl:text-[16px]"
             >
               Yaşar öğrenci e-postan
             </label>
@@ -445,7 +470,7 @@ export default function RegisterFlow({
             <button
               type="submit"
               disabled={verification.isRequesting}
-              className="mt-[16px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px]"
+              className="mt-[16px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px] xl:min-h-[56px] xl:w-[500px] xl:text-[17px] 2xl:min-h-[58px] 2xl:w-[520px] 2xl:text-[18px]"
             >
               {verification.isRequesting
                 ? "Kod gönderiliyor…"
@@ -471,7 +496,7 @@ export default function RegisterFlow({
 
             <label
               htmlFor="register-code"
-              className="mt-[22px] block text-[13px] font-bold sm:mt-[28px] lg:mt-[24px] lg:text-center lg:text-[14px]"
+              className="mt-[22px] block text-[13px] font-bold sm:mt-[28px] lg:mt-[24px] lg:text-center lg:text-[14px] xl:text-[15px] 2xl:text-[16px]"
             >
               Doğrulama kodu
             </label>
@@ -548,7 +573,7 @@ export default function RegisterFlow({
                 verification.isResending ||
                 verification.isVerifying
               }
-              className="relative mt-[18px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:opacity-55 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px]"
+              className="relative mt-[18px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:opacity-55 sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px] xl:min-h-[56px] xl:w-[500px] xl:text-[17px] 2xl:min-h-[58px] 2xl:w-[520px] 2xl:text-[18px]"
             >
               {verification.isVerifying ? "Doğrulanıyor…" : "Kodu doğrula"}
               <span aria-hidden="true" className="absolute right-[18px]">→</span>
@@ -818,7 +843,7 @@ export default function RegisterFlow({
             <button
               type="submit"
               disabled={isRegistering}
-              className="relative mt-[20px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65 sm:mt-[24px] sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px]"
+              className="relative mt-[20px] inline-flex min-h-[50px] w-full items-center justify-center rounded-[13px] bg-brand px-[18px] text-[16px] font-bold text-[#101012] outline-none transition-colors hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-65 sm:mt-[24px] sm:min-h-[50px] lg:mx-auto lg:flex lg:min-h-[52px] lg:w-[400px] xl:min-h-[56px] xl:w-[500px] xl:text-[17px] 2xl:min-h-[58px] 2xl:w-[520px] 2xl:text-[18px]"
             >
               {isRegistering ? "Hesap oluşturuluyor…" : "Kaydı tamamla"}
               <span aria-hidden="true" className="absolute right-[18px]">→</span>
@@ -842,14 +867,30 @@ export default function RegisterFlow({
       </div>
 
       {!complete && step !== 4 && (
-        <div className="hidden border-t border-white/8 bg-surface-raised px-[24px] py-[16px] text-center text-white/62 sm:flex sm:items-center sm:justify-center sm:gap-[6px] lg:min-h-[84px] lg:text-[13px]">
-          <span>Zaten hesabın var mı?</span>
-          <Link
-            href="/giris"
-            className="font-bold text-brand underline decoration-brand/35 underline-offset-4"
+        <div className={`${authFlowFooterClassName} hidden sm:block`}>
+          <button
+            type="button"
+            onClick={() => {
+              void continueAsGuest();
+            }}
+            disabled={isOpeningGuestView}
+            aria-busy={isOpeningGuestView}
+            className={authGuestButtonClassName}
           >
-            Giriş yap
-          </Link>
+            <span>
+              {isOpeningGuestView
+                ? "Misafir oturumu açılıyor…"
+                : "Misafir olarak göz at"}
+            </span>
+            {!isOpeningGuestView && (
+              <span
+                aria-hidden="true"
+                className="absolute right-[18px] text-white/35 transition-transform group-hover:translate-x-0.5 group-hover:text-white/70"
+              >
+                →
+              </span>
+            )}
+          </button>
         </div>
       )}
     </div>

@@ -27,6 +27,7 @@ const history = [
     createdAt: "2026-08-01T10:00:00.000Z",
     reportId: "7bf0c452-64b0-4fa6-9604-521732e84ac0",
     postId: "7bf0c452-64b0-4fa6-9604-521732e84ac0",
+    messageId: null,
     note: null,
     actor: { username: "admin.user", displayName: "Admin User" },
     target: null,

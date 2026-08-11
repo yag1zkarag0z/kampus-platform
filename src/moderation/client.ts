@@ -47,7 +47,7 @@ export type ReportReasonDto =
   | "personal_information"
   | "misleading"
   | "other";
-export type ReportTargetTypeDto = "post" | "comment";
+export type ReportTargetTypeDto = "post" | "comment" | "message";
 export type ReportResolutionDto =
   | "dismissed"
   | "content_removed"
@@ -57,7 +57,7 @@ export type ReportSummaryDto = {
   id: string;
   targetType: ReportTargetTypeDto;
   targetId: string;
-  postId: string;
+  postId: string | null;
   reason: ReportReasonDto;
   detail: string;
   status: "pending" | "resolved";
@@ -99,6 +99,7 @@ export type ModerationHistoryEntryDto = {
   createdAt: string;
   reportId: string | null;
   postId: string | null;
+  messageId: string | null;
   note: string | null;
   actor: { username: string; displayName: string } | null;
   target: { id: string; username: string; displayName: string } | null;

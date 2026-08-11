@@ -26,10 +26,12 @@ import {
   sliceCursorPage,
 } from "@/server/pagination/cursor";
 import { consumeRateLimit } from "@/server/rate-limit/service";
+import { applyUserBlock } from "@/server/social/block-user";
 import {
   blocks,
   comments,
-  follows,
+  directConversations,
+  directMessages,
   moderationActions,
   postImages,
   posts,
@@ -72,7 +74,7 @@ export type ReportReason =
   | "personal_information"
   | "misleading"
   | "other";
-export type ReportTargetType = "post" | "comment";
+export type ReportTargetType = "post" | "comment" | "message";
 export type ReportResolution =
   | "dismissed"
   | "content_removed"
@@ -82,7 +84,7 @@ export type ReportSummary = {
   id: string;
   targetType: ReportTargetType;
   targetId: string;
-  postId: string;
+  postId: string | null;
   reason: ReportReason;
   detail: string;
   status: "pending" | "resolved";
@@ -124,6 +126,7 @@ export type ModerationHistoryEntry = {
   createdAt: string;
   reportId: string | null;
   postId: string | null;
+  messageId: string | null;
   note: string | null;
   // Otomatik gizlemede insan aktör yoktur.
   actor: { username: string; displayName: string } | null;
@@ -158,6 +161,14 @@ function commentNotFoundError() {
   return new AuthError(
     "COMMENT_NOT_FOUND",
     "Bu yorum bulunamadı veya artık görüntülenemiyor.",
+    { status: 404 },
+  );
+}
+
+function messageNotFoundError() {
+  return new AuthError(
+    "MESSAGE_NOT_FOUND",
+    "Bu mesaj bulunamadı veya artık görüntülenemiyor.",
     { status: 404 },
   );
 }
@@ -252,27 +263,7 @@ export async function blockUser(
   }
 
   await getDatabase().transaction(async (transaction) => {
-    await consumeRateLimit(transaction, blockerId, "block");
-
-    await transaction
-      .insert(blocks)
-      .values({ blockerId, blockedId: targetId })
-      .onConflictDoNothing();
-
-    await transaction
-      .delete(follows)
-      .where(
-        or(
-          and(
-            eq(follows.followerId, blockerId),
-            eq(follows.followingId, targetId),
-          ),
-          and(
-            eq(follows.followerId, targetId),
-            eq(follows.followingId, blockerId),
-          ),
-        ),
-      );
+    await applyUserBlock(transaction, blockerId, targetId);
   });
 }
 
@@ -341,12 +332,20 @@ export async function listBlockedUsers(
 }
 
 async function resolveReportTarget(
+  reporterId: string,
   targetType: ReportTargetType,
   targetId: string,
 ) {
   if (targetType === "post") {
     const [row] = await getDatabase()
-      .select({ authorId: posts.authorId, postId: posts.id })
+      .select({
+        authorId: posts.authorId,
+        postId: posts.id,
+        targetSnapshot: sql<string>`case
+          when char_length(btrim(${posts.title})) > 0 then ${posts.title}
+          else ${posts.body}
+        end`,
+      })
       .from(posts)
       .where(and(eq(posts.id, targetId), isNull(posts.deletedAt)))
       .limit(1);
@@ -354,10 +353,42 @@ async function resolveReportTarget(
     return row ?? null;
   }
 
+  if (targetType === "comment") {
+    const [row] = await getDatabase()
+      .select({
+        authorId: comments.authorId,
+        postId: comments.postId,
+        targetSnapshot: comments.body,
+      })
+      .from(comments)
+      .where(and(eq(comments.id, targetId), isNull(comments.deletedAt)))
+      .limit(1);
+
+    return row ?? null;
+  }
+
   const [row] = await getDatabase()
-    .select({ authorId: comments.authorId, postId: comments.postId })
-    .from(comments)
-    .where(and(eq(comments.id, targetId), isNull(comments.deletedAt)))
+    .select({
+      authorId: directMessages.senderId,
+      postId: sql<null>`null`,
+      messageId: directMessages.id,
+      targetSnapshot: directMessages.body,
+    })
+    .from(directMessages)
+    .innerJoin(
+      directConversations,
+      eq(directConversations.id, directMessages.conversationId),
+    )
+    .where(
+      and(
+        eq(directMessages.id, targetId),
+        isNull(directMessages.deletedAt),
+        or(
+          eq(directConversations.participantLowId, reporterId),
+          eq(directConversations.participantHighId, reporterId),
+        ),
+      ),
+    )
     .limit(1);
 
   return row ?? null;
@@ -447,6 +478,7 @@ export async function submitReport(
   },
 ): Promise<{ created: boolean }> {
   const target = await resolveReportTarget(
+    reporterId,
     input.targetType,
     input.targetId,
   );
@@ -454,7 +486,9 @@ export async function submitReport(
   if (!target) {
     throw input.targetType === "post"
       ? postNotFoundError()
-      : commentNotFoundError();
+      : input.targetType === "comment"
+        ? commentNotFoundError()
+        : messageNotFoundError();
   }
 
   if (target.authorId === reporterId) {
@@ -471,6 +505,8 @@ export async function submitReport(
         targetType: input.targetType,
         targetId: input.targetId,
         postId: target.postId,
+        messageId: "messageId" in target ? target.messageId : null,
+        targetSnapshot: target.targetSnapshot.slice(0, 1000),
         reason: input.reason,
         detail: input.detail?.trim().slice(0, 300) ?? "",
       })
@@ -516,6 +552,8 @@ export async function listReports(
       targetType: reports.targetType,
       targetId: reports.targetId,
       postId: reports.postId,
+      messageId: reports.messageId,
+      targetSnapshot: reports.targetSnapshot,
       reason: reports.reason,
       detail: reports.detail,
       status: reports.status,
@@ -542,6 +580,9 @@ export async function listReports(
   const commentTargetIds = rows
     .filter((row) => row.targetType === "comment")
     .map((row) => row.targetId);
+  const messageTargetIds = rows
+    .filter((row) => row.targetType === "message")
+    .map((row) => row.targetId);
 
   type PostTargetRow = {
     id: string;
@@ -560,9 +601,18 @@ export async function listReports(
     username: string;
     displayName: string;
   };
+  type MessageTargetRow = {
+    id: string;
+    authorId: string;
+    body: string;
+    deletedAt: Date | null;
+    username: string;
+    displayName: string;
+  };
 
   const postMap = new Map<string, PostTargetRow>();
   const commentMap = new Map<string, CommentTargetRow>();
+  const messageMap = new Map<string, MessageTargetRow>();
 
   if (postTargetIds.length > 0) {
     const postTargets: PostTargetRow[] = await database
@@ -603,6 +653,25 @@ export async function listReports(
     }
   }
 
+  if (messageTargetIds.length > 0) {
+    const messageTargets: MessageTargetRow[] = await database
+      .select({
+        id: directMessages.id,
+        authorId: directMessages.senderId,
+        body: directMessages.body,
+        deletedAt: directMessages.deletedAt,
+        username: users.username,
+        displayName: users.displayName,
+      })
+      .from(directMessages)
+      .innerJoin(users, eq(users.id, directMessages.senderId))
+      .where(inArray(directMessages.id, messageTargetIds));
+
+    for (const row of messageTargets) {
+      messageMap.set(row.id, row);
+    }
+  }
+
   const data = rows.map((row): ReportSummary => {
     const postTarget =
       row.targetType === "post" ? postMap.get(row.targetId) : undefined;
@@ -610,15 +679,21 @@ export async function listReports(
       row.targetType === "comment"
         ? commentMap.get(row.targetId)
         : undefined;
+    const messageTarget =
+      row.targetType === "message"
+        ? messageMap.get(row.targetId)
+        : undefined;
     const target: {
       authorId: string;
       username: string;
       displayName: string;
       deletedAt: Date | null;
-    } | undefined = postTarget ?? commentTarget;
+    } | undefined = postTarget ?? commentTarget ?? messageTarget;
     const excerpt: string = postTarget
       ? postTarget.title || postTarget.body
-      : (commentTarget?.body ?? "");
+      : commentTarget?.body ||
+        messageTarget?.body ||
+        row.targetSnapshot;
 
     return {
       id: row.id,
@@ -833,15 +908,23 @@ export async function resolveReport(
       throw reportNotFoundError();
     }
 
-    // Aynı gönderiye ait farklı şikâyetler farklı satırlar olduğu için yalnız
-    // report kilidi yeterli değildir. Post kilidi tüm kararları aynı sıraya
-    // sokar; son karar güncel eşik üzerinden restore yapabilir.
-    await transaction
-      .select({ id: posts.id })
-      .from(posts)
-      .where(eq(posts.id, report.postId))
-      .for("update")
-      .limit(1);
+    // Aynı içeriğe ait farklı şikâyet kararlarını tek sıraya sok. Post kilidi
+    // auto-hide restore yarışını, mesaj kilidi ise eşzamanlı silmeyi korur.
+    if (report.postId) {
+      await transaction
+        .select({ id: posts.id })
+        .from(posts)
+        .where(eq(posts.id, report.postId))
+        .for("update")
+        .limit(1);
+    } else if (report.messageId) {
+      await transaction
+        .select({ id: directMessages.id })
+        .from(directMessages)
+        .where(eq(directMessages.id, report.messageId))
+        .for("update")
+        .limit(1);
+    }
 
     await transaction
       .update(reports)
@@ -896,7 +979,7 @@ export async function resolveReport(
           .where(
             and(eq(posts.id, report.targetId), isNull(posts.deletedAt)),
           );
-      } else {
+      } else if (report.targetType === "comment") {
         await transaction
           .update(comments)
           .set({ deletedAt: now })
@@ -905,6 +988,22 @@ export async function resolveReport(
               eq(comments.id, report.targetId),
               isNull(comments.deletedAt),
             ),
+          );
+      } else {
+        await transaction
+          .update(directMessages)
+          .set({ body: "", deletedAt: now })
+          .where(
+            and(
+              eq(directMessages.id, report.targetId),
+              isNull(directMessages.deletedAt),
+            ),
+          );
+        await transaction
+          .update(directConversations)
+          .set({ lastMessagePreview: "Bu mesaj silindi." })
+          .where(
+            eq(directConversations.lastMessageId, report.targetId),
           );
       }
     }
@@ -917,10 +1016,16 @@ export async function resolveReport(
               .from(posts)
               .where(eq(posts.id, report.targetId))
               .limit(1)
-          : await transaction
+          : report.targetType === "comment"
+            ? await transaction
               .select({ authorId: comments.authorId })
               .from(comments)
               .where(eq(comments.id, report.targetId))
+              .limit(1)
+            : await transaction
+              .select({ authorId: directMessages.senderId })
+              .from(directMessages)
+              .where(eq(directMessages.id, report.targetId))
               .limit(1);
       const authorId = authorRow[0]?.authorId;
 
@@ -958,6 +1063,7 @@ export async function resolveReport(
       reportId: report.id,
       targetUserId,
       postId: report.postId,
+      messageId: report.messageId,
       note: trimmedNote,
     });
   });
@@ -1174,6 +1280,7 @@ export async function getModerationHistory(
       createdAt: moderationActions.createdAt,
       reportId: moderationActions.reportId,
       postId: moderationActions.postId,
+      messageId: moderationActions.messageId,
       note: moderationActions.note,
       actorUsername: actor.username,
       actorDisplayName: actor.displayName,
@@ -1200,6 +1307,7 @@ export async function getModerationHistory(
       createdAt: row.createdAt.toISOString(),
       reportId: row.reportId,
       postId: row.postId,
+      messageId: row.messageId,
       note: row.note,
       actor:
         row.actorUsername && row.actorDisplayName
