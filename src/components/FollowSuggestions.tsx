@@ -2,289 +2,89 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback } from "react";
 
 import ActionStatusText from "@/components/ActionStatusText";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
+import FollowActionButton from "@/components/FollowActionButton";
 import FollowSuggestionDeck from "@/components/FollowSuggestionDeck";
-import { useCampusFollow } from "@/components/CampusFollowProvider";
+import FollowSuggestionHoverCard, {
+  useFollowHoverCard,
+} from "@/components/FollowSuggestionHoverCard";
+import FollowSuggestionReason from "@/components/FollowSuggestionReason";
+import type { SuggestionEntry } from "@/components/followSuggestionEntry";
 import { useActionStatus } from "@/components/useActionStatus";
+import { useFollowState } from "@/components/useFollowState";
 import {
-  campusFollowMembers,
-  type CampusFollowMember,
-} from "@/data/campusFollows";
-import {
-  followMember,
-  getSuggestedFollows,
-  type SuggestedMemberDto,
-} from "@/social/client";
+  useGuestSuggestedMembers,
+  useRealSuggestedMembers,
+} from "@/components/useSuggestedMembers";
 
-type CampusSessionMode = "member" | "guest" | "signed-out";
-
-type SuggestionEntry = {
-  id: string;
-  username: string;
-  displayName: string;
-  avatarUrl: string | null;
-  detail?: string;
-  bio?: string;
-};
+const RAIL_SUGGESTION_COUNT = 4;
+const PAGE_SUGGESTION_COUNT = 20;
 
 const focusRing =
   "outline-none focus-visible:ring-3 focus-visible:ring-brand/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
-function toEntryFromMock(member: CampusFollowMember): SuggestionEntry {
-  return {
-    id: member.authorId,
-    username: member.username,
-    displayName: member.displayName,
-    avatarUrl: member.avatarDataUrl ?? null,
-    detail: member.detail,
-    bio: member.bio,
-  };
-}
-
-function toEntryFromDto(member: SuggestedMemberDto): SuggestionEntry {
-  return {
-    id: member.id,
-    username: member.username,
-    displayName: member.displayName,
-    avatarUrl: member.avatarUrl,
-    detail: member.department,
-    bio: member.bio,
-  };
-}
-
-function useGuestSuggestedMembers(limit: number) {
-  const { isHydrated, followingAuthorIds } = useCampusFollow();
-
-  const suggestions = useMemo(
-    () =>
-      campusFollowMembers
-        .filter((member) => !followingAuthorIds.has(member.authorId))
-        .slice(0, limit)
-        .map(toEntryFromMock),
-    [followingAuthorIds, limit],
-  );
-
-  return { isHydrated, suggestions };
-}
-
-function useRealSuggestedMembers(
-  limit: number,
-  sessionMode: CampusSessionMode,
-) {
-  const [isHydrated, setIsHydrated] = useState(false);
-  const [suggestions, setSuggestions] = useState<SuggestionEntry[]>([]);
-
-  useEffect(() => {
-    if (sessionMode !== "member") {
-      return;
-    }
-
-    let isCancelled = false;
-
-    queueMicrotask(() => {
-      if (!isCancelled) {
-        setIsHydrated(false);
-      }
-    });
-
-    getSuggestedFollows()
-      .then((rows) => {
-        if (!isCancelled) {
-          setSuggestions(rows.slice(0, limit).map(toEntryFromDto));
-        }
-      })
-      .catch(() => {
-        if (!isCancelled) {
-          setSuggestions([]);
-        }
-      })
-      .finally(() => {
-        if (!isCancelled) {
-          setIsHydrated(true);
-        }
-      });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [limit, sessionMode]);
-
-  const removeSuggestion = useCallback((id: string) => {
-    setSuggestions((current) => current.filter((entry) => entry.id !== id));
-  }, []);
-
-  return { isHydrated, suggestions, removeSuggestion };
-}
-
 /**
- * Takip edildikten sonra kart listeden düşmez; buton "Takip edildi"ye döner.
- * Kaybolan kart, kullanıcının kimi takip ettiğini doğrulamasını engelliyordu.
+ * Takip edildikten sonra satır listeden düşmez; buton durum değiştirir.
+ * Kaybolan satır, kullanıcının kimi takip ettiğini doğrulamasını engelliyordu.
  */
-function FollowButton({
+function SuggestionRow({
   entry,
-  compact = false,
-  sessionMode,
+  index,
   isFollowed,
-  onFollowed,
+  onToggleFollow,
 }: {
   entry: SuggestionEntry;
-  compact?: boolean;
-  sessionMode: CampusSessionMode;
+  index: number;
   isFollowed: boolean;
-  onFollowed: () => void;
+  onToggleFollow: () => void;
 }) {
-  const router = useRouter();
-  const [status, setStatus] = useActionStatus();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleFollowClick = async () => {
-    if (isFollowed || isSubmitting) {
-      return;
-    }
-
-    if (sessionMode !== "member") {
-      setStatus({
-        message: "Takip etmek için giriş yapmalısın.",
-        tone: "error",
-        action: {
-          label: "Giriş yap",
-          onClick: () => router.push("/giris"),
-        },
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      await followMember(entry.username);
-      // Buton durumu değiştiği için ayrıca toast göstermiyoruz.
-      onFollowed();
-    } catch {
-      setStatus({
-        message: "Takip işlemi şu anda tamamlanamadı.",
-        tone: "error",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const label = isFollowed ? "Takip edildi" : "Takip et";
+  const { isOpen, containerProps } = useFollowHoverCard();
 
   return (
-    <span className="relative inline-flex shrink-0">
-      <button
-        type="button"
-        disabled={isSubmitting || isFollowed}
-        aria-label={`${entry.displayName} kullanıcısını ${label.toLocaleLowerCase("tr-TR")}`}
-        onClick={() => void handleFollowClick()}
-        className={
-          compact
-            ? // Buton değil, düz metin bağlantısı: X'teki gibi kutusuz, yalnızca
-              // renkle ayrışıyor.
-              `inline-flex min-h-10 shrink-0 items-center justify-center px-1 text-sm font-black transition-colors disabled:cursor-default ${focusRing} ${
-                isFollowed
-                  ? "text-white/40"
-                  : "text-brand hover:text-brand-hover"
-              }`
-            : `inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-black transition-colors disabled:cursor-default ${focusRing} ${
-                isFollowed
-                  ? "border border-brand/45 bg-brand/16 text-[#ffa082]"
-                  : "bg-brand text-[#101012] hover:bg-brand-hover disabled:opacity-50"
-              }`
-        }
-      >
-        {!compact && (isFollowed ? <CheckIcon /> : <PersonPlusIcon />)}
-        {label}
-      </button>
-
-      {status && (
-        <ActionStatusText
-          status={status}
-          className="absolute top-full right-0 z-10 mt-1 w-max max-w-56 text-right"
-        />
-      )}
-    </span>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="size-4 shrink-0"
+    <li
+      className="campus-rail-enter"
+      style={{ animationDelay: `${index * 45}ms` }}
     >
-      <path d="m4.5 10.5 3.5 3.5 7.5-8" />
-    </svg>
-  );
-}
-
-function CompactSuggestionItem({
-  entry,
-  sessionMode,
-  isFollowed,
-  onFollowed,
-}: {
-  entry: SuggestionEntry;
-  sessionMode: CampusSessionMode;
-  isFollowed: boolean;
-  onFollowed: () => void;
-}) {
-  return (
-    <li className="flex min-w-0 items-center gap-3">
-      <Link
-        href={`/profil/${entry.username}`}
-        aria-label={`${entry.displayName} profilini aç`}
-        className={`flex min-w-0 flex-1 items-center gap-3 rounded-lg ${focusRing}`}
+      <div
+        {...containerProps}
+        className="group relative flex min-w-0 items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-white/[0.035]"
       >
-        <CampusAuthorAvatar
-          author={`@${entry.username}`}
-          authorId={entry.id}
-          avatarUrl={entry.avatarUrl}
-          size="md"
+        <Link
+          href={`/profil/${entry.username}`}
+          aria-label={`${entry.displayName} profilini aç`}
+          className={`flex min-w-0 flex-1 items-center gap-3 rounded-lg ${focusRing}`}
+        >
+          <CampusAuthorAvatar
+            author={`@${entry.username}`}
+            authorId={entry.id}
+            avatarUrl={entry.avatarUrl}
+            size="md"
+          />
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-black tracking-[-0.01em] transition-colors group-hover:text-brand">
+              {entry.displayName}
+            </span>
+            <span className="mt-0.5 block truncate text-[13px] font-semibold text-white/50">
+              @{entry.username}
+            </span>
+            <FollowSuggestionReason entry={entry} className="mt-1" />
+          </span>
+        </Link>
+
+        <FollowActionButton
+          displayName={entry.displayName}
+          isFollowed={isFollowed}
+          onToggle={onToggleFollow}
         />
-        <span className="min-w-0">
-          <span className="block truncate text-sm font-black tracking-[-0.01em]">
-            {entry.displayName}
-          </span>
-          <span className="mt-0.5 block truncate text-[13px] font-semibold text-white/55">
-            @{entry.username}
-          </span>
-        </span>
-      </Link>
-      <FollowButton
-        entry={entry}
-        compact
-        sessionMode={sessionMode}
-        isFollowed={isFollowed}
-        onFollowed={onFollowed}
-      />
+
+        {isOpen && <FollowSuggestionHoverCard entry={entry} />}
+      </div>
     </li>
   );
-}
-
-/** Takip edilenler listeden düşmediği için durumları burada tutuluyor. */
-function useFollowedIds() {
-  const [followedIds, setFollowedIds] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
-
-  const markFollowed = (id: string) => {
-    setFollowedIds((current) => new Set(current).add(id));
-  };
-
-  return { followedIds, markFollowed };
 }
 
 export default function FollowSuggestions({
@@ -293,91 +93,170 @@ export default function FollowSuggestions({
   className?: string;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { sessionMode } = useCampusAccount();
-  const guest = useGuestSuggestedMembers(4);
-  const real = useRealSuggestedMembers(4, sessionMode);
+  const guest = useGuestSuggestedMembers(RAIL_SUGGESTION_COUNT);
+  const real = useRealSuggestedMembers(RAIL_SUGGESTION_COUNT, sessionMode);
   const isMember = sessionMode === "member";
   const { isHydrated, suggestions } = isMember ? real : guest;
-  const { followedIds, markFollowed } = useFollowedIds();
+  const [status, setStatus] = useActionStatus();
 
-  if (pathname === "/takip" || !isHydrated) {
+  const handleGuestAttempt = useCallback(() => {
+    setStatus({
+      message: "Takip etmek için giriş yapmalısın.",
+      tone: "error",
+      action: { label: "Giriş yap", onClick: () => router.push("/giris") },
+    });
+  }, [router, setStatus]);
+
+  const handleError = useCallback(
+    (message: string) => setStatus({ message, tone: "error" }),
+    [setStatus],
+  );
+
+  const { followedIds, toggleFollow } = useFollowState({
+    sessionMode,
+    onGuestAttempt: handleGuestAttempt,
+    onError: handleError,
+  });
+
+  if (pathname === "/takip") {
     return null;
   }
 
   // Kart yok: kutu, kenarlık ve arka plan olmadan sağ sütuna doğrudan
   // oturuyor; sadece başlık ve düz bir satır listesi.
   return (
-    <aside
-      aria-labelledby="follow-suggestions-title"
-      className={className}
-    >
-      <div className="flex items-center justify-between gap-3 px-1">
+    <aside aria-labelledby="follow-suggestions-title" className={className}>
+      <div className="flex items-center justify-between gap-2 px-1">
         <h2
           id="follow-suggestions-title"
-          className="text-lg font-black tracking-[-0.035em]"
+          className="min-w-0 truncate text-lg font-black tracking-[-0.035em]"
         >
           Takip önerileri
         </h2>
-        {suggestions.length > 0 && (
-          <Link
-            href="/takip"
-            className={`shrink-0 text-sm font-bold text-brand transition-colors hover:text-brand-hover ${focusRing}`}
+        {isMember && isHydrated && (
+          <button
+            type="button"
+            onClick={real.reload}
+            disabled={real.isRefreshing}
+            aria-label="Önerileri yenile"
+            className={`grid size-9 shrink-0 cursor-pointer place-items-center rounded-full text-white/45 transition-colors hover:bg-white/8 hover:text-white disabled:cursor-default disabled:text-white/25 ${focusRing}`}
           >
-            Tümünü gör
-          </Link>
+            <RefreshIcon isSpinning={real.isRefreshing} />
+          </button>
         )}
       </div>
 
-      {suggestions.length > 0 ? (
-        <ul className="mt-4 flex flex-col gap-4 px-1">
-          {suggestions.map((entry) => (
-            <CompactSuggestionItem
-              key={entry.id}
-              entry={entry}
-              sessionMode={sessionMode}
-              isFollowed={followedIds.has(entry.id)}
-              onFollowed={() => markFollowed(entry.id)}
-            />
-          ))}
-        </ul>
+      {!isHydrated ? (
+        <SuggestionsRailSkeleton />
+      ) : suggestions.length > 0 ? (
+        <>
+          <ul className="mt-2 -mx-1 flex flex-col">
+            {suggestions.map((entry, index) => (
+              <SuggestionRow
+                key={entry.id}
+                entry={entry}
+                index={index}
+                isFollowed={followedIds.has(entry.id)}
+                onToggleFollow={() => void toggleFollow(entry)}
+              />
+            ))}
+          </ul>
+
+          {status && <ActionStatusText status={status} className="mt-2 px-1" />}
+
+          <Link
+            href="/takip"
+            className={`mt-2 block border-t border-white/8 px-1 pt-3 text-xs font-bold text-brand transition-colors hover:text-brand-hover ${focusRing}`}
+          >
+            Tümünü gör
+          </Link>
+        </>
       ) : (
-        <p className="mt-3 px-1 text-sm leading-6 text-white/50">
-          Şu an önerebileceğimiz yeni bir kullanıcı yok.
-        </p>
+        <RailEmptyState />
       )}
     </aside>
   );
 }
 
+function SuggestionsRailSkeleton() {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      className="mt-2 -mx-1"
+    >
+      {Array.from({ length: RAIL_SUGGESTION_COUNT }, (_, index) => (
+        <div key={index} className="flex items-center gap-3 px-2 py-2.5">
+          <SkeletonBlock className="size-10 shrink-0" />
+          <span className="min-w-0 flex-1">
+            <SkeletonBlock className="h-3 w-24" />
+            <SkeletonBlock className="mt-2 h-2.5 w-16" />
+            <SkeletonBlock className="mt-2 h-2.5 w-30" />
+          </span>
+          <SkeletonBlock className="h-9 w-23 shrink-0" />
+        </div>
+      ))}
+      <span className="sr-only">Takip önerileri yükleniyor…</span>
+    </div>
+  );
+}
+
+function SkeletonBlock({ className }: { className: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`block animate-pulse rounded-full bg-white/9 motion-reduce:animate-none ${className}`}
+    />
+  );
+}
+
+function RailEmptyState() {
+  return (
+    <div className="mt-4 px-1">
+      <span
+        aria-hidden="true"
+        className="grid size-10 place-items-center rounded-full border border-white/11 text-brand"
+      >
+        <SparkIcon />
+      </span>
+      <p className="mt-3 text-sm font-black tracking-[-0.02em]">
+        Hepsini keşfettin
+      </p>
+      <p className="mt-1 text-[13px] leading-5 text-white/50">
+        Şu an önerebileceğimiz yeni bir kullanıcı yok.
+      </p>
+    </div>
+  );
+}
+
 export function FollowSuggestionsPage() {
   const router = useRouter();
-  const [deckStatus, setDeckStatus] = useActionStatus();
+  const [status, setStatus] = useActionStatus();
   const { sessionMode } = useCampusAccount();
-  const guest = useGuestSuggestedMembers(20);
-  const real = useRealSuggestedMembers(20, sessionMode);
+  const guest = useGuestSuggestedMembers(PAGE_SUGGESTION_COUNT);
+  const real = useRealSuggestedMembers(PAGE_SUGGESTION_COUNT, sessionMode);
   const isMember = sessionMode === "member";
   const { isHydrated, suggestions } = isMember ? real : guest;
-  const { followedIds, markFollowed } = useFollowedIds();
 
-  // Destede jest anında karar verdiği için takip isteği burada yürütülür.
-  const followFromDeck = async (entry: SuggestionEntry) => {
-    if (sessionMode !== "member") {
-      // Bildirim yerine doğrudan yönlendirme: telefonda toast'ın kaçırılması
-      // misafiri girişe ulaşamaz halde bırakıyordu.
-      router.push("/giris");
-      return;
-    }
+  // Bildirim yerine doğrudan yönlendirme: telefonda uyarı metninin kaçırılması
+  // misafiri girişe ulaşamaz halde bırakıyordu.
+  const handleGuestAttempt = useCallback(() => {
+    router.push("/giris");
+  }, [router]);
 
-    try {
-      await followMember(entry.username);
-      markFollowed(entry.id);
-    } catch {
-      setDeckStatus({
-        message: "Takip işlemi şu anda tamamlanamadı.",
-        tone: "error",
-      });
-    }
-  };
+  const handleError = useCallback(
+    (message: string) => setStatus({ message, tone: "error" }),
+    [setStatus],
+  );
+
+  const { followedIds, toggleFollow } = useFollowState({
+    sessionMode,
+    onGuestAttempt: handleGuestAttempt,
+    onError: handleError,
+  });
 
   return (
     <section
@@ -426,16 +305,12 @@ export function FollowSuggestionsPage() {
               entries={suggestions}
               followedIds={followedIds}
               canFollow={isMember}
-              onFollow={followFromDeck}
+              onFollow={(entry) => void toggleFollow(entry)}
             />
-            {deckStatus && (
-              <ActionStatusText
-                status={deckStatus}
-                className="mt-3 text-center"
-              />
+            {status && (
+              <ActionStatusText status={status} className="mt-3 text-center" />
             )}
           </div>
-
         </div>
       ) : (
         <NoSuggestionsEmptyState />
@@ -488,39 +363,28 @@ function NoSuggestionsEmptyState() {
   );
 }
 
-function PersonPlusIcon() {
+function RefreshIcon({ isSpinning }: { isSpinning: boolean }) {
   return (
     <svg
       aria-hidden="true"
       viewBox="0 0 20 20"
       fill="none"
-      className="size-4"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`size-4 ${isSpinning ? "animate-spin motion-reduce:animate-none" : ""}`}
     >
-      <circle
-        cx="7.5"
-        cy="6.3"
-        r="2.6"
-        stroke="currentColor"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M3.5 15.3c.4-2.8 1.9-4.2 4-4.2s3.6 1.4 4 4.2M14.8 6.8v5M12.3 9.3h5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
+      <path d="M16.4 8.6A6.6 6.6 0 0 0 5.1 6.1L3.4 7.8" />
+      <path d="M3.6 11.4a6.6 6.6 0 0 0 11.3 2.5l1.7-1.7" />
+      <path d="M3.4 4.6v3.2h3.2M16.6 15.4v-3.2h-3.2" />
     </svg>
   );
 }
 
 function SparkIcon() {
   return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 20 20"
-      fill="none"
-      className="size-4"
-    >
+    <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="size-4">
       <path
         d="M10 2.8c.5 3 2.2 4.7 5.2 5.2-3 .5-4.7 2.2-5.2 5.2C9.5 10.2 7.8 8.5 4.8 8c3-.5 4.7-2.2 5.2-5.2ZM15.4 12.7c.2 1.3.9 2 2.2 2.2-1.3.2-2 .9-2.2 2.2-.2-1.3-.9-2-2.2-2.2 1.3-.2 2-.9 2.2-2.2Z"
         stroke="currentColor"
@@ -530,4 +394,3 @@ function SparkIcon() {
     </svg>
   );
 }
-

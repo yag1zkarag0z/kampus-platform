@@ -24,10 +24,22 @@ export type RateLimitAction =
   | "follow"
   | "block"
   | "interaction"
+  | "content_update"
+  | "content_delete"
+  | "profile_update"
+  | "account_update"
   | "username_change"
-  | "avatar_change"
+  | "avatar_upload"
+  | "avatar_preset"
+  | "media_upload"
+  | "media_delete"
   | "message_start"
-  | "message_send";
+  | "message_request_start"
+  | "message_send"
+  | "message_manage"
+  | "state_sync"
+  | "feedback_create"
+  | "moderation_write";
 
 type RateLimitWindow = {
   windowSeconds: number;
@@ -53,36 +65,56 @@ const ACTION_WINDOWS: Record<RateLimitAction, RateLimitWindow[]> = {
     { windowSeconds: HOUR, limit: 10 },
     { windowSeconds: DAY, limit: 30 },
   ],
-  comment_create: [{ windowSeconds: MINUTE, limit: 20 }],
+  comment_create: [
+    { windowSeconds: MINUTE, limit: 20 },
+    { windowSeconds: DAY, limit: 200 },
+  ],
   report_create: [{ windowSeconds: DAY, limit: 10 }],
-  follow: [{ windowSeconds: HOUR, limit: 60 }],
+  follow: [
+    { windowSeconds: HOUR, limit: 60 },
+    { windowSeconds: DAY, limit: 200 },
+  ],
   block: [{ windowSeconds: HOUR, limit: 30 }],
   interaction: [],
+  content_update: [],
+  content_delete: [],
+  profile_update: [],
+  account_update: [],
   // Kimlik taklidi/engel atlatma amaçlı sık değişimi caydırır.
-  username_change: [{ windowSeconds: 30 * DAY, limit: 1 }],
+  username_change: [{ windowSeconds: 30 * DAY, limit: 2 }],
   // Moderasyon yakalamadan önce uygunsuz bir görseli kısaca gösterip hemen
   // değiştirmeyi zorlaştırır; günlük birkaç deneme için yine de yeterli.
-  avatar_change: [{ windowSeconds: DAY, limit: 3 }],
+  avatar_upload: [{ windowSeconds: DAY, limit: 5 }],
+  avatar_preset: [{ windowSeconds: DAY, limit: 20 }],
+  media_upload: [],
+  media_delete: [],
   // Yeni konuşma açmak, mevcut bir konuşmada yazmaktan daha sıkı tutulur.
   // Mesaj limiti normal bir sohbeti kesmeden otomasyon/spam patlamasını durdurur.
   message_start: [{ windowSeconds: DAY, limit: 30 }],
+  message_request_start: [{ windowSeconds: DAY, limit: 10 }],
   message_send: [
     { windowSeconds: MINUTE, limit: 60 },
     { windowSeconds: DAY, limit: 1_000 },
   ],
+  message_manage: [],
+  state_sync: [],
+  feedback_create: [{ windowSeconds: DAY, limit: 10 }],
+  moderation_write: [],
 };
 
 /** Genel mesajın yetersiz kaldığı, kullanıcıya doğrudan gösterilecek özel durumlar. */
 const ACTION_RATE_LIMIT_MESSAGES: Partial<Record<RateLimitAction, string>> = {
-  username_change: "Kullanıcı adını 30 günde bir değiştirebilirsin.",
-  avatar_change: "Avatarını günde en fazla 3 kez değiştirebilirsin.",
+  username_change: "Kullanıcı adını 30 günde en fazla 2 kez değiştirebilirsin.",
+  avatar_upload: "Günde en fazla 5 avatar yükleyebilirsin.",
+  avatar_preset: "Günde en fazla 20 kez hazır avatar seçebilirsin.",
+  message_request_start: "Günde en fazla 10 yeni mesaj isteği gönderebilirsin.",
 };
 
 type RateLimitDatabase = ReturnType<typeof getDatabase>;
 type RateLimitTransaction = Parameters<
   Parameters<RateLimitDatabase["transaction"]>[0]
 >[0];
-export type RateLimitExecutor = RateLimitDatabase | RateLimitTransaction;
+export type RateLimitExecutor = RateLimitTransaction;
 
 function rateLimitedError(
   retryAfterSeconds: number,
@@ -176,6 +208,20 @@ export async function consumeRateLimit(
     action,
     createdAt: now,
   });
+}
+
+/**
+ * Mevcut bir transaction'ı olmayan akışlar için atomik rate-limit tüketimi.
+ * Advisory lock, sayaç kontrolü ve insert aynı transaction'da kalır.
+ */
+export async function consumeRateLimitForUser(
+  userId: string,
+  action: RateLimitAction,
+  now = new Date(),
+) {
+  return getDatabase().transaction((transaction) =>
+    consumeRateLimit(transaction, userId, action, now),
+  );
 }
 
 export const rateLimitConfigForTests = {

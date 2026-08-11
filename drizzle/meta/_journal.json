@@ -225,6 +225,13 @@
       "when": 1786453760105,
       "tag": "0031_foamy_george_stacy",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1786480402773,
+      "tag": "0032_fixed_ken_ellis",
+      "breakpoints": true
     }
   ]
 }

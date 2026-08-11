@@ -9,6 +9,7 @@ import { GET } from "./route";
 
 vi.mock("@/server/social/service", () => ({
   getSuggestedMembers: vi.fn(),
+  SUGGESTION_MAX_LIMIT: 20,
 }));
 
 vi.mock("@/server/auth/authorization", () => ({
@@ -28,6 +29,10 @@ const suggestions = [
     avatarUrl: null,
     department: "Yazılım Mühendisliği",
     bio: "Kampüste kod yazıyorum.",
+    followerCount: 12,
+    mutualCount: 2,
+    mutualNames: ["Ece Arslan", "Kaya Öztürk"],
+    isNewMember: false,
   },
 ];
 
@@ -62,10 +67,46 @@ describe("GET /v1/me/suggested-follows", () => {
 
     const response = await GET(request);
 
-    expect(mockedGetSuggestedMembers).toHaveBeenCalledWith(memberId);
+    expect(mockedGetSuggestedMembers).toHaveBeenCalledWith(memberId, 8);
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
     await expect(response.json()).resolves.toEqual({ data: suggestions });
+  });
+
+  it("forwards the requested limit", async () => {
+    const request = new NextRequest(
+      `${appOrigin}/v1/me/suggested-follows?limit=20`,
+      { headers: { Cookie: "kampus_session=m1.raw-token" } },
+    );
+
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    expect(mockedGetSuggestedMembers).toHaveBeenCalledWith(memberId, 20);
+  });
+
+  it("rejects a limit above the ceiling", async () => {
+    const request = new NextRequest(
+      `${appOrigin}/v1/me/suggested-follows?limit=999`,
+      { headers: { Cookie: "kampus_session=m1.raw-token" } },
+    );
+
+    const response = await GET(request);
+
+    expect(response.status).toBe(400);
+    expect(mockedGetSuggestedMembers).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-numeric limit", async () => {
+    const request = new NextRequest(
+      `${appOrigin}/v1/me/suggested-follows?limit=abc`,
+      { headers: { Cookie: "kampus_session=m1.raw-token" } },
+    );
+
+    const response = await GET(request);
+
+    expect(response.status).toBe(400);
+    expect(mockedGetSuggestedMembers).not.toHaveBeenCalled();
   });
 
   it("requires an active member session", async () => {

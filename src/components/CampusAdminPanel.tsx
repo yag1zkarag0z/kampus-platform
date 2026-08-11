@@ -7,6 +7,7 @@ import ActionStatusText from "@/components/ActionStatusText";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import { campusButton } from "@/components/campusButtonStyles";
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
+import CampusFeedbackAdminQueue from "@/components/CampusFeedbackAdminQueue";
 import {
   type CampusModerationResolution,
   type CampusReportReason,
@@ -24,7 +25,12 @@ import type {
   ReportSummaryDto,
 } from "@/moderation/client";
 
-type AdminView = "overview" | "reports" | "users" | "history";
+type AdminView =
+  | "overview"
+  | "reports"
+  | "feedback"
+  | "users"
+  | "history";
 type ReportFilter = "pending" | "resolved" | "all";
 
 const focusRing =
@@ -33,6 +39,7 @@ const focusRing =
 const adminViews: { id: AdminView; label: string }[] = [
   { id: "overview", label: "Genel bakış" },
   { id: "reports", label: "Şikâyetler" },
+  { id: "feedback", label: "Geri bildirim" },
   { id: "users", label: "Kullanıcılar" },
   { id: "history", label: "Geçmiş" },
 ];
@@ -405,7 +412,7 @@ export default function CampusAdminPanel() {
           aria-label="Yönetim paneli bölümleri"
           className="overflow-x-auto border-t border-white/7 px-2 py-2 sm:px-5"
         >
-          <div className="grid min-w-[31rem] grid-cols-4 gap-1">
+          <div className="grid min-w-[38rem] grid-cols-5 gap-1">
             {adminViews.map((view) => {
               const isActive = activeView === view.id;
               const count =
@@ -855,6 +862,8 @@ export default function CampusAdminPanel() {
           )}
         </div>
       )}
+
+      {activeView === "feedback" && <CampusFeedbackAdminQueue />}
 
       {activeView === "users" && (
         <div className="grid gap-4 p-3 sm:p-6">

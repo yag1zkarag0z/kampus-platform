@@ -124,6 +124,9 @@ Henüz tamamlanmamış kapsam:
   `report_dismissed | content_removed | content_hidden | content_restored |
   user_suspended | user_restored | role_changed`
 - `otp_delivery_status`: `pending | delivered | failed`
+- `feedback_category`: `bug | suggestion | other`
+- `feedback_status`: `new | reviewing | resolved | dismissed`
+- `feedback_session_mode`: `member | guest`
 
 ## 3. PostgreSQL tabloları
 
@@ -194,7 +197,7 @@ Kod altı haneli, beş dakika geçerli, yeniden gönderme beklemesi 30 saniye ve
 maksimum deneme sayısı üç olmalıdır.
 `purpose` yalnızca `registration | login` olabilir. IP tabanlı hız sınırı için
 ham IP yerine `request_ip_hash` saklanır.
-Bir e-posta adresi saatte en fazla beş, bir IP özeti saatte en fazla yirmi kod
+Bir e-posta adresi saatte en fazla beş, bir IP özeti saatte en fazla iki yüz kod
 isteyebilir. Yeni kod başarıyla gönderildiğinde aynı e-posta ve amaç için önceki
 aktif kod geçersiz kılınır. Kayıt kodu doğrulandığında `verified_at` yazılır ve
 15 dakika geçerli, imzalı, tek kullanımlık bir kayıt bileti verilir;
@@ -388,6 +391,23 @@ alınabildiği için kendi tablolarını saymak sınırı uygulamaya yetmez: kul
 satırı silip yeniden ekleyerek sayacı sıfırlardı. Tablo yalnızca eklenir;
 eski kayıtları temizlik görevi toplamalıdır.
 
+`product_feedback`
+
+- `id uuid primary key`
+- `user_id uuid references users(id) on delete set null`
+- `session_mode feedback_session_mode not null`
+- `request_ip_hash varchar(64)` — yalnızca misafir kotası için HMAC özeti
+- `category feedback_category not null`
+- `message varchar(1000) not null`
+- `page_path varchar(240) not null`
+- `status feedback_status not null default 'new'`
+- `reviewed_by uuid references users(id) on delete set null`
+- `reviewed_at timestamptz`
+- `created_at`, `updated_at timestamptz not null`
+
+Üye hesabı silindiğinde geri bildirim korunur ancak `user_id` hemen `null`
+yapılarak hesap bağlantısı koparılır. Ham istemci IP'si saklanmaz.
+
 ## 4. API endpoint’leri
 
 Aşağıdaki liste koddaki rotaların tamamıdır; method ve path'ler birebir
@@ -448,7 +468,30 @@ eşleşir. Kullanıcıya göre adreslenen uçlar `:id` değil `:username` alır.
 - `POST /v1/users/:username/follow` · `DELETE /v1/users/:username/follow`
 - `POST /v1/users/:username/block` · `DELETE /v1/users/:username/block`
 - `GET /v1/me/blocks?cursor=&limit=`
-- `GET /v1/me/suggested-follows`
+- `GET /v1/me/suggested-follows?limit=` — `limit` 1..20, varsayılan 8
+
+Öneri kaydı, kartın "neden bu kişi" satırını kurabilmesi için ham sinyalleri
+taşır; rozet metnini arayüz üretir:
+
+```json
+{
+  "id": "uuid",
+  "username": "ecearslan",
+  "displayName": "Ece Arslan",
+  "avatarUrl": "/v1/users/ecearslan/avatar",
+  "department": "İşletme",
+  "bio": "…",
+  "followerCount": 42,
+  "mutualCount": 3,
+  "mutualNames": ["Kaya Öztürk", "Deniz Yıldız"],
+  "isNewMember": false
+}
+```
+
+`mutualCount`, görüntüleyenin takip ettiği kaç kişinin bu adayı da takip
+ettiğini söyler; `mutualNames` bunlardan en fazla ikisidir. `isNewMember` son
+14 gün içinde katılan hesapları işaretler. Sıralama ortak takipçisi olanları
+öne alır, eşitlikte rastgeledir.
 
 ### Bildirim
 
@@ -456,6 +499,28 @@ eşleşir. Kullanıcıya göre adreslenen uçlar `:id` değil `:username` alır.
 - `GET /v1/me/notifications/unread-count`
 - `PATCH /v1/me/notifications/:id/read`
 - `POST /v1/me/notifications/read-all`
+
+### Mesajlaşma ve realtime
+
+- `GET /v1/messages/conversations`
+- `POST /v1/messages/conversations`
+- `GET /v1/messages/conversations/:id`
+- `GET /v1/messages/conversations/:id/messages`
+- `POST /v1/messages/conversations/:id/messages`
+- `POST /v1/messages/conversations/:id/read`
+- `POST /v1/messages/conversations/:id/request`
+- `DELETE /v1/messages/:id`
+- `GET /v1/messages/unread-count`
+- `GET /v1/realtime` (`Upgrade: websocket`)
+
+Mesaj gövdeleri yalnızca REST API ve PostgreSQL üzerinden okunur/yazılır.
+`/v1/realtime`, commit edilmiş konuşma değişiklikleri için invalidation olayı ve
+kalıcı olmayan typing durumu taşır; mesaj içeriğini taşımaz. Bağlantı üye oturum
+çereziyle doğrulanır, `APP_ORIGIN` dışındaki origin'ler reddedilir ve typing
+aboneliği konuşma üyeliği ile engelleme kurallarına göre sunucuda yetkilendirilir.
+Instance'lar arası dağıtım PostgreSQL `LISTEN/NOTIFY` ile yapılır. İstemci bağlantı
+koptuğunda exponential backoff ile yeniden bağlanır ve REST polling fallback'i
+devreye girer.
 
 ### Şikâyet ve moderasyon
 
@@ -466,6 +531,16 @@ eşleşir. Kullanıcıya göre adreslenen uçlar `:id` değil `:username` alır.
 - `PATCH /v1/moderation/users/:id/status`
 - `PATCH /v1/moderation/users/:id/role`
 - `GET /v1/moderation/history?cursor=&limit=`
+
+### Ürün geri bildirimi
+
+- `POST /v1/feedback` — aktif üye veya geçerli misafir oturumu
+- `GET /v1/moderation/feedback?status=&category=&cursor=&limit=`
+- `PATCH /v1/moderation/feedback/:id`
+
+Metin 20-1000 karakterdir. Üyeler günde 10, misafirler HMAC'lenmiş istemci IP
+özeti başına günde 20 kayıt gönderebilir. Yönetim listesi cursor pagination
+kullanır; durum yalnızca moderator/admin tarafından değiştirilebilir.
 
 ## 5. Ortak yanıt biçimleri
 
@@ -552,6 +627,7 @@ başlığına da yazılır.
 | `MEDIA_NOT_FOUND` | 404 |
 | `AVATAR_NOT_FOUND` | 404 |
 | `NOTIFICATION_NOT_FOUND` | 404 |
+| `FEEDBACK_NOT_FOUND` | 404 |
 | `CONTENT_FORBIDDEN` | 403 — sahiplik kontrolü |
 | `CONTENT_LIMIT_REACHED` | 409 — gönderi başına yorum tavanı |
 | `CONTENT_RATE_LIMITED` | 429 — hız sınırı, `retryAfterSeconds` taşır |
@@ -571,9 +647,8 @@ beklenmeyen hatalar `AUTH_CONFIGURATION_ERROR` altında genel mesajla döner.
 
 ## 6. Yetki matrisi
 
-- Guest: mevcut sürümde yalnızca paketlenmiş 20 seçilmiş gönderiyi salt okunur
-  görür; üye gönderi API'sine erişemez. İleride gerçek public okuma açılacaksa
-  ayrı görünürlük ve moderasyon politikası gerektirir.
+- Guest: paketlenmiş 20 seçilmiş gönderiyi salt okunur görür; üye gönderi
+  API'sine erişemez. Ayrıca ürün geri bildirimi gönderebilir.
 - Active member: kendi profil ve içeriğini düzenleme, etkileşim, takip,
   engelleme ve şikâyet.
 - Moderator: üye yetkileri, şikâyet çözme, içerik kaldırma ve member hesaplarını
@@ -614,10 +689,18 @@ alınırsa kullanım da sayılmaz.
 | İşlem | Sınır |
 | --- | --- |
 | Gönderi oluşturma | 10/saat, 30/gün |
-| Yorum oluşturma | 20/dakika |
+| Yorum oluşturma | 20/dakika, 200/gün |
 | Şikâyet | 10/gün |
-| Takip | 60/saat |
+| Geri bildirim (üye) | 10/gün |
+| Geri bildirim (misafir) | HMAC istemci IP özeti başına 20/gün |
+| Takip/takibi bırakma | 60/saat, 200/gün |
 | Engelleme | 30/saat |
+| Kullanıcı adı değişikliği | 2/30 gün |
+| Avatar yükleme | 5/gün |
+| Hazır avatar seçme | 20/gün |
+| Yeni mesaj isteği | 10/gün |
+| Yeni karşılıklı takip konuşması | 30/gün |
+| Mesaj gönderme | 60/dakika, 1000/gün |
 | Genel yazma tavanı | 120/dakika |
 
 Beğeni, kaydetme ve anket oyu `interaction` olarak sayılır; kendi sınırları
@@ -636,7 +719,7 @@ avatar istekleri için sınır `1 MiB + 64 KiB multipart payı`, PDF için
 de aynı sınıra tabidir. Next Proxy tamponu ayrıca istek başına 9 MiB ile
 sınırlıdır. Dosyanın kendi kesin sınırı görselde 1 MiB, PDF'te 8 MiB'dir.
 
-OTP: bir e-posta saatte en fazla beş, bir IP özeti saatte en fazla yirmi kod
+OTP: bir e-posta saatte en fazla beş, bir IP özeti saatte en fazla iki yüz kod
 isteyebilir.
 
 ### Otomatik gizleme

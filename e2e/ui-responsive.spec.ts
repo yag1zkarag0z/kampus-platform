@@ -53,39 +53,13 @@ test("public information header fits the narrowest supported phone", async ({
   }
 });
 
-test("notification filters and mobile navigation fit at 320px", async ({
+test("notification activity and mobile navigation fit at 320px", async ({
   page,
 }) => {
   const viewport = { width: 320, height: 568 };
   await page.setViewportSize(viewport);
   await enterAsGuest(page);
   await page.goto("/bildirimler");
-
-  const filterGroup = page.getByRole("group", {
-    name: "Bildirimleri filtrele",
-  });
-  const filters = filterGroup.getByRole("button");
-  await expect(filters).toHaveCount(3);
-
-  const filterGeometry = await filters.evaluateAll((elements) =>
-    elements.map((element) => {
-      const rect = element.getBoundingClientRect();
-      return {
-        left: rect.left,
-        right: rect.right,
-        scrollWidth: element.scrollWidth,
-        clientWidth: element.clientWidth,
-      };
-    }),
-  );
-
-  for (const geometry of filterGeometry) {
-    expect(geometry.left).toBeGreaterThanOrEqual(0);
-    expect(geometry.right).toBeLessThanOrEqual(viewport.width + 1);
-    expect(geometry.scrollWidth).toBeLessThanOrEqual(
-      geometry.clientWidth + 1,
-    );
-  }
 
   const mobileLabels = page
     .getByRole("navigation", { name: "Mobil uygulama menüsü" })
@@ -105,7 +79,7 @@ test("notification filters and mobile navigation fit at 320px", async ({
 
   const firstNotification = page.locator("#notifications-list li").first();
   const mobileTime = firstNotification.locator("time:visible");
-  const actorLine = firstNotification.locator("span.block.truncate").first();
+  const actorLine = firstNotification.locator("[data-notification-copy]");
   const [timeBox, actorBox] = await Promise.all([
     mobileTime.boundingBox(),
     actorLine.boundingBox(),
@@ -115,11 +89,10 @@ test("notification filters and mobile navigation fit at 320px", async ({
   expect(actorBox).not.toBeNull();
   expect(timeBox?.y ?? 0).toBeGreaterThan(actorBox?.y ?? 0);
 
-  const unreadBackground = await page
-    .locator('#notifications-list a[aria-label*="Okunmamış"]')
-    .first()
-    .evaluate((element) => getComputedStyle(element).backgroundColor);
-  expect(unreadBackground).not.toBe("rgba(0, 0, 0, 0)");
+  // Bildirim sayfası açıldığında mevcut bildirimler topluca okunmuş sayılır.
+  await expect(
+    page.locator('#notifications-list a[aria-label*="Okunmamış"]'),
+  ).toHaveCount(0);
 
   await expectNoHorizontalOverflow(page);
 });

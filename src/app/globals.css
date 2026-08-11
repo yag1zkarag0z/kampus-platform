@@ -987,3 +987,41 @@ textarea {
     }
   }
 }
+
+/* Sağ raydaki öneri satırları sırayla belirsin. Akıştaki karşılığı kaydırmaya
+   bağlı; ray sabit durduğu için burada süreye bağlı bir giriş gerekiyor. */
+@keyframes campus-rail-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes campus-hover-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .campus-rail-enter {
+    animation: campus-rail-enter 260ms both cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .campus-hover-card {
+    animation: campus-hover-card-enter 120ms both
+      cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: right center;
+  }
+}

@@ -282,6 +282,7 @@ export default function CampusExplore() {
   ]);
 
   const visiblePosts = isGuest ? guestVisiblePosts : queriedPosts;
+  const eagerImagePostId = visiblePosts.find((post) => post.image)?.id;
 
   const clearFilters = () => {
     setQuery("");
@@ -617,7 +618,12 @@ export default function CampusExplore() {
                       </p>
                     )}
 
-                    {post.image && <CampusPostImage image={post.image} />}
+                    {post.image && (
+                      <CampusPostImage
+                        image={post.image}
+                        loading={post.id === eagerImagePostId ? "eager" : "lazy"}
+                      />
+                    )}
                     {post.gif && <CampusGif gif={post.gif} />}
                     {post.document && (
                       <CampusPostDocument document={post.document} />

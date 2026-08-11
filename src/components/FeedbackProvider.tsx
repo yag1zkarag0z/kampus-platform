@@ -10,6 +10,8 @@ import {
   type ReactNode,
 } from "react";
 
+import ProductFeedbackDialog from "@/components/ProductFeedbackDialog";
+
 type ConfirmationOptions = {
   title: string;
   description: string;
@@ -24,6 +26,7 @@ type ConfirmationRequest = ConfirmationOptions & {
 
 type FeedbackContextValue = {
   confirm: (options: ConfirmationOptions) => Promise<boolean>;
+  openFeedback: () => void;
 };
 
 const FeedbackContext = createContext<FeedbackContextValue | undefined>(
@@ -36,6 +39,7 @@ const focusRing =
 export function FeedbackProvider({ children }: { children: ReactNode }) {
   const [confirmation, setConfirmation] =
     useState<ConfirmationRequest | null>(null);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const confirmationRef = useRef<ConfirmationRequest | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
@@ -43,6 +47,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   const confirm = useCallback(
     (options: ConfirmationOptions) =>
       new Promise<boolean>((resolve) => {
+        setIsFeedbackOpen(false);
         confirmationRef.current?.resolve(false);
         const request = { ...options, resolve };
         confirmationRef.current = request;
@@ -50,6 +55,13 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
       }),
     [],
   );
+
+  const openFeedback = useCallback(() => {
+    confirmationRef.current?.resolve(false);
+    confirmationRef.current = null;
+    setConfirmation(null);
+    setIsFeedbackOpen(true);
+  }, []);
 
   const closeConfirmation = useCallback((confirmed: boolean) => {
     const currentRequest = confirmationRef.current;
@@ -126,8 +138,14 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   }, [closeConfirmation, confirmation]);
 
   return (
-    <FeedbackContext.Provider value={{ confirm }}>
-      <div inert={confirmation ? true : undefined}>{children}</div>
+    <FeedbackContext.Provider value={{ confirm, openFeedback }}>
+      <div inert={confirmation || isFeedbackOpen ? true : undefined}>
+        {children}
+      </div>
+
+      {isFeedbackOpen && (
+        <ProductFeedbackDialog onClose={() => setIsFeedbackOpen(false)} />
+      )}
 
       {confirmation && (
         <div

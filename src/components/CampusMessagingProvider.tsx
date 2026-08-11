@@ -13,6 +13,7 @@ import {
 
 import { AuthClientError } from "@/auth/client";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
+import { useCampusRealtime } from "@/components/CampusRealtimeProvider";
 import { guestUnreadMessageCount } from "@/data/campusMessages";
 import { getUnreadDirectMessageCount } from "@/messaging/client";
 
@@ -28,6 +29,7 @@ const CampusMessagingContext = createContext<
 >(undefined);
 
 const POLL_INTERVAL_MS = 20_000;
+const CONNECTED_SAFETY_POLL_INTERVAL_MS = 60_000;
 const GUEST_MESSAGES_READ_KEY = "kampus:guest-messages-read";
 
 function hasReadGuestMessages() {
@@ -48,6 +50,8 @@ function rememberGuestMessagesRead() {
 
 export function CampusMessagingProvider({ children }: { children: ReactNode }) {
   const { sessionMode, retrySession } = useCampusAccount();
+  const { status: realtimeStatus, subscribe } = useCampusRealtime();
+  const isRealtimeConnected = realtimeStatus === "connected";
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [isHydrated, setIsHydrated] = useState(false);
   const requestRef = useRef<Promise<void> | null>(null);
@@ -105,7 +109,9 @@ export function CampusMessagingProvider({ children }: { children: ReactNode }) {
       if (document.visibilityState === "visible") {
         void refreshUnreadMessageCount();
       }
-    }, POLL_INTERVAL_MS);
+    }, isRealtimeConnected
+      ? CONNECTED_SAFETY_POLL_INTERVAL_MS
+      : POLL_INTERVAL_MS);
     const refreshOnFocus = () => void refreshUnreadMessageCount();
     window.addEventListener("focus", refreshOnFocus);
 
@@ -113,7 +119,15 @@ export function CampusMessagingProvider({ children }: { children: ReactNode }) {
       window.clearInterval(timer);
       window.removeEventListener("focus", refreshOnFocus);
     };
-  }, [refreshUnreadMessageCount, sessionMode]);
+  }, [isRealtimeConnected, refreshUnreadMessageCount, sessionMode]);
+
+  useEffect(() =>
+    subscribe((event) => {
+      if (event.type === "conversation.invalidate") {
+        void refreshUnreadMessageCount();
+      }
+    }),
+  [refreshUnreadMessageCount, subscribe]);
 
   const value = useMemo<CampusMessagingContextValue>(
     () => ({

@@ -5,6 +5,7 @@ import { campusButton } from "@/components/campusButtonStyles";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Fragment,
   useEffect,
   useMemo,
   useRef,
@@ -27,6 +28,7 @@ import { useCampusData } from "@/components/CampusDataProvider";
 import CampusHiddenNotice from "@/components/CampusHiddenNotice";
 import CampusListingMeta from "@/components/CampusListingMeta";
 import CampusPoll from "@/components/CampusPoll";
+import FollowSuggestionCarousel from "@/components/FollowSuggestionCarousel";
 import CampusPostActions from "@/components/CampusPostActions";
 import CampusPostCardSurface from "@/components/CampusPostCardSurface";
 import CampusPostDocument from "@/components/CampusPostDocument";
@@ -452,6 +454,11 @@ export default function CampusFeed() {
       (first, second) => second.createdAt - first.createdAt,
     );
   }, [activeCategory, posts]);
+  const eagerImagePostId = visiblePosts.find((post) => post.image)?.id;
+  // Üçüncü gönderiden sonra: ilk oturumda mutlaka görülecek kadar yukarıda,
+  // akışı karşılamayacak kadar aşağıda. Akış üçten kısaysa sonuna düşer,
+  // çünkü asıl ihtiyacı olan kimseyi takip etmeyen kullanıcı.
+  const suggestionSlotIndex = Math.min(2, visiblePosts.length - 1);
 
   const changeFeedView = (view: FeedView) => {
     if (view === "following" && isGuest) {
@@ -1322,8 +1329,9 @@ export default function CampusFeed() {
       ) : visiblePosts.length > 0 ? (
         <>
           <ol className="min-w-0">
-            {visiblePosts.map((post) => (
-              <li key={post.id} className="campus-feed-enter">
+            {visiblePosts.map((post, postIndex) => (
+              <Fragment key={post.id}>
+              <li className="campus-feed-enter">
               <CampusPostCardSurface
                 postId={post.id}
                 className="border-b border-white/12 px-4 py-6 sm:bg-white/[0.015] sm:px-6 sm:py-6"
@@ -1432,7 +1440,12 @@ export default function CampusFeed() {
                       </p>
                     )}
 
-                    {post.image && <CampusPostImage image={post.image} />}
+                    {post.image && (
+                      <CampusPostImage
+                        image={post.image}
+                        loading={post.id === eagerImagePostId ? "eager" : "lazy"}
+                      />
+                    )}
                     {post.gif && <CampusGif gif={post.gif} />}
                     {post.document && (
                       <CampusPostDocument document={post.document} />
@@ -1516,6 +1529,16 @@ export default function CampusFeed() {
                 )}
               </CampusPostCardSurface>
               </li>
+
+              {/* Sağ ray xl altında gizli; küçük ekranda öneriyi görmenin tek
+                  yolu akışın kendisi. Üçüncü gönderiden sonra bir kez, akış
+                  daha kısaysa sonuna. */}
+              {postIndex === suggestionSlotIndex && (
+                <li>
+                  <FollowSuggestionCarousel />
+                </li>
+              )}
+              </Fragment>
             ))}
           </ol>
 

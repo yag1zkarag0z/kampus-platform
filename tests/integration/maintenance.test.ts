@@ -279,15 +279,25 @@ describe("maintenance worker with PostgreSQL", () => {
 
     const oldRateLimitId = randomUUID();
     const freshRateLimitId = randomUUID();
+    const oldUsernameRateLimitId = randomUUID();
+    const recentUsernameRateLimitId = randomUUID();
     await pool.query(
       `insert into rate_limit_hits (id, user_id, action, created_at)
-       values ($1, $2, 'interaction', $3), ($4, $2, 'interaction', $5)`,
+       values
+        ($1, $2, 'interaction', $3),
+        ($4, $2, 'interaction', $5),
+        ($6, $2, 'username_change', $7),
+        ($8, $2, 'username_change', $9)`,
       [
         oldRateLimitId,
         ownerId,
-        before(now, 32 * DAY),
+        before(now, 3 * DAY),
         freshRateLimitId,
         now,
+        oldUsernameRateLimitId,
+        before(now, 32 * DAY),
+        recentUsernameRateLimitId,
+        before(now, 30 * DAY),
       ],
     );
 
@@ -426,7 +436,7 @@ describe("maintenance worker with PostgreSQL", () => {
     expect(report.cleanup).toMatchObject({
       otpChallenges: 1,
       sessions: 1,
-      rateLimitHits: 1,
+      rateLimitHits: 2,
       notifications: 1,
       emptyConversations: 1,
       messageRequestCooldowns: 1,
@@ -451,6 +461,12 @@ describe("maintenance worker with PostgreSQL", () => {
     await expect(rowExists("sessions", freshSessionId)).resolves.toBe(true);
     await expect(rowExists("rate_limit_hits", oldRateLimitId)).resolves.toBe(false);
     await expect(rowExists("rate_limit_hits", freshRateLimitId)).resolves.toBe(true);
+    await expect(
+      rowExists("rate_limit_hits", oldUsernameRateLimitId),
+    ).resolves.toBe(false);
+    await expect(
+      rowExists("rate_limit_hits", recentUsernameRateLimitId),
+    ).resolves.toBe(true);
     await expect(rowExists("notifications", oldNotificationId)).resolves.toBe(false);
     await expect(rowExists("notifications", freshNotificationId)).resolves.toBe(true);
     await expect(

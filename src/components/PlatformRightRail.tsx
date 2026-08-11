@@ -6,8 +6,11 @@ import { useEffect, useState } from "react";
 import CampusMemberSearch from "@/components/CampusMemberSearch";
 import CampusTrendingTopics from "@/components/CampusTrendingTopics";
 import FollowSuggestions from "@/components/FollowSuggestions";
+import { useFeedback } from "@/components/FeedbackProvider";
 
 const STORAGE_KEY = "kampus-right-rail-open";
+const footerActionClassName =
+  "inline-flex min-h-9 items-center py-2 text-[11px] font-semibold leading-none text-white/40 outline-none transition-colors hover:text-brand focus-visible:ring-3 focus-visible:ring-brand/40";
 
 /**
  * Sağ sütun, sol menü gibi katlanabilir.
@@ -17,6 +20,7 @@ const STORAGE_KEY = "kampus-right-rail-open";
  */
 export default function PlatformRightRail() {
   const [isOpen, setIsOpen] = useState(true);
+  const { openFeedback } = useFeedback();
 
   useEffect(() => {
     let isCancelled = false;
@@ -65,12 +69,21 @@ export default function PlatformRightRail() {
       </div>
 
       <footer className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 pb-2">
-        <Link
-          href="/sozlesme"
-          className="min-h-9 py-2 text-[11px] font-semibold text-white/40 outline-none transition-colors hover:text-white/70 focus-visible:ring-3 focus-visible:ring-brand/40"
-        >
-          Kullanım sözleşmesi
-        </Link>
+        <div className="flex min-w-0 items-center gap-3 whitespace-nowrap">
+          <button
+            type="button"
+            onClick={openFeedback}
+            className={`${footerActionClassName} cursor-pointer`}
+          >
+            Geri bildirim
+          </button>
+          <Link
+            href="/sozlesme"
+            className={footerActionClassName}
+          >
+            Kullanım sözleşmesi
+          </Link>
+        </div>
 
         {/* Panel kapatma en dikkat çekici öğe olmamalı; içeriğin altında. */}
         <button

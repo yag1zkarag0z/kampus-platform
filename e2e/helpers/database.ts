@@ -70,6 +70,15 @@ export async function cleanupE2eAuthData() {
       const emailPattern = "99%@stu.yasar.edu.tr";
 
       await client.query(
+        `delete from product_feedback
+         where session_mode = 'guest'
+            or user_id in (
+              select id from users where lower(email::text) like $1
+            )`,
+        [emailPattern],
+      );
+
+      await client.query(
         "delete from otp_challenges where lower(email::text) like $1",
         [emailPattern],
       );

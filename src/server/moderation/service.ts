@@ -273,14 +273,17 @@ export async function unblockUser(
 ) {
   const targetId = await resolveActiveUserId(targetUsername);
 
-  await getDatabase()
-    .delete(blocks)
-    .where(
-      and(
-        eq(blocks.blockerId, blockerId),
-        eq(blocks.blockedId, targetId),
-      ),
-    );
+  await getDatabase().transaction(async (transaction) => {
+    await consumeRateLimit(transaction, blockerId, "block");
+    await transaction
+      .delete(blocks)
+      .where(
+        and(
+          eq(blocks.blockerId, blockerId),
+          eq(blocks.blockedId, targetId),
+        ),
+      );
+  });
 }
 
 export async function listBlockedUsers(
@@ -908,6 +911,8 @@ export async function resolveReport(
       throw reportNotFoundError();
     }
 
+    await consumeRateLimit(transaction, moderatorId, "moderation_write", now);
+
     // Aynı içeriğe ait farklı şikâyet kararlarını tek sıraya sok. Post kilidi
     // auto-hide restore yarışını, mesaj kilidi ise eşzamanlı silmeyi korur.
     if (report.postId) {
@@ -1156,6 +1161,8 @@ export async function setUserRole(
       return;
     }
 
+    await consumeRateLimit(transaction, adminId, "moderation_write");
+
     await transaction
       .update(users)
       .set({ role })
@@ -1188,6 +1195,8 @@ export async function suspendUser(
     if (target.status === "suspended") {
       return;
     }
+
+    await consumeRateLimit(transaction, moderatorId, "moderation_write", now);
 
     await transaction
       .update(users)
@@ -1232,6 +1241,8 @@ export async function restoreUser(
     if (target.status === "active") {
       return;
     }
+
+    await consumeRateLimit(transaction, moderatorId, "moderation_write");
 
     await transaction
       .update(users)

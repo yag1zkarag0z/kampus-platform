@@ -94,7 +94,7 @@ test("saved posts live only on the member profile and mobile profile stays last"
   await expect(links).toHaveCount(5);
   await expect(links.nth(0)).toHaveAttribute("href", "/akis");
   await expect(links.nth(1)).toHaveAttribute("href", "/kesfet");
-  await expect(links.nth(2)).toHaveAttribute("href", "/konu-olustur");
-  await expect(links.nth(3)).toHaveAttribute("href", "/mesajlar");
+  await expect(links.nth(2)).toHaveAttribute("href", "/mesajlar");
+  await expect(links.nth(3)).toHaveAttribute("href", "/takip");
   await expect(links.nth(4)).toHaveAttribute("href", "/profil");
 });

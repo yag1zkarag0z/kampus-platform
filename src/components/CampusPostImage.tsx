@@ -9,9 +9,11 @@ import type { CampusPostImage as CampusPostImageData } from "@/data/campusPosts"
 export default function CampusPostImage({
   image,
   variant = "card",
+  loading = "lazy",
 }: {
   image: CampusPostImageData;
   variant?: "compact" | "card" | "detail";
+  loading?: "eager" | "lazy";
 }) {
   const fallbackId = useId().replaceAll(":", "");
   const [failedImageSource, setFailedImageSource] = useState<string | null>(
@@ -59,6 +61,7 @@ export default function CampusPostImage({
             alt={image.alt}
             width={image.width}
             height={image.height}
+            loading={loading}
             unoptimized={image.src.startsWith("/v1/media/")}
             sizes={
               variant === "compact"

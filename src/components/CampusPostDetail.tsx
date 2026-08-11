@@ -342,7 +342,11 @@ export default function CampusPostDetail({ postId }: { postId: string }) {
             )}
 
             {post.image && (
-              <CampusPostImage image={post.image} variant="detail" />
+              <CampusPostImage
+                image={post.image}
+                variant="detail"
+                loading="eager"
+              />
             )}
             {post.gif && <CampusGif gif={post.gif} />}
             {post.document && (

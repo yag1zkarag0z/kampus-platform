@@ -10,6 +10,7 @@ tarafından işletilmez.
 - Tailwind CSS ve GSAP
 - PostgreSQL
 - Drizzle ORM ve `node-postgres`
+- WebSocket (`ws`) ve PostgreSQL `LISTEN/NOTIFY`
 - Vitest, Testing Library ve Playwright
 
 ## Yerel geliştirme
@@ -40,6 +41,21 @@ Uygulama `http://localhost:3000`, yakalanan yerel OTP e-postaları ise Mailpit
 arayüzünde `http://localhost:8025` adresinde açılır. Mailpit yalnızca geliştirme
 ortamı içindir; üretimde gerçek bir SMTP sağlayıcısı ve benzersiz bir
 `AUTH_SECRET` kullanılmalıdır.
+
+## Realtime mesajlaşma
+
+`npm run dev` ve `npm run start`, Next.js ile `/v1/realtime` WebSocket
+endpoint'ini aynı HTTP sunucusunda çalıştırır. REST API ve PostgreSQL mesajların
+asıl kaynağıdır; WebSocket yalnızca konuşma invalidation ve geçici typing
+olaylarını taşır. Bağlantı kesilirse istemci artan gecikmeyle yeniden bağlanır ve
+bu sırada daha sık HTTP polling'e döner.
+
+Birden fazla uygulama instance'ı PostgreSQL `LISTEN/NOTIFY` üzerinden aynı
+olayları alır; sticky session gerekmez. Production reverse proxy/load balancer
+WebSocket `Upgrade` isteklerini ve uzun yaşayan bağlantıları desteklemelidir.
+Uygulama serverless `next start` yerine repodaki `npm run start` komutuyla
+çalıştırılmalıdır. `APP_ORIGIN`, tarayıcının kullandığı kesin public origin'i
+göstermelidir; WebSocket origin kontrolü bu değerle yapılır.
 
 ## PostgreSQL
 

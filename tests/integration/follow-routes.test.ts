@@ -32,7 +32,10 @@ function createAccountFixture() {
   };
 }
 
-async function insertAccount(department = "Yazılım Mühendisliği") {
+async function insertAccount(
+  department = "Yazılım Mühendisliği",
+  displayName = "Takip Öğrencisi",
+) {
   const fixture = createAccountFixture();
   testEmails.add(fixture.email);
   const result = await pool.query<{ id: string }>(
@@ -48,7 +51,7 @@ async function insertAccount(department = "Yazılım Mühendisliği") {
     [
       fixture.email,
       fixture.username,
-      "Takip Öğrencisi",
+      displayName,
       department,
       "2. sınıf",
       "",
@@ -335,6 +338,72 @@ describe("follow routes with PostgreSQL", () => {
         .slice(firstOtherDepartmentIndex)
         .every((entry) => entry.department !== department),
     ).toBe(true);
+  });
+
+  it("counts and names the mutual followers behind a suggestion", async () => {
+    const department = `E2E-${randomUUID()}`;
+    const viewer = await insertAccount(department);
+    const firstMutual = await insertAccount(department, "Ece Ortak");
+    const secondMutual = await insertAccount(department, "Deniz Ortak");
+    const candidate = await insertAccount(department, "Aday Öğrenci");
+    const viewerCookie = await createMemberCookie(viewer.id);
+
+    // Kenarlar doğrudan yazılıyor: buradaki ilgi grafiğin şekli, takip
+    // rotasının kendisi değil.
+    await pool.query(
+      `insert into follows (follower_id, following_id) values
+        ($1, $2), ($1, $3), ($2, $4), ($3, $4)`,
+      [viewer.id, firstMutual.id, secondMutual.id, candidate.id],
+    );
+
+    const response = await getSuggestedFollows(
+      createGetRequest("/v1/me/suggested-follows", viewerCookie),
+    );
+    const { data } = (await response.json()) as {
+      data: Array<{
+        id: string;
+        followerCount: number;
+        mutualCount: number;
+        mutualNames: string[];
+        isNewMember: boolean;
+      }>;
+    };
+
+    expect(response.status).toBe(200);
+
+    // Ortak takipçisi olan aday listenin başında olmalı; rozet ancak o zaman
+    // bir işe yarıyor.
+    expect(data[0]!.id).toBe(candidate.id);
+
+    const suggestion = data[0]!;
+    expect(suggestion.mutualCount).toBe(2);
+    expect([...suggestion.mutualNames].sort()).toEqual([
+      "Deniz Ortak",
+      "Ece Ortak",
+    ]);
+    expect(suggestion.followerCount).toBe(2);
+    expect(suggestion.isNewMember).toBe(true);
+
+    // Takip edilenler öneriden düşer, dolayısıyla ortakların kendisi listede yok.
+    const suggestedIds = data.map((entry) => entry.id);
+    expect(suggestedIds).not.toContain(firstMutual.id);
+    expect(suggestedIds).not.toContain(secondMutual.id);
+  });
+
+  it("honours the requested suggestion limit", async () => {
+    const department = `E2E-${randomUUID()}`;
+    const viewer = await insertAccount(department);
+    await insertAccount(department);
+    await insertAccount(department);
+    const viewerCookie = await createMemberCookie(viewer.id);
+
+    const response = await getSuggestedFollows(
+      createGetRequest("/v1/me/suggested-follows?limit=1", viewerCookie),
+    );
+    const { data } = (await response.json()) as { data: unknown[] };
+
+    expect(response.status).toBe(200);
+    expect(data).toHaveLength(1);
   });
 
   it("requires an active member session for suggestions", async () => {

@@ -23,6 +23,7 @@ import CampusEmojiPicker from "@/components/CampusEmojiPicker";
 import CampusMessageReportDialog from "@/components/CampusMessageReportDialog";
 import { useCampusMessaging } from "@/components/CampusMessagingProvider";
 import { useCampusModeration } from "@/components/CampusModerationProvider";
+import { useCampusRealtime } from "@/components/CampusRealtimeProvider";
 import { campusButton, campusFocusRing } from "@/components/campusButtonStyles";
 import { useFeedback } from "@/components/FeedbackProvider";
 import { useActionStatus } from "@/components/useActionStatus";
@@ -48,6 +49,10 @@ import { searchMembers, type FollowMemberDto } from "@/social/client";
 
 const THREAD_POLL_INTERVAL_MS = 6_000;
 const CONVERSATION_POLL_INTERVAL_MS = 15_000;
+const REALTIME_SAFETY_POLL_INTERVAL_MS = 60_000;
+const TYPING_IDLE_TIMEOUT_MS = 1_800;
+const TYPING_REFRESH_INTERVAL_MS = 1_200;
+const REMOTE_TYPING_EXPIRY_MS = 4_000;
 
 const compactDateFormatter = new Intl.DateTimeFormat("tr-TR", {
   hour: "2-digit",
@@ -160,12 +165,52 @@ function mergeConversationPage(
   return prepend ? [...incoming, ...remaining] : [...remaining, ...incoming];
 }
 
+function TypingIndicator({
+  displayName,
+  memberId,
+  avatarUrl,
+}: {
+  displayName: string;
+  memberId: string;
+  avatarUrl: string | null;
+}) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-label={`${displayName} yaziyor`}
+      className="pointer-events-none sticky bottom-0 z-10 mt-2 flex items-end gap-2 pb-1"
+    >
+      <CampusAuthorAvatar
+        author={displayName}
+        authorId={memberId}
+        avatarUrl={avatarUrl}
+        size="sm"
+      />
+      <span className="flex min-h-9 min-w-12 items-center justify-center rounded-[1.15rem] rounded-bl-[0.38rem] border border-white/10 bg-[#1b1b1f] px-3 shadow-lg shadow-black/20">
+        <span aria-hidden="true" className="flex items-center gap-1">
+          {[0, 1, 2].map((dot) => (
+            <span
+              key={dot}
+              className="size-1 animate-pulse rounded-full bg-white/48 motion-reduce:animate-none"
+              style={{ animationDelay: `${dot * 140}ms` }}
+            />
+          ))}
+        </span>
+      </span>
+    </div>
+  );
+}
+
 export default function CampusMessages() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { sessionMode, retrySession } = useCampusAccount();
   const { markGuestMessagesRead, refreshUnreadMessageCount } =
     useCampusMessaging();
+  const { status: realtimeStatus, subscribe: subscribeRealtime } =
+    useCampusRealtime();
+  const isRealtimeConnected = realtimeStatus === "connected";
   const [conversations, setConversations] = useState<DirectConversationDto[]>([]);
   const [messageRequests, setMessageRequests] = useState<DirectConversationDto[]>([]);
   const [openedConversation, setOpenedConversation] =
@@ -255,10 +300,35 @@ export default function CampusMessages() {
       if (document.visibilityState === "visible") {
         void refreshConversations(true);
       }
-    }, CONVERSATION_POLL_INTERVAL_MS);
+    }, isRealtimeConnected
+      ? REALTIME_SAFETY_POLL_INTERVAL_MS
+      : CONVERSATION_POLL_INTERVAL_MS);
 
     return () => window.clearInterval(timer);
-  }, [refreshConversations, sessionMode]);
+  }, [isRealtimeConnected, refreshConversations, sessionMode]);
+
+  useEffect(() =>
+    subscribeRealtime((event) => {
+      if (event.type !== "conversation.invalidate") return;
+      if (
+        event.reason === "request-accepted" ||
+        event.reason === "request-removed"
+      ) {
+        setMessageRequests((current) =>
+          current.filter((item) => item.id !== event.conversationId),
+        );
+      }
+      if (event.reason === "request-removed") {
+        setConversations((current) =>
+          current.filter((item) => item.id !== event.conversationId),
+        );
+        setOpenedConversation((current) =>
+          current?.id === event.conversationId ? null : current,
+        );
+      }
+      void refreshConversations(true);
+    }),
+  [refreshConversations, subscribeRealtime]);
 
   useEffect(() => {
     if (
@@ -357,6 +427,9 @@ export default function CampusMessages() {
   );
 
   const handleRequestRemoved = useCallback((removedId: string) => {
+    setConversations((current) =>
+      current.filter((item) => item.id !== removedId),
+    );
     setMessageRequests((current) =>
       current.filter((item) => item.id !== removedId),
     );
@@ -437,7 +510,8 @@ export default function CampusMessages() {
   return (
     <section
       aria-label="Mesajlar"
-      className="campus-messages-page h-[calc(100svh-4rem)] min-w-0 overflow-hidden bg-canvas text-white md:h-svh"
+      data-realtime-status={realtimeStatus}
+      className="campus-messages-page h-[calc(100svh-9.5rem-env(safe-area-inset-bottom))] min-w-0 overflow-hidden bg-canvas text-white md:h-svh"
     >
       <div className="grid h-full min-h-0 md:grid-cols-[minmax(12rem,0.38fr)_minmax(0,0.62fr)]">
         <aside
@@ -724,6 +798,9 @@ function GuestMessagesPreview({
     ),
   );
   const [newMessageCount, setNewMessageCount] = useState(0);
+  const [typingConversationId, setTypingConversationId] = useState<
+    string | null
+  >(null);
   const [menuMessageId, setMenuMessageId] = useState<string | null>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const shouldScrollToBottomRef = useRef(true);
@@ -792,7 +869,12 @@ function GuestMessagesPreview({
 
     const activeConversation = displayedConversation;
     injectedConversationIdsRef.current.add(activeConversation.id);
+    setTypingConversationId(null);
+    const typingTimer = window.setTimeout(() => {
+      setTypingConversationId(activeConversation.id);
+    }, 800);
     const timer = window.setTimeout(() => {
+      setTypingConversationId(null);
       const scroller = scrollerRef.current;
       const shouldStickToBottom =
         !scroller ||
@@ -844,10 +926,28 @@ function GuestMessagesPreview({
             (current[activeConversation.id] ?? 0) + 1,
         }));
       }
-    }, 3_200);
+    }, 5_000);
 
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(typingTimer);
+      window.clearTimeout(timer);
+    };
   }, [conversationId, displayedConversation]);
+
+  useLayoutEffect(() => {
+    if (typingConversationId !== displayedConversation?.id) return;
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const isAtBottom =
+      scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <=
+      SCROLL_BOTTOM_THRESHOLD_PX;
+    if (!isAtBottom) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [displayedConversation?.id, typingConversationId]);
 
   useEffect(() => {
     if (!menuMessageId) return;
@@ -864,6 +964,7 @@ function GuestMessagesPreview({
     const isAtBottom =
       scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <=
       SCROLL_BOTTOM_THRESHOLD_PX;
+    shouldScrollToBottomRef.current = isAtBottom;
     if (isAtBottom) {
       setNewMessageCount(0);
       if (displayedConversation) {
@@ -885,7 +986,7 @@ function GuestMessagesPreview({
   return (
     <section
       aria-label="Mesajlar"
-      className="campus-messages-page h-[calc(100svh-4rem)] min-w-0 overflow-hidden bg-canvas text-white md:h-svh"
+      className="campus-messages-page h-[calc(100svh-9.5rem-env(safe-area-inset-bottom))] min-w-0 overflow-hidden bg-canvas text-white md:h-svh"
     >
       <div className="grid h-full min-h-0 md:grid-cols-[minmax(12rem,0.38fr)_minmax(0,0.62fr)]">
         <aside
@@ -1167,6 +1268,13 @@ function GuestMessagesPreview({
                     );
                   })}
                 </ol>
+                {typingConversationId === displayedConversation.id && (
+                  <TypingIndicator
+                    displayName={displayedConversation.member.displayName}
+                    memberId={displayedConversation.member.id}
+                    avatarUrl={displayedConversation.member.avatarUrl}
+                  />
+                )}
                 {newMessageCount > 0 && (
                   <div className="pointer-events-none sticky bottom-1 z-10 mt-3 flex justify-center">
                     <button
@@ -1349,6 +1457,14 @@ function NewConversationPicker({
           <CloseIcon />
         </button>
       </div>
+
+      <p
+        role="note"
+        className="mt-2 px-3 text-[11px] font-semibold leading-4 text-white/42"
+      >
+        Karşılıklı takipte sohbet doğrudan açılır. Diğer kişilerde ilk mesaj
+        istek olarak gider.
+      </p>
 
       {status && <ActionStatusText status={status} className="mt-2" />}
       {trimmedQuery.length >= 2 && (
@@ -1591,6 +1707,12 @@ function MessageThread({
 }) {
   const { confirm } = useFeedback();
   const { blockUser } = useCampusModeration();
+  const {
+    status: realtimeStatus,
+    subscribeToConversation,
+    sendTyping,
+  } = useCampusRealtime();
+  const isRealtimeConnected = realtimeStatus === "connected";
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -1598,6 +1720,7 @@ function MessageThread({
   const [body, setBody] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [newMessageCount, setNewMessageCount] = useState(0);
+  const [isPeerTyping, setIsPeerTyping] = useState(false);
   const [menuMessageId, setMenuMessageId] = useState<string | null>(null);
   const [requestAction, setRequestAction] = useState<
     "accept" | "delete" | "block" | null
@@ -1616,6 +1739,10 @@ function MessageThread({
   const isAtBottomRef = useRef(true);
   const messagesRef = useRef<ThreadMessage[]>([]);
   const lastMarkedReadMessageIdRef = useRef<string | null>(null);
+  const localTypingRef = useRef(false);
+  const lastTypingSentAtRef = useRef(0);
+  const typingStopTimerRef = useRef<number | null>(null);
+  const remoteTypingExpiryTimerRef = useRef<number | null>(null);
   useAutoGrowTextarea(textareaRef, body);
 
   const markLatestMessageRead = useCallback(async () => {
@@ -1696,9 +1823,55 @@ function MessageThread({
     queueMicrotask(() => void loadLatest());
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") void loadLatest(true);
-    }, THREAD_POLL_INTERVAL_MS);
+    }, isRealtimeConnected
+      ? REALTIME_SAFETY_POLL_INTERVAL_MS
+      : THREAD_POLL_INTERVAL_MS);
     return () => window.clearInterval(timer);
-  }, [loadLatest]);
+  }, [isRealtimeConnected, loadLatest]);
+
+  useEffect(() =>
+    subscribeToConversation(conversation.id, (event) => {
+      if (event.type === "conversation.invalidate") {
+        void loadLatest(true);
+        void refreshConversations(true);
+        return;
+      }
+
+      if (event.type === "typing") {
+        if (remoteTypingExpiryTimerRef.current !== null) {
+          window.clearTimeout(remoteTypingExpiryTimerRef.current);
+        }
+        setIsPeerTyping(event.isTyping);
+        remoteTypingExpiryTimerRef.current = event.isTyping
+          ? window.setTimeout(() => {
+              setIsPeerTyping(false);
+              remoteTypingExpiryTimerRef.current = null;
+            }, REMOTE_TYPING_EXPIRY_MS)
+          : null;
+      }
+    }),
+  [conversation.id, loadLatest, refreshConversations, subscribeToConversation]);
+
+  useEffect(() => () => {
+    if (typingStopTimerRef.current !== null) {
+      window.clearTimeout(typingStopTimerRef.current);
+    }
+    if (remoteTypingExpiryTimerRef.current !== null) {
+      window.clearTimeout(remoteTypingExpiryTimerRef.current);
+    }
+    if (localTypingRef.current) sendTyping(conversation.id, false);
+  }, [conversation.id, sendTyping]);
+
+  useLayoutEffect(() => {
+    if (!isPeerTyping || !isAtBottomRef.current) return;
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [isPeerTyping]);
 
   useLayoutEffect(() => {
     if (isLoading || !shouldScrollToBottomRef.current) return;
@@ -1721,6 +1894,7 @@ function MessageThread({
     const isAtBottom =
       scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <=
       SCROLL_BOTTOM_THRESHOLD_PX;
+    shouldScrollToBottomRef.current = isAtBottom;
     isAtBottomRef.current = isAtBottom;
     if (isAtBottom) {
       setNewMessageCount(0);
@@ -1818,10 +1992,47 @@ function MessageThread({
     }
   };
 
+  const stopLocalTyping = useCallback(() => {
+    if (typingStopTimerRef.current !== null) {
+      window.clearTimeout(typingStopTimerRef.current);
+      typingStopTimerRef.current = null;
+    }
+    if (localTypingRef.current) {
+      sendTyping(conversation.id, false);
+      localTypingRef.current = false;
+    }
+    lastTypingSentAtRef.current = 0;
+  }, [conversation.id, sendTyping]);
+
+  const updateBody = useCallback((nextBody: string) => {
+    setBody(nextBody);
+    if (!nextBody.trim()) {
+      stopLocalTyping();
+      return;
+    }
+
+    const now = Date.now();
+    if (
+      !localTypingRef.current ||
+      now - lastTypingSentAtRef.current >= TYPING_REFRESH_INTERVAL_MS
+    ) {
+      localTypingRef.current = sendTyping(conversation.id, true);
+      if (localTypingRef.current) lastTypingSentAtRef.current = now;
+    }
+    if (typingStopTimerRef.current !== null) {
+      window.clearTimeout(typingStopTimerRef.current);
+    }
+    typingStopTimerRef.current = window.setTimeout(
+      stopLocalTyping,
+      TYPING_IDLE_TIMEOUT_MS,
+    );
+  }, [conversation.id, sendTyping, stopLocalTyping]);
+
   const submit = async (event?: FormEvent) => {
     event?.preventDefault();
     const messageBody = body.trim();
     if (!messageBody || isSending) return;
+    stopLocalTyping();
     const clientMessageId = crypto.randomUUID();
     const pendingMessage: ThreadMessage = {
       id: `pending:${clientMessageId}`,
@@ -2235,6 +2446,13 @@ function MessageThread({
                 })}
               </ol>
             )}
+            {isPeerTyping && (
+              <TypingIndicator
+                displayName={conversation.member.displayName}
+                memberId={conversation.member.id}
+                avatarUrl={conversation.member.avatarUrl}
+              />
+            )}
             {newMessageCount > 0 && (
               <div className="pointer-events-none sticky bottom-1 z-10 mt-3 flex justify-center">
                 <button
@@ -2252,6 +2470,16 @@ function MessageThread({
 
       <footer className="shrink-0 border-t border-white/10 bg-canvas p-2.5 sm:p-3">
         {status && <ActionStatusText status={status} className="mb-2" />}
+        {conversation.requestDirection === "outgoing" &&
+          conversation.lastMessage === null && (
+            <p
+              role="note"
+              className="mb-2 text-center text-[11px] font-semibold leading-4 text-white/45"
+            >
+              Henüz karşılıklı takipte değilsiniz. İlk mesajın istek olarak
+              gider.
+            </p>
+          )}
         {isIncomingRequest ? (
           <div>
             <p className="mb-2.5 text-center text-xs font-semibold leading-5 text-white/48">
@@ -2305,7 +2533,7 @@ function MessageThread({
             {isEmojiOpen && (
               <CampusEmojiPicker
                 onSelect={(emoji) => {
-                  setBody((current) => `${current}${emoji}`.slice(0, 1000));
+                  updateBody(`${body}${emoji}`.slice(0, 1000));
                   textareaRef.current?.focus();
                 }}
               />
@@ -2320,7 +2548,7 @@ function MessageThread({
             value={body}
             maxLength={1000}
             rows={1}
-            onChange={(event) => setBody(event.target.value)}
+            onChange={(event) => updateBody(event.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Mesaj yaz"
             className="max-h-32 min-h-11 min-w-0 flex-1 resize-none overflow-y-auto rounded-[1.2rem] border border-white/12 bg-white/[0.045] px-4 py-[0.7rem] text-[14px] leading-5 text-white outline-none transition-colors placeholder:text-white/35 focus:border-brand/42 focus:bg-white/[0.06]"

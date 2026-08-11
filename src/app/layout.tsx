@@ -15,6 +15,7 @@ export default function RootLayout({
   return (
     <html
       lang="tr"
+      data-scroll-behavior="smooth"
       data-theme="dark"
       style={{ colorScheme: "dark" }}
       className="h-full antialiased"

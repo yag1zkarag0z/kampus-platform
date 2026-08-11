@@ -125,6 +125,11 @@ test("registration persists a member account", async ({ page }) => {
   await page.getByRole("button", { name: "Kaydı tamamla" }).click();
 
   await expect(
+    page.getByRole("heading", { name: "Avatarını seç." }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Geç" }).click();
+
+  await expect(
     page.getByRole("heading", { name: "Aramıza hoş geldin." }),
   ).toBeVisible();
 
@@ -426,9 +431,130 @@ test("responsive application navigation reaches explore", async ({
     ).toBeVisible();
   }
 
-  await page.getByRole("link", { name: "Keşfet" }).click();
+  const appNavigation = page.getByRole("navigation", {
+    name:
+      testInfo.project.name === "mobile-chromium"
+        ? "Mobil uygulama menüsü"
+        : "Uygulama menüsü",
+  });
+  await appNavigation.getByRole("link", { name: "Keşfet" }).click();
   await expect(page).toHaveURL(/\/kesfet$/);
   await expect(
     page.getByLabel("Kampüs gönderilerinde ara"),
+  ).toBeVisible();
+});
+
+test("follow suggestions rail explains and follows instantly", async ({
+  browser,
+  page,
+}, testInfo) => {
+  // Sağ ray yalnızca xl üstünde var; telefonda gösterilecek bir şey yok.
+  test.skip(
+    testInfo.project.name === "mobile-chromium",
+    "Sağ ray mobilde gizli",
+  );
+  test.setTimeout(60_000);
+
+  // Öneri havuzunda en az bir aday bulunsun.
+  const candidateContext = await browser.newContext();
+  const candidatePage = await candidateContext.newPage();
+  await seedMemberSession(
+    candidatePage,
+    createUniqueStudentIdentity("suggested"),
+  );
+  await candidateContext.close();
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await seedMemberSession(page);
+  await page.goto("/akis");
+
+  const rail = page.getByRole("complementary", { name: "Takip önerileri" });
+  await expect(rail).toBeVisible();
+  await expect(rail.getByRole("link", { name: "Tümünü gör" })).toBeVisible();
+
+  // Her satır bir gerekçe taşımalı; tohum hesaplar aynı bölümde.
+  await expect(
+    rail.getByText("Yazılım Mühendisliği").first(),
+  ).toBeVisible();
+
+  const followButton = rail
+    .getByRole("button", { name: /kullanıcısını takip et$/ })
+    .first();
+  await expect(followButton).toHaveText("Takip et");
+
+  await followButton.click();
+
+  // Etiket ağ yanıtı beklenmeden değişir; imleç düğmenin üstünde kaldığı
+  // için doğrudan geri alma seçeneğini gösterir.
+  const followedButton = rail
+    .getByRole("button", { name: /takipten çık$/ })
+    .first();
+  await expect(followedButton).toHaveText("Bırak");
+
+  await page.mouse.move(0, 0);
+  await expect(followedButton).toHaveText("Takipte");
+
+  // Takip edilen satır listede kalır.
+  await expect(followedButton).toBeVisible();
+});
+
+test("phone feed carries follow suggestions inline", async ({
+  browser,
+  page,
+}, testInfo) => {
+  // Karusel yalnızca sağ rayın gizlendiği dar düzende var.
+  test.skip(
+    testInfo.project.name !== "mobile-chromium",
+    "Karusel yalnızca xl altında",
+  );
+  test.setTimeout(60_000);
+
+  const candidateContext = await browser.newContext();
+  const candidatePage = await candidateContext.newPage();
+  await seedMemberSession(
+    candidatePage,
+    createUniqueStudentIdentity("carousel"),
+  );
+  await candidateContext.close();
+
+  await seedMemberSession(page);
+  await page.goto("/akis");
+
+  const carousel = page.getByRole("region", { name: "Takip önerileri" });
+  await expect(carousel).toBeVisible();
+  await expect(
+    carousel.getByRole("link", { name: /Tümünü gör/ }),
+  ).toHaveAttribute("href", "/takip");
+
+  // Kartlar yatay kayan tek satırda durmalı; sayfa yana kaymamalı.
+  const strip = carousel.getByRole("list");
+  await expect(strip).toBeVisible();
+  expect(
+    await strip.evaluate(
+      (element) => element.scrollWidth > element.clientWidth,
+    ),
+  ).toBe(true);
+  expect(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth,
+    ),
+  ).toBe(true);
+
+  const followButton = carousel
+    .getByRole("button", { name: /kullanıcısını takip et$/ })
+    .first();
+  await followButton.click();
+
+  await expect(
+    carousel.getByRole("button", { name: /takipten çık$/ }).first(),
+  ).toBeVisible();
+
+  // Deste telefonda artık ulaşılabilir.
+  await carousel.getByRole("link", { name: /Tümünü gör/ }).click();
+  await expect(page).toHaveURL(/\/takip$/);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Takip önerileri" }),
   ).toBeVisible();
 });

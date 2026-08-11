@@ -6,14 +6,12 @@ import { E2E_APP_ORIGIN } from "./e2e/helpers/environment";
 
 config({ path: ".env.test", quiet: true });
 
-const appUrl = new URL(E2E_APP_ORIGIN);
-const port = appUrl.port || "3100";
-const hostname = appUrl.hostname;
 const baseURL = E2E_APP_ORIGIN;
 const e2eDatabaseUrl = getE2eDatabaseUrl();
 
 export default defineConfig({
   testDir: "./e2e",
+  globalTeardown: "./e2e/global-teardown.ts",
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
@@ -34,11 +32,12 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   webServer: {
-    command: `node ./node_modules/next/dist/bin/next dev --hostname ${hostname} --port ${port}`,
-    port: Number(port),
+    command: "node --import tsx ./scripts/e2e-server.ts",
+    url: baseURL,
     env: {
       APP_ORIGIN: baseURL,
       DATABASE_URL: e2eDatabaseUrl,
+      E2E_APP_ORIGIN: baseURL,
       NEXT_E2E: "true",
     },
     reuseExistingServer: false,

@@ -10,8 +10,9 @@ kaynağı `src/server/maintenance/policy.ts` dosyasıdır. Politika değişiklik
 | --- | ---: | --- |
 | OTP challenge | Süre bitiminden sonra 24 saat | Hard-delete |
 | Süresi dolmuş veya iptal edilmiş session | İnaktif olduktan sonra 7 gün | Hard-delete |
-| Rate-limit hit | 31 gün | Hard-delete; 30 günlük kullanıcı adı penceresini korur |
+| Rate-limit hit | Çoğu işlem 2 gün; kullanıcı adı değişikliği 31 gün | Hard-delete; kısa pencereler gereksiz sayaç büyümesi yaratmaz, 30 günlük kullanıcı adı penceresi korunur |
 | Bildirim | 90 gün | Hard-delete |
+| Uygulama içi geri bildirim | 180 gün | Üyelik silinirse kullanıcı bağlantısı hemen anonimleşir; süre sonunda hard-delete |
 | Mesaj gönderilmemiş konuşma taslağı | 7 gün | Hard-delete; iki katılımcının okunma satırları cascade silinir |
 | Reddedilmiş mesaj isteği bekleme kaydı | Retten sonra 30 gün | Süre dolunca hard-delete; yalnızca aynı gönderici→alıcı yönünü sınırlar |
 | Aktif bire bir mesaj | Hesap/konuşma yaşam döngüsü boyunca | Kullanıcı silince konuşma cascade silinir; kullanıcı tarafından silinen mesajın içeriği anında boşaltılır |

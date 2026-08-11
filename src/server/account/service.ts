@@ -11,13 +11,21 @@ import { renderAvatarPresetSvg } from "@/avatar/render";
 import { reservedCampusUsernames } from "@/data/campusAccountRules";
 import { AuthError } from "@/server/auth/errors";
 import { getDatabase } from "@/server/db/client";
-import { sessions, userSettings, users } from "@/server/db/schema";
+import {
+  productFeedback,
+  sessions,
+  userSettings,
+  users,
+} from "@/server/db/schema";
 import {
   processImage,
   processTrustedAvatarSvg,
 } from "@/server/media/service";
 import { getMediaStorage } from "@/server/media/storage";
-import { consumeRateLimit } from "@/server/rate-limit/service";
+import {
+  consumeRateLimit,
+  consumeRateLimitForUser,
+} from "@/server/rate-limit/service";
 import { viewerIsNotBlockedBy } from "@/server/social/blocking";
 
 import {
@@ -196,6 +204,8 @@ export async function updateAccountProfile(
         normalizedUsername !== activeUser.username
       ) {
         await consumeRateLimit(transaction, userId, "username_change");
+      } else {
+        await consumeRateLimit(transaction, userId, "profile_update");
       }
 
       const [updatedUser] = await transaction
@@ -255,6 +265,8 @@ export async function updateAccountSettings(
     if (!activeUser) {
       throw authenticationRequiredError();
     }
+
+    await consumeRateLimit(transaction, userId, "profile_update");
 
     await transaction
       .insert(userSettings)
@@ -348,7 +360,16 @@ export async function deleteAccount(userId: string, now = new Date()) {
           throw authenticationRequiredError();
         }
 
+        await consumeRateLimit(transaction, userId, "account_update", now);
+
         previousAvatarObjectKey = activeUser.avatarObjectKey;
+
+        // Geri bildirim metni ürün geliştirme kaydı olarak kalır; hesapla olan
+        // bağlantı silme anında koparılır ve gönderici anonimleşir.
+        await transaction
+          .update(productFeedback)
+          .set({ userId: null, updatedAt: now })
+          .where(eq(productFeedback.userId, userId));
 
         await transaction
           .update(users)
@@ -444,7 +465,7 @@ export async function uploadAccountAvatar(userId: string, file: File) {
   // İşleme/depolama maliyetine girmeden önce kontrol edilir: moderasyon
   // yakalamadan önce uygunsuz bir görseli kısaca gösterip hemen değiştirmeyi
   // zorlaştırır.
-  await consumeRateLimit(getDatabase(), userId, "avatar_change");
+  await consumeRateLimitForUser(userId, "avatar_upload");
   const processed = await processImage(file);
   await replaceAccountAvatar(userId, processed.body);
 }
@@ -453,7 +474,7 @@ export async function setAccountAvatarPreset(
   userId: string,
   presetId: AvatarPresetId,
 ) {
-  await consumeRateLimit(getDatabase(), userId, "avatar_change");
+  await consumeRateLimitForUser(userId, "avatar_preset");
   const processed = await processTrustedAvatarSvg(
     renderAvatarPresetSvg(presetId),
   );
@@ -483,6 +504,8 @@ export async function removeAccountAvatar(userId: string) {
       if (!activeUser.avatarObjectKey) {
         return null;
       }
+
+      await consumeRateLimit(transaction, userId, "profile_update");
 
       await transaction
         .update(users)

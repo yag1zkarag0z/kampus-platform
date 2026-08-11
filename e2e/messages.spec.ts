@@ -62,6 +62,9 @@ test("guest sees an animated unread preview and read-only seed messages", async 
     .getByRole("button", { name: /Ece Arslan/i })
     .click();
   await expect(
+    page.getByRole("status", { name: /Ece Arslan yazÄ±yor/i }),
+  ).toBeVisible({ timeout: 2_500 });
+  await expect(
     page.getByRole("link", { name: /Ece Arslan @ecearslan/i }),
   ).toHaveAttribute("href", "/profil/ecearslan");
   await page
@@ -92,32 +95,11 @@ test("guest sees an animated unread preview and read-only seed messages", async 
   await expect(page.getByRole("separator", { name: "Dün" })).toHaveCount(1);
 
   const guestMessageHistory = page.getByLabel("Mesaj geçmişi");
-  await expect.poll(() =>
-    guestMessageHistory.evaluate(
-      (element) =>
-        element.scrollHeight - element.scrollTop - element.clientHeight,
-    ),
-  ).toBeLessThan(100);
-  await guestMessageHistory.evaluate((element) => {
-    element.scrollTop = 0;
-    element.dispatchEvent(new Event("scroll", { bubbles: true }));
-  });
-  await expect.poll(() =>
-    guestMessageHistory.evaluate(
-      (element) =>
-        element.scrollHeight - element.scrollTop - element.clientHeight,
-    ),
-  ).toBeGreaterThan(100);
-  const guestNewMessagesButton = page.getByRole("button", {
-    name: "Yeni mesajlar ↓",
-  });
-  await expect(guestNewMessagesButton).toBeVisible({ timeout: 7_000 });
-  await guestNewMessagesButton.click();
   await expect(
     guestMessageHistory.getByText("Sunum dosyasını da güncelledim.", {
       exact: true,
     }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 7_000 });
 
   if ((page.viewportSize()?.width ?? 0) < 768) {
     await page.getByRole("button", { name: "Mesaj menüsünü aç" }).last().click();
@@ -145,10 +127,160 @@ test("guest sees an animated unread preview and read-only seed messages", async 
   ).toBeVisible();
 });
 
+test("members receive realtime typing and messages after reconnect", async ({
+  browser,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "Realtime is covered once.");
+  test.setTimeout(90_000);
+
+  const senderContext = await browser.newContext();
+  const recipientContext = await browser.newContext();
+  const fallbackContext = await browser.newContext();
+  const senderPage = await senderContext.newPage();
+  const recipientPage = await recipientContext.newPage();
+  const recipientRealtimeFrames: string[] = [];
+  recipientPage.on("websocket", (socket) => {
+    if (!socket.url().includes("/v1/realtime")) return;
+    socket.on("framereceived", (frame) => {
+      if (typeof frame.payload === "string") {
+        recipientRealtimeFrames.push(frame.payload);
+      }
+    });
+  });
+
+  try {
+    const sender = createUniqueStudentIdentity("realtime-sender");
+    const recipient = createUniqueStudentIdentity("realtime-recipient");
+    await seedMemberSession(senderPage, sender);
+    await seedMemberSession(recipientPage, recipient);
+    await Promise.all([
+      senderPage.goto("/mesajlar"),
+      recipientPage.goto("/mesajlar"),
+    ]);
+    const origin = new URL(senderPage.url()).origin;
+
+    const [senderFollow, recipientFollow] = await Promise.all([
+      senderPage.request.post(
+        `/v1/users/${encodeURIComponent(recipient.username)}/follow`,
+        { headers: { Origin: origin } },
+      ),
+      recipientPage.request.post(
+        `/v1/users/${encodeURIComponent(sender.username)}/follow`,
+        { headers: { Origin: origin } },
+      ),
+    ]);
+    expect(senderFollow.status()).toBe(200);
+    expect(recipientFollow.status()).toBe(200);
+
+    const startResponse = await senderPage.request.post(
+      "/v1/messages/conversations",
+      {
+        headers: { Origin: origin },
+        data: { username: recipient.username },
+      },
+    );
+    expect(startResponse.status()).toBe(201);
+    const { data: conversation } = (await startResponse.json()) as {
+      data: { id: string };
+    };
+
+    await Promise.all([
+      senderPage.goto(`/mesajlar?sohbet=${conversation.id}`),
+      recipientPage.goto(`/mesajlar?sohbet=${conversation.id}`),
+    ]);
+    const senderMessages = senderPage.getByRole("region", { name: "Mesajlar" });
+    const recipientMessages = recipientPage.getByRole("region", {
+      name: "Mesajlar",
+    });
+    await expect(senderMessages).toHaveAttribute(
+      "data-realtime-status",
+      "connected",
+    );
+    await expect(recipientMessages).toHaveAttribute(
+      "data-realtime-status",
+      "connected",
+    );
+
+    const senderComposer = senderPage.getByRole("textbox", { name: "Mesaj" });
+    const recipientComposer = recipientPage.getByRole("textbox", {
+      name: "Mesaj",
+    });
+    await expect(senderComposer).toBeVisible();
+    await expect(recipientComposer).toBeVisible();
+    await senderComposer.fill("Realtime selam!");
+    await expect.poll(() =>
+      recipientRealtimeFrames.some((frame) => frame.includes('"type":"typing"')),
+    ).toBe(true);
+    await expect(
+      recipientPage.getByRole("status", {
+        name: new RegExp(`${sender.displayName} yazÄ±yor`, "i"),
+      }),
+    ).toBeVisible({ timeout: 3_000 });
+
+    await senderComposer.press("Enter");
+    await expect(
+      recipientPage.getByText("Realtime selam!", { exact: true }),
+    ).toBeVisible({ timeout: 4_500 });
+
+    await senderContext.setOffline(true);
+    await expect(senderMessages).toHaveAttribute(
+      "data-realtime-status",
+      "disconnected",
+    );
+    const reconnectedSocket = senderPage.waitForEvent("websocket", {
+      predicate: (socket) => socket.url().includes("/v1/realtime"),
+    });
+    await senderContext.setOffline(false);
+    await reconnectedSocket;
+    await expect(senderMessages).toHaveAttribute(
+      "data-realtime-status",
+      "connected",
+    );
+
+    await recipientComposer.fill("BaÄŸlantÄ± geri geldi mi?");
+    await expect(
+      senderPage.getByRole("status", {
+        name: new RegExp(`${recipient.displayName} yazÄ±yor`, "i"),
+      }),
+    ).toBeVisible({ timeout: 3_000 });
+
+    let interceptedFallbackSockets = 0;
+    await fallbackContext.routeWebSocket(/\/v1\/realtime/, async (socket) => {
+      interceptedFallbackSockets += 1;
+      await socket.close({ code: 1013, reason: "Polling fallback test" });
+    });
+    await fallbackContext.addCookies(await senderContext.cookies());
+    const fallbackPage = await fallbackContext.newPage();
+    await fallbackPage.goto(`/mesajlar?sohbet=${conversation.id}`);
+    await expect.poll(() => interceptedFallbackSockets).toBeGreaterThan(0);
+
+    const fallbackBody = "Polling üzerinden gelen mesaj.";
+    const fallbackResponse = await recipientPage.request.post(
+      `/v1/messages/conversations/${conversation.id}/messages`,
+      {
+        headers: { Origin: origin },
+        data: { body: fallbackBody, clientMessageId: crypto.randomUUID() },
+      },
+    );
+    expect(fallbackResponse.status()).toBe(201);
+    await expect(
+      fallbackPage
+        .getByLabel("Mesaj geçmişi")
+        .getByText(fallbackBody, { exact: true }),
+    ).toBeVisible({ timeout: 10_000 });
+  } finally {
+    await Promise.allSettled([
+      senderContext.close(),
+      recipientContext.close(),
+      fallbackContext.close(),
+    ]);
+  }
+});
+
 test("members can send, accept, and continue a message request", async ({
   page,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
 
   const recipient = createUniqueStudentIdentity("message-recipient");
   await seedMemberSession(page, recipient);
@@ -316,7 +448,7 @@ test("members can send, accept, and continue a message request", async ({
     page.getByText("Olur, görüşürüz!", { exact: true }),
   ).toBeVisible();
 
-  for (let index = 0; index < 16; index += 1) {
+  for (let index = 0; index < 24; index += 1) {
     const response = await page.request.post(
       `/v1/messages/conversations/${conversationId}/messages`,
       {
@@ -340,10 +472,16 @@ test("members can send, accept, and continue a message request", async ({
         element.scrollHeight - element.scrollTop - element.clientHeight,
     ),
   ).toBeLessThan(100);
-  await messageHistory.evaluate((element) => {
-    element.scrollTop = 0;
-    element.dispatchEvent(new Event("scroll"));
-  });
+  // Gerçek kullanıcı hareketi kullan: doğrudan `scrollTop` yazmak React'in
+  // scroll dinleyicisiyle yarışıp otomatik alta sabitlemeyi yanlış tetikliyordu.
+  await messageHistory.hover();
+  await page.mouse.wheel(0, -2_000);
+  await expect.poll(() =>
+    messageHistory.evaluate(
+      (element) =>
+        element.scrollHeight - element.scrollTop - element.clientHeight,
+    ),
+  ).toBeGreaterThan(100);
 
   const appOrigin = new URL(page.url()).origin;
   const recipientApi = await playwrightRequest.newContext({
@@ -374,11 +512,33 @@ test("members can send, accept, and continue a message request", async ({
     ),
   ).resolves.toBeGreaterThan(100);
   await newMessagesButton.click();
-  await expect(page.getByText(newestBody, { exact: true })).toBeVisible();
+  await expect(
+    messageHistory.getByText(newestBody, { exact: true }),
+  ).toBeVisible();
   await expect.poll(() =>
     messageHistory.evaluate(
       (element) =>
         element.scrollHeight - element.scrollTop - element.clientHeight,
     ),
   ).toBeLessThan(100);
+
+  await page
+    .getByRole("button", {
+      name: `${recipient.displayName} için konuşma seçenekleri`,
+    })
+    .click();
+  await page
+    .getByRole("menuitem", { name: "Kullanıcıyı engelle" })
+    .click();
+  const blockDialog = page.getByRole("dialog", {
+    name: `${recipient.displayName} engellensin mi?`,
+  });
+  await expect(blockDialog).toBeVisible();
+  await blockDialog.getByRole("button", { name: "Engelle" }).click();
+  await expect(page).toHaveURL(/\/mesajlar$/);
+  await expect(
+    page
+      .getByRole("complementary", { name: "Konuşmalar" })
+      .getByRole("button", { name: new RegExp(recipient.displayName, "i") }),
+  ).toHaveCount(0);
 });

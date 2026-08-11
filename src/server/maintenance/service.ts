@@ -22,6 +22,7 @@ export type CleanupReport = {
   sessions: number;
   rateLimitHits: number;
   notifications: number;
+  productFeedback: number;
   emptyConversations: number;
   messageRequestCooldowns: number;
   moderationActions: number;
@@ -86,6 +87,7 @@ function emptyCleanupReport(): CleanupReport {
     sessions: 0,
     rateLimitHits: 0,
     notifications: 0,
+    productFeedback: 0,
     emptyConversations: 0,
     messageRequestCooldowns: 0,
     moderationActions: 0,
@@ -209,8 +211,19 @@ async function runCleanup(
     now,
     policy.sessionAfterInactiveMs,
   );
-  const rateLimitCutoff = retentionCutoff(now, policy.rateLimitHitMs);
+  const rateLimitDefaultCutoff = retentionCutoff(
+    now,
+    policy.rateLimitHitDefaultMs,
+  );
+  const rateLimitUsernameCutoff = retentionCutoff(
+    now,
+    policy.rateLimitHitUsernameMs,
+  );
   const notificationCutoff = retentionCutoff(now, policy.notificationMs);
+  const productFeedbackCutoff = retentionCutoff(
+    now,
+    policy.productFeedbackMs,
+  );
   const emptyConversationCutoff = retentionCutoff(
     now,
     policy.emptyConversationMs,
@@ -228,8 +241,8 @@ async function runCleanup(
       CleanupReport,
       | "otpChallenges"
       | "sessions"
-      | "rateLimitHits"
       | "notifications"
+      | "productFeedback"
       | "emptyConversations"
       | "messageRequestCooldowns"
       | "moderationActions"
@@ -270,20 +283,6 @@ async function runCleanup(
       returning id`,
     },
     {
-      key: "rateLimitHits",
-      cutoff: rateLimitCutoff,
-      count: "select count(*)::text as total from rate_limit_hits where created_at <= $1",
-      remove: `with candidates as (
-        select id from rate_limit_hits
-        where created_at <= $1
-        order by created_at, id
-        limit ${BATCH_MARKER}
-        for update skip locked
-      )
-      delete from rate_limit_hits where id in (select id from candidates)
-      returning id`,
-    },
-    {
       key: "notifications",
       cutoff: notificationCutoff,
       count: "select count(*)::text as total from notifications where created_at <= $1",
@@ -295,6 +294,21 @@ async function runCleanup(
         for update skip locked
       )
       delete from notifications where id in (select id from candidates)
+      returning id`,
+    },
+    {
+      key: "productFeedback",
+      cutoff: productFeedbackCutoff,
+      count:
+        "select count(*)::text as total from product_feedback where created_at <= $1",
+      remove: `with candidates as (
+        select id from product_feedback
+        where created_at <= $1
+        order by created_at, id
+        limit ${BATCH_MARKER}
+        for update skip locked
+      )
+      delete from product_feedback where id in (select id from candidates)
       returning id`,
     },
     {
@@ -374,6 +388,35 @@ async function runCleanup(
           batchSize,
         );
   }
+
+  const rateLimitFilter = `(
+    (action = 'username_change' and created_at <= $2)
+    or (action <> 'username_change' and created_at <= $1)
+  )`;
+  const rateLimitCount = `select count(*)::text as total
+    from rate_limit_hits where ${rateLimitFilter}`;
+  const rateLimitDelete = `with candidates as (
+      select id from rate_limit_hits
+      where ${rateLimitFilter}
+      order by created_at, id
+      limit ${BATCH_MARKER}
+      for update skip locked
+    )
+    delete from rate_limit_hits where id in (select id from candidates)
+    returning id`;
+  const rateLimitCutoffs = [
+    rateLimitDefaultCutoff,
+    rateLimitUsernameCutoff,
+  ];
+
+  report.rateLimitHits = dryRun
+    ? await countCandidates(client, rateLimitCount, rateLimitCutoffs)
+    : await deleteInBatches(
+        client,
+        rateLimitDelete,
+        rateLimitCutoffs,
+        batchSize,
+      );
 
   const postFilter = `(
       (p.deleted_at is not null and p.deleted_at <= $1)

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { NextRequest } from "next/server";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
-import { Pool } from "pg";
+import { Pool, type PoolClient } from "pg";
 
 import {
   GET as getConversations,
@@ -19,6 +19,10 @@ import { DELETE as deleteMessage } from "@/app/v1/messages/[id]/route";
 import { GET as getUnreadCount } from "@/app/v1/messages/unread-count/route";
 import { createMemberSession } from "@/server/auth/session";
 import { getDatabase } from "@/server/db/client";
+import {
+  REALTIME_POSTGRES_CHANNEL,
+  type RealtimeBrokerEvent,
+} from "@/realtime/protocol";
 
 const pool = new Pool({
   connectionString: process.env.TEST_DATABASE_URL,
@@ -114,6 +118,22 @@ function request(
   });
 }
 
+function nextRealtimeEvent(client: PoolClient) {
+  return new Promise<RealtimeBrokerEvent>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      client.off("notification", handleNotification);
+      reject(new Error("Timed out waiting for a realtime database event."));
+    }, 5_000);
+    const handleNotification = (notification: { payload?: string }) => {
+      if (!notification.payload) return;
+      clearTimeout(timer);
+      client.off("notification", handleNotification);
+      resolve(JSON.parse(notification.payload) as RealtimeBrokerEvent);
+    };
+    client.on("notification", handleNotification);
+  });
+}
+
 afterEach(async () => {
   if (testEmails.size === 0) return;
   await pool.query("delete from users where email = any($1)", [[...testEmails]]);
@@ -125,6 +145,80 @@ afterAll(async () => {
 });
 
 describe("direct message routes with PostgreSQL", () => {
+  it("publishes committed conversation invalidations for realtime clients", async () => {
+    const listener = await pool.connect();
+    await listener.query(`listen ${REALTIME_POSTGRES_CHANNEL}`);
+
+    try {
+      const sender = await insertAccount("Realtime Sender");
+      const recipient = await insertAccount("Realtime Recipient");
+      const senderCookie = await createMemberCookie(sender.id);
+      const recipientCookie = await createMemberCookie(recipient.id);
+
+      const startedEventPromise = nextRealtimeEvent(listener);
+      const startResponse = await postConversation(
+        request("/v1/messages/conversations", {
+          cookie: senderCookie,
+          method: "POST",
+          body: { username: recipient.username },
+        }),
+      );
+      const { data: conversation } = (await startResponse.json()) as {
+        data: { id: string };
+      };
+      await expect(startedEventPromise).resolves.toMatchObject({
+        type: "conversation.invalidate",
+        conversationId: conversation.id,
+        reason: "conversation-started",
+        userIds: expect.arrayContaining([sender.id, recipient.id]),
+      });
+
+      const messageEventPromise = nextRealtimeEvent(listener);
+      const messageResponse = await postMessage(
+        request(
+          `/v1/messages/conversations/${conversation.id}/messages`,
+          {
+            cookie: senderCookie,
+            method: "POST",
+            body: {
+              body: "Realtime mesajÄ±",
+              clientMessageId: randomUUID(),
+            },
+          },
+        ),
+        { params: Promise.resolve({ id: conversation.id }) },
+      );
+      const { data: message } = (await messageResponse.json()) as {
+        data: { id: string };
+      };
+      await expect(messageEventPromise).resolves.toMatchObject({
+        type: "conversation.invalidate",
+        conversationId: conversation.id,
+        reason: "message-created",
+        userIds: expect.arrayContaining([sender.id, recipient.id]),
+      });
+
+      const readEventPromise = nextRealtimeEvent(listener);
+      await postRead(
+        request(`/v1/messages/conversations/${conversation.id}/read`, {
+          cookie: recipientCookie,
+          method: "POST",
+          body: { messageId: message.id },
+        }),
+        { params: Promise.resolve({ id: conversation.id }) },
+      );
+      await expect(readEventPromise).resolves.toMatchObject({
+        type: "conversation.invalidate",
+        conversationId: conversation.id,
+        reason: "message-read",
+        userIds: [sender.id],
+      });
+    } finally {
+      await listener.query(`unlisten ${REALTIME_POSTGRES_CHANNEL}`);
+      listener.release();
+    }
+  });
+
   it("creates one conversation per pair and tracks unread/read messages", async () => {
     const sender = await insertAccount("Gönderen Öğrenci");
     const recipient = await insertAccount("Alıcı Öğrenci");

@@ -1753,6 +1753,8 @@ export async function updateContentPost(
       throw contentForbiddenError();
     }
 
+    await consumeRateLimit(transaction, viewerId, "content_update");
+
     const finalContent = validateFinalPostContent(current, input);
 
     if (
@@ -1821,6 +1823,8 @@ export async function deleteContentPost(
       if (current.authorId !== viewerId) {
         throw contentForbiddenError();
       }
+
+      await consumeRateLimit(transaction, viewerId, "content_delete");
 
       const [attachedImage] = await transaction
         .select({
@@ -2191,6 +2195,8 @@ export async function updateContentComment(
       throw contentForbiddenError();
     }
 
+    await consumeRateLimit(transaction, viewerId, "content_update");
+
     await transaction
       .update(comments)
       .set({
@@ -2250,6 +2256,8 @@ export async function deleteContentComment(
     if (current.authorId !== viewerId) {
       throw contentForbiddenError();
     }
+
+    await consumeRateLimit(transaction, viewerId, "content_delete");
 
     await transaction
       .update(comments)

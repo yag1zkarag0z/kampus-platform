@@ -228,9 +228,12 @@ describe("block routes with PostgreSQL", () => {
     await followUser(blocker.id, target.username);
     await followUser(target.id, blocker.username);
 
-    const before = await pool.query(
-      "select count(*)::int as total from follows",
-    );
+    const pairParams = [blocker.id, target.id];
+    const pairFollowCountQuery = `select count(*)::int as total
+      from follows
+      where (follower_id = $1 and following_id = $2)
+         or (follower_id = $2 and following_id = $1)`;
+    const before = await pool.query(pairFollowCountQuery, pairParams);
     expect(before.rows[0]?.total).toBe(2);
 
     const blockerCookie = await createMemberCookie(blocker.id);
@@ -242,9 +245,7 @@ describe("block routes with PostgreSQL", () => {
     );
     expect(blockResponse.status).toBe(200);
 
-    const after = await pool.query(
-      "select count(*)::int as total from follows",
-    );
+    const after = await pool.query(pairFollowCountQuery, pairParams);
     expect(after.rows[0]?.total).toBe(0);
 
     await expect(

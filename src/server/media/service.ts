@@ -20,6 +20,7 @@ import {
   posts,
   users,
 } from "@/server/db/schema";
+import { consumeRateLimit } from "@/server/rate-limit/service";
 
 import { getMediaStorage } from "./storage";
 
@@ -185,6 +186,7 @@ async function reserveUpload(
   insertReservation: (transaction: MediaTransaction) => Promise<void>,
 ) {
   await getDatabase().transaction(async (transaction) => {
+    await consumeRateLimit(transaction, userId, "media_upload", createdAt);
     // Images and documents share one quota. The per-user transaction lock
     // serializes the final count-and-insert step across all application nodes.
     await transaction.execute(
@@ -444,6 +446,8 @@ export async function deleteUnattachedContentImage(
       );
     }
 
+    await consumeRateLimit(transaction, userId, "media_delete");
+
     await transaction
       .delete(mediaAssets)
       .where(eq(mediaAssets.id, assetId));
@@ -519,6 +523,8 @@ export async function deleteUnattachedContentDocument(
         { status: 403 },
       );
     }
+
+    await consumeRateLimit(transaction, userId, "media_delete");
 
     await transaction
       .delete(documentAssets)

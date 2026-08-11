@@ -26,6 +26,7 @@ import {
   buildCursorPage,
   decodeTimelineCursor,
 } from "@/server/pagination/cursor";
+import { consumeRateLimit } from "@/server/rate-limit/service";
 import { hasBlockBetween, noBlockBetween } from "@/server/social/blocking";
 
 import { extractMentionedUsernames } from "./validation";
@@ -272,37 +273,43 @@ export async function markNotificationAsRead(
   recipientId: string,
   notificationId: string,
 ): Promise<void> {
-  const rows = await getDatabase()
-    .update(notifications)
-    .set({ readAt: sql`coalesce(${notifications.readAt}, now())` })
-    .where(
-      and(
-        eq(notifications.id, notificationId),
-        eq(notifications.recipientId, recipientId),
-      ),
-    )
-    .returning({ id: notifications.id });
+  await getDatabase().transaction(async (transaction) => {
+    await consumeRateLimit(transaction, recipientId, "state_sync");
+    const rows = await transaction
+      .update(notifications)
+      .set({ readAt: sql`coalesce(${notifications.readAt}, now())` })
+      .where(
+        and(
+          eq(notifications.id, notificationId),
+          eq(notifications.recipientId, recipientId),
+        ),
+      )
+      .returning({ id: notifications.id });
 
-  if (rows.length === 0) {
-    throw notificationNotFoundError();
-  }
+    if (rows.length === 0) {
+      throw notificationNotFoundError();
+    }
+  });
 }
 
 export async function markAllNotificationsAsRead(
   recipientId: string,
 ): Promise<{ markedCount: number }> {
-  const rows = await getDatabase()
-    .update(notifications)
-    .set({ readAt: new Date() })
-    .where(
-      and(
-        eq(notifications.recipientId, recipientId),
-        isNull(notifications.readAt),
-      ),
-    )
-    .returning({ id: notifications.id });
+  return getDatabase().transaction(async (transaction) => {
+    await consumeRateLimit(transaction, recipientId, "state_sync");
+    const rows = await transaction
+      .update(notifications)
+      .set({ readAt: new Date() })
+      .where(
+        and(
+          eq(notifications.recipientId, recipientId),
+          isNull(notifications.readAt),
+        ),
+      )
+      .returning({ id: notifications.id });
 
-  return { markedCount: rows.length };
+    return { markedCount: rows.length };
+  });
 }
 
 type NotificationPreferenceColumn =

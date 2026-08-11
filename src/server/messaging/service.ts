@@ -37,6 +37,12 @@ import {
   noBlockBetween,
 } from "@/server/social/blocking";
 import { applyUserBlock } from "@/server/social/block-user";
+import {
+  REALTIME_POSTGRES_CHANNEL,
+  REALTIME_PROTOCOL_VERSION,
+  type ConversationInvalidationReason,
+  type RealtimeBrokerEvent,
+} from "@/realtime/protocol";
 
 type MessagingDatabase = ReturnType<typeof getDatabase>;
 type MessagingTransaction = Parameters<
@@ -86,6 +92,35 @@ export type DirectMessageSummary = {
   isSeen: boolean;
   createdAt: string;
 };
+
+function conversationParticipantIds(conversation: {
+  participantLowId: string;
+  participantHighId: string;
+}) {
+  return [
+    conversation.participantLowId,
+    conversation.participantHighId,
+  ];
+}
+
+async function publishConversationInvalidation(
+  executor: MessagingExecutor,
+  conversationId: string,
+  userIds: string[],
+  reason: ConversationInvalidationReason,
+) {
+  const event: RealtimeBrokerEvent = {
+    version: REALTIME_PROTOCOL_VERSION,
+    type: "conversation.invalidate",
+    conversationId,
+    reason,
+    userIds: [...new Set(userIds)],
+  };
+
+  await executor.execute(
+    sql`select pg_notify(${REALTIME_POSTGRES_CHANNEL}, ${JSON.stringify(event)})`,
+  );
+}
 
 function normalizeConversationSearch(value?: string) {
   return value?.normalize("NFKC").trim().replace(/\s+/gu, " ") ?? "";
@@ -592,7 +627,7 @@ export async function startDirectConversation(
   viewerId: string,
   username: string,
 ): Promise<DirectConversationSummary> {
-  const conversationId = await getDatabase().transaction(
+  const result = await getDatabase().transaction(
     async (transaction) => {
       const targetId = await resolveMessageTarget(
         transaction,
@@ -638,6 +673,7 @@ export async function startDirectConversation(
           existing.requestStatus === "pending" &&
           (mutualFollow || existing.createdById !== viewerId)
         ) {
+          await consumeRateLimit(transaction, viewerId, "message_manage");
           await transaction
             .update(directConversations)
             .set({
@@ -647,7 +683,13 @@ export async function startDirectConversation(
             .where(eq(directConversations.id, existing.id));
         }
 
-        return existing.id;
+        await publishConversationInvalidation(
+          transaction,
+          existing.id,
+          [viewerId, targetId],
+          "conversation-started",
+        );
+        return { conversationId: existing.id };
       }
 
       const now = new Date();
@@ -697,7 +739,12 @@ export async function startDirectConversation(
         throw conversationNotFoundError();
       }
 
-      await consumeRateLimit(transaction, viewerId, "message_start");
+      await consumeRateLimit(
+        transaction,
+        viewerId,
+        mutualFollow ? "message_start" : "message_request_start",
+        now,
+      );
       const unreadBaseline = new Date(0);
       await transaction.insert(directConversationReads).values([
         {
@@ -711,11 +758,17 @@ export async function startDirectConversation(
           lastReadAt: unreadBaseline,
         },
       ]);
-      return inserted.id;
+      await publishConversationInvalidation(
+        transaction,
+        inserted.id,
+        [participantLowId, participantHighId],
+        "conversation-started",
+      );
+      return { conversationId: inserted.id };
     },
   );
 
-  return getDirectConversation(viewerId, conversationId);
+  return getDirectConversation(viewerId, result.conversationId);
 }
 
 export async function listDirectMessages(
@@ -910,6 +963,12 @@ export async function sendDirectMessage(
       })
       .where(eq(directConversations.id, conversationId));
     await advanceReadCursor(transaction, viewerId, conversationId, message);
+    await publishConversationInvalidation(
+      transaction,
+      conversationId,
+      conversationParticipantIds(conversation),
+      "message-created",
+    );
 
     return {
       id: message.id,
@@ -949,6 +1008,10 @@ export async function resolveDirectMessageRequest(
         );
       }
 
+      if (action !== "block") {
+        await consumeRateLimit(transaction, viewerId, "message_manage");
+      }
+
       if (action === "accept") {
         await transaction
           .update(directConversations)
@@ -968,6 +1031,13 @@ export async function resolveDirectMessageRequest(
               eq(directMessageRequestCooldowns.recipientId, viewerId),
             ),
           );
+
+        await publishConversationInvalidation(
+          transaction,
+          conversationId,
+          conversationParticipantIds(conversation),
+          "request-accepted",
+        );
 
         return conversationId;
       }
@@ -1004,6 +1074,12 @@ export async function resolveDirectMessageRequest(
       await transaction
         .delete(directConversations)
         .where(eq(directConversations.id, conversationId));
+      await publishConversationInvalidation(
+        transaction,
+        conversationId,
+        conversationParticipantIds(conversation),
+        "request-removed",
+      );
 
       return null;
     },
@@ -1024,7 +1100,11 @@ export async function markDirectConversationRead(
   }
 
   await getDatabase().transaction(async (transaction) => {
-    await assertConversationAccess(transaction, viewerId, conversationId);
+    const conversation = await assertConversationAccess(
+      transaction,
+      viewerId,
+      conversationId,
+    );
     const [message] = await transaction
       .select({
         id: directMessages.id,
@@ -1043,11 +1123,19 @@ export async function markDirectConversationRead(
       throw messageNotFoundError();
     }
 
+    await consumeRateLimit(transaction, viewerId, "state_sync");
+
     await advanceReadCursor(
       transaction,
       viewerId,
       conversationId,
       message,
+    );
+    await publishConversationInvalidation(
+      transaction,
+      conversationId,
+      [conversation.otherUserId],
+      "message-read",
     );
   });
 }
@@ -1082,6 +1170,7 @@ export async function deleteDirectMessage(
       viewerId,
       message.conversationId,
     );
+    await consumeRateLimit(transaction, viewerId, "message_manage");
     const now = new Date();
 
     await transaction
@@ -1095,6 +1184,12 @@ export async function deleteDirectMessage(
         .set({ lastMessagePreview: DELETED_MESSAGE_PREVIEW })
         .where(eq(directConversations.id, message.conversationId));
     }
+    await publishConversationInvalidation(
+      transaction,
+      message.conversationId,
+      conversationParticipantIds(conversation),
+      "message-deleted",
+    );
   });
 }
 

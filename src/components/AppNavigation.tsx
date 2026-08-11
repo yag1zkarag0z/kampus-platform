@@ -35,7 +35,6 @@ type NavigationItem = {
   href: string;
   label: string;
   icon: NavigationIconName;
-  primary?: boolean;
   privilegedOnly?: boolean;
 };
 
@@ -61,8 +60,8 @@ const navigationItems: readonly NavigationItem[] = [
 const mobileNavigationItems: readonly NavigationItem[] = [
   { href: "/akis", label: "Ana sayfa", icon: "home" },
   { href: "/kesfet", label: "Keşfet", icon: "discover" },
-  { href: "/konu-olustur", label: "Konu", icon: "share", primary: true },
   { href: "/mesajlar", label: "Mesajlar", icon: "messages" },
+  { href: "/takip", label: "Kişiler", icon: "follow" },
   { href: "/profil", label: "Profil", icon: "profile" },
 ];
 
@@ -113,8 +112,8 @@ function NavigationIconGlyph({ name }: { name: NavigationIconName }) {
     case "messages":
       return (
         <>
-          <rect x="4.3" y="5.2" width="15.4" height="13.6" rx="2.2" />
-          <path d="m5.4 7 6.6 5.2L18.6 7" />
+          <path d="M20.9 3.1 4.6 10.7c-1 .47-.9 1.93.17 2.26l5.64 1.73 1.73 5.64c.33 1.07 1.79 1.18 2.26.17L22 4.2c.36-.77-.34-1.47-1.1-1.1Z" />
+          <path d="m10.4 14.7 10.5-11.6" />
         </>
       );
     case "calendar":
@@ -234,10 +233,10 @@ function MessageNotificationIcon({
     >
       <path
         className="campus-notification-heart__shape"
-        d="M6.5 5.2h11A2.2 2.2 0 0 1 19.7 7.4v9.2a2.2 2.2 0 0 1-2.2 2.2h-11a2.2 2.2 0 0 1-2.2-2.2V7.4a2.2 2.2 0 0 1 2.2-2.2Z"
+        d="M20.9 3.1 4.6 10.7c-1 .47-.9 1.93.17 2.26l5.64 1.73 1.73 5.64c.33 1.07 1.79 1.18 2.26.17L22 4.2c.36-.77-.34-1.47-1.1-1.1Z"
       />
       <path
-        d="m5.5 7.2 6.5 5.1 6.5-5.1"
+        d="m10.4 14.7 10.5-11.6"
         fill="none"
         stroke={isUnread ? "var(--canvas)" : "currentColor"}
       />
@@ -301,7 +300,7 @@ export default function AppNavigation() {
     unreadMessageCount,
     isUnreadMessageCountHydrated,
   } = useCampusMessaging();
-  const { confirm: confirmAction } = useFeedback();
+  const { confirm: confirmAction, openFeedback } = useFeedback();
   const [isDesktopNavigationOpen, setIsDesktopNavigationOpen] =
     useState(true);
   const [signOutStatus, setSignOutStatus] = useActionStatus();
@@ -481,74 +480,28 @@ export default function AppNavigation() {
 
   return (
     <>
-      {/* Mobil üst bar: solda profil, ortada logo işareti, sağda kısayollar. */}
+      {/* Mobil üst bar: solda gönderi oluştur, ortada logo, sağda bildirimler. */}
       <header
-        className={`sticky top-0 z-40 grid min-h-16 grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-white/8 bg-canvas/88 px-3 py-2 text-white backdrop-blur-xl transition-transform duration-300 md:hidden ${
+        className={`sticky top-0 z-40 grid min-h-16 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-white/8 bg-canvas/88 px-3 py-2 text-white backdrop-blur-xl transition-transform duration-300 md:hidden ${
           isMobileNavHidden ? "-translate-y-full" : "translate-y-0"
         }`}
       >
-        <div data-account-menu className="relative">
-          <button
-            type="button"
-            aria-haspopup="menu"
-            aria-expanded={isAccountMenuOpen}
-            aria-label="Hesap menüsünü aç"
-            onClick={() => setIsAccountMenuOpen((current) => !current)}
-            className="inline-flex cursor-pointer rounded-full outline-none transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-brand/40"
-          >
-            <CampusAuthorAvatar
-              author={`@${profile.username}`}
-              authorId={LOCAL_ACCOUNT_OWNER_ID}
-              avatarUrl={profile.avatarUrl}
-            />
-          </button>
-
-          {isAccountMenuOpen && (
-            <div
-              role="menu"
-              className="absolute top-full left-0 z-50 mt-2 w-52 overflow-hidden rounded-xl border border-white/10 bg-surface-raised py-1 shadow-[0_16px_40px_rgba(0,0,0,0.32)]"
-            >
-              <Link
-                href="/profil"
-                role="menuitem"
-                onClick={() => setIsAccountMenuOpen(false)}
-                className="block px-4 py-3 text-sm font-bold outline-none transition-colors hover:bg-white/7"
-              >
-                Profilim
-              </Link>
-              {/* Ayarlar gerçek bir hesabı varsayıyor (bildirim tercihi,
-                  görünürlük vb.); misafirde bağlanacak gerçek veri yok. */}
-              {!isGuest && (
-                <Link
-                  href="/ayarlar"
-                  role="menuitem"
-                  onClick={() => setIsAccountMenuOpen(false)}
-                  className="block px-4 py-3 text-sm font-bold outline-none transition-colors hover:bg-white/7"
-                >
-                  Ayarlar
-                </Link>
-              )}
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setIsAccountMenuOpen(false);
-                  handleSignOut();
-                }}
-                className="block w-full cursor-pointer border-t border-white/8 px-4 py-3 text-left text-sm font-bold text-danger outline-none transition-colors hover:bg-danger/9"
-              >
-                Çıkış yap
-              </button>
-            </div>
-          )}
-
-          {signOutStatus && (
-            <ActionStatusText
-              status={signOutStatus}
-              className="absolute top-full left-0 z-50 mt-1 w-max max-w-56"
-            />
-          )}
-        </div>
+        <Link
+          href="/konu-olustur"
+          onClick={
+            isGuest
+              ? (event) =>
+                  handleGuestProtectedNavigation(
+                    event,
+                    "compose-mobile-header",
+                  )
+              : undefined
+          }
+          aria-label="Yeni gönderi oluştur"
+          className="grid size-11 place-items-center rounded-full text-white/72 outline-none transition-colors hover:bg-white/8 hover:text-white focus-visible:ring-3 focus-visible:ring-brand/40"
+        >
+          <ShareIcon className="size-[1.65rem]" />
+        </Link>
 
         <Link
           href="/akis"
@@ -562,48 +515,36 @@ export default function AppNavigation() {
           />
         </Link>
 
-        <div className="flex items-center gap-1 justify-self-end">
-          {!isGuest && role !== "member" && (
-            <Link
-              href="/admin"
-              aria-label="Yönetim panelini aç"
-              aria-current={
-                isActivePath(pathname, "/admin") ? "page" : undefined
-              }
-              className={`grid size-11 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-brand/40 ${
-                isActivePath(pathname, "/admin")
-                  ? "bg-brand/12 text-brand"
-                  : "text-white/55 hover:bg-white/8 hover:text-white"
-              }`}
-            >
-              <NavigationIcon name="admin" className="size-6" />
-            </Link>
-          )}
-          {/* Öneriler alt menüye taşındı; üst bar Instagram'daki gibi
-              bildirimleri kalp simgesiyle taşıyor. */}
-          <Link
-            href="/bildirimler"
-            aria-label={
-              hasUnreadNotifications
-                ? `Bildirimler, ${unreadCount} okunmamış`
-                : "Bildirimleri aç"
-            }
-            aria-current={
-              isActivePath(pathname, "/bildirimler") ? "page" : undefined
-            }
-            className={`relative grid size-11 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-brand/40 ${
-              isActivePath(pathname, "/bildirimler")
-                ? "bg-brand/12 text-brand"
-                : "text-white/58 hover:bg-white/8 hover:text-white"
-            }`}
-          >
-            <NotificationHeartIcon
-              key={`mobile-notifications-${notificationAnimationVersion}`}
-              isUnread={hasUnreadNotifications}
-              className={notificationIconClassName("size-6")}
+        <Link
+          href="/bildirimler"
+          aria-label={
+            hasUnreadNotifications
+              ? `Bildirimler, ${unreadCount} okunmamış`
+              : "Bildirimleri aç"
+          }
+          aria-current={
+            isActivePath(pathname, "/bildirimler") ? "page" : undefined
+          }
+          className={`relative grid size-11 justify-self-end place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-brand/40 ${
+            isActivePath(pathname, "/bildirimler")
+              ? "text-white"
+              : "text-white/62 hover:bg-white/8 hover:text-white"
+          }`}
+        >
+          <NotificationHeartIcon
+            key={`mobile-notifications-${notificationAnimationVersion}`}
+            isUnread={hasUnreadNotifications}
+            className={notificationIconClassName("size-6")}
+          />
+        </Link>
+
+        {guestNavStatus &&
+          guestNavAnchor === "compose-mobile-header" && (
+            <ActionStatusText
+              status={guestNavStatus}
+              className="absolute inset-x-3 top-full mt-2 text-center"
             />
-          </Link>
-        </div>
+          )}
       </header>
 
       <div className="relative z-40 hidden min-w-0 text-white md:col-start-1 md:row-start-1 md:flex md:justify-end">
@@ -860,6 +801,17 @@ export default function AppNavigation() {
                         role="menuitem"
                         onClick={() => {
                           setIsAccountMenuOpen(false);
+                          openFeedback();
+                        }}
+                        className="block w-full cursor-pointer px-4 py-2.5 text-left text-sm font-bold outline-none transition-colors hover:bg-white/7 focus-visible:bg-white/7"
+                      >
+                        Geri bildirim
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setIsAccountMenuOpen(false);
                           handleSignOut();
                         }}
                         className="block w-full cursor-pointer border-t border-white/8 px-4 py-2.5 text-left text-sm font-bold text-danger outline-none transition-colors hover:bg-danger/9 focus-visible:bg-danger/9"
@@ -885,17 +837,10 @@ export default function AppNavigation() {
 
       <nav
         aria-label="Mobil uygulama menüsü"
-        className={`fixed inset-x-0 bottom-0 z-50 border-t border-white/8 bg-canvas/92 px-[4px] pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-white backdrop-blur-xl transition-transform duration-300 md:hidden ${
+        className={`fixed inset-x-0 bottom-0 z-50 bg-canvas/72 px-[4px] pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-white backdrop-blur-md transition-transform duration-300 md:hidden ${
           isMobileNavHidden ? "translate-y-full" : "translate-y-0"
         }`}
       >
-        {guestNavStatus && guestNavAnchor === "compose-mobile" && (
-          <ActionStatusText
-            status={guestNavStatus}
-            className="absolute inset-x-3 bottom-full mb-2 text-center"
-          />
-        )}
-
         <ul className="mx-auto grid max-w-lg grid-cols-5 gap-0">
           {mobileNavigationItems.map((item) => {
             const isActive = isActivePath(pathname, item.href);
@@ -904,44 +849,39 @@ export default function AppNavigation() {
               <li key={item.href} className="min-w-0">
                 <Link
                   href={item.href}
-                  onClick={
-                    isGuest && isGuestProtectedPath(item.href)
-                      ? (event) =>
-                          handleGuestProtectedNavigation(
-                            event,
-                            "compose-mobile",
-                          )
-                      : undefined
-                  }
                   aria-current={isActive ? "page" : undefined}
                   aria-label={
-                    item.primary
-                      ? "Yeni konu aç"
-                      : item.icon === "notifications" &&
+                    item.icon === "notifications" &&
                           hasUnreadNotifications
                         ? `${item.label}, ${unreadCount} okunmamış bildirim`
                         : item.icon === "messages" &&
                             isUnreadMessageCountHydrated &&
                             unreadMessageCount > 0
                           ? `${item.label}, ${unreadMessageCount} okunmamış mesaj`
-                        : undefined
+                        : item.label
                   }
-                  className={`flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-[2px] text-[10px] font-bold leading-none outline-none transition-colors focus-visible:ring-3 focus-visible:ring-brand/40 min-[360px]:text-[11px] ${
-                    item.primary
-                      ? "text-brand"
-                      : isActive
-                        ? "bg-brand/12 text-brand"
-                        : "text-white/58 hover:bg-white/8 hover:text-white"
+                  className={`grid min-h-16 min-w-0 place-items-center rounded-xl outline-none transition-colors focus-visible:ring-3 focus-visible:ring-brand/40 ${
+                    isActive
+                      ? "text-white"
+                      : "text-white/52 hover:text-white"
                   }`}
                 >
                   <span
-                    className={
-                      item.primary
-                        ? "relative grid size-10 -translate-y-1 place-items-center rounded-full bg-brand text-[#101012] shadow-none"
-                        : "relative grid size-9 place-items-center"
-                    }
+                    className="relative grid size-9 place-items-center"
                   >
-                    {item.icon === "notifications" ? (
+                    {item.icon === "profile" ? (
+                      <CampusAuthorAvatar
+                        author={`@${profile.username}`}
+                        authorId={LOCAL_ACCOUNT_OWNER_ID}
+                        avatarUrl={profile.avatarUrl}
+                        size="sm"
+                        className={
+                          isActive
+                            ? "ring-2 ring-brand ring-offset-2 ring-offset-canvas"
+                            : "opacity-80"
+                        }
+                      />
+                    ) : item.icon === "notifications" ? (
                       <NotificationHeartIcon
                         key={`bottom-notifications-${notificationAnimationVersion}`}
                         isUnread={hasUnreadNotifications}
@@ -960,15 +900,10 @@ export default function AppNavigation() {
                     ) : (
                       <NavigationIcon
                         name={item.icon}
-                        className={
-                          item.primary
-                            ? "size-5 shrink-0"
-                            : "size-6 shrink-0"
-                        }
+                        className="size-6 shrink-0"
                       />
                     )}
                   </span>
-                  <span className="max-w-full truncate">{item.label}</span>
                 </Link>
               </li>
             );

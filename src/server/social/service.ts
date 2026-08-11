@@ -6,6 +6,7 @@ import {
   count,
   desc,
   eq,
+  inArray,
   isNull,
   lt,
   ne,
@@ -15,6 +16,7 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 import { AuthError } from "@/server/auth/errors";
 import { getDatabase } from "@/server/db/client";
@@ -29,7 +31,12 @@ import { hasBlockBetween, noBlockBetween } from "@/server/social/blocking";
 
 const FOLLOW_LIST_LIMIT = 200;
 const SUGGESTION_LIMIT = 8;
+export const SUGGESTION_MAX_LIMIT = 20;
 const MEMBER_SEARCH_LIMIT = 8;
+/** Bu süreden yeni hesaplar öneri kartında "yeni katıldı" olarak işaretlenir. */
+const NEW_MEMBER_WINDOW_DAYS = 14;
+/** Rozet metni "X ve N kişi" biçiminde; ikiden fazla ada yer yok. */
+const MUTUAL_NAME_LIMIT = 2;
 
 export type FollowSummary = {
   followerCount: number;
@@ -45,9 +52,18 @@ export type FollowMemberSummary = {
   avatarUrl: string | null;
 };
 
+/**
+ * Öneri kartı "neden bu kişi" sorusunu yanıtlamak zorunda; aksi hâlde liste
+ * rastgele isimler yığınına dönüyor. Sunucu ham sinyalleri döner, rozet metnini
+ * arayüz kurar.
+ */
 export type SuggestedMemberSummary = FollowMemberSummary & {
   department: string;
   bio: string;
+  followerCount: number;
+  mutualCount: number;
+  mutualNames: string[];
+  isNewMember: boolean;
 };
 
 function normalizeMemberSearchQuery(value: string) {
@@ -259,14 +275,17 @@ export async function unfollowUser(
 ) {
   const targetId = await resolveActiveUserId(targetUsername);
 
-  await getDatabase()
-    .delete(follows)
-    .where(
-      and(
-        eq(follows.followerId, followerId),
-        eq(follows.followingId, targetId),
-      ),
-    );
+  await getDatabase().transaction(async (transaction) => {
+    await consumeRateLimit(transaction, followerId, "follow");
+    await transaction
+      .delete(follows)
+      .where(
+        and(
+          eq(follows.followerId, followerId),
+          eq(follows.followingId, targetId),
+        ),
+      );
+  });
 }
 
 export async function getFollowSummary(
@@ -317,19 +336,86 @@ export async function getFollowSummary(
   };
 }
 
-function toSuggestedMemberSummary(row: {
+type SuggestionRow = {
   id: string;
   username: string;
   displayName: string;
   avatarObjectKey: string | null;
   department: string;
   bio: string;
-}): SuggestedMemberSummary {
+  followerCount: number;
+  mutualCount: number;
+  createdAt: Date;
+};
+
+function toSuggestedMemberSummary(
+  row: SuggestionRow,
+  mutualNames: string[],
+  newMemberThreshold: Date,
+): SuggestedMemberSummary {
   return {
     ...toFollowMemberSummary(row),
     department: row.department,
     bio: row.bio,
+    followerCount: row.followerCount,
+    mutualCount: row.mutualCount,
+    mutualNames,
+    isNewMember: row.createdAt.getTime() >= newMemberThreshold.getTime(),
   };
+}
+
+/**
+ * Ortak takipçilerin adları yalnızca rozet metni için gerekiyor. Aday başına
+ * ayrı sorgu açmak yerine hepsi tek turda çekilip bellekte gruplanıyor.
+ */
+async function loadMutualFollowerNames(
+  viewerId: string,
+  candidateIds: string[],
+): Promise<Map<string, string[]>> {
+  const grouped = new Map<string, string[]>();
+
+  if (candidateIds.length === 0) {
+    return grouped;
+  }
+
+  const targetEdge = alias(follows, "target_edge");
+  const viewerEdge = alias(follows, "viewer_edge");
+
+  const rows = await getDatabase()
+    .select({
+      targetId: targetEdge.followingId,
+      displayName: users.displayName,
+    })
+    .from(targetEdge)
+    .innerJoin(
+      viewerEdge,
+      and(
+        eq(viewerEdge.followerId, viewerId),
+        eq(viewerEdge.followingId, targetEdge.followerId),
+      ),
+    )
+    .innerJoin(users, eq(users.id, targetEdge.followerId))
+    .where(
+      and(
+        inArray(targetEdge.followingId, candidateIds),
+        eq(users.status, "active"),
+        isNull(users.deletedAt),
+      ),
+    )
+    // En yeni takip ilişkisi önce: rozette tanıdık isim çıkma ihtimali yüksek.
+    .orderBy(desc(viewerEdge.createdAt))
+    .limit(candidateIds.length * MUTUAL_NAME_LIMIT * 4);
+
+  for (const row of rows) {
+    const names = grouped.get(row.targetId) ?? [];
+
+    if (names.length < MUTUAL_NAME_LIMIT) {
+      names.push(row.displayName);
+      grouped.set(row.targetId, names);
+    }
+  }
+
+  return grouped;
 }
 
 export async function getSuggestedMembers(
@@ -348,6 +434,37 @@ export async function getSuggestedMembers(
     return [];
   }
 
+  const safeLimit = Math.min(
+    Math.max(Math.trunc(limit), 1),
+    SUGGESTION_MAX_LIMIT,
+  );
+
+  // Profil sayfasındaki takipçi sayısıyla aynı hesap; orada da ham satır
+  // sayılıyor, iki yüzeyin farklı sayı göstermesi kafa karıştırır.
+  const followerCountSql = sql<number>`(
+    select count(*)::int
+    from ${follows} as follower_edge
+    where follower_edge.following_id = ${users.id}
+  )`;
+
+  // Görüntüleyenin takip ettiği kaç kişi bu adayı da takip ediyor. Askıya
+  // alınmış hesaplar sayılmıyor, çünkü adları rozette de gösterilmiyor.
+  const mutualCountSql = sql<number>`(
+    select count(*)::int
+    from ${follows} as target_edge
+    where target_edge.following_id = ${users.id}
+      and exists (
+        select 1
+        from ${follows} as viewer_edge
+        inner join ${users} as mutual_user
+          on mutual_user.id = viewer_edge.following_id
+        where viewer_edge.follower_id = ${viewerId}
+          and viewer_edge.following_id = target_edge.follower_id
+          and mutual_user.status = 'active'
+          and mutual_user.deleted_at is null
+      )
+  )`;
+
   const selection = {
     id: users.id,
     username: users.username,
@@ -356,7 +473,15 @@ export async function getSuggestedMembers(
     department: users.department,
     // Biyografi öneri kartında ilk bakışta görünüyor.
     bio: users.bio,
+    createdAt: users.createdAt,
+    followerCount: followerCountSql.as("follower_count"),
+    mutualCount: mutualCountSql.as("mutual_count"),
   };
+
+  // Ortak takipçisi olanlar üste: rozetin bir işe yaraması için sıranın da
+  // sinyali izlemesi gerekiyor. Eşitlikte rastgelelik korunuyor ki liste her
+  // ziyarette aynı yüzlerde donup kalmasın.
+  const suggestionOrder = [sql`mutual_count desc`, sql`random()`];
 
   const baseFilters: SQL[] = [
     ne(users.id, viewerId),
@@ -396,26 +521,43 @@ export async function getSuggestedMembers(
     .select(selection)
     .from(users)
     .where(and(...baseFilters, eq(users.department, viewer.department)))
-    .orderBy(sql`random()`)
-    .limit(limit);
+    .orderBy(...suggestionOrder)
+    .limit(safeLimit);
 
-  if (sameDepartmentRows.length >= limit) {
-    return sameDepartmentRows.map(toSuggestedMemberSummary);
+  let rows = sameDepartmentRows;
+
+  if (sameDepartmentRows.length < safeLimit) {
+    const excludedIds = sameDepartmentRows.map((row) => row.id);
+    const backfillFilters = excludedIds.length > 0
+      ? [...baseFilters, notInArray(users.id, excludedIds)]
+      : baseFilters;
+
+    const otherRows = await database
+      .select(selection)
+      .from(users)
+      .where(and(...backfillFilters))
+      .orderBy(...suggestionOrder)
+      .limit(safeLimit - sameDepartmentRows.length);
+
+    rows = [...sameDepartmentRows, ...otherRows];
   }
 
-  const excludedIds = sameDepartmentRows.map((row) => row.id);
-  const backfillFilters = excludedIds.length > 0
-    ? [...baseFilters, notInArray(users.id, excludedIds)]
-    : baseFilters;
+  const mutualNames = await loadMutualFollowerNames(
+    viewerId,
+    rows.filter((row) => row.mutualCount > 0).map((row) => row.id),
+  );
 
-  const otherRows = await database
-    .select(selection)
-    .from(users)
-    .where(and(...backfillFilters))
-    .orderBy(sql`random()`)
-    .limit(limit - sameDepartmentRows.length);
+  const newMemberThreshold = new Date(
+    Date.now() - NEW_MEMBER_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+  );
 
-  return [...sameDepartmentRows, ...otherRows].map(toSuggestedMemberSummary);
+  return rows.map((row) =>
+    toSuggestedMemberSummary(
+      row,
+      mutualNames.get(row.id) ?? [],
+      newMemberThreshold,
+    ),
+  );
 }
 
 type FollowListQuery = {

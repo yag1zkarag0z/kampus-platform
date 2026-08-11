@@ -11,8 +11,10 @@ const DAY = 24 * HOUR;
 export const DATA_RETENTION_POLICY = Object.freeze({
   otpChallengeAfterExpiryMs: DAY,
   sessionAfterInactiveMs: 7 * DAY,
-  rateLimitHitMs: 31 * DAY,
+  rateLimitHitDefaultMs: 2 * DAY,
+  rateLimitHitUsernameMs: 31 * DAY,
   notificationMs: 90 * DAY,
+  productFeedbackMs: 180 * DAY,
   emptyConversationMs: 7 * DAY,
   messageRequestCooldownMs: 30 * DAY,
   softDeletedContentMs: 30 * DAY,

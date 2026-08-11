@@ -31,6 +31,10 @@ export type FollowMemberDto = {
 export type SuggestedMemberDto = FollowMemberDto & {
   department: string;
   bio: string;
+  followerCount: number;
+  mutualCount: number;
+  mutualNames: string[];
+  isNewMember: boolean;
 };
 
 export function getMemberProfile(username: string) {
@@ -76,10 +80,13 @@ export function getMemberFollowing(username: string, cursor?: string) {
   );
 }
 
-export function getSuggestedFollows() {
-  return requestApi<SuggestedMemberDto[]>("/v1/me/suggested-follows", {
-    cache: "no-store",
-  });
+export function getSuggestedFollows(limit?: number) {
+  const query = limit ? `?limit=${limit}` : "";
+
+  return requestApi<SuggestedMemberDto[]>(
+    `/v1/me/suggested-follows${query}`,
+    { cache: "no-store" },
+  );
 }
 
 export function searchMembers(query: string) {

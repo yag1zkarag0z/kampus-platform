@@ -8,7 +8,7 @@ import SiteFooter from "@/components/SiteFooter";
 export const metadata: Metadata = {
   title: "Kullanım ve Topluluk Sözleşmesi | KAMPÜS.",
   description:
-    "KAMPÜS üyelik koşulları, topluluk kuralları, anonimlik sınırları ve moderasyon ilkeleri.",
+    "KAMPÜS üyelik, içerik, mesajlaşma, geri bildirim, gizlilik ve moderasyon koşulları.",
 };
 
 const sections = [
@@ -18,8 +18,10 @@ const sections = [
   { id: "anonimlik", title: "İçerik ve anonimlik" },
   { id: "kurallar", title: "Topluluk kuralları" },
   { id: "fotograflar", title: "Fotoğraf ve dosya yükleme" },
+  { id: "mesajlasma", title: "Mesajlaşma ve mesaj istekleri" },
   { id: "moderasyon", title: "Moderasyon, şikâyet ve engelleme" },
   { id: "haklar", title: "İçerik hakları" },
+  { id: "geri-bildirim", title: "Ürün geri bildirimi" },
   { id: "gizlilik", title: "Kişisel veriler ve gizlilik" },
   { id: "hesap-islemleri", title: "Hesabın askıya alınması veya silinmesi" },
   { id: "degisiklikler", title: "Değişiklikler ve iletişim" },
@@ -68,7 +70,7 @@ export default function TermsPage() {
           <div className="mx-auto max-w-6xl">
             <header className="max-w-4xl border-b border-white/10 pb-9 sm:pb-12">
               <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-brand sm:text-xs">
-                KAMPÜS. / Sözleşme v1.0
+                KAMPÜS. / Sözleşme v1.1
               </p>
               <h1 className="mt-4 max-w-4xl text-[clamp(2.55rem,8vw,5.7rem)] font-black leading-[0.92] tracking-[-0.06em]">
                 Kullanım ve
@@ -83,7 +85,7 @@ export default function TermsPage() {
               </p>
               <p className="mt-5 text-xs font-bold text-white/55">
                 Son güncelleme:{" "}
-                <time dateTime="2026-07-27">27 Temmuz 2026</time>
+                <time dateTime="2026-08-12">12 Ağustos 2026</time>
               </p>
             </header>
 
@@ -173,16 +175,18 @@ export default function TermsPage() {
                   <p>
                     Giriş yapmayan ziyaretçiler yalnızca KAMPÜS ekibi tarafından
                     hazırlanmış veya misafir görünümüne özel olarak yayımlanmış
-                    20 seçili içeriği okuyabilir. Bu içeriklerin yorumları,
-                    misafir bildirimleri ve isimsiz salt okunur profil
-                    görüntülenebilir; ana öğrenci akışına erişilemez. Misafirler
-                    beğeni, yorum, kaydetme, oy verme veya paylaşım işlemi
-                    yapamaz.
+                    seçili içerikleri okuyabilir. Misafir akışındaki gönderiler,
+                    yorumlar, profiller, bildirimler ve mesajlaşmalar ürünü
+                    tanıtmak için hazırlanmış örnek verilerdir; gerçek üye
+                    içeriği veya gerçek kişiler arası iletişim değildir. Ana
+                    öğrenci akışına ve üye mesajlarına erişilemez.
                   </p>
                   <p>
                     Bir öğrencinin içeriği, öğrenciden ayrıca izin alınmadan
                     misafir görünümüne taşınmaz. Böylece kampüs içindeki
-                    konuşmalar kampüs içinde kalır.
+                    konuşmalar kampüs içinde kalır. Misafirler etkileşimde
+                    bulunamaz veya mesaj gönderemez; yalnızca ürün geri
+                    bildirimi iletebilir.
                   </p>
                 </TermsSection>
 
@@ -274,27 +278,59 @@ export default function TermsPage() {
 
                 <TermsSection
                   number="07"
+                  id="mesajlasma"
+                  title="Mesajlaşma ve mesaj istekleri"
+                >
+                  <p>
+                    Mesajlaşma yalnızca doğrulanmış ve aktif üyeler arasında,
+                    bire bir metin konuşmaları için kullanılabilir. Karşılıklı
+                    takip eden üyelerin konuşması doğrudan açılır. Diğer
+                    durumlarda ilk mesaj bir istek olarak gider; alıcı isteği
+                    kabul edebilir, silebilir veya göndereni engelleyebilir.
+                    İstek kabul edilene kadar gönderen yalnızca ilk mesajı
+                    iletebilir.
+                  </p>
+                  <p>
+                    Mesajlar herkese açık değildir ancak uçtan uca şifreli de
+                    değildir. Bir mesaj şikâyet edildiğinde, bildirilen mesajın
+                    metni kararın incelenebilmesi ve denetlenebilmesi için
+                    moderasyon kaydına alınır; yalnızca yetkili moderasyon
+                    sürecinde görüntülenir. Hassas kişisel bilgileri mesajlarda
+                    paylaşmamalısın.
+                  </p>
+                  <p>
+                    Mesajı gönderen kendi mesajını silebilir. Engelleme yeni
+                    iletişimi durdurur ve taraflar arasındaki takip ilişkilerini
+                    kaldırır. Taciz, tehdit, spam ve izinsiz kişisel veri
+                    paylaşımı özel mesajlarda da topluluk kurallarına tabidir.
+                  </p>
+                </TermsSection>
+
+                <TermsSection
+                  number="08"
                   id="moderasyon"
                   title="Moderasyon, şikâyet ve engelleme"
                 >
                   <p>
-                    KAMPÜS; güvenliği korumak için içeriğin erişimini
-                    sınırlayabilir, yoruma kapatabilir veya içeriği kaldırabilir.
-                    İhlalin ağırlığına göre uyarı, geçici kısıtlama, hesap
-                    askıya alma ya da kalıcı hesap kapatma uygulanabilir.
+                    KAMPÜS; güvenliği korumak için gönderi, yorum veya mesajı
+                    inceleyebilir, içeriğin erişimini sınırlayabilir ya da
+                    içeriği kaldırabilir. İhlalin ağırlığına göre uyarı, geçici
+                    kısıtlama, hesap askıya alma ya da kalıcı hesap kapatma
+                    uygulanabilir.
                   </p>
                   <p>
                     Kullanıcılar içerikleri şikâyet edebilir ve istemedikleri
                     hesapları engelleyebilir. Engelleme, karşı taraf hakkında
                     ayrıca yaptırım uygulandığı anlamına gelmez; şikâyetler
                     bağlam ve kanıtlarla birlikte ayrı değerlendirilir. Mümkün
-                    olduğunda alınan kararın nedeni ve itiraz yolu kullanıcıya
-                    bildirilir.
+                    olduğunda alınan kararın nedeni kullanıcıya bildirilir;
+                    karara ilişkin itiraz uygulama içi geri bildirim kanalından
+                    iletilebilir. Moderasyon işlemleri denetim kaydı oluşturur.
                   </p>
                 </TermsSection>
 
                 <TermsSection
-                  number="08"
+                  number="09"
                   id="haklar"
                   title="İçerik hakları"
                 >
@@ -312,7 +348,31 @@ export default function TermsPage() {
                 </TermsSection>
 
                 <TermsSection
-                  number="09"
+                  number="10"
+                  id="geri-bildirim"
+                  title="Ürün geri bildirimi"
+                >
+                  <p>
+                    Üyeler ve misafirler hata, öneri veya diğer başlıklarıyla
+                    uygulama içi geri bildirim gönderebilir. Geri bildirim
+                    herkese açık yayımlanmaz; kategori, mesaj, gönderildiği
+                    sayfanın yolu ve oturum türüyle birlikte yetkili yönetim
+                    ekranında incelenir. Bu kanal acil yardım veya resmî ihbar
+                    kanalı değildir ve her mesaja bireysel yanıt garantisi
+                    vermez.
+                  </p>
+                  <p>
+                    Misafir kotası için uygulama veritabanında ham IP adresi
+                    yerine HMAC özeti tutulur. Üye hesabı silindiğinde geri
+                    bildirimin hesap bağlantısı hemen kaldırılır; geri bildirim
+                    kayıtları en fazla 180 gün sonunda temizlenir. Mesajına
+                    kendine veya başkasına ait gereksiz kişisel bilgi
+                    eklememelisin.
+                  </p>
+                </TermsSection>
+
+                <TermsSection
+                  number="11"
                   id="gizlilik"
                   title="Kişisel veriler ve gizlilik"
                 >
@@ -330,20 +390,27 @@ export default function TermsPage() {
                     alınır. Yalnızca hizmet için gerekli bilgiler
                     işlenmelidir.
                   </p>
+                  <p>
+                    Kişisel verilerin işlenmesini gerektiren sebepler ortadan
+                    kalktığında ilgili kayıtlar, yürürlükteki yükümlülükler ve
+                    ilan edilen saklama süreleri gözetilerek silinir, yok
+                    edilir veya anonim hâle getirilir.
+                  </p>
                 </TermsSection>
 
                 <TermsSection
-                  number="10"
+                  number="12"
                   id="hesap-islemleri"
                   title="Hesabın askıya alınması veya silinmesi"
                 >
                   <p>
                     Hesabını ayarlardan silme talebi oluşturabilirsin. Silme
-                    sonrasında profilin erişime kapatılır; mevzuat, güvenlik,
-                    kötüye kullanım incelemesi veya hak talepleri için tutulması
-                    zorunlu kayıtlar yalnızca gerekli süre boyunca
-                    saklanabilir. Ayrıntılar aydınlatma ve saklama
-                    politikalarında belirtilir.
+                    sonrasında profilin erişime kapatılır, aktif oturumların
+                    sonlandırılır ve hesap bilgilerin sistemde anonimleştirilir.
+                    Mevzuat, güvenlik, kötüye kullanım incelemesi veya hak
+                    talepleri için tutulması zorunlu kayıtlar yalnızca gerekli
+                    süre boyunca saklanabilir. Çözümlenmemiş şikâyetler ve
+                    bunlara bağlı moderasyon kanıtları bu süreden etkilenebilir.
                   </p>
                   <p>
                     Ağır veya tekrarlanan ihlallerde hesap önceden
@@ -353,15 +420,20 @@ export default function TermsPage() {
                 </TermsSection>
 
                 <TermsSection
-                  number="11"
+                  number="13"
                   id="degisiklikler"
-                  title="Değişiklikler"
+                  title="Değişiklikler ve iletişim"
                 >
                   <p>
                     Sözleşme değiştiğinde sürüm numarası ve güncelleme tarihi bu
                     sayfada gösterilir. Kullanıcı haklarını veya yükümlülüklerini
                     önemli ölçüde etkileyen değişikliklerde yeniden onay
                     istenebilir.
+                  </p>
+                  <p>
+                    Sözleşme, ürün veya moderasyon kararlarıyla ilgili sorularını
+                    uygulama içindeki “Geri bildirim” bağlantısından
+                    iletebilirsin.
                   </p>
                 </TermsSection>
 

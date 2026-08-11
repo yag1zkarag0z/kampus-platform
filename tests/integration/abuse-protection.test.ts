@@ -14,6 +14,7 @@ import {
   submitReport,
 } from "@/server/moderation/service";
 import { AuthError, type AuthErrorCode } from "@/server/auth/errors";
+import { consumeRateLimitForUser } from "@/server/rate-limit/service";
 
 const pool = new Pool({
   connectionString: process.env.TEST_DATABASE_URL,
@@ -234,6 +235,45 @@ describe("hız sınırı", () => {
     );
 
     expect(Number(usage.rows[0]!.total)).toBe(10);
+  });
+
+  it("eşzamanlı isteklerle genel yazma tavanının aşılmasına izin vermez", async () => {
+    const author = await insertUser("Concurrent Ceiling Author");
+    await fillRateLimitHits(author.id, "interaction", 119);
+
+    const results = await Promise.allSettled([
+      consumeRateLimitForUser(author.id, "interaction"),
+      consumeRateLimitForUser(author.id, "interaction"),
+    ]);
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    const rejected = results.find((result) => result.status === "rejected");
+    expect(rejected).toMatchObject({
+      status: "rejected",
+      reason: { code: "CONTENT_RATE_LIMITED", status: 429 },
+    });
+
+    const usage = await pool.query<{ total: string }>(
+      "select count(*) as total from rate_limit_hits where user_id = $1",
+      [author.id],
+    );
+    expect(Number(usage.rows[0]!.total)).toBe(120);
+  });
+
+  it("eşzamanlı avatar denemelerinde günlük kotayı atomik uygular", async () => {
+    const author = await insertUser("Concurrent Avatar Author");
+    await fillRateLimitHits(author.id, "avatar_upload", 4);
+
+    const results = await Promise.allSettled([
+      consumeRateLimitForUser(author.id, "avatar_upload"),
+      consumeRateLimitForUser(author.id, "avatar_upload"),
+    ]);
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.find((result) => result.status === "rejected")).toMatchObject({
+      status: "rejected",
+      reason: { code: "CONTENT_RATE_LIMITED", status: 429 },
+    });
   });
 });
 
