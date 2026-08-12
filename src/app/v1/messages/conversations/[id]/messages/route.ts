@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { recordAnalyticsEvent } from "@/server/analytics/service";
 import { requireActiveMember } from "@/server/auth/authorization";
 import {
   assertSameOrigin,
@@ -59,6 +60,8 @@ export async function POST(
       input.body,
       input.clientMessageId,
     );
+
+    void recordAnalyticsEvent("message_sent", { userId: member.userId });
 
     return NextResponse.json(
       { data: message },

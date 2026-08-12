@@ -190,9 +190,14 @@
   }
 }
 
+/* Kutu kartı boydan boya kaplamıyor: içeriği kadar yer tutup dikeyde
+   ortalanıyor. Germek, yazı ile araç satırı arasında kocaman bir boşluk
+   bırakıyordu; gerçek composer da akışın içinde ince bir şerit. */
 .composerSurface {
   position: absolute;
-  inset: 0.9rem;
+  inset-inline: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -204,12 +209,28 @@
 
 .composerBody {
   display: flex;
-  flex: 1;
   flex-direction: column;
-  padding: 0.8rem;
+  padding: 0.9rem;
+}
+
+/*
+ * Composer döngüsü — 7.2s, kart başına tek süre kuralı.
+ *
+ * Anlatı gerçek bir paylaşım: 0-10 boş, 12-45 yazılıyor, 14'te Paylaş
+ * canlanıyor (gerçekte de ilk harfte canlanır), 45-85 okunuyor, 85-92
+ * gönderiliyor, 92-100 composer temizleniyor.
+ */
+.composerPlaceholder {
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0;
+  color: rgb(255 255 255 / 42%);
+  white-space: nowrap;
+  animation: composerPlaceholder 7.2s ease-in-out infinite;
 }
 
 .typingLine {
+  position: relative;
   display: block;
   width: 0;
   max-width: 100%;
@@ -218,20 +239,26 @@
   color: rgb(255 255 255 / 88%);
   white-space: nowrap;
   animation:
-    composeTyping 7.2s steps(30, end) infinite,
+    composeTyping 7.2s steps(23, end) infinite,
+    composerSent 7.2s ease-in-out infinite,
     cursorBlink 680ms step-end infinite;
 }
 
-.composerOption {
-  animation: composerOptionPulse 7.2s ease-in-out infinite;
+.composerRing {
+  animation: composerRing 7.2s ease-in-out infinite;
 }
 
-.composerToggle {
-  animation: composerToggle 7.2s ease-in-out infinite;
+/* 2πr, r = 9. Süpürme stroke-dashoffset ile yapılıyor.
+   Dolum kasıtlı olarak çok az: gerçekte 24 karakter 500'lük sınırın ancak
+   %5'i. Halka neredeyse dolarken metnin kısacık olması yanlış görünüyordu. */
+.composerRingProgress {
+  stroke-dasharray: 56.55;
+  stroke-dashoffset: 56.55;
+  animation: composerRingProgress 7.2s ease-out infinite;
 }
 
 .composerSubmit {
-  animation: composerSubmit 7.2s ease-in-out infinite;
+  animation: composerSubmit 7.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
 
 @keyframes composeTyping {
@@ -240,9 +267,9 @@
     width: 0;
   }
 
-  40%,
-  86% {
-    width: 29ch;
+  45%,
+  92% {
+    width: 23ch;
   }
 
   96%,
@@ -257,65 +284,100 @@
   }
 }
 
-@keyframes composerOptionPulse {
+@keyframes composerPlaceholder {
   0%,
-  45% {
-    border-color: rgb(255 255 255 / 10%);
-    background: transparent;
-    color: rgb(255 255 255 / 45%);
+  10% {
+    opacity: 1;
   }
 
-  52%,
+  14%,
   88% {
-    border-color: rgb(255 107 61 / 46%);
-    background: var(--brand-soft);
-    color: #ff8968;
+    opacity: 0;
   }
 
   96%,
   100% {
-    border-color: rgb(255 255 255 / 10%);
-    background: transparent;
-    color: rgb(255 255 255 / 45%);
+    opacity: 1;
   }
 }
 
-@keyframes composerToggle {
+/* Gönderim: yazılan metin akışa doğru süzülüp kayboluyor. */
+@keyframes composerSent {
   0%,
-  60% {
-    background: rgb(255 255 255 / 10%);
-    transform: translateX(0);
+  85% {
+    opacity: 1;
+    transform: translateY(0);
   }
 
-  64%,
-  88% {
-    background: var(--brand);
-    transform: translateX(1rem);
+  92%,
+  95% {
+    opacity: 0;
+    transform: translateY(-6px);
   }
 
   96%,
   100% {
-    background: rgb(255 255 255 / 10%);
-    transform: translateX(0);
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes composerRing {
+  0%,
+  10% {
+    opacity: 0;
+  }
+
+  16%,
+  85% {
+    opacity: 1;
+  }
+
+  92%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes composerRingProgress {
+  0%,
+  12% {
+    stroke-dashoffset: 56.55;
+  }
+
+  45%,
+  92% {
+    stroke-dashoffset: 53.6;
+  }
+
+  96%,
+  100% {
+    stroke-dashoffset: 56.55;
   }
 }
 
 @keyframes composerSubmit {
   0%,
-  75% {
+  12% {
     background: rgb(255 255 255 / 12%);
     color: rgb(255 255 255 / 42%);
     transform: scale(1);
   }
 
-  78%,
-  88% {
+  18% {
     background: var(--brand);
     color: #101012;
     transform: scale(1.04);
   }
 
-  96%,
+  24%,
+  88% {
+    background: var(--brand);
+    color: #101012;
+    transform: scale(1);
+  }
+
+  92%,
   100% {
     background: rgb(255 255 255 / 12%);
     color: rgb(255 255 255 / 42%);
@@ -884,8 +946,9 @@
 
   .discoverRail,
   .typingLine,
-  .composerOption,
-  .composerToggle,
+  .composerPlaceholder,
+  .composerRing,
+  .composerRingProgress,
   .composerSubmit,
   .messageRow,
   .messageIncoming,
@@ -908,9 +971,31 @@
     display: none;
   }
 
+  /* Donmuş kare "paylaşılmaya hazır" hâli: metin yazılmış, imleç yok,
+     Paylaş marka renginde. */
   .typingLine {
-    width: 29ch;
+    width: 23ch;
     border-right: 0;
+    opacity: 1;
+    transform: none;
+  }
+
+  .composerPlaceholder {
+    opacity: 0;
+  }
+
+  .composerRing {
+    opacity: 1;
+  }
+
+  .composerRingProgress {
+    stroke-dashoffset: 53.6;
+  }
+
+  .composerSubmit {
+    background: var(--brand);
+    color: #101012;
+    transform: none;
   }
 
   .messageIncoming,

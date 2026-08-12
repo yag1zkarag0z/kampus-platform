@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 
 import type { CampusPostCategory } from "@/data/campusPosts";
 
@@ -21,6 +21,15 @@ const focusRing =
   "outline-none focus-visible:ring-3 focus-visible:ring-brand/40";
 const MENU_WIDTH = 224;
 const MENU_MARGIN = 12;
+
+/** Menüdeki bütün seçenekler aynı görünür; ayrıcalıklı satır yok. */
+function menuItemClassName(isActive: boolean) {
+  return `inline-flex min-h-11 items-center rounded-lg px-2.5 text-left text-[11px] font-bold transition-colors ${focusRing} ${
+    isActive
+      ? "bg-brand/20 text-brand"
+      : "text-white/78 hover:bg-white/8 hover:text-white"
+  }`;
+}
 
 type CampusCategoryNavProps = {
   activeCategory: CampusCategoryFilter;
@@ -143,49 +152,44 @@ export default function CampusCategoryNav({
           }}
           className="z-50 overflow-hidden rounded-2xl border border-white/12 bg-surface-raised p-2 shadow-[0_16px_40px_rgba(0,0,0,0.3)]"
         >
-          {onToggleDocumentOnly && (
-            <>
-              <button
-                type="button"
-                role="menuitemcheckbox"
-                aria-checked={hasDocumentOnly}
-                onClick={() => {
-                  onToggleDocumentOnly();
-                  setIsMenuOpen(false);
-                }}
-                className={`flex min-h-11 w-full items-center gap-1.5 rounded-lg px-2.5 text-left text-[11px] font-black transition-colors ${focusRing} ${
-                  hasDocumentOnly
-                    ? "bg-brand/20 text-brand"
-                    : "text-brand/85 hover:bg-brand/10 hover:text-brand"
-                }`}
-              >
-                📎 Ders notları
-              </button>
-              <div className="my-1.5 border-t border-white/8" />
-            </>
-          )}
+          {/* "Ders notları" ızgaranın dışında, kendi ayracı ve emojisiyle
+              duruyordu; menüde tek başına farklı görünen öğeydi. Artık
+              "Tümü"nün yanında bir hücre. Rolü yine checkbox: kategori
+              değil, kategoriyle birlikte çalışan bağımsız bir filtre. */}
           <div className="grid grid-cols-2 gap-1">
-            {campusCategoryFilters.map((category) => {
+            {campusCategoryFilters.map((category, index) => {
               const isActive = activeCategory === category;
 
               return (
-                <button
-                  key={category}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={isActive}
-                  onClick={() => {
-                    onCategoryChange(category);
-                    setIsMenuOpen(false);
-                  }}
-                  className={`inline-flex min-h-11 items-center rounded-lg px-2.5 text-left text-[11px] font-bold transition-colors ${focusRing} ${
-                    isActive
-                      ? "bg-brand/20 text-brand"
-                      : "text-white/78 hover:bg-white/8 hover:text-white"
-                  }`}
-                >
-                  {category}
-                </button>
+                <Fragment key={category}>
+                  <button
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={isActive}
+                    onClick={() => {
+                      onCategoryChange(category);
+                      setIsMenuOpen(false);
+                    }}
+                    className={menuItemClassName(isActive)}
+                  >
+                    {category}
+                  </button>
+
+                  {index === 0 && onToggleDocumentOnly && (
+                    <button
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={hasDocumentOnly}
+                      onClick={() => {
+                        onToggleDocumentOnly();
+                        setIsMenuOpen(false);
+                      }}
+                      className={menuItemClassName(hasDocumentOnly)}
+                    >
+                      Ders notları
+                    </button>
+                  )}
+                </Fragment>
               );
             })}
           </div>

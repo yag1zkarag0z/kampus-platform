@@ -230,72 +230,163 @@ function DiscoverDemo() {
   );
 }
 
+/**
+ * Tanıtımdaki composer, uygulamadaki gerçek composer'ın küçültülmüş hâli:
+ * avatar, "Kampüste ne oluyor?" yer tutucusu, ayraç, beş araç ikonu ve Paylaş.
+ * Önceki sürüm uygulamada karşılığı olmayan bir ekran gösteriyordu (taslak
+ * rozeti, başlık alanı, iki kategori çipi).
+ *
+ * Döngü gerçek bir paylaşımı anlatıyor: yaz → düğme canlansın → paylaş →
+ * composer temizlensin. İkonlar bilerek durağan; hareket yazma ve düğmede.
+ */
 function ComposerDemo() {
   return (
     <div className={styles.composerSurface} aria-hidden="true">
-      <div className="flex items-center justify-between gap-3 border-b border-white/8 px-3 py-2.5">
-        <div className="flex items-center gap-2.5">
+      <div className={styles.composerBody}>
+        <div className="flex min-w-0 items-start gap-2.5">
           <DemoAvatar src={avatarUrl("kayaozturk")} size="sm" />
-          <div>
-            <p className="text-[11px] font-black text-white/82">Yeni gönderi</p>
-            <p className="font-mono text-[8px] uppercase tracking-[0.11em] text-white/32">
-              @kayaozturk
-            </p>
+
+          <div className="relative min-w-0 flex-1 pt-1">
+            <span className={`${styles.composerPlaceholder} text-sm font-medium`}>
+              Kampüste ne oluyor?
+            </span>
+            <span
+              className={`${styles.typingLine} text-sm font-semibold`}
+              data-testid="composer-typing-line"
+            >
+              Yarın dersler iptal mi?
+            </span>
           </div>
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/25 bg-brand/8 px-2.5 py-1 font-mono text-[8px] font-black uppercase tracking-[0.11em] text-[#ff946c]">
-          <span className="size-1.5 rounded-full bg-brand" />
-          Taslak
-        </span>
-      </div>
 
-      <div className={styles.composerBody}>
-        <p className="text-[11px] font-bold text-white/35">Başlık ekle</p>
-        <div className="mt-2 min-h-8 overflow-hidden border-b border-white/9 pb-2 text-sm font-semibold sm:text-base">
-          <span className={styles.typingLine} data-testid="composer-typing-line">
-            Kampüste bugün ne oluyor?
-          </span>
-        </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] font-bold sm:text-[11px]">
-          <span
-            className={`${styles.composerOption} rounded-lg border px-3 py-2`}
-          >
-            Soru
-          </span>
-          <span className="rounded-lg border border-white/9 px-3 py-2 text-white/35">
-            İtiraf
-          </span>
-        </div>
-
-        <div className="mt-3 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 text-brand">
-            <span className="text-base">▧</span>
-            <span className="rounded border border-brand/30 px-1.5 py-0.5 font-mono text-[8px] font-black">
+        <div className="mt-4 flex items-center justify-between gap-2 border-t border-white/8 pt-3">
+          <div className="flex min-w-0 items-center gap-2 text-brand/85">
+            <ComposerToolPhotoIcon />
+            <span className="rounded border-2 border-current px-1 py-0.5 text-[7px] leading-none font-black tracking-[-0.04em]">
               GIF
             </span>
-            <span className="text-base">☻</span>
+            <ComposerToolPollIcon />
+            <ComposerToolEmojiIcon />
+            <ComposerToolListingIcon />
           </div>
 
-          <div className="flex items-center gap-2 font-mono text-[9px] font-black uppercase tracking-[0.08em] text-white/55">
-            <span className="relative h-4 w-8 rounded-full bg-white/10">
-              <span
-                className={`${styles.composerToggle} absolute left-0.5 top-0.5 size-3 rounded-full`}
-              />
+          <div className="flex shrink-0 items-center gap-2">
+            <ComposerCharacterRing />
+            <span
+              className={`${styles.composerSubmit} rounded-full px-4 py-1.5 text-[11px] font-black`}
+            >
+              Paylaş
             </span>
-            Anonim
           </div>
-        </div>
-
-        <div className="mt-auto flex justify-end pt-2">
-          <span
-            className={`${styles.composerSubmit} rounded-full px-5 py-2 text-xs font-black`}
-          >
-            Paylaş
-          </span>
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Gerçek composer'ın `CharacterRing` bileşeninin küçük kopyası: metin
+ * yazılmaya başlayınca beliriyor ve doluyor.
+ */
+function ComposerCharacterRing() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={`${styles.composerRing} size-4 -rotate-90`}
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="9"
+        fill="none"
+        stroke="rgba(255,255,255,0.14)"
+        strokeWidth="2.5"
+      />
+      <circle
+        cx="12"
+        cy="12"
+        r="9"
+        fill="none"
+        stroke="#ff6b3d"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        className={styles.composerRingProgress}
+      />
+    </svg>
+  );
+}
+
+/* Araç ikonları gerçek composer'daki path'lerin birebir aynısı; yalnızca
+   bento ölçeğine küçültüldü. */
+
+function ComposerToolPhotoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="size-4 shrink-0">
+      <rect
+        x="3.5"
+        y="4.5"
+        width="17"
+        height="15"
+        rx="2.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <circle cx="9" cy="10" r="1.6" fill="currentColor" />
+      <path
+        d="m5.5 17 4.2-4.1 3.1 2.8 2.2-2.1 3.5 3.4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ComposerToolPollIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="size-4 shrink-0">
+      <path
+        d="M5 7.5h2.5M5 12h2.5M5 16.5h2.5M11 7.5h8M11 12h5M11 16.5h7"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function ComposerToolEmojiIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="size-4 shrink-0">
+      <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="9" cy="10" r="1" fill="currentColor" />
+      <circle cx="15" cy="10" r="1" fill="currentColor" />
+      <path
+        d="M8.5 14.2c.8 1.2 2 1.8 3.5 1.8s2.7-.6 3.5-1.8"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function ComposerToolListingIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="size-4 shrink-0">
+      <path
+        d="M5 5h14v14H5zM8 9h8M8 13h5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M16.8 15.2h-1.6a1.2 1.2 0 0 0 0 2.4h1.6a1.2 1.2 0 0 0 0-2.4Z"
+        fill="currentColor"
+      />
+    </svg>
   );
 }
 

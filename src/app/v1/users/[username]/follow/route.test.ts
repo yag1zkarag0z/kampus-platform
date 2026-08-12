@@ -77,7 +77,8 @@ describe("POST /v1/users/[username]/follow", () => {
       state: {} as never,
       userId: memberId,
     });
-    mockedFollowUser.mockReset().mockResolvedValue(undefined);
+    // Yeni bir takip kenarı oluştu: ölçüm olayı yalnızca bu durumda yazılır.
+    mockedFollowUser.mockReset().mockResolvedValue(true);
     mockedGetFollowSummary.mockReset().mockResolvedValue(followSummary);
   });
 

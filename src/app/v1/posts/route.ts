@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { recordAnalyticsEvent } from "@/server/analytics/service";
 import {
   createContentPost,
   listContentPosts,
@@ -45,6 +46,17 @@ export async function POST(request: NextRequest) {
     const body = await readJsonBody(request);
     const input = parseContentInput(createPostSchema, body);
     const post = await createContentPost(member.userId, input);
+
+    // Ölçüm commit'ten sonra ve beklenmeden: paylaşım başarılıysa gönderi
+    // atılmış sayılır, olay kaydı düşse bile.
+    void recordAnalyticsEvent("post_created", {
+      userId: member.userId,
+      props: {
+        category: input.category,
+        isAnonymous: Boolean(input.isAnonymous),
+      },
+    });
+
     const response = NextResponse.json(
       { data: post },
       {

@@ -1,0 +1,10 @@
+CREATE TABLE "analytics_events" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"subject" varchar(64),
+	"name" varchar(48) NOT NULL,
+	"props" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	"created_at" timestamp (3) with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX "analytics_events_name_created_at_idx" ON "analytics_events" USING btree ("name","created_at");--> statement-breakpoint
+CREATE INDEX "analytics_events_subject_created_at_idx" ON "analytics_events" USING btree ("subject","created_at");

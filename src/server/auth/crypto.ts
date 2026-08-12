@@ -138,6 +138,18 @@ export function hashRequestIp(ipAddress: string) {
     .digest("hex");
 }
 
+/**
+ * Ölçüm olaylarının takma kimliği. Aynı kullanıcı için sabit olduğu için
+ * retention hesaplanabiliyor; ayrı bir namespace kullandığı için de ölçüm
+ * tablosu başka bir hash'le (ör. request-ip) eşleştirilemiyor.
+ */
+export function hashAnalyticsSubject(userId: string) {
+  return createHmac("sha256", deriveKey("analytics-subject"))
+    .update(userId)
+    .digest("hex")
+    .slice(0, 64);
+}
+
 export function createOpaqueSessionToken() {
   return randomBytes(32).toString("base64url");
 }

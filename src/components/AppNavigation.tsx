@@ -60,7 +60,9 @@ const navigationItems: readonly NavigationItem[] = [
 const mobileNavigationItems: readonly NavigationItem[] = [
   { href: "/akis", label: "Ana sayfa", icon: "home" },
   { href: "/kesfet", label: "Keşfet", icon: "discover" },
-  { href: "/mesajlar", label: "Mesajlar", icon: "messages" },
+  // Orta yuva en kolay ulaşılan yer; oraya tüketim değil üretim konuyor.
+  // Mesajlar üst bara taşındı.
+  { href: "/konu-olustur", label: "Gönderi", icon: "share" },
   { href: "/takip", label: "Kişiler", icon: "follow" },
   { href: "/profil", label: "Profil", icon: "profile" },
 ];
@@ -480,27 +482,35 @@ export default function AppNavigation() {
 
   return (
     <>
-      {/* Mobil üst bar: solda gönderi oluştur, ortada logo, sağda bildirimler. */}
+      {/* Mobil üst bar: solda mesajlar, ortada logo, sağda bildirimler.
+          İki gelen kutusu aynı barın iki ucunda; gönderi oluşturma alt
+          menünün orta yuvasına indi. */}
       <header
         className={`sticky top-0 z-40 grid min-h-16 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-white/8 bg-canvas/88 px-3 py-2 text-white backdrop-blur-xl transition-transform duration-300 md:hidden ${
           isMobileNavHidden ? "-translate-y-full" : "translate-y-0"
         }`}
       >
         <Link
-          href="/konu-olustur"
-          onClick={
-            isGuest
-              ? (event) =>
-                  handleGuestProtectedNavigation(
-                    event,
-                    "compose-mobile-header",
-                  )
-              : undefined
+          href="/mesajlar"
+          aria-label={
+            isUnreadMessageCountHydrated && unreadMessageCount > 0
+              ? `Mesajlar, ${unreadMessageCount} okunmamış mesaj`
+              : "Mesajlar"
           }
-          aria-label="Yeni gönderi oluştur"
-          className="grid size-11 place-items-center rounded-full text-white/72 outline-none transition-colors hover:bg-white/8 hover:text-white focus-visible:ring-3 focus-visible:ring-brand/40"
+          aria-current={
+            isActivePath(pathname, "/mesajlar") ? "page" : undefined
+          }
+          className={`grid size-11 place-items-center rounded-full outline-none transition-colors focus-visible:ring-3 focus-visible:ring-brand/40 ${
+            isActivePath(pathname, "/mesajlar")
+              ? "text-white"
+              : "text-white/62 hover:bg-white/8 hover:text-white"
+          }`}
         >
-          <ShareIcon className="size-[1.65rem]" />
+          <MessageNotificationIcon
+            key={`mobile-messages-${messageAnimationVersion}`}
+            isUnread={hasUnreadMessages}
+            className={notificationIconClassName("size-6")}
+          />
         </Link>
 
         <Link
@@ -538,13 +548,6 @@ export default function AppNavigation() {
           />
         </Link>
 
-        {guestNavStatus &&
-          guestNavAnchor === "compose-mobile-header" && (
-            <ActionStatusText
-              status={guestNavStatus}
-              className="absolute inset-x-3 top-full mt-2 text-center"
-            />
-          )}
       </header>
 
       <div className="relative z-40 hidden min-w-0 text-white md:col-start-1 md:row-start-1 md:flex md:justify-end">
@@ -841,6 +844,15 @@ export default function AppNavigation() {
           isMobileNavHidden ? "translate-y-full" : "translate-y-0"
         }`}
       >
+        {/* Gönderi oluşturma artık burada; misafir uyarısı da onunla birlikte
+            alt menüye taşındı. */}
+        {guestNavStatus && guestNavAnchor === "compose-mobile" && (
+          <ActionStatusText
+            status={guestNavStatus}
+            className="absolute inset-x-3 bottom-full mb-2 text-center"
+          />
+        )}
+
         <ul className="mx-auto grid max-w-lg grid-cols-5 gap-0">
           {mobileNavigationItems.map((item) => {
             const isActive = isActivePath(pathname, item.href);
@@ -849,6 +861,15 @@ export default function AppNavigation() {
               <li key={item.href} className="min-w-0">
                 <Link
                   href={item.href}
+                  onClick={
+                    isGuest && isGuestProtectedPath(item.href)
+                      ? (event) =>
+                          handleGuestProtectedNavigation(
+                            event,
+                            "compose-mobile",
+                          )
+                      : undefined
+                  }
                   aria-current={isActive ? "page" : undefined}
                   aria-label={
                     item.icon === "notifications" &&

@@ -6,6 +6,7 @@ import {
   authErrorResponse,
   noStoreHeaders,
 } from "@/server/auth/request";
+import { recordAnalyticsEvent } from "@/server/analytics/service";
 import {
   followUser,
   getFollowSummary,
@@ -28,8 +29,14 @@ export async function POST(
     const member = await requireActiveMember(request);
     const { username } = await context.params;
 
-    await followUser(member.userId, username);
+    const created = await followUser(member.userId, username);
     const summary = await getFollowSummary(member.userId, username);
+
+    if (created) {
+      void recordAnalyticsEvent("follow_created", {
+        userId: member.userId,
+      });
+    }
 
     return NextResponse.json(
       { data: summary },

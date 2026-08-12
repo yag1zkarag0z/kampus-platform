@@ -20,8 +20,13 @@ import {
   posts,
   users,
 } from "@/server/db/schema";
+import { logEvent } from "@/server/observability/logger";
 import { consumeRateLimit } from "@/server/rate-limit/service";
 
+import {
+  getImageModerator,
+  type ModerationVerdict,
+} from "./moderation";
 import { getMediaStorage } from "./storage";
 
 const MAX_OUTPUT_BYTES = IMAGE_UPLOAD_MAX_BYTES;
@@ -241,11 +246,56 @@ export async function processImage(file: File) {
       throw invalidImageError("Görsel güvenli boyutlara indirilemedi.");
     }
 
+    // Tarama tam burada: kullanıcıdan gelen her görsel bu fonksiyondan
+    // geçiyor (gönderi eki ve profil fotoğrafı), hazır avatar presetleri ise
+    // processTrustedAvatarSvg'den geçtiği için doğal olarak muaf.
+    await assertImageIsSafe(result.data);
+
     return { body: result.data, width, height };
   } catch (error) {
     if (error instanceof AuthError) throw error;
     throw invalidImageError("Dosya geçerli bir JPEG, PNG veya WebP görseli değil.");
   }
+}
+
+/**
+ * Uygunsuz görseli depolamaya hiç ulaştırmaz.
+ *
+ * Tarama servisi düşerse yükleme de düşer. Bu bilinçli: taranmamış görseli
+ * yayına almak, yüklemenin başarısız olmasından daha kötü. Kullanıcıya
+ * hangi etiketlerin yakalandığı söylenmiyor, yoksa eşiği deneyerek aşmak
+ * kolaylaşır; etiketler yalnızca sunucu kaydına yazılıyor.
+ */
+async function assertImageIsSafe(image: Buffer) {
+  let verdict: ModerationVerdict;
+
+  try {
+    verdict = await getImageModerator().inspect(image);
+  } catch (error) {
+    logEvent("error", "media.moderation_failed", {
+      errorMessage: error instanceof Error ? error.message : "unknown",
+    });
+
+    throw new AuthError(
+      "MEDIA_MODERATION_UNAVAILABLE",
+      "Görsel şu anda kontrol edilemedi, birazdan tekrar dene.",
+      { status: 503 },
+    );
+  }
+
+  if (verdict.safe) {
+    return;
+  }
+
+  logEvent("warn", "media.moderation_rejected", {
+    labels: verdict.labels.join(","),
+  });
+
+  throw new AuthError(
+    "MEDIA_REJECTED",
+    "Bu görsel topluluk kurallarına uymadığı için yüklenemedi.",
+    { status: 422 },
+  );
 }
 
 /** Only accepts SVG generated from the application's fixed avatar presets. */

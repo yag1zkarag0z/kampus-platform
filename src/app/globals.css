@@ -935,7 +935,35 @@ textarea {
   animation: campus-pop 320ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* Gönderi paylaşılabilir hâle geldiği an.
+ *
+ * Ana sayfadaki tanıtım animasyonunda en çok dikkat çeken kare buydu: düğme
+ * griden marka rengine geçerken hafifçe büyüyor. Gerçek composer'da yalnızca
+ * renk değişiyordu, ilk harfte butonun canlandığı fark edilmiyordu. Sınıf
+ * yalnızca hazır durumda eklendiği için animasyon geçiş başına bir kez oynar. */
+@keyframes campus-composer-ready {
+  0% {
+    transform: scale(0.98);
+  }
+
+  60% {
+    transform: scale(1.04);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.campus-composer-ready {
+  animation: campus-composer-ready 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .campus-composer-ready {
+    animation: none;
+  }
+
   .campus-pop-on-active[aria-pressed="true"] svg {
     animation: none;
   }

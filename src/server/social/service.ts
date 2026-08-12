@@ -249,7 +249,9 @@ export async function followUser(
 
   await assertNotBlocked(followerId, targetId);
 
-  await getDatabase().transaction(async (transaction) => {
+  // Zaten takip ediliyorsa yeni bir kenar oluşmaz; çağıran taraf bunu bilmeli
+  // ki ölçüm tekrar tıklamayı yeni takip gibi saymasın.
+  return await getDatabase().transaction(async (transaction) => {
     // Takip geri alınabildiği için follows tablosunu saymak sınırı
     // uygulamaya yetmez; ayrı sayaç kullanılıyor.
     await consumeRateLimit(transaction, followerId, "follow");
@@ -266,6 +268,8 @@ export async function followUser(
         actorId: followerId,
       });
     }
+
+    return inserted.length > 0;
   });
 }
 

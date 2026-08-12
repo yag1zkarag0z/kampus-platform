@@ -15,6 +15,7 @@ import {
 
 import type { SessionState } from "@/auth/types";
 import { reservedCampusUsernames } from "@/data/campusAccountRules";
+import { recordAnalyticsEvent } from "@/server/analytics/service";
 import { getDatabase } from "@/server/db/client";
 import {
   otpChallenges,
@@ -98,6 +99,8 @@ type VerificationTransactionResult =
   | {
       kind: "login";
       session: CreatedMemberSession;
+      /** Yalnızca ölçüm için; fonksiyonun dışarıya döndürdüğü şekle girmiyor. */
+      userId: string;
     };
 
 type RegistrationTransactionResult =
@@ -108,6 +111,7 @@ type RegistrationTransactionResult =
   | {
       kind: "success";
       session: CreatedMemberSession;
+      userId: string;
     };
 
 function secondsUntil(timestamp: Date, now: Date) {
@@ -661,6 +665,7 @@ export async function verifyOtpCode(
       return {
         kind: "login",
         session,
+        userId: user.id,
       };
     },
   );
@@ -672,6 +677,12 @@ export async function verifyOtpCode(
   if (transactionResult.kind === "registration") {
     return transactionResult;
   }
+
+  // Transaction bittikten sonra: ölçüm yazımı girişin kendisini geri
+  // saramamalı. Geri dönüş (D1/D7) bu olaydan hesaplanıyor.
+  void recordAnalyticsEvent("session_started", {
+    userId: transactionResult.userId,
+  });
 
   const resolvedSession = await resolveSessionCookie(
     transactionResult.session.cookieValue,
@@ -870,6 +881,7 @@ export async function registerAccount(
       return {
         kind: "success",
         session,
+        userId: user.id,
       };
       },
     );
@@ -914,6 +926,15 @@ export async function registerAccount(
   if (registrationResult.kind === "error") {
     throw registrationResult.error;
   }
+
+  // Kayıt ayrıca oturum da başlatıyor; ikisi de yazılıyor ki huni
+  // (kayıt → ilk gönderi) ve geri dönüş aynı tablodan hesaplanabilsin.
+  void recordAnalyticsEvent("account_registered", {
+    userId: registrationResult.userId,
+  });
+  void recordAnalyticsEvent("session_started", {
+    userId: registrationResult.userId,
+  });
 
   const resolvedSession = await resolveSessionCookie(
     registrationResult.session.cookieValue,

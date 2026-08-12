@@ -21,6 +21,7 @@ export type CleanupReport = {
   otpChallenges: number;
   sessions: number;
   rateLimitHits: number;
+  analyticsEvents: number;
   notifications: number;
   productFeedback: number;
   emptyConversations: number;
@@ -86,6 +87,7 @@ function emptyCleanupReport(): CleanupReport {
     otpChallenges: 0,
     sessions: 0,
     rateLimitHits: 0,
+    analyticsEvents: 0,
     notifications: 0,
     productFeedback: 0,
     emptyConversations: 0,
@@ -220,6 +222,7 @@ async function runCleanup(
     policy.rateLimitHitUsernameMs,
   );
   const notificationCutoff = retentionCutoff(now, policy.notificationMs);
+  const analyticsCutoff = retentionCutoff(now, policy.analyticsEventMs);
   const productFeedbackCutoff = retentionCutoff(
     now,
     policy.productFeedbackMs,
@@ -241,6 +244,7 @@ async function runCleanup(
       CleanupReport,
       | "otpChallenges"
       | "sessions"
+      | "analyticsEvents"
       | "notifications"
       | "productFeedback"
       | "emptyConversations"
@@ -280,6 +284,20 @@ async function runCleanup(
         for update skip locked
       )
       delete from sessions where id in (select id from candidates)
+      returning id`,
+    },
+    {
+      key: "analyticsEvents",
+      cutoff: analyticsCutoff,
+      count: "select count(*)::text as total from analytics_events where created_at <= $1",
+      remove: `with candidates as (
+        select id from analytics_events
+        where created_at <= $1
+        order by created_at, id
+        limit ${BATCH_MARKER}
+        for update skip locked
+      )
+      delete from analytics_events where id in (select id from candidates)
       returning id`,
     },
     {

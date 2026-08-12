@@ -7,6 +7,7 @@ import {
   noStoreHeaders,
   readJsonBody,
 } from "@/server/auth/request";
+import { recordAnalyticsEvent } from "@/server/analytics/service";
 import { createContentComment } from "@/server/content/service";
 import {
   createCommentSchema,
@@ -31,6 +32,12 @@ export async function POST(
       id,
       input,
     );
+
+    void recordAnalyticsEvent("comment_created", {
+      userId: member.userId,
+      props: { isReply: Boolean(input.parentId) },
+    });
+
     const response = NextResponse.json(
       { data: comment },
       {

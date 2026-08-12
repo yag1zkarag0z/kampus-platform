@@ -85,11 +85,8 @@ değildir.
 
 Henüz tamamlanmamış kapsam:
 
-- Yüklenen görsellerde otomatik NSFW taraması (AWS Rekognition planlı)
 - E-posta bildirimi gönderimi: `user_settings.email_notifications` alanı
   saklanıyor ancak arkasında çalışan bir worker yok
-- Süresi dolmuş OTP, session, bağlanmamış medya ve eski `rate_limit_hits`
-  kayıtları için temizlik görevleri
 - Least-privileged PostgreSQL rolü ve RLS politikaları
 
 ## 1. Temel kararlar
@@ -767,10 +764,25 @@ Tamamlandı:
 16. Development/test için idempotent seed script'i (`npm run db:seed`)
 17. Batch cleanup worker, object-storage reconciliation ve veri saklama
     politikası (`DATA_RETENTION.md`)
+18. Yüklenen görsellerde otomatik NSFW taraması: `processImage` içinde
+    senkron çalışır, bu yüzden işaretlenen görsel hiç depolanmaz ve hiçbir an
+    yayında olmaz. Sürücü `MEDIA_MODERATION_DRIVER` ile seçilir; üretimde
+    `rekognition` olmalıdır. Tarama başarısız olursa yükleme de başarısız
+    olur (503). Hazır avatar presetleri `processTrustedAvatarSvg`'den geçtiği
+    için muaftır.
+
+19. Ürün ölçümü: `analytics_events` tablosu ve altı temel olay
+    (`account_registered`, `session_started`, `post_created`,
+    `comment_created`, `follow_created`, `message_sent`). Olaylar sunucu
+    tarafında, ilgili transaction commit olduktan sonra ve beklenmeden
+    yazılır; yazım düşerse kullanıcının işlemi etkilenmez. `subject` alanı
+    kullanıcı kimliğinin HMAC'lı takma karşılığıdır: aynı kişi için sabit
+    olduğu için retention hesaplanabilir, geriye çevrilemediği için tablo
+    kimlik kaydı değildir. Saklama süresi
+    `DATA_RETENTION_POLICY.analyticsEventMs` (180 gün).
 
 Kalan:
 
-18. Yüklenen görsellerde otomatik NSFW taraması
-19. Production altyapısı: SMTP, S3, yedekleme, loglama, izleme
-20. Least-privileged PostgreSQL rolü ve migration/runtime ayrımı
-21. Tam kod güvenlik incelemesi
+20. Production altyapısı: SMTP, S3, yedekleme, loglama, izleme
+21. Least-privileged PostgreSQL rolü ve migration/runtime ayrımı
+22. Tam kod güvenlik incelemesi

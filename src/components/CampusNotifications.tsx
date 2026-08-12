@@ -289,17 +289,17 @@ function NotificationItem({
   const compactTime = formatCompactRelativeTime(notification.createdAt);
 
   return (
-    <li className="mx-2 mb-1.5 overflow-hidden rounded-[1.25rem] sm:mx-3">
+    <li className="mx-2 mb-1.5 overflow-hidden rounded-2xl sm:mx-3">
       <Link
         href={getNotificationHref(notification)}
         onClick={() => void onMarkAsRead(notification.id)}
         aria-label={`${copy.actorLabel} ${copy.action} ${copy.preview}. ${
           isRead ? "" : "Okunmamış. "
         }${time}. ${targetLabel}`}
-        className={`group relative flex min-h-[5.65rem] items-center gap-3 px-3 py-3 transition-colors sm:px-4 ${focusRing} ${
+        className={`group relative flex min-h-20 items-start gap-3 px-3 py-3.5 transition-colors sm:px-4 ${focusRing} ${
           isRead
             ? "bg-white/[0.025] hover:bg-white/[0.045]"
-            : "bg-brand/[0.075] hover:bg-brand/[0.1]"
+            : "bg-brand/8 hover:bg-brand/12"
         }`}
       >
         <span className="relative shrink-0">
@@ -321,30 +321,34 @@ function NotificationItem({
             <span className="font-medium text-white/62">{copy.action}</span>
           </span>
 
-          <span className="mt-1 flex min-w-0 items-start gap-1.5 text-[11px] leading-4 sm:text-xs">
-            {copy.preview && (
-              <span
-                className={`min-w-0 flex-1 line-clamp-2 ${
-                  isRead ? "text-white/38" : "text-white/58"
-                }`}
-              >
-                {copy.preview}
-              </span>
-            )}
-            {copy.preview && (
-              <span aria-hidden="true" className="shrink-0 text-white/25">
-                ·
-              </span>
-            )}
+          {/* Gönderi metni bildirimin asıl içeriği; 11px ve %38 opaklıkta
+              okunmuyordu. Zaman ve "Yeni" ayrı satıra indi ki önizleme tam
+              genişliği kullansın. */}
+          {copy.preview && (
+            <span
+              className={`mt-1.5 block min-w-0 line-clamp-2 text-[13px] leading-5 ${
+                isRead ? "text-white/60" : "text-white/82"
+              }`}
+            >
+              {copy.preview}
+            </span>
+          )}
+
+          <span className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[11px] leading-4 font-semibold">
             <time
               dateTime={notification.createdAt}
               title={time}
-              className="shrink-0 text-white/35"
+              className="shrink-0 text-white/45"
             >
               {compactTime}
             </time>
             {!isRead && (
-              <span className="shrink-0 font-black text-brand">Yeni</span>
+              <>
+                <span aria-hidden="true" className="shrink-0 text-white/30">
+                  ·
+                </span>
+                <span className="shrink-0 font-black text-brand">Yeni</span>
+              </>
             )}
           </span>
         </span>
@@ -359,7 +363,7 @@ function NotificationKindBadge({ kind }: { kind: NotificationKindDto }) {
   return (
     <span
       aria-hidden="true"
-      className="absolute -right-1 -bottom-1 grid size-5 place-items-center rounded-full border-2 border-canvas bg-brand text-[#17110f] shadow-sm"
+      className="absolute -right-1 -bottom-1 grid size-5 place-items-center rounded-full border-2 border-canvas bg-brand text-[#101012] shadow-sm"
     >
       {kind === "like" ? (
         <HeartIcon className="size-3" />
@@ -383,33 +387,16 @@ function NotificationTargetPreview({
 }) {
   if (notification.kind === "follow") {
     return (
-      <span className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-full bg-brand px-3 text-[11px] font-black text-[#17110f] transition-transform group-hover:scale-[1.02] sm:min-h-10 sm:px-4 sm:text-xs">
+      <span className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-full bg-brand px-3 text-[11px] font-black text-[#101012] transition-transform group-hover:scale-[1.02] sm:min-h-10 sm:px-4 sm:text-xs">
         Profil
       </span>
     );
   }
 
-  if (!notification.post) {
-    return null;
-  }
-
-  return (
-    <span
-      aria-hidden="true"
-      className="relative grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/8 bg-[#191615] sm:size-16"
-    >
-      <span
-        className="absolute inset-0 opacity-60"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(135deg, rgba(255,107,64,0.10) 0 5px, transparent 5px 10px)",
-        }}
-      />
-      <span className="relative text-[7px] font-black uppercase tracking-[0.12em] text-white/26">
-        Gönderi
-      </span>
-    </span>
-  );
+  // Gönderi için sağda küçük resim yok: gerçek görseli değil, tarama desenli
+  // sahte bir kutu gösteriyordu. Bilgi taşımayan bu blok yerine satırın kendi
+  // önizleme metni okunuyor.
+  return null;
 }
 
 function PersonBadgeIcon() {

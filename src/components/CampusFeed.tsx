@@ -455,6 +455,11 @@ export default function CampusFeed() {
     );
   }, [activeCategory, posts]);
   const eagerImagePostId = visiblePosts.find((post) => post.image)?.id;
+  // Paylaş düğmesinin "hazır" görünümü gerçekten gönderilebilir olmasına
+  // bağlanıyor; önceden yalnızca metne bakıyordu, görsel işlenirken marka
+  // renginde ama tıklanamaz duruyordu. Gönderim sırasında hazır kalır.
+  const isQuickPostReady =
+    Boolean(quickPostBody.trim()) && isHydrated && !isQuickPostImageProcessing;
   // Üçüncü gönderiden sonra: ilk oturumda mutlaka görülecek kadar yukarıda,
   // akışı karşılamayacak kadar aşağıda. Akış üçten kısaysa sonuna düşer,
   // çünkü asıl ihtiyacı olan kimseyi takip etmeyen kullanıcı.
@@ -1166,9 +1171,9 @@ export default function CampusFeed() {
               isQuickPostImageProcessing ||
               isQuickPostSubmitting
             }
-            className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center rounded-full px-4 text-sm font-black transition-colors disabled:cursor-not-allowed sm:min-h-12 sm:px-6 sm:text-base ${focusRing} ${
-              quickPostBody.trim()
-                ? "bg-brand text-[#101012] hover:bg-brand/90"
+            className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center rounded-full px-4 text-sm font-black transition-[background-color,color,box-shadow] duration-200 disabled:cursor-not-allowed sm:min-h-12 sm:px-6 sm:text-base ${focusRing} ${
+              isQuickPostReady
+                ? "campus-composer-ready bg-brand text-[#101012] shadow-[0_8px_22px_rgba(255,107,61,0.12)] hover:bg-brand/90 hover:shadow-[0_10px_28px_rgba(255,107,61,0.18)]"
                 : "bg-white/12 text-white/40"
             }`}
           >
@@ -1625,7 +1630,7 @@ function ComposerAction({
       aria-pressed={isActive}
       onClick={onClick}
       disabled={disabled}
-      className={`grid size-8 shrink-0 place-items-center transition-colors disabled:cursor-wait disabled:opacity-45 sm:size-12 ${focusRing} ${
+      className={`campus-pop-on-active grid size-8 shrink-0 place-items-center transition-colors disabled:cursor-wait disabled:opacity-45 sm:size-12 ${focusRing} ${
         isActive
           ? "bg-brand/12 text-brand"
           : "text-brand/85 hover:bg-brand/8 hover:text-brand"

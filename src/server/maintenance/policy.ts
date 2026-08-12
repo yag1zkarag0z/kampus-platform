@@ -14,6 +14,9 @@ export const DATA_RETENTION_POLICY = Object.freeze({
   rateLimitHitDefaultMs: 2 * DAY,
   rateLimitHitUsernameMs: 31 * DAY,
   notificationMs: 90 * DAY,
+  // İki dönemlik karşılaştırmaya yetecek kadar; ölçüm geçmişi süresiz
+  // saklanacak bir şey değil.
+  analyticsEventMs: 180 * DAY,
   productFeedbackMs: 180 * DAY,
   emptyConversationMs: 7 * DAY,
   messageRequestCooldownMs: 30 * DAY,
