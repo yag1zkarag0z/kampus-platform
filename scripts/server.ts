@@ -1,6 +1,6 @@
 import { loadEnvConfig } from "@next/env";
 
-import { validateRuntimeConfiguration } from "@/server/runtime-configuration";
+import { validateRuntimeConfiguration } from "@/server/runtime-configuration-core";
 
 import { startCampusServer } from "./campus-server";
 
