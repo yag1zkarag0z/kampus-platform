@@ -9,6 +9,7 @@ import {
 } from "@/server/auth/request";
 import { restoreUser, suspendUser } from "@/server/moderation/service";
 import {
+  moderationEntityIdSchema,
   parseModerationInput,
   updateUserStatusSchema,
 } from "@/server/moderation/validation";
@@ -29,7 +30,8 @@ export async function PATCH(
     const moderator = await requireActiveModerator(request);
     const body = await readJsonBody(request);
     const input = parseModerationInput(updateUserStatusSchema, body);
-    const { id } = await context.params;
+    const params = await context.params;
+    const id = parseModerationInput(moderationEntityIdSchema, params.id);
 
     if (input.status === "suspended") {
       await suspendUser(moderator.userId, id, input.note);

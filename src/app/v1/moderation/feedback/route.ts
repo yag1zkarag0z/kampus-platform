@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireActiveModerator } from "@/server/auth/authorization";
-import { authErrorResponse, noStoreHeaders } from "@/server/auth/request";
+import {
+  authErrorResponse,
+  noStoreHeaders,
+  readQueryParams,
+} from "@/server/auth/request";
 import { listProductFeedback } from "@/server/feedback/service";
 import {
   listFeedbackQuerySchema,
@@ -16,13 +20,14 @@ export async function GET(request: NextRequest) {
   try {
     await requireActiveModerator(request);
     const searchParams = request.nextUrl.searchParams;
+    const rawQuery = readQueryParams(searchParams);
     const filters = parseFeedbackInput(listFeedbackQuerySchema, {
-      status: searchParams.get("status") ?? undefined,
-      category: searchParams.get("category") ?? undefined,
+      status: rawQuery.status,
+      category: rawQuery.category,
     });
     const pagination = parseTimelineQuery(
       new URLSearchParams(
-        [...searchParams.entries()].filter(
+        Object.entries(rawQuery).filter(
           ([key]) => key !== "status" && key !== "category",
         ),
       ),

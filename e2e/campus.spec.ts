@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { resolve } from "node:path";
 
+import { deleteE2eUserById } from "./helpers/database";
 import { waitForOtpEmail } from "./helpers/mailpit";
 import {
   createUniqueStudentIdentity,
@@ -84,6 +85,43 @@ test("member can complete the real OTP login flow", async ({ page }) => {
 
   await page.reload();
   await expect(page.getByLabel("Gönderi metni")).toBeVisible();
+});
+
+test("member can permanently delete a recently authenticated account", async ({
+  page,
+}) => {
+  const identity = createUniqueStudentIdentity("delete-account");
+
+  await seedMemberSession(page, identity);
+  const session = await getSessionState(page);
+
+  if (session.mode !== "member") {
+    throw new Error("Deletion E2E setup did not create a member session.");
+  }
+
+  try {
+    await page.goto("/ayarlar");
+    await page
+      .getByRole("button", { name: "Hesabımı sil", exact: true })
+      .first()
+      .click();
+
+    const dialog = page.getByRole("dialog", {
+      name: "Hesabını silmek istediğine emin misin?",
+    });
+    await expect(dialog).toBeVisible();
+    await dialog.getByLabel(/tam olarak SIFIRLA yaz/i).fill("SIFIRLA");
+    await dialog
+      .getByRole("button", { name: "Hesabımı sil", exact: true })
+      .click();
+
+    await expect(page).toHaveURL(/\/kayit$/);
+    await expect.poll(async () => (await getSessionState(page)).mode).toBe(
+      "signed-out",
+    );
+  } finally {
+    await deleteE2eUserById(session.user.id);
+  }
 });
 
 test("registration persists a member account", async ({ page }) => {

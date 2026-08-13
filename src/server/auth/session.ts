@@ -37,6 +37,7 @@ export type CreatedMemberSession = {
 };
 
 export type ResolvedSession = {
+  authenticatedAt?: Date;
   shouldClearCookie: boolean;
   state: SessionState;
 };
@@ -206,6 +207,7 @@ export async function resolveSessionCookie(
   const rows = await database
     .select({
       sessionId: sessions.id,
+      sessionCreatedAt: sessions.createdAt,
       expiresAt: sessions.expiresAt,
       revokedAt: sessions.revokedAt,
       issuedRole: sessions.issuedRole,
@@ -270,6 +272,7 @@ export async function resolveSessionCookie(
   }
 
   return {
+    authenticatedAt: row.sessionCreatedAt,
     shouldClearCookie: false,
     state: {
       mode: "member",

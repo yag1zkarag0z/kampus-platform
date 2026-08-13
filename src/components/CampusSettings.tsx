@@ -22,6 +22,7 @@ import { useCampusData } from "@/components/CampusDataProvider";
 import { useCampusModeration } from "@/components/CampusModerationProvider";
 import { useFeedback } from "@/components/FeedbackProvider";
 import { useActionStatus } from "@/components/useActionStatus";
+import { AuthClientError } from "@/auth/client";
 
 const DELETE_CONFIRMATION = "SIFIRLA";
 
@@ -193,10 +194,15 @@ export default function CampusSettings() {
       resetCampusData();
       resetModeration();
       setIsDeleteDialogOpen(false);
-      router.replace("/kayit");
-    } catch {
+      // AccountProvider aynı anda signed-out state'ine geçtiği için platform
+      // guard'ının /giris yönlendirmesiyle yarışmamak adına tam sayfa geçişi.
+      window.location.replace("/kayit");
+    } catch (error) {
       setDeleteStatus({
-        message: "Hesabın silinemedi. Lütfen yeniden dene.",
+        message:
+          error instanceof AuthClientError
+            ? error.message
+            : "Hesabın silinemedi. Lütfen yeniden dene.",
         tone: "error",
       });
     } finally {
@@ -611,11 +617,10 @@ export default function CampusSettings() {
               danger
             >
               <p className="text-xs leading-5 text-white/62">
-                Profil bilgilerin (isim, biyografi, e-posta, kullanıcı adı,
-                profil fotoğrafı) sunucuda anonimleştirilir ve hesabına bir
-                daha giriş yapılamaz. Bu cihazdaki geçici veriler de
-                temizlenir. Gönderilerin ve yorumların kalır, ama yazarları
-                “Silinmiş kullanıcı” olarak görünür.
+                Profil ve hesap bilgilerin hemen anonimleştirilir, tüm
+                oturumların kapatılır. Paylaşımların 30 günlük silme sürecinin
+                sonunda kaldırılır; açık moderasyon kaydı varsa yalnızca kayıt
+                süresi tamamlanana kadar anonim tutulur.
               </p>
               <button
                 ref={deleteTriggerRef}
@@ -679,8 +684,8 @@ export default function CampusSettings() {
               <p>Onayladığında:</p>
               <ul className="mt-2 grid gap-1.5 pl-5">
                 <li className="list-disc">
-                  Profilin (isim, biyografi, e-posta, kullanıcı adı, profil
-                  fotoğrafı) sunucuda anonimleştirilir,
+                  Profilin, öğrenci bilgilerin ve profil fotoğrafın hemen
+                  anonimleştirilir,
                 </li>
                 <li className="list-disc">
                   Tüm oturumların kapatılır ve hesabına bir daha giriş
@@ -690,10 +695,14 @@ export default function CampusSettings() {
                   Bu cihazdaki yerel konu ve yorumlar, kaydettiklerin ve
                   moderasyon tercihlerin temizlenir.
                 </li>
+                <li className="list-disc">
+                  Paylaşımların 30 günlük teknik silme sürecinin sonunda
+                  kaldırılır.
+                </li>
               </ul>
               <p className="mt-3 font-bold text-danger">
-                Gönderilerin ve yorumların kalır; yazarları “Silinmiş
-                kullanıcı” olarak görünür. Bu işlem geri alınamaz.
+                Güvenlik için son 30 dakika içinde giriş yapmış olmalısın. Bu
+                işlem geri alınamaz.
               </p>
             </div>
 

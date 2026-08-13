@@ -28,8 +28,20 @@ const moderationEnvironmentSchema = z
       .max(100)
       .default(70),
     AWS_REGION: z.string().trim().min(1).optional(),
+    NODE_ENV: z.enum(["development", "test", "production"]).optional(),
   })
   .superRefine((value, context) => {
+    if (
+      value.NODE_ENV === "production" &&
+      value.MEDIA_MODERATION_DRIVER !== "rekognition"
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Production image moderation must use Rekognition.",
+        path: ["MEDIA_MODERATION_DRIVER"],
+      });
+    }
+
     if (value.MEDIA_MODERATION_DRIVER === "rekognition" && !value.AWS_REGION) {
       context.addIssue({
         code: "custom",

@@ -15,6 +15,7 @@ import CampusListingMeta from "@/components/CampusListingMeta";
 import CampusProfileHero from "@/components/CampusProfileHero";
 import CampusPoll from "@/components/CampusPoll";
 import CampusSavedPosts from "@/components/CampusSavedPosts";
+import { useFeedback } from "@/components/FeedbackProvider";
 import {
   campusCategoryBadgeBase,
   campusCategoryStyles,
@@ -58,6 +59,7 @@ export default function CampusProfile() {
   } =
     useCampusAccount();
   const { posts, isHydrated: isDataHydrated } = useCampusData();
+  const { openFeedback } = useFeedback();
   const [activeTab, setActiveTab] = useState<ProfileTab>("topics");
   const profileTabs: readonly ProfileTab[] = isGuest
     ? ["topics", "comments"]
@@ -168,19 +170,31 @@ export default function CampusProfile() {
             </p>
           </div>
 
-          {isGuest ? (
-            <span className="shrink-0 justify-self-end bg-orange/7 px-[8px] py-[6px] font-mono text-[8px] font-black uppercase tracking-[0.08em] text-white/55 sm:px-[10px] sm:text-[9px] sm:tracking-[0.1em]">
-              Misafir Girişi
-            </span>
-          ) : (
-            <Link
-              href="/ayarlar"
-              aria-label="Hesap ayarlarını aç"
-              className={`grid size-[44px] shrink-0 place-items-center justify-self-end rounded-full text-white/55 transition-colors hover:bg-white/7 hover:text-white ${focusRing}`}
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              aria-label="Geri bildirim"
+              title="Geri bildirim"
+              onClick={openFeedback}
+              className={`grid size-[44px] shrink-0 place-items-center rounded-full text-white/55 transition-colors hover:bg-white/7 hover:text-white md:hidden ${focusRing}`}
             >
-              <SettingsIcon />
-            </Link>
-          )}
+              <FeedbackIcon />
+            </button>
+
+            {isGuest ? (
+              <span className="shrink-0 bg-orange/7 px-[8px] py-[6px] font-mono text-[8px] font-black uppercase tracking-[0.08em] text-white/55 sm:px-[10px] sm:text-[9px] sm:tracking-[0.1em]">
+                Misafir Girişi
+              </span>
+            ) : (
+              <Link
+                href="/ayarlar"
+                aria-label="Hesap ayarlarını aç"
+                className={`grid size-[44px] shrink-0 place-items-center rounded-full text-white/55 transition-colors hover:bg-white/7 hover:text-white ${focusRing}`}
+              >
+                <SettingsIcon />
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 
@@ -603,6 +617,24 @@ function SettingsIcon() {
     >
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.8 1.8 0 0 0 .36 2l.06.06-2.12 2.12-.06-.06a1.8 1.8 0 0 0-2-.36 1.8 1.8 0 0 0-1.1 1.64v.1h-3v-.1a1.8 1.8 0 0 0-1.1-1.64 1.8 1.8 0 0 0-2 .36l-.06.06-2.12-2.12.06-.06a1.8 1.8 0 0 0 .36-2A1.8 1.8 0 0 0 5 13.9h-.1v-3H5a1.8 1.8 0 0 0 1.64-1.1 1.8 1.8 0 0 0-.36-2l-.06-.06 2.12-2.12.06.06a1.8 1.8 0 0 0 2 .36A1.8 1.8 0 0 0 11.5 4.4v-.1h3v.1a1.8 1.8 0 0 0 1.1 1.64 1.8 1.8 0 0 0 2-.36l.06-.06 2.12 2.12-.06.06a1.8 1.8 0 0 0-.36 2 1.8 1.8 0 0 0 1.64 1.1h.1v3H21A1.8 1.8 0 0 0 19.4 15Z" />
+    </svg>
+  );
+}
+
+function FeedbackIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-5"
+    >
+      <path d="M5.2 5.5h13.6a2.2 2.2 0 0 1 2.2 2.2v7.1a2.2 2.2 0 0 1-2.2 2.2h-7.4l-4.5 3v-3H5.2A2.2 2.2 0 0 1 3 14.8V7.7a2.2 2.2 0 0 1 2.2-2.2Z" />
+      <path d="M8 9.2h8M8 12.8h5.2" />
     </svg>
   );
 }

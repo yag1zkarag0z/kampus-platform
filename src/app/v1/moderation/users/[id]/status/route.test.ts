@@ -50,8 +50,8 @@ function createRequest(body: unknown, origin = appOrigin) {
   );
 }
 
-function context() {
-  return { params: Promise.resolve({ id: targetId }) };
+function context(id = targetId) {
+  return { params: Promise.resolve({ id }) };
 }
 
 describe("PATCH /v1/moderation/users/[id]/status", () => {
@@ -109,6 +109,16 @@ describe("PATCH /v1/moderation/users/[id]/status", () => {
     expect(response.status).toBe(400);
     expect(suspendResponse.status).toBe(400);
     expect(mockedRestoreUser).not.toHaveBeenCalled();
+    expect(mockedSuspendUser).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid target id", async () => {
+    const response = await PATCH(
+      createRequest({ status: "suspended", note: "Geçerli gerekçe." }),
+      context("not-a-uuid"),
+    );
+
+    expect(response.status).toBe(400);
     expect(mockedSuspendUser).not.toHaveBeenCalled();
   });
 

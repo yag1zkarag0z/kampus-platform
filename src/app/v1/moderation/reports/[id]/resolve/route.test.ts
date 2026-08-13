@@ -51,8 +51,8 @@ function createRequest(
   );
 }
 
-function context() {
-  return { params: Promise.resolve({ id: reportId }) };
+function context(id = reportId) {
+  return { params: Promise.resolve({ id }) };
 }
 
 describe("POST /v1/moderation/reports/[id]/resolve", () => {
@@ -98,6 +98,13 @@ describe("POST /v1/moderation/reports/[id]/resolve", () => {
       createRequest({ resolution: "content_removed" }),
       context(),
     );
+
+    expect(response.status).toBe(400);
+    expect(mockedResolveReport).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid report id", async () => {
+    const response = await POST(createRequest(), context("not-a-uuid"));
 
     expect(response.status).toBe(400);
     expect(mockedResolveReport).not.toHaveBeenCalled();

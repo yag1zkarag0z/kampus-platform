@@ -22,17 +22,21 @@ async function main() {
   }
 
   const pool = new Pool({ connectionString: databaseUrl });
+  const client = await pool.connect();
 
   try {
-    const result = await pool.query<{
+    await client.query("begin");
+    const result = await client.query<{
       id: string;
       username: string;
       role: string;
     }>(
-      `update users
-       set role = 'admin'
-       where email = $1 and deleted_at is null
-       returning id, username, role`,
+      `select id, username, role
+       from users
+       where email = $1
+         and status = 'active'
+         and deleted_at is null
+       for update`,
       [email],
     );
 
@@ -41,14 +45,49 @@ async function main() {
         `"${email}" e-postasıyla aktif bir hesap bulunamadı.`,
       );
       process.exitCode = 1;
+      await client.query("rollback");
       return;
     }
 
     const user = result.rows[0]!;
-    console.log(
-      `@${user.username} (${user.id}) artık "${user.role}" rolünde.`,
+
+    if (user.role === "admin") {
+      await client.query("commit");
+      console.log(`@${user.username} zaten "admin" rolünde.`);
+      return;
+    }
+
+    const now = new Date();
+
+    await client.query("update users set role = 'admin' where id = $1", [
+      user.id,
+    ]);
+    await client.query(
+      `update sessions
+       set revoked_at = $2
+       where user_id = $1 and revoked_at is null`,
+      [user.id, now],
     );
+    await client.query(
+      `insert into moderation_actions (
+         actor_id,
+         action,
+         target_user_id,
+         note,
+         created_at
+       ) values ($1, 'role_changed', $1, $2, $3)`,
+      [user.id, `${user.role} → admin · CLI bootstrap`, now],
+    );
+    await client.query("commit");
+
+    console.log(
+      `@${user.username} (${user.id}) artık "admin" rolünde. Açık oturumları kapatıldı ve işlem audit kaydına yazıldı.`,
+    );
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
   } finally {
+    client.release();
     await pool.end();
   }
 }

@@ -61,7 +61,7 @@ export async function POST(
       input.clientMessageId,
     );
 
-    void recordAnalyticsEvent("message_sent", { userId: member.userId });
+    await recordAnalyticsEvent("message_sent", { userId: member.userId });
 
     return NextResponse.json(
       { data: message },

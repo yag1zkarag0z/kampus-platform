@@ -6,6 +6,8 @@ import { resolveSessionCookie } from "@/server/auth/session";
 import {
   refreshActiveMemberSession,
   requireActiveMember,
+  requireRecentActiveAdmin,
+  requireRecentActiveMember,
 } from "./authorization";
 
 vi.mock("@/server/auth/session", () => ({
@@ -116,5 +118,79 @@ describe("member request authorization", () => {
     await expect(
       refreshActiveMemberSession("m1.raw-token"),
     ).resolves.toEqual(memberState);
+  });
+
+  it("accepts a destructive action after recent authentication", async () => {
+    mockedResolveSessionCookie.mockResolvedValue({
+      authenticatedAt: new Date("2026-08-13T10:00:00.000Z"),
+      shouldClearCookie: false,
+      state: memberState,
+    });
+    const request = new NextRequest(
+      "http://localhost:3000/v1/me/profile",
+      { headers: { Cookie: "kampus_session=m1.raw-token" } },
+    );
+
+    await expect(
+      requireRecentActiveMember(
+        request,
+        new Date("2026-08-13T10:29:59.000Z"),
+      ),
+    ).resolves.toMatchObject({ userId: memberState.user.id });
+  });
+
+  it("requires signing in again for an old destructive session", async () => {
+    mockedResolveSessionCookie.mockResolvedValue({
+      authenticatedAt: new Date("2026-08-13T10:00:00.000Z"),
+      shouldClearCookie: false,
+      state: memberState,
+    });
+    const request = new NextRequest(
+      "http://localhost:3000/v1/me/profile",
+      { headers: { Cookie: "kampus_session=m1.raw-token" } },
+    );
+
+    await expect(
+      requireRecentActiveMember(
+        request,
+        new Date("2026-08-13T10:30:01.000Z"),
+      ),
+    ).rejects.toMatchObject({
+      code: "RECENT_AUTHENTICATION_REQUIRED",
+      status: 403,
+    });
+  });
+
+  it("requires a recent admin session for role changes", async () => {
+    const adminState = {
+      ...memberState,
+      user: { ...memberState.user, role: "admin" as const },
+    };
+    mockedResolveSessionCookie.mockResolvedValue({
+      authenticatedAt: new Date("2026-08-13T10:00:00.000Z"),
+      shouldClearCookie: false,
+      state: adminState,
+    });
+    const request = new NextRequest(
+      "http://localhost:3000/v1/moderation/users/example/role",
+      { headers: { Cookie: "kampus_session=m1.raw-token" } },
+    );
+
+    await expect(
+      requireRecentActiveAdmin(
+        request,
+        new Date("2026-08-13T10:30:01.000Z"),
+      ),
+    ).rejects.toMatchObject({
+      code: "RECENT_AUTHENTICATION_REQUIRED",
+      status: 403,
+    });
+
+    await expect(
+      requireRecentActiveAdmin(
+        request,
+        new Date("2026-08-13T10:29:59.000Z"),
+      ),
+    ).resolves.toMatchObject({ userId: adminState.user.id });
   });
 });

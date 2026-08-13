@@ -655,7 +655,10 @@ beklenmeyen hatalar `AUTH_CONFIGURATION_ERROR` altında genel mesajla döner.
   iptal edilir.
 
 Kullanıcı kendi rolünü değiştiremez. Son admin düşürülemez. Moderator admin
-hesabını yönetemez.
+hesabını yönetemez. Rol değişikliği yalnızca son 30 dakika içinde doğrulanmış
+admin oturumuyla, zorunlu gerekçeyle yapılır; hedef hesabın açık oturumları
+anında iptal edilir ve gerekçe immutable audit kaydına eklenir. Yönetim listesi
+silinmemiş bütün hesapları cursor pagination ile sunar.
 
 ## 7. Güvenlik kuralları
 
@@ -771,11 +774,14 @@ Tamamlandı:
     olur (503). Hazır avatar presetleri `processTrustedAvatarSvg`'den geçtiği
     için muaftır.
 
-19. Ürün ölçümü: `analytics_events` tablosu ve altı temel olay
+19. Ürün ölçümü: `analytics_events` tablosu ve yedi temel olay
     (`account_registered`, `session_started`, `post_created`,
-    `comment_created`, `follow_created`, `message_sent`). Olaylar sunucu
-    tarafında, ilgili transaction commit olduktan sonra ve beklenmeden
-    yazılır; yazım düşerse kullanıcının işlemi etkilenmez. `subject` alanı
+    `comment_created`, `follow_created`, `message_sent`, `user_active_day`).
+    Günlük aktiflik `Europe/Istanbul` gününe göre veritabanında tekilleştirilir; bu sayede
+    uzun ömürlü oturumlarda D1/D7 geri dönüşü gerçek kullanım üzerinden
+    hesaplanabilir. Olaylar sunucu tarafında, ilgili transaction commit
+    olduktan sonra yazılır; yazım düşerse kullanıcının işlemi etkilenmez.
+    `subject` alanı
     kullanıcı kimliğinin HMAC'lı takma karşılığıdır: aynı kişi için sabit
     olduğu için retention hesaplanabilir, geriye çevrilemediği için tablo
     kimlik kaydı değildir. Saklama süresi

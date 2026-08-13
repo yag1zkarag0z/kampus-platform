@@ -39,8 +39,20 @@ const mediaEnvironmentSchema = z
     AWS_S3_BUCKET: z.string().trim().min(3).optional(),
     AWS_S3_ENDPOINT: z.url().optional(),
     AWS_S3_FORCE_PATH_STYLE: booleanValue.default(false),
+    NODE_ENV: z.enum(["development", "test", "production"]).optional(),
   })
   .superRefine((value, context) => {
+    if (
+      value.NODE_ENV === "production" &&
+      value.MEDIA_STORAGE_DRIVER !== "s3"
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Production media storage must use the S3 driver.",
+        path: ["MEDIA_STORAGE_DRIVER"],
+      });
+    }
+
     if (value.MEDIA_STORAGE_DRIVER !== "s3") return;
 
     if (!value.AWS_REGION) {

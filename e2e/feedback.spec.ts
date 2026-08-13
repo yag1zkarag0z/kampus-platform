@@ -8,8 +8,11 @@ test("guest can send product feedback from the application shell", async ({
   await expect(page).toHaveURL(/\/akis$/);
 
   if ((page.viewportSize()?.width ?? 0) < 768) {
-    await page.getByRole("button", { name: "Hesap menüsünü aç" }).click();
-    await page.getByRole("menuitem", { name: "Geri bildirim" }).click();
+    await page
+      .getByRole("navigation", { name: "Mobil uygulama menüsü" })
+      .getByRole("link", { name: "Profil" })
+      .click();
+    await page.getByRole("button", { name: "Geri bildirim" }).click();
   } else {
     await page.getByRole("button", { name: "Geri bildirim" }).click();
   }

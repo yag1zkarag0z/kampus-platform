@@ -175,3 +175,77 @@ export async function cleanupE2eAuthData() {
     await client.end();
   }
 }
+
+export async function deleteE2eUserById(userId: string) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)) {
+    throw new Error("E2E user id must be a UUID.");
+  }
+
+  const client = new Client({
+    connectionString: getE2eDatabaseUrl(),
+    connectionTimeoutMillis: 5_000,
+  });
+
+  await client.connect();
+
+  try {
+    await client.query("delete from users where id = $1", [userId]);
+  } finally {
+    await client.end();
+  }
+}
+
+export async function promoteE2eUserToAdmin(email: string) {
+  if (!/^99\d+@stu\.yasar\.edu\.tr$/i.test(email)) {
+    throw new Error("Only an E2E student account can be promoted.");
+  }
+
+  const client = new Client({
+    connectionString: getE2eDatabaseUrl(),
+    connectionTimeoutMillis: 5_000,
+  });
+
+  await client.connect();
+
+  try {
+    await client.query("begin");
+    const result = await client.query<{
+      id: string;
+      role: "member" | "moderator" | "admin";
+    }>(
+      `select id, role
+       from users
+       where email = $1 and status = 'active' and deleted_at is null
+       for update`,
+      [email],
+    );
+    const user = result.rows[0];
+
+    if (!user) {
+      throw new Error("E2E admin candidate was not found.");
+    }
+
+    const now = new Date();
+    await client.query("update users set role = 'admin' where id = $1", [
+      user.id,
+    ]);
+    await client.query(
+      "update sessions set revoked_at = $2 where user_id = $1 and revoked_at is null",
+      [user.id, now],
+    );
+    await client.query(
+      `insert into moderation_actions (
+         actor_id, action, target_user_id, note, created_at
+       ) values ($1, 'role_changed', $1, $2, $3)`,
+      [user.id, `${user.role} → admin · E2E bootstrap`, now],
+    );
+    await client.query("commit");
+
+    return user.id;
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    await client.end();
+  }
+}

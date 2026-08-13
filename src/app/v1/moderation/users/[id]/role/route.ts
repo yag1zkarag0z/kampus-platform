@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireActiveAdmin } from "@/server/auth/authorization";
+import { requireRecentActiveAdmin } from "@/server/auth/authorization";
 import {
   assertSameOrigin,
   authErrorResponse,
@@ -9,6 +9,7 @@ import {
 } from "@/server/auth/request";
 import { setUserRole } from "@/server/moderation/service";
 import {
+  moderationEntityIdSchema,
   parseModerationInput,
   updateUserRoleSchema,
 } from "@/server/moderation/validation";
@@ -26,12 +27,13 @@ export async function PATCH(
 ) {
   try {
     assertSameOrigin(request);
-    const admin = await requireActiveAdmin(request);
+    const admin = await requireRecentActiveAdmin(request);
     const body = await readJsonBody(request);
     const input = parseModerationInput(updateUserRoleSchema, body);
-    const { id } = await context.params;
+    const params = await context.params;
+    const id = parseModerationInput(moderationEntityIdSchema, params.id);
 
-    await setUserRole(admin.userId, id, input.role);
+    await setUserRole(admin.userId, id, input.role, input.note);
 
     return new NextResponse(null, {
       status: 204,

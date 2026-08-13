@@ -47,9 +47,9 @@ export async function POST(request: NextRequest) {
     const input = parseContentInput(createPostSchema, body);
     const post = await createContentPost(member.userId, input);
 
-    // Ölçüm commit'ten sonra ve beklenmeden: paylaşım başarılıysa gönderi
-    // atılmış sayılır, olay kaydı düşse bile.
-    void recordAnalyticsEvent("post_created", {
+    // Ölçüm hatası kullanıcı işlemini bozmaz; fakat response dönmeden yazımın
+    // tamamlanması beklenerek event kaybı önlenir.
+    await recordAnalyticsEvent("post_created", {
       userId: member.userId,
       props: {
         category: input.category,

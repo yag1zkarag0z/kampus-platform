@@ -8,6 +8,7 @@ import {
 import {
   refreshActiveMemberSession,
   requireActiveMember,
+  requireRecentActiveMember,
 } from "@/server/auth/authorization";
 import {
   assertSameOrigin,
@@ -45,7 +46,7 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     assertSameOrigin(request);
-    const member = await requireActiveMember(request);
+    const member = await requireRecentActiveMember(request);
 
     await deleteAccount(member.userId);
 

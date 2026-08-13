@@ -12,13 +12,21 @@ import {
 
 function createDatabaseConnection() {
   const { DATABASE_URL } = getServerEnvironment();
+  const isProduction = process.env.NODE_ENV === "production";
   const pool = new Pool({
     connectionString: DATABASE_URL,
-    max: process.env.NODE_ENV === "production" ? 5 : 10,
+    max: isProduction ? 5 : 10,
     connectionTimeoutMillis: 5_000,
     idleTimeoutMillis: 10_000,
     allowExitOnIdle: true,
     application_name: "kampus-web",
+    ...(isProduction
+      ? {
+          idle_in_transaction_session_timeout: 10_000,
+          query_timeout: 12_000,
+          statement_timeout: 10_000,
+        }
+      : {}),
   });
 
   pool.on("error", (error) => {

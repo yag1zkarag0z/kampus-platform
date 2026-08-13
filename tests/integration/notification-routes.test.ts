@@ -367,6 +367,25 @@ describe("notification routes with PostgreSQL", () => {
     await expect(unreadAfter.json()).resolves.toEqual({ data: { count: 0 } });
   });
 
+  it("returns a controlled not-found response for a malformed notification id", async () => {
+    const account = await insertAccount();
+    const cookie = await createMemberCookie(account.id);
+    const malformedId = "not-a-notification-id";
+    const response = await patchNotificationRead(
+      jsonRequest(
+        `/v1/me/notifications/${malformedId}/read`,
+        "PATCH",
+        { cookie },
+      ),
+      { params: Promise.resolve({ id: malformedId }) },
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "NOTIFICATION_NOT_FOUND" },
+    });
+  });
+
   it("marks all notifications as read and leaves already-read rows untouched", async () => {
     const postAuthor = await insertAccount();
     const firstFollower = await insertAccount();

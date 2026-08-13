@@ -102,6 +102,17 @@ export default function CampusAdminPanel() {
     managedUsers,
     moderationHistory,
     isModerationHydrated,
+    moderationLoadFailed,
+    hasMoreReports,
+    hasMoreManagedUsers,
+    hasMoreModerationHistory,
+    isLoadingMoreReports,
+    isLoadingMoreManagedUsers,
+    isLoadingMoreModerationHistory,
+    loadMoreReports,
+    loadMoreManagedUsers,
+    loadMoreModerationHistory,
+    reloadModeration,
     resolveReport,
     setUserRole,
     suspendUser,
@@ -287,12 +298,42 @@ export default function CampusAdminPanel() {
     user: ManagedUserDto,
     nextRole: CampusAdminRole,
   ) => {
-    const wasUpdated = await setUserRole(user.id, nextRole);
+    if (nextRole === user.role) {
+      return;
+    }
+
+    const actionNote = userActionNotes[user.id]?.trim() ?? "";
     setUserActionAnchor(user.id);
+
+    if (actionNote.length < 3) {
+      setUserActionStatus({
+        message: "Rol değişikliği için kısa bir gerekçe yaz.",
+        tone: "error",
+      });
+      return;
+    }
+
+    const confirmed = await confirmAction({
+      title: `@${user.username} rolü değiştirilsin mi?`,
+      description: `${campusAdminRoleLabels[user.role]} rolü ${campusAdminRoleLabels[nextRole]} olarak değiştirilecek. Kullanıcının açık oturumları kapatılacak.`,
+      confirmLabel: "Rolü değiştir",
+      tone: nextRole === "admin" ? "danger" : "default",
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    const wasUpdated = await setUserRole(user.id, nextRole, actionNote);
+
+    if (wasUpdated) {
+      setUserActionNotes((current) => ({ ...current, [user.id]: "" }));
+    }
+
     setUserActionStatus({
       message: wasUpdated
         ? `@${user.username} artık ${campusAdminRoleLabels[nextRole].toLocaleLowerCase("tr-TR")}.`
-        : "Rol değiştirilemedi.",
+        : "Rol değiştirilemedi. Yönetici oturumunu yenileyip tekrar dene.",
       tone: wasUpdated ? "success" : "error",
     });
   };
@@ -446,6 +487,30 @@ export default function CampusAdminPanel() {
           </div>
         </nav>
       </header>
+
+      {moderationLoadFailed && (
+        <div
+          role="alert"
+          className="mx-3 mt-4 flex flex-col gap-3 border border-danger/28 bg-danger/7 p-4 sm:mx-6 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div>
+            <p className="text-sm font-black text-danger">
+              Yönetim verilerinin bir bölümü yüklenemedi
+            </p>
+            <p className="mt-1 text-xs leading-5 text-white/55">
+              Boş görünen kuyruk güncel olmayabilir. İşlem yapmadan önce
+              verileri yeniden yükle.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={reloadModeration}
+            className={`min-h-11 shrink-0 border border-white/12 px-4 text-xs font-black hover:bg-white/6 ${focusRing}`}
+          >
+            Yeniden yükle
+          </button>
+        </div>
+      )}
 
       {activeView === "overview" && (
         <div className="grid gap-5 p-3 sm:p-6">
@@ -860,6 +925,16 @@ export default function CampusAdminPanel() {
               description="Topluluk üyelerinden gelen gönderi, yorum ve mesaj bildirimleri burada incelenecek."
             />
           )}
+          {hasMoreReports && (
+            <button
+              type="button"
+              disabled={isLoadingMoreReports}
+              onClick={() => void loadMoreReports()}
+              className={`mx-auto min-h-11 border border-white/12 px-6 text-xs font-black hover:bg-white/6 disabled:opacity-45 ${focusRing}`}
+            >
+              {isLoadingMoreReports ? "Yükleniyor…" : "Daha fazla şikâyet"}
+            </button>
+          )}
         </div>
       )}
 
@@ -938,7 +1013,7 @@ export default function CampusAdminPanel() {
                             }
                             minLength={3}
                             maxLength={240}
-                            placeholder="Askıya alma veya etkinleştirme gerekçesi"
+                            placeholder="Rol veya hesap işlemi gerekçesi"
                             className={`min-h-11 w-full border border-white/12 bg-white/[0.025] px-3 text-xs placeholder:text-white/38 ${focusRing}`}
                           />
                         </label>
@@ -1016,6 +1091,18 @@ export default function CampusAdminPanel() {
               title="Eşleşen kullanıcı bulunamadı"
               description="Arama ifadesini kısaltarak tekrar deneyebilirsin."
             />
+          )}
+          {hasMoreManagedUsers && (
+            <button
+              type="button"
+              disabled={isLoadingMoreManagedUsers}
+              onClick={() => void loadMoreManagedUsers()}
+              className={`mx-auto min-h-11 border border-white/12 px-6 text-xs font-black hover:bg-white/6 disabled:opacity-45 ${focusRing}`}
+            >
+              {isLoadingMoreManagedUsers
+                ? "Yükleniyor…"
+                : "Daha fazla kullanıcı"}
+            </button>
           )}
         </div>
       )}
@@ -1097,6 +1184,18 @@ export default function CampusAdminPanel() {
               title="Moderasyon geçmişi boş"
               description="Bir şikâyeti çözdüğünde veya kullanıcı rolünü değiştirdiğinde işlem burada kaydedilecek."
             />
+          )}
+          {hasMoreModerationHistory && (
+            <button
+              type="button"
+              disabled={isLoadingMoreModerationHistory}
+              onClick={() => void loadMoreModerationHistory()}
+              className={`mx-auto min-h-11 border border-white/12 px-6 text-xs font-black hover:bg-white/6 disabled:opacity-45 ${focusRing}`}
+            >
+              {isLoadingMoreModerationHistory
+                ? "Yükleniyor…"
+                : "Daha eski kayıtlar"}
+            </button>
           )}
         </div>
       )}

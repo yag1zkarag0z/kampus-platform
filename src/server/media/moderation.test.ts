@@ -18,6 +18,15 @@ describe("createImageModerator", () => {
     ).toThrow();
   });
 
+  it("rejects disabled moderation in production", () => {
+    expect(() =>
+      createImageModerator({
+        MEDIA_MODERATION_DRIVER: "off",
+        NODE_ENV: "production",
+      }),
+    ).toThrow();
+  });
+
   it("rejects an unknown driver instead of silently disabling scanning", () => {
     // Yazım hatası taramayı sessizce kapatmamalı.
     expect(() =>

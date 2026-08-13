@@ -122,6 +122,11 @@ export function useCursorList<TItem>(
 
       replaceItems([...itemsRef.current, ...result.data]);
       setNextCursor(usableNextCursor(result.page));
+      setHasFailed(false);
+    } catch {
+      if (requestVersion === requestVersionRef.current) {
+        setHasFailed(true);
+      }
     } finally {
       if (requestVersion === requestVersionRef.current) {
         isLoadingMoreRef.current = false;

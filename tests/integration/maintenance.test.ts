@@ -110,6 +110,7 @@ async function insertUser(
 async function rowExists(table: string, id: string) {
   const allowedTables = new Set([
     "otp_challenges",
+    "analytics_events",
     "sessions",
     "rate_limit_hits",
     "notifications",
@@ -319,6 +320,22 @@ describe("maintenance worker with PostgreSQL", () => {
       ],
     );
 
+    const oldAnalyticsId = randomUUID();
+    const freshAnalyticsId = randomUUID();
+    await pool.query(
+      `insert into analytics_events (id, subject, name, created_at)
+       values
+        ($1, $2, 'session_started', $3),
+        ($4, $2, 'session_started', $5)`,
+      [
+        oldAnalyticsId,
+        "a".repeat(64),
+        before(now, 181 * DAY),
+        freshAnalyticsId,
+        now,
+      ],
+    );
+
     const oldPostId = randomUUID();
     const freshPostId = randomUUID();
     await pool.query(
@@ -438,6 +455,7 @@ describe("maintenance worker with PostgreSQL", () => {
       sessions: 1,
       rateLimitHits: 2,
       notifications: 1,
+      analyticsEvents: 1,
       emptyConversations: 1,
       messageRequestCooldowns: 1,
       posts: 1,
@@ -469,6 +487,8 @@ describe("maintenance worker with PostgreSQL", () => {
     ).resolves.toBe(true);
     await expect(rowExists("notifications", oldNotificationId)).resolves.toBe(false);
     await expect(rowExists("notifications", freshNotificationId)).resolves.toBe(true);
+    await expect(rowExists("analytics_events", oldAnalyticsId)).resolves.toBe(false);
+    await expect(rowExists("analytics_events", freshAnalyticsId)).resolves.toBe(true);
     await expect(
       rowExists("direct_conversations", oldEmptyConversationId),
     ).resolves.toBe(false);

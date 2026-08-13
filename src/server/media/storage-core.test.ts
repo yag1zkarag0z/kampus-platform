@@ -18,6 +18,15 @@ afterEach(async () => {
 });
 
 describe("local media storage", () => {
+  it("rejects local storage in production", () => {
+    expect(() =>
+      createMediaStorage({
+        MEDIA_STORAGE_DRIVER: "local",
+        NODE_ENV: "production",
+      }),
+    ).toThrow();
+  });
+
   it("lists managed object metadata without returning temporary files", async () => {
     const workingDirectory = await mkdtemp(
       join(tmpdir(), "kampus-storage-"),

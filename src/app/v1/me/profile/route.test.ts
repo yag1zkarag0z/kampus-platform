@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   refreshActiveMemberSession,
   requireActiveMember,
+  requireRecentActiveMember,
 } from "@/server/auth/authorization";
 import { AuthError } from "@/server/auth/errors";
 import { deleteAccount, updateAccountProfile } from "@/server/account/service";
@@ -18,6 +19,7 @@ vi.mock("@/server/account/service", () => ({
 vi.mock("@/server/auth/authorization", () => ({
   refreshActiveMemberSession: vi.fn(),
   requireActiveMember: vi.fn(),
+  requireRecentActiveMember: vi.fn(),
 }));
 
 const mockedUpdateAccountProfile = vi.mocked(
@@ -28,6 +30,9 @@ const mockedRefreshActiveMemberSession = vi.mocked(
   refreshActiveMemberSession,
 );
 const mockedRequireActiveMember = vi.mocked(requireActiveMember);
+const mockedRequireRecentActiveMember = vi.mocked(
+  requireRecentActiveMember,
+);
 
 const memberState = {
   mode: "member" as const,
@@ -187,7 +192,7 @@ describe("DELETE /v1/me/profile", () => {
     process.env.SMTP_PASSWORD = "";
     process.env.EMAIL_FROM = "KAMPUS Test <no-reply@kampus.local>";
 
-    mockedRequireActiveMember.mockReset().mockResolvedValue({
+    mockedRequireRecentActiveMember.mockReset().mockResolvedValue({
       cookieValue: "m1.raw-token",
       state: memberState,
       userId: memberState.user.id,
@@ -209,7 +214,7 @@ describe("DELETE /v1/me/profile", () => {
   });
 
   it("requires an active member session", async () => {
-    mockedRequireActiveMember.mockRejectedValueOnce(
+    mockedRequireRecentActiveMember.mockRejectedValueOnce(
       new AuthError(
         "AUTHENTICATION_REQUIRED",
         "Devam etmek için giriş yapmalısın.",
@@ -229,7 +234,7 @@ describe("DELETE /v1/me/profile", () => {
     );
 
     expect(response.status).toBe(403);
-    expect(mockedRequireActiveMember).not.toHaveBeenCalled();
+    expect(mockedRequireRecentActiveMember).not.toHaveBeenCalled();
     expect(mockedDeleteAccount).not.toHaveBeenCalled();
   });
 });

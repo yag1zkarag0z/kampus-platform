@@ -59,6 +59,7 @@ export default function CampusAuthorAvatar({
   avatarUrl: avatarUrlProp,
   isAnonymous: isAnonymousProp,
   size = "md",
+  eager = false,
   className = "",
 }: {
   author: string;
@@ -66,6 +67,7 @@ export default function CampusAuthorAvatar({
   avatarUrl?: string | null;
   isAnonymous?: boolean;
   size?: AvatarSize;
+  eager?: boolean;
   className?: string;
 }) {
   const { profile, sessionMode } = useCampusAccount();
@@ -96,6 +98,7 @@ export default function CampusAuthorAvatar({
           alt=""
           fill
           sizes={imageSizes[size]}
+          loading={eager ? "eager" : "lazy"}
           unoptimized
           className="object-cover"
         />

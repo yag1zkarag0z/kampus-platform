@@ -198,6 +198,22 @@ afterAll(async () => {
 });
 
 describe("moderation routes with PostgreSQL", () => {
+  it("rejects duplicate report filters instead of accepting the first value", async () => {
+    const moderator = await insertAccount("moderator");
+    const cookie = await createMemberCookie(moderator.id, "moderator");
+    const response = await getReports(
+      plainRequest(
+        "/v1/moderation/reports?status=pending&status=resolved",
+        { cookie },
+      ),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "INVALID_REQUEST" },
+    });
+  });
+
   it("submits a report, lists it for moderators, and dismisses it with an audit trail", async () => {
     const author = await insertAccount();
     const reporter = await insertAccount();
@@ -801,7 +817,7 @@ describe("moderation routes with PostgreSQL", () => {
     const response = await patchUserRole(
       jsonRequest(`/v1/moderation/users/${admin.id}/role`, "PATCH", {
         cookie: adminCookie,
-        body: { role: "member" },
+        body: { role: "member", note: "Yetki kaldırma testi." },
       }),
       { params: Promise.resolve({ id: admin.id }) },
     );
@@ -821,11 +837,12 @@ describe("moderation routes with PostgreSQL", () => {
     const admin = await insertAccount("admin");
     const member = await insertAccount();
     const adminCookie = await createMemberCookie(admin.id, "admin");
+    await createMemberCookie(member.id);
 
     const response = await patchUserRole(
       jsonRequest(`/v1/moderation/users/${member.id}/role`, "PATCH", {
         cookie: adminCookie,
-        body: { role: "moderator" },
+        body: { role: "moderator", note: "Ekip görevlendirmesi." },
       }),
       { params: Promise.resolve({ id: member.id }) },
     );
@@ -836,6 +853,13 @@ describe("moderation routes with PostgreSQL", () => {
       [member.id],
     );
     expect(userRow.rows[0]?.role).toBe("moderator");
+    const activeSessions = await pool.query<{ total: number }>(
+      `select count(*)::int as total
+       from sessions
+       where user_id = $1 and revoked_at is null`,
+      [member.id],
+    );
+    expect(activeSessions.rows[0]?.total).toBe(0);
 
     const historyResponse = await getHistory(
       plainRequest("/v1/moderation/history", { cookie: adminCookie }),
@@ -854,7 +878,7 @@ describe("moderation routes with PostgreSQL", () => {
           entry.action === "role_changed" &&
           entry.actor.username === admin.username &&
           entry.target?.username === member.username &&
-          entry.note === "member → moderator",
+          entry.note === "member → moderator · Ekip görevlendirmesi.",
       ),
     ).toBe(true);
 
@@ -882,12 +906,39 @@ describe("moderation routes with PostgreSQL", () => {
     const response = await patchUserRole(
       jsonRequest(`/v1/moderation/users/${member.id}/role`, "PATCH", {
         cookie: moderatorCookie,
-        body: { role: "moderator" },
+        body: { role: "moderator", note: "Yetkisiz rol denemesi." },
       }),
       { params: Promise.resolve({ id: member.id }) },
     );
 
     expect(response.status).toBe(403);
+  });
+
+  it("lists active member accounts for direct moderation", async () => {
+    const moderator = await insertAccount("moderator");
+    const member = await insertAccount();
+    const moderatorCookie = await createMemberCookie(
+      moderator.id,
+      "moderator",
+    );
+
+    const response = await getManagedUsers(
+      plainRequest("/v1/moderation/users", { cookie: moderatorCookie }),
+    );
+    const { data } = (await response.json()) as {
+      data: Array<{ id: string; role: string; status: string }>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: member.id,
+          role: "member",
+          status: "active",
+        }),
+      ]),
+    );
   });
 
   it("rejects cross-origin moderation mutations before touching the database", async () => {

@@ -63,8 +63,7 @@ const authEnvironmentSchema = z
         "cf-connecting-ip",
         "x-forwarded-for",
         "x-real-ip",
-      ])
-      .default("x-forwarded-for"),
+      ]),
     SMTP_HOST: z.string().trim().min(1),
     SMTP_PORT: z.coerce.number().int().min(1).max(65_535),
     SMTP_SECURE: booleanEnvironmentValue,
@@ -125,6 +124,14 @@ const authEnvironmentSchema = z
       });
     }
 
+    if (new Set(value.AUTH_SECRET).size < 12) {
+      context.addIssue({
+        code: "custom",
+        message: "Production AUTH_SECRET must be a high-entropy random value.",
+        path: ["AUTH_SECRET"],
+      });
+    }
+
     if (appOrigin.protocol !== "https:") {
       context.addIssue({
         code: "custom",
@@ -174,7 +181,16 @@ export function getServerEnvironment(
 export function getAuthEnvironment(
   source: Readonly<Record<string, string | undefined>> = process.env,
 ): AuthEnvironment {
-  const result = authEnvironmentSchema.safeParse(source);
+  const isProduction = source.NODE_ENV === "production";
+  const result = authEnvironmentSchema.safeParse({
+    ...source,
+    // Local development keeps the familiar default. Production must name the
+    // exact header overwritten by its trusted reverse proxy; silently guessing
+    // here would make an attacker-supplied forwarding header authoritative.
+    TRUSTED_CLIENT_IP_HEADER:
+      source.TRUSTED_CLIENT_IP_HEADER ??
+      (isProduction ? undefined : "x-forwarded-for"),
+  });
 
   if (!result.success) {
     throw new InvalidAuthEnvironmentError();

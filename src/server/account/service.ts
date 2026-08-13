@@ -12,6 +12,7 @@ import { reservedCampusUsernames } from "@/data/campusAccountRules";
 import { AuthError } from "@/server/auth/errors";
 import { getDatabase } from "@/server/db/client";
 import {
+  otpChallenges,
   productFeedback,
   sessions,
   userSettings,
@@ -22,6 +23,7 @@ import {
   processTrustedAvatarSvg,
 } from "@/server/media/service";
 import { getMediaStorage } from "@/server/media/storage";
+import { logEvent } from "@/server/observability/logger";
 import {
   consumeRateLimit,
   consumeRateLimitForUser,
@@ -344,6 +346,7 @@ export async function deleteAccount(userId: string, now = new Date()) {
           .select({
             id: users.id,
             avatarObjectKey: users.avatarObjectKey,
+            email: users.email,
           })
           .from(users)
           .where(
@@ -371,12 +374,27 @@ export async function deleteAccount(userId: string, now = new Date()) {
           .set({ userId: null, updatedAt: now })
           .where(eq(productFeedback.userId, userId));
 
+        // Aynı e-postaya ait henüz kullanılmamış kodlar hesap silindikten
+        // sonra yeni veya yeniden açılmış bir hesaba taşınmamalı.
+        await transaction
+          .update(otpChallenges)
+          .set({ invalidatedAt: now })
+          .where(
+            and(
+              eq(otpChallenges.email, activeUser.email),
+              isNull(otpChallenges.invalidatedAt),
+              isNull(otpChallenges.consumedAt),
+            ),
+          );
+
         await transaction
           .update(users)
           .set({
             email: tombstoneEmail(),
             username: tombstoneUsername(),
             displayName: "Silinmiş kullanıcı",
+            department: "Belirtilmedi",
+            yearLabel: "Belirtilmedi",
             bio: "",
             avatarObjectKey: null,
             deletedAt: now,
@@ -395,7 +413,17 @@ export async function deleteAccount(userId: string, now = new Date()) {
       });
 
       if (previousAvatarObjectKey) {
-        await getMediaStorage().delete(previousAvatarObjectKey);
+        try {
+          await getMediaStorage().delete(previousAvatarObjectKey);
+        } catch (error) {
+          // Veritabanındaki anonimleştirme ve oturum iptali kesin sonuçtur.
+          // Storage hatası kullanıcıya sahte bir "silinemedi" cevabı vermemeli;
+          // reconciliation worker orphan objeyi daha sonra temizler.
+          logEvent("warn", "account.avatar_cleanup_deferred", {
+            errorMessage:
+              error instanceof Error ? error.message : "unknown",
+          });
+        }
       }
 
       return;

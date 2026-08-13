@@ -33,7 +33,7 @@ export async function POST(
     const summary = await getFollowSummary(member.userId, username);
 
     if (created) {
-      void recordAnalyticsEvent("follow_created", {
+      await recordAnalyticsEvent("follow_created", {
         userId: member.userId,
       });
     }

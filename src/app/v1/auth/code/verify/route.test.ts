@@ -1,20 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { NextRequest } from "next/server";
 
 import { verifyOtpCode } from "@/server/auth/service";
+import { revokeMemberSession } from "@/server/auth/session";
 
 import { POST } from "./route";
 
 vi.mock("@/server/auth/service", () => ({
   verifyOtpCode: vi.fn(),
 }));
+vi.mock("@/server/auth/session", () => ({
+  revokeMemberSession: vi.fn(),
+}));
 
 const mockedVerifyOtpCode = vi.mocked(verifyOtpCode);
+const mockedRevokeMemberSession = vi.mocked(revokeMemberSession);
 
 function createRequest(purpose: "registration" | "login") {
-  return new Request("http://localhost:3000/v1/auth/code/verify", {
+  return new NextRequest("http://localhost:3000/v1/auth/code/verify", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Cookie: "kampus_session=m1.previous-session",
       Origin: "http://localhost:3000",
     },
     body: JSON.stringify({
@@ -37,6 +44,7 @@ describe("POST /v1/auth/code/verify", () => {
     process.env.SMTP_PASSWORD = "";
     process.env.EMAIL_FROM = "KAMPUS Test <no-reply@kampus.local>";
     mockedVerifyOtpCode.mockReset();
+    mockedRevokeMemberSession.mockReset().mockResolvedValue(undefined);
   });
 
   it("sets an httpOnly 30-day member cookie without exposing its token", async () => {
@@ -87,6 +95,9 @@ describe("POST /v1/auth/code/verify", () => {
     expect(cookie).toContain("SameSite=lax");
     expect(cookie).toContain("Path=/");
     expect(JSON.stringify(body)).not.toContain("raw-secret-token");
+    expect(mockedRevokeMemberSession).toHaveBeenCalledWith(
+      "m1.previous-session",
+    );
   });
 
   it("returns a registration grant without starting a session", async () => {
@@ -103,6 +114,7 @@ describe("POST /v1/auth/code/verify", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("set-cookie")).toBeNull();
+    expect(mockedRevokeMemberSession).not.toHaveBeenCalled();
     expect(body).toEqual({
       data: {
         registrationToken: "signed-registration-grant",

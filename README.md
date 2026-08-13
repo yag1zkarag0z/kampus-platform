@@ -78,8 +78,22 @@ Kullanılabilir veritabanı komutları:
 - `npm run db:check`: migration geçmişinin tutarlılığını kontrol eder.
 - `npm run db:studio`: Drizzle Studio'yu açar.
 
-`GET /v1/health`, uygulamanın PostgreSQL bağlantısını güvenli bir yanıtla
-kontrol eder. Bağlantı yoksa hassas hata ayrıntıları döndürmeden `503` verir.
+`GET /v1/health`, PostgreSQL bağlantısını ve güvenlik-kritik runtime
+yapılandırmasını kontrol eder. Bağlantı yoksa veya production storage/moderasyon
+ayarları güvenli değilse hassas ayrıntı döndürmeden `503` verir.
+
+### İlk yönetici hesabı
+
+Önce normal kayıt akışıyla aktif öğrenci hesabını oluşturun. Ardından yalnızca
+güvenilen bir terminalde, doğru `DATABASE_URL` ile hesabı yönetici yapın:
+
+```bash
+npm run db:make-admin -- ogrenci-numarasi@stu.yasar.edu.tr
+```
+
+Komut suspended veya silinmiş hesabı yükseltmez; mevcut oturumları kapatır ve
+rol değişikliğini moderasyon audit kaydına yazar. Yönetici yeni rolüyle yeniden
+giriş yaptıktan sonra `/admin` adresini kullanabilir.
 
 ## Testler
 

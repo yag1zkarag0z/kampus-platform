@@ -62,7 +62,7 @@ test("guest sees an animated unread preview and read-only seed messages", async 
     .getByRole("button", { name: /Ece Arslan/i })
     .click();
   await expect(
-    page.getByRole("status", { name: /Ece Arslan yazÄ±yor/i }),
+    page.getByRole("status", { name: /Ece Arslan yazıyor/i }),
   ).toBeVisible({ timeout: 2_500 });
   await expect(
     page.getByRole("link", { name: /Ece Arslan @ecearslan/i }),
@@ -213,13 +213,15 @@ test("members receive realtime typing and messages after reconnect", async ({
     ).toBe(true);
     await expect(
       recipientPage.getByRole("status", {
-        name: new RegExp(`${sender.displayName} yazÄ±yor`, "i"),
+        name: new RegExp(`${sender.displayName} yazıyor`, "i"),
       }),
     ).toBeVisible({ timeout: 3_000 });
 
     await senderComposer.press("Enter");
     await expect(
-      recipientPage.getByText("Realtime selam!", { exact: true }),
+      recipientPage
+        .getByLabel("Mesaj geçmişi")
+        .getByText("Realtime selam!", { exact: true }),
     ).toBeVisible({ timeout: 4_500 });
 
     await senderContext.setOffline(true);
@@ -240,7 +242,7 @@ test("members receive realtime typing and messages after reconnect", async ({
     await recipientComposer.fill("BaÄŸlantÄ± geri geldi mi?");
     await expect(
       senderPage.getByRole("status", {
-        name: new RegExp(`${recipient.displayName} yazÄ±yor`, "i"),
+        name: new RegExp(`${recipient.displayName} yazıyor`, "i"),
       }),
     ).toBeVisible({ timeout: 3_000 });
 
@@ -320,21 +322,40 @@ test("members can send, accept, and continue a message request", async ({
   const composer = page.getByRole("textbox", { name: "Mesaj" });
   await composer.fill("Kütüphanede görüşelim mi? 👋");
   let failFirstMessageAttempt = true;
+  let releaseFirstMessageAttempt!: () => void;
+  const firstMessageAttemptGate = new Promise<void>((resolve) => {
+    releaseFirstMessageAttempt = resolve;
+  });
   await page.route("**/v1/messages/conversations/*/messages", async (route) => {
     if (route.request().method() !== "POST" || !failFirstMessageAttempt) {
       await route.continue();
       return;
     }
     failFirstMessageAttempt = false;
-    await new Promise((resolve) => setTimeout(resolve, 2_000));
+    await firstMessageAttemptGate;
     await route.fulfill({
       status: 503,
       contentType: "application/json",
       body: JSON.stringify({ error: { code: "TEMPORARY_FAILURE" } }),
     });
   });
-  await page.getByRole("button", { name: "Mesajı gönder" }).click();
-  await expect(page.getByText("Gönderiliyor…", { exact: true })).toBeVisible();
+  const initialSendClick = page
+    .getByRole("button", { name: "Mesajı gönder" })
+    .click();
+  const pendingMessage = page
+    .getByLabel("Mesaj geçmişi")
+    .locator('li[data-delivery-status]')
+    .filter({ hasText: "Kütüphanede görüşelim mi?" });
+  try {
+    await expect(pendingMessage).toHaveAttribute(
+      "data-delivery-status",
+      "sending",
+    );
+    await expect(pendingMessage.getByText("Gönderiliyor…")).toBeVisible();
+  } finally {
+    releaseFirstMessageAttempt();
+  }
+  await initialSendClick;
   const retryButton = page.getByRole("button", {
     name: "Gönderilemedi · Tekrar dene",
   });
@@ -423,9 +444,7 @@ test("members can send, accept, and continue a message request", async ({
   await memberReportDialog.getByRole("button", { name: "Vazgeç" }).click();
 
   await page.getByRole("button", { name: "Kabul et" }).click();
-  await expect(
-    page.getByText("Mesaj isteği kabul edildi.", { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Mesaj" })).toBeVisible();
 
   await page.context().clearCookies();
   await page.context().addCookies([senderCookie!]);
@@ -454,7 +473,7 @@ test("members can send, accept, and continue a message request", async ({
       {
         headers: { Origin: new URL(page.url()).origin },
         data: {
-          body: `Scroll testi mesajı ${index + 1}: kampüs konuşması devam ediyor.`,
+          body: `Scroll testi mesajı ${index + 1}: ${"kampüs konuşması devam ediyor; ".repeat(8)}`,
           clientMessageId: crypto.randomUUID(),
         },
       },
@@ -466,16 +485,22 @@ test("members can send, accept, and continue a message request", async ({
   await page.context().addCookies([senderCookie!]);
   await page.goto(`/mesajlar?sohbet=${conversationId}`);
   const messageHistory = page.getByLabel("Mesaj geçmişi");
+  await expect(
+    messageHistory.getByText(/Scroll testi mesajı 24:/),
+  ).toBeVisible();
   await expect.poll(() =>
     messageHistory.evaluate(
       (element) =>
         element.scrollHeight - element.scrollTop - element.clientHeight,
     ),
   ).toBeLessThan(100);
-  // Gerçek kullanıcı hareketi kullan: doğrudan `scrollTop` yazmak React'in
-  // scroll dinleyicisiyle yarışıp otomatik alta sabitlemeyi yanlış tetikliyordu.
-  await messageHistory.hover();
-  await page.mouse.wheel(0, -2_000);
+  // Headless tarayıcıda wheel olayı, görünür scrollbar olmadığı zaman dış
+  // sayfaya gidebiliyor. Scroll konumunu değiştirip gerçek scroll olayını
+  // göndererek bileşenin "kullanıcı yukarıda" durumunu deterministik ölç.
+  await messageHistory.evaluate((element) => {
+    element.scrollTop = 0;
+    element.dispatchEvent(new Event("scroll", { bubbles: true }));
+  });
   await expect.poll(() =>
     messageHistory.evaluate(
       (element) =>

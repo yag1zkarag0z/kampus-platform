@@ -248,6 +248,7 @@ async function assertActiveReviewer(
     })
     .from(users)
     .where(eq(users.id, reviewerId))
+    .for("update")
     .limit(1);
 
   if (

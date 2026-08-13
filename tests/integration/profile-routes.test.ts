@@ -70,9 +70,9 @@ async function insertAccount() {
   return { ...fixture, id };
 }
 
-async function createMemberCookie(userId: string) {
+async function createMemberCookie(userId: string, now = new Date()) {
   const session = await createMemberSession(getDatabase(), {
-    now: new Date(),
+    now,
     role: "member",
     userId,
   });
@@ -410,6 +410,24 @@ describe("DELETE /v1/me/profile", () => {
     async () => {
       const account = await insertAccount();
       const cookie = await createMemberCookie(account.id);
+      const challengeId = randomUUID();
+      const challengeCreatedAt = new Date();
+
+      await pool.query(
+        `insert into otp_challenges (
+          id, email, purpose, code_hash, request_ip_hash,
+          expires_at, resend_available_at, created_at
+        ) values ($1, $2, 'login', $3, $4, $5, $6, $7)`,
+        [
+          challengeId,
+          account.email,
+          "a".repeat(64),
+          "b".repeat(64),
+          new Date(challengeCreatedAt.getTime() + 5 * 60 * 1_000),
+          new Date(challengeCreatedAt.getTime() + 30 * 1_000),
+          challengeCreatedAt,
+        ],
+      );
 
       try {
         const response = await deleteProfile(
@@ -425,10 +443,13 @@ describe("DELETE /v1/me/profile", () => {
           email: string;
           username: string;
           display_name: string;
+          department: string;
+          year_label: string;
           bio: string;
           deleted_at: Date | null;
         }>(
-          `select email, username, display_name, bio, deleted_at
+          `select email, username, display_name, department, year_label,
+                  bio, deleted_at
            from users
            where id = $1`,
           [account.id],
@@ -439,8 +460,18 @@ describe("DELETE /v1/me/profile", () => {
         expect(stored.rows[0]?.display_name).toBe(
           "Silinmiş kullanıcı",
         );
+        expect(stored.rows[0]?.department).toBe("Belirtilmedi");
+        expect(stored.rows[0]?.year_label).toBe("Belirtilmedi");
         expect(stored.rows[0]?.bio).toBe("");
         expect(stored.rows[0]?.deleted_at).not.toBeNull();
+
+        const challenge = await pool.query<{
+          invalidated_at: Date | null;
+        }>(
+          "select invalidated_at from otp_challenges where id = $1",
+          [challengeId],
+        );
+        expect(challenge.rows[0]?.invalidated_at).not.toBeNull();
 
         const activeSessions = await pool.query(
           `select id from sessions
@@ -467,6 +498,9 @@ describe("DELETE /v1/me/profile", () => {
           reuseResult.rows[0]!.id,
         ]);
       } finally {
+        await pool.query("delete from otp_challenges where id = $1", [
+          challengeId,
+        ]);
         await pool.query("delete from users where id = $1", [
           account.id,
         ]);
@@ -487,6 +521,29 @@ describe("DELETE /v1/me/profile", () => {
     );
 
     expect(response.status).toBe(403);
+
+    const stored = await pool.query<{ deleted_at: Date | null }>(
+      "select deleted_at from users where id = $1",
+      [account.id],
+    );
+    expect(stored.rows[0]?.deleted_at).toBeNull();
+  });
+
+  it("requires a recent login before deleting the account", async () => {
+    const account = await insertAccount();
+    const cookie = await createMemberCookie(
+      account.id,
+      new Date(Date.now() - 31 * 60 * 1_000),
+    );
+
+    const response = await deleteProfile(
+      createDeleteRequest({ cookie }),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "RECENT_AUTHENTICATION_REQUIRED" },
+    });
 
     const stored = await pool.query<{ deleted_at: Date | null }>(
       "select deleted_at from users where id = $1",

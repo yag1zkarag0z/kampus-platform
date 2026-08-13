@@ -2,11 +2,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const databaseState = vi.hoisted(() => ({
   values: vi.fn(),
+  onConflictDoNothing: vi.fn(),
 }));
 
 vi.mock("@/server/db/client", () => ({
   getDatabase: () => ({
-    insert: () => ({ values: databaseState.values }),
+    insert: () => ({
+      values: (...args: unknown[]) => {
+        databaseState.values(...args);
+        return {
+          onConflictDoNothing: databaseState.onConflictDoNothing,
+        };
+      },
+    }),
   }),
 }));
 
@@ -25,12 +33,17 @@ function configureEnvironment() {
   process.env.EMAIL_FROM = "KAMPUS Test <no-reply@kampus.local>";
 }
 
-const { recordAnalyticsEvent } = await import("./service");
+const { recordAnalyticsEvent, recordDailyActiveUser } = await import(
+  "./service"
+);
 
 describe("recordAnalyticsEvent", () => {
   beforeEach(() => {
     configureEnvironment();
-    databaseState.values.mockReset().mockResolvedValue(undefined);
+    databaseState.values.mockReset();
+    databaseState.onConflictDoNothing
+      .mockReset()
+      .mockResolvedValue(undefined);
   });
 
   it("never stores the raw user id", async () => {
@@ -80,8 +93,35 @@ describe("recordAnalyticsEvent", () => {
     });
   });
 
+  it("records a deduplicated Europe/Istanbul activity day", async () => {
+    await recordDailyActiveUser(
+      memberId,
+      new Date("2026-08-13T20:59:59.000Z"),
+    );
+
+    expect(databaseState.values.mock.calls[0]![0]).toMatchObject({
+      name: "user_active_day",
+      activityDate: "2026-08-13",
+      props: {},
+    });
+    expect(databaseState.onConflictDoNothing).toHaveBeenCalledOnce();
+  });
+
+  it("starts a new campus day at Istanbul midnight", async () => {
+    await recordDailyActiveUser(
+      memberId,
+      new Date("2026-08-13T21:00:00.000Z"),
+    );
+
+    expect(databaseState.values.mock.calls[0]![0]).toMatchObject({
+      activityDate: "2026-08-14",
+    });
+  });
+
   it("never breaks the user action when the write fails", async () => {
-    databaseState.values.mockRejectedValue(new Error("db down"));
+    databaseState.onConflictDoNothing.mockRejectedValue(
+      new Error("db down"),
+    );
 
     // Ölçüm ikincil: gönderi paylaşıldıysa paylaşılmıştır.
     await expect(

@@ -4,7 +4,10 @@ import type { NextRequest } from "next/server";
 
 import type { SessionState } from "@/auth/types";
 
-import { SESSION_COOKIE_NAME } from "./constants";
+import {
+  RECENT_AUTHENTICATION_WINDOW_MS,
+  SESSION_COOKIE_NAME,
+} from "./constants";
 import { AuthError } from "./errors";
 import { resolveSessionCookie } from "./session";
 
@@ -28,14 +31,20 @@ function authorizationRequiredError() {
 
 async function resolveActiveMemberCookie(
   cookieValue: string | undefined,
-): Promise<MemberSessionState> {
+): Promise<{
+  authenticatedAt: Date | null;
+  state: MemberSessionState;
+}> {
   const resolved = await resolveSessionCookie(cookieValue);
 
   if (resolved.state.mode !== "member") {
     throw authenticationRequiredError();
   }
 
-  return resolved.state;
+  return {
+    authenticatedAt: resolved.authenticatedAt ?? null,
+    state: resolved.state,
+  };
 }
 
 export async function requireActiveMember(request: NextRequest) {
@@ -45,17 +54,64 @@ export async function requireActiveMember(request: NextRequest) {
     throw authenticationRequiredError();
   }
 
-  const state = await resolveActiveMemberCookie(cookieValue);
+  const resolved = await resolveActiveMemberCookie(cookieValue);
 
   return {
+    ...(resolved.authenticatedAt
+      ? { authenticatedAt: resolved.authenticatedAt }
+      : {}),
     cookieValue,
-    state,
-    userId: state.user.id,
+    state: resolved.state,
+    userId: resolved.state.user.id,
   };
 }
 
-export function refreshActiveMemberSession(cookieValue: string) {
-  return resolveActiveMemberCookie(cookieValue);
+export async function refreshActiveMemberSession(cookieValue: string) {
+  return (await resolveActiveMemberCookie(cookieValue)).state;
+}
+
+export async function requireRecentActiveMember(
+  request: NextRequest,
+  now = new Date(),
+) {
+  const member = await requireActiveMember(request);
+  const authenticatedAt = member.authenticatedAt;
+
+  if (
+    !authenticatedAt ||
+    now.getTime() - authenticatedAt.getTime() >
+      RECENT_AUTHENTICATION_WINDOW_MS
+  ) {
+    throw new AuthError(
+      "RECENT_AUTHENTICATION_REQUIRED",
+      "Güvenliğin için çıkış yapıp yeniden giriş yaptıktan sonra hesabını silebilirsin.",
+      { status: 403 },
+    );
+  }
+
+  return member;
+}
+
+export async function requireRecentActiveAdmin(
+  request: NextRequest,
+  now = new Date(),
+) {
+  const admin = await requireActiveAdmin(request);
+  const authenticatedAt = admin.authenticatedAt;
+
+  if (
+    !authenticatedAt ||
+    now.getTime() - authenticatedAt.getTime() >
+      RECENT_AUTHENTICATION_WINDOW_MS
+  ) {
+    throw new AuthError(
+      "RECENT_AUTHENTICATION_REQUIRED",
+      "Rol değiştirmek için çıkış yapıp yeniden giriş yapmalısın.",
+      { status: 403 },
+    );
+  }
+
+  return admin;
 }
 
 export async function requireActiveModerator(request: NextRequest) {

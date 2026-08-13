@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { recordDailyActiveUser } from "@/server/analytics/service";
 import { SESSION_COOKIE_NAME } from "@/server/auth/constants";
 import {
   authErrorResponse,
@@ -16,6 +17,10 @@ export async function GET(request: NextRequest) {
     const resolved = await resolveSessionCookie(
       request.cookies.get(SESSION_COOKIE_NAME)?.value,
     );
+
+    if (resolved.state.mode === "member") {
+      await recordDailyActiveUser(resolved.state.user.id);
+    }
     const response = NextResponse.json(
       { data: resolved.state },
       { headers: noStoreHeaders },

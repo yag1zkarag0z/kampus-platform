@@ -33,7 +33,7 @@ export async function POST(
       input,
     );
 
-    void recordAnalyticsEvent("comment_created", {
+    await recordAnalyticsEvent("comment_created", {
       userId: member.userId,
       props: { isReply: Boolean(input.parentId) },
     });

@@ -761,6 +761,7 @@ export default function AppNavigation() {
                       author={`@${profile.username}`}
                       authorId={LOCAL_ACCOUNT_OWNER_ID}
                       avatarUrl={profile.avatarUrl}
+                      eager
                     />
                     <span className="hidden min-w-0 flex-1 text-left xl:block">
                       <span className="block truncate text-base font-black leading-5">
@@ -896,6 +897,7 @@ export default function AppNavigation() {
                         authorId={LOCAL_ACCOUNT_OWNER_ID}
                         avatarUrl={profile.avatarUrl}
                         size="sm"
+                        eager
                         className={
                           isActive
                             ? "ring-2 ring-brand ring-offset-2 ring-offset-canvas"

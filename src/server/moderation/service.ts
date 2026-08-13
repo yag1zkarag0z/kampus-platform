@@ -10,7 +10,6 @@ import {
   isNotNull,
   isNull,
   lt,
-  ne,
   or,
   sql,
   type SQL,
@@ -765,6 +764,7 @@ async function assertCanModerateTarget(
     })
     .from(users)
     .where(eq(users.id, actorId))
+    .for("update")
     .limit(1);
 
   if (
@@ -810,6 +810,7 @@ async function assertActiveModerator(
     })
     .from(users)
     .where(eq(users.id, actorId))
+    .for("update")
     .limit(1);
 
   if (
@@ -1079,10 +1080,9 @@ export async function listManagedUsers(
 ) {
   const limit = query.limit ?? DEFAULT_LIST_LIMIT;
   const scope = "managed-users";
-  const filters = [
-    isNull(users.deletedAt),
-    or(ne(users.role, "member"), eq(users.status, "suspended"))!,
-  ];
+  // Yönetim ekranı yalnızca yetkilileri değil, gerektiğinde doğrudan işlem
+  // yapılabilmesi için silinmemiş bütün üye hesaplarını listeler.
+  const filters = [isNull(users.deletedAt)];
 
   if (query.cursor) {
     const cursor = decodeTimelineCursor(scope, query.cursor);
@@ -1134,10 +1134,14 @@ export async function setUserRole(
   adminId: string,
   targetUserId: string,
   role: AuthRole,
+  note?: string,
 ) {
   if (adminId === targetUserId) {
     throw selfModerationError();
   }
+
+  const trimmedNote = requiredModerationNote(note);
+  const now = new Date();
 
   await getDatabase().transaction(async (transaction) => {
     const actor = await assertActiveModerator(transaction, adminId);
@@ -1161,18 +1165,30 @@ export async function setUserRole(
       return;
     }
 
-    await consumeRateLimit(transaction, adminId, "moderation_write");
+    await consumeRateLimit(transaction, adminId, "moderation_write", now);
 
     await transaction
       .update(users)
       .set({ role })
       .where(eq(users.id, targetUserId));
 
+    // Rolü değişen hesabın eski yetki düzeyiyle açılmış hiçbir oturumu
+    // yaşamaya devam etmesin. Kullanıcı yeni rolüyle yeniden giriş yapar.
+    await transaction
+      .update(sessions)
+      .set({ revokedAt: now })
+      .where(
+        and(
+          eq(sessions.userId, targetUserId),
+          isNull(sessions.revokedAt),
+        ),
+      );
+
     await transaction.insert(moderationActions).values({
       actorId: adminId,
       action: "role_changed",
       targetUserId,
-      note: `${target.role} → ${role}`,
+      note: `${target.role} → ${role} · ${trimmedNote}`.slice(0, 240),
     });
   });
 }

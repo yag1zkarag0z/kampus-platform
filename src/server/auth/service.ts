@@ -15,7 +15,10 @@ import {
 
 import type { SessionState } from "@/auth/types";
 import { reservedCampusUsernames } from "@/data/campusAccountRules";
-import { recordAnalyticsEvent } from "@/server/analytics/service";
+import {
+  recordAnalyticsEvent,
+  recordDailyActiveUser,
+} from "@/server/analytics/service";
 import { getDatabase } from "@/server/db/client";
 import {
   otpChallenges,
@@ -348,26 +351,24 @@ export async function requestOtpCode(
         );
       }
 
-      const [emailUsage, ipUsage] = await Promise.all([
-        transaction
-          .select({ total: count() })
-          .from(otpChallenges)
-          .where(
-            and(
-              eq(otpChallenges.email, email),
-              gte(otpChallenges.createdAt, oneHourAgo),
-            ),
+      const emailUsage = await transaction
+        .select({ total: count() })
+        .from(otpChallenges)
+        .where(
+          and(
+            eq(otpChallenges.email, email),
+            gte(otpChallenges.createdAt, oneHourAgo),
           ),
-        transaction
-          .select({ total: count() })
-          .from(otpChallenges)
-          .where(
-            and(
-              eq(otpChallenges.requestIpHash, requestIpHash),
-              gte(otpChallenges.createdAt, oneHourAgo),
-            ),
+        );
+      const ipUsage = await transaction
+        .select({ total: count() })
+        .from(otpChallenges)
+        .where(
+          and(
+            eq(otpChallenges.requestIpHash, requestIpHash),
+            gte(otpChallenges.createdAt, oneHourAgo),
           ),
-      ]);
+        );
 
       if (
         (emailUsage[0]?.total ?? 0) >= OTP_EMAIL_HOURLY_LIMIT ||
@@ -678,11 +679,14 @@ export async function verifyOtpCode(
     return transactionResult;
   }
 
-  // Transaction bittikten sonra: ölçüm yazımı girişin kendisini geri
-  // saramamalı. Geri dönüş (D1/D7) bu olaydan hesaplanıyor.
-  void recordAnalyticsEvent("session_started", {
-    userId: transactionResult.userId,
-  });
+  // Ölçüm yazımı hata yutsa da tamamlanması beklenir; response döndükten sonra
+  // yarım kalan bir Promise'e güvenilmez. Günlük aktiflik ayrı ve tekildir.
+  await Promise.all([
+    recordAnalyticsEvent("session_started", {
+      userId: transactionResult.userId,
+    }),
+    recordDailyActiveUser(transactionResult.userId, now),
+  ]);
 
   const resolvedSession = await resolveSessionCookie(
     transactionResult.session.cookieValue,
@@ -790,18 +794,16 @@ export async function registerAccount(
         };
       }
 
-      const [emailOwner, usernameOwner] = await Promise.all([
-        transaction
-          .select({ id: users.id })
-          .from(users)
-          .where(eq(users.email, grant.email))
-          .limit(1),
-        transaction
-          .select({ id: users.id })
-          .from(users)
-          .where(eq(users.username, input.username))
-          .limit(1),
-      ]);
+      const emailOwner = await transaction
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.email, grant.email))
+        .limit(1);
+      const usernameOwner = await transaction
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.username, input.username))
+        .limit(1);
 
       if (emailOwner[0]) {
         return {
@@ -927,14 +929,17 @@ export async function registerAccount(
     throw registrationResult.error;
   }
 
-  // Kayıt ayrıca oturum da başlatıyor; ikisi de yazılıyor ki huni
-  // (kayıt → ilk gönderi) ve geri dönüş aynı tablodan hesaplanabilsin.
-  void recordAnalyticsEvent("account_registered", {
-    userId: registrationResult.userId,
-  });
-  void recordAnalyticsEvent("session_started", {
-    userId: registrationResult.userId,
-  });
+  // Kayıt ayrıca oturum da başlatıyor. Günlük aktiflik aynı gün tekrar
+  // yazılmaya çalışılsa bile veritabanında tekilleştirilir.
+  await Promise.all([
+    recordAnalyticsEvent("account_registered", {
+      userId: registrationResult.userId,
+    }),
+    recordAnalyticsEvent("session_started", {
+      userId: registrationResult.userId,
+    }),
+    recordDailyActiveUser(registrationResult.userId, now),
+  ]);
 
   const resolvedSession = await resolveSessionCookie(
     registrationResult.session.cookieValue,

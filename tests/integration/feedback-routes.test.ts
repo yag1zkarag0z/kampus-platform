@@ -105,6 +105,23 @@ afterAll(async () => {
 });
 
 describe("feedback routes with PostgreSQL", () => {
+  it("rejects duplicate moderation feedback filters", async () => {
+    const moderatorId = await insertAccount("moderator");
+    const moderatorSession = await memberCookie(moderatorId, "moderator");
+    const response = await getFeedback(
+      request(
+        "/v1/moderation/feedback?status=new&status=resolved",
+        "GET",
+        { cookie: moderatorSession },
+      ),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "INVALID_REQUEST" },
+    });
+  });
+
   it("accepts member and guest feedback, moderates it, and anonymizes a deleted member", async () => {
     const memberId = await insertAccount();
     const moderatorId = await insertAccount("moderator");

@@ -73,13 +73,21 @@ async function collectAllPages<TItem extends { id: string }>(
     data: TItem[];
     page: { nextCursor: string | null; hasMore: boolean };
   }>,
-  maxPages = 10,
+  maxPages = 1_000,
 ) {
   const seenIds: string[] = [];
+  const seenCursors = new Set<string>();
   let cursor: string | undefined;
   let pageCount = 0;
 
   do {
+    if (cursor) {
+      if (seenCursors.has(cursor)) {
+        throw new Error("Sayfalama aynı cursor üzerinde döngüye girdi.");
+      }
+      seenCursors.add(cursor);
+    }
+
     const page = await fetchPage(cursor);
 
     seenIds.push(...page.data.map((item) => item.id));

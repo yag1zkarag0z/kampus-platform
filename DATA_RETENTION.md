@@ -17,7 +17,7 @@ kaynağı `src/server/maintenance/policy.ts` dosyasıdır. Politika değişiklik
 | Reddedilmiş mesaj isteği bekleme kaydı | Retten sonra 30 gün | Süre dolunca hard-delete; yalnızca aynı gönderici→alıcı yönünü sınırlar |
 | Aktif bire bir mesaj | Hesap/konuşma yaşam döngüsü boyunca | Kullanıcı silince konuşma cascade silinir; kullanıcı tarafından silinen mesajın içeriği anında boşaltılır |
 | Soft-delete gönderi ve yorum | 30 gün | Audit bağı yoksa hard-delete |
-| Silinmiş hesap | En az 30 gün | PII hemen tombstone edilir; audit bağı bitince hard-delete |
+| Silinmiş hesap | En az 30 gün | Profil ve öğrenci bilgileri hemen tombstone edilir; içerik teknik silme sürecinde kaldırılır, audit bağı bitince hesap hard-delete edilir |
 | Bağlanmamış yükleme | 24 saat | DB kaydı ve object birlikte silinir |
 | Çözülmüş rapor, raporlama anındaki içerik özeti ve moderasyon audit kaydı | 365 gün | Mesaj sonradan silinse de karar kanıtı korunur; audit satırı güncellenemez ve süre dolunca bakım görevi hard-delete eder |
 | DB kaydı olmayan storage object | 24 saat grace | Object silinir |

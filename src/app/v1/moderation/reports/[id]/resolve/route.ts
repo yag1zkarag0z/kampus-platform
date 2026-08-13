@@ -9,6 +9,7 @@ import {
 } from "@/server/auth/request";
 import { resolveReport } from "@/server/moderation/service";
 import {
+  moderationEntityIdSchema,
   parseModerationInput,
   resolveReportSchema,
 } from "@/server/moderation/validation";
@@ -29,7 +30,8 @@ export async function POST(
     const moderator = await requireActiveModerator(request);
     const body = await readJsonBody(request);
     const input = parseModerationInput(resolveReportSchema, body);
-    const { id } = await context.params;
+    const params = await context.params;
+    const id = parseModerationInput(moderationEntityIdSchema, params.id);
 
     await resolveReport(
       moderator.userId,

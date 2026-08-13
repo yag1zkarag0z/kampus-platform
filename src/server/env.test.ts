@@ -98,4 +98,31 @@ describe("getAuthEnvironment", () => {
       expect((error as Error).message).not.toContain(secret);
     }
   });
+
+  it("requires an explicit trusted IP header and a random secret in production", () => {
+    const productionEnvironment = {
+      ...validEnvironment,
+      APP_ORIGIN: "https://kampus.example",
+      NODE_ENV: "production",
+      SMTP_REQUIRE_TLS: "true",
+    };
+
+    expect(() => getAuthEnvironment(productionEnvironment)).toThrow(
+      InvalidAuthEnvironmentError,
+    );
+    expect(() =>
+      getAuthEnvironment({
+        ...productionEnvironment,
+        TRUSTED_CLIENT_IP_HEADER: "x-forwarded-for",
+      }),
+    ).toThrow(InvalidAuthEnvironmentError);
+
+    expect(() =>
+      getAuthEnvironment({
+        ...productionEnvironment,
+        AUTH_SECRET: "C2Yd4aq0x8mUj7RfP1Lz5wBn9Hs3Kv6T",
+        TRUSTED_CLIENT_IP_HEADER: "x-forwarded-for",
+      }),
+    ).not.toThrow();
+  });
 });

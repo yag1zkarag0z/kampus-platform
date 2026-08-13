@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
+import { SESSION_COOKIE_NAME } from "@/server/auth/constants";
 import {
   assertSameOrigin,
   authErrorResponse,
@@ -9,6 +10,7 @@ import {
   setSessionCookie,
 } from "@/server/auth/request";
 import { registerAccount } from "@/server/auth/service";
+import { revokeMemberSession } from "@/server/auth/session";
 import {
   parseAuthInput,
   registerSchema,
@@ -17,7 +19,7 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     assertSameOrigin(request);
     const body = await readJsonBody(request);
@@ -26,6 +28,9 @@ export async function POST(request: Request) {
       ...input,
       ipAddress: getRequestIp(request),
     });
+    await revokeMemberSession(
+      request.cookies.get(SESSION_COOKIE_NAME)?.value,
+    );
     const response = NextResponse.json(
       { data: result.state },
       {

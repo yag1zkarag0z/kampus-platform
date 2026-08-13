@@ -224,3 +224,25 @@ export async function seedMemberSession(
 
   return identity;
 }
+
+export async function loginMemberSession(
+  page: Page,
+  identity: E2eStudentIdentity,
+) {
+  const challengeId = await requestCode(page, identity, "login");
+  const verification = await verifyCode(
+    page,
+    identity,
+    challengeId,
+    "login",
+  );
+
+  if (
+    "registrationToken" in verification.data ||
+    verification.data.mode !== "member"
+  ) {
+    throw new Error("Login did not create a member session.");
+  }
+
+  return verification.data;
+}

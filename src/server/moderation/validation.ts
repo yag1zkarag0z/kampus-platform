@@ -65,8 +65,13 @@ export const updateUserRoleSchema = z
     role: z.enum(MEMBER_ROLES, {
       error: "Rol member, moderator veya admin olmalıdır.",
     }),
+    note: noteSchema,
   })
   .strict();
+
+export const moderationEntityIdSchema = z.uuid(
+  "Moderasyon hedefi kimliği geçersiz.",
+);
 
 export const listReportsQuerySchema = z
   .object({

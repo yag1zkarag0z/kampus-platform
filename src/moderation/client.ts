@@ -160,10 +160,11 @@ export function updateUserStatus(
 export function updateUserRole(
   userId: string,
   role: "member" | "moderator" | "admin",
+  note: string,
 ) {
   return requestApi<void>(
     `/v1/moderation/users/${encodeURIComponent(userId)}/role`,
-    { method: "PATCH", body: JSON.stringify({ role }) },
+    { method: "PATCH", body: JSON.stringify({ role, note }) },
   );
 }
 

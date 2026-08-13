@@ -1363,13 +1363,16 @@ export async function getContentPost(
         postId,
         viewerId,
       );
-      const [pollViews, listingViews, imageViews, documentViews] =
-        await Promise.all([
-          selectPostPolls(transaction, [postId], viewerId),
-          selectPostListings(transaction, [postId]),
-          selectPostImages(transaction, [postId]),
-          selectPostDocuments(transaction, [postId]),
-        ]);
+      // A transaction owns one pg client. Keep its queries sequential so
+      // pg@9 does not reject overlapping client.query() calls.
+      const pollViews = await selectPostPolls(
+        transaction,
+        [postId],
+        viewerId,
+      );
+      const listingViews = await selectPostListings(transaction, [postId]);
+      const imageViews = await selectPostImages(transaction, [postId]);
+      const documentViews = await selectPostDocuments(transaction, [postId]);
 
       return {
         ...serializePost(
@@ -1439,13 +1442,14 @@ export async function setContentPostLike(
       throw postNotFoundError();
     }
 
-    const [pollViews, listingViews, imageViews, documentViews] =
-      await Promise.all([
-        selectPostPolls(transaction, [postId], viewerId),
-        selectPostListings(transaction, [postId]),
-        selectPostImages(transaction, [postId]),
-        selectPostDocuments(transaction, [postId]),
-      ]);
+    const pollViews = await selectPostPolls(
+      transaction,
+      [postId],
+      viewerId,
+    );
+    const listingViews = await selectPostListings(transaction, [postId]);
+    const imageViews = await selectPostImages(transaction, [postId]);
+    const documentViews = await selectPostDocuments(transaction, [postId]);
     return serializePost(
       post,
       viewerId,
@@ -1491,13 +1495,14 @@ export async function setContentPostBookmark(
       throw postNotFoundError();
     }
 
-    const [pollViews, listingViews, imageViews, documentViews] =
-      await Promise.all([
-        selectPostPolls(transaction, [postId], viewerId),
-        selectPostListings(transaction, [postId]),
-        selectPostImages(transaction, [postId]),
-        selectPostDocuments(transaction, [postId]),
-      ]);
+    const pollViews = await selectPostPolls(
+      transaction,
+      [postId],
+      viewerId,
+    );
+    const listingViews = await selectPostListings(transaction, [postId]);
+    const imageViews = await selectPostImages(transaction, [postId]);
+    const documentViews = await selectPostDocuments(transaction, [postId]);
     return serializePost(
       post,
       viewerId,
@@ -1705,10 +1710,12 @@ export async function voteInContentPoll(
       throw postNotFoundError();
     }
 
-    const [pollViews, imageViews] = await Promise.all([
-      selectPostPolls(transaction, [pollId], viewerId),
-      selectPostImages(transaction, [pollId]),
-    ]);
+    const pollViews = await selectPostPolls(
+      transaction,
+      [pollId],
+      viewerId,
+    );
+    const imageViews = await selectPostImages(transaction, [pollId]);
 
     return serializePost(
       post,

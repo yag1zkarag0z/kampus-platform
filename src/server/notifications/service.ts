@@ -31,6 +31,9 @@ import { hasBlockBetween, noBlockBetween } from "@/server/social/blocking";
 
 import { extractMentionedUsernames } from "./validation";
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+
 type NotificationsDatabase = ReturnType<typeof getDatabase>;
 type NotificationsTransaction = Parameters<
   Parameters<NotificationsDatabase["transaction"]>[0]
@@ -273,6 +276,10 @@ export async function markNotificationAsRead(
   recipientId: string,
   notificationId: string,
 ): Promise<void> {
+  if (!UUID_PATTERN.test(notificationId)) {
+    throw notificationNotFoundError();
+  }
+
   await getDatabase().transaction(async (transaction) => {
     await consumeRateLimit(transaction, recipientId, "state_sync");
     const rows = await transaction

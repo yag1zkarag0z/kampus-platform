@@ -178,7 +178,7 @@ function TypingIndicator({
     <div
       role="status"
       aria-live="polite"
-      aria-label={`${displayName} yaziyor`}
+      aria-label={`${displayName} yazıyor`}
       className="pointer-events-none sticky bottom-0 z-10 mt-2 flex items-end gap-2 pb-1"
     >
       <CampusAuthorAvatar
@@ -1145,7 +1145,7 @@ function GuestMessagesPreview({
                 aria-label="Mesaj geçmişi"
                 className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4"
               >
-                <ol className="flex min-h-full flex-col justify-end">
+                <ol className="flex min-h-full flex-col [&>:first-child]:mt-auto">
                   {displayedMessages.map((message, index) => {
                     const previousMessage = displayedMessages[index - 1];
                     const nextMessage = displayedMessages[index + 1];
@@ -2294,7 +2294,7 @@ function MessageThread({
                 </div>
               </div>
             ) : (
-              <ol className="flex min-h-full flex-col justify-end">
+              <ol className="flex min-h-full flex-col [&>:first-child]:mt-auto">
                 {messages.map((message, index) => {
                   const previousMessage = messages[index - 1];
                   const nextMessage = messages[index + 1];
@@ -2330,6 +2330,7 @@ function MessageThread({
                         </li>
                       )}
                       <li
+                        data-delivery-status={message.deliveryStatus}
                         className={`group flex ${
                           groupedWithPrevious ? "mt-0.5" : "mt-2"
                         } ${message.isMine ? "justify-end" : "justify-start"}`}
