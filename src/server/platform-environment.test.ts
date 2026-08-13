@@ -25,6 +25,19 @@ describe("platform environment defaults", () => {
     ).toBe("https://kampus.example");
   });
 
+  it("normalizes a bare Railway or custom hostname to HTTPS", () => {
+    expect(
+      withPlatformEnvironmentDefaults({
+        APP_ORIGIN: "kampus-platform-production.up.railway.app",
+      }).APP_ORIGIN,
+    ).toBe("https://kampus-platform-production.up.railway.app");
+
+    expect(
+      withPlatformEnvironmentDefaults({ APP_ORIGIN: "kampus.example" })
+        .APP_ORIGIN,
+    ).toBe("https://kampus.example");
+  });
+
   it("accepts an alternate database URL or complete PG variables", () => {
     expect(
       withPlatformEnvironmentDefaults({

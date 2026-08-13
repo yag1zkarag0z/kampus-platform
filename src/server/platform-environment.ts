@@ -20,6 +20,33 @@ function isLoopbackOrigin(value: string | undefined) {
   }
 }
 
+function normalizedExplicitOrigin(value: string | undefined) {
+  const normalized = present(value);
+  if (!normalized) return undefined;
+
+  try {
+    return new URL(normalized).origin;
+  } catch {
+    // Railway shows generated domains without a scheme in parts of its UI.
+    // Accept a bare hostname (including an optional port), but never try to
+    // repair values containing paths, credentials, queries, or whitespace.
+    if (
+      /\s/u.test(normalized) ||
+      /[/?#@]/u.test(normalized) ||
+      !normalized.includes(".")
+    ) {
+      return undefined;
+    }
+
+    try {
+      const candidate = new URL(`https://${normalized}`);
+      return candidate.origin;
+    } catch {
+      return undefined;
+    }
+  }
+}
+
 function railwayPublicOrigin(source: EnvironmentSource) {
   const domain = present(source.RAILWAY_PUBLIC_DOMAIN);
   if (!domain || domain.includes("://") || /[/?#]/u.test(domain)) {
@@ -59,10 +86,15 @@ export function withPlatformEnvironmentDefaults(source: EnvironmentSource) {
       present(source.RAILWAY_PUBLIC_DOMAIN),
   );
   const publicOrigin = railwayPublicOrigin(source);
+  const explicitOrigin = normalizedExplicitOrigin(source.APP_ORIGIN);
+
+  if (explicitOrigin) {
+    resolved.APP_ORIGIN = explicitOrigin;
+  }
 
   if (
     publicOrigin &&
-    (!present(source.APP_ORIGIN) || isLoopbackOrigin(source.APP_ORIGIN))
+    (!explicitOrigin || isLoopbackOrigin(explicitOrigin))
   ) {
     resolved.APP_ORIGIN = publicOrigin;
   }
@@ -95,6 +127,13 @@ export function withPlatformEnvironmentDefaults(source: EnvironmentSource) {
   }
 
   return resolved;
+}
+
+export function resolveApplicationOrigin(source: EnvironmentSource) {
+  const resolved = withPlatformEnvironmentDefaults(source);
+  const configured = normalizedExplicitOrigin(resolved.APP_ORIGIN);
+
+  return configured ?? railwayPublicOrigin(source) ?? "http://localhost:3000";
 }
 
 export function applyPlatformEnvironmentDefaults(
