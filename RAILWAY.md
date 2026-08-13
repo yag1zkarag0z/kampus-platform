@@ -90,8 +90,7 @@ başlatır.
 Deployment sırası otomatik olarak şöyledir:
 
 1. `npm run build`
-2. `npm run deploy:check`
-3. `npm run deploy:migrate`
+2. `npm run deploy:prepare` (`deploy:check` ve ardından `deploy:migrate`)
 4. `npm run start`
 5. Railway `GET /v1/health` ile uygulama ve PostgreSQL'i doğrular.
 

@@ -17,6 +17,7 @@
     "test:all": "npm run lint && npm run typecheck && npm run test && npm run test:db && npm run test:e2e",
     "deploy:check": "node --import tsx ./scripts/check-runtime-configuration.ts",
     "deploy:migrate": "node --import tsx ./scripts/migrate-production.ts",
+    "deploy:prepare": "npm run deploy:check && npm run deploy:migrate",
     "maintenance:dry-run": "tsx scripts/maintenance-worker.ts --dry-run",
     "maintenance:once": "tsx scripts/maintenance-worker.ts --once",
     "maintenance:worker": "tsx scripts/maintenance-worker.ts",
