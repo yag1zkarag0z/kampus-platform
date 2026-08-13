@@ -1,5 +1,6 @@
 import { loadEnvConfig } from "@next/env";
 
+import { applyPlatformEnvironmentDefaults } from "@/server/platform-environment";
 import { validateRuntimeConfiguration } from "@/server/runtime-configuration-core";
 
 import { startCampusServer } from "./campus-server";
@@ -10,6 +11,8 @@ loadEnvConfig(process.cwd(), dev);
 if (dev && !process.env.APP_ORIGIN) {
   process.env.APP_ORIGIN = `http://localhost:${process.env.PORT ?? "3000"}`;
 }
+
+applyPlatformEnvironmentDefaults();
 
 const environment = validateRuntimeConfiguration({
   ...process.env,

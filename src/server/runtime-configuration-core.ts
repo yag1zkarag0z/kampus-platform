@@ -4,8 +4,34 @@ import {
 } from "@/server/env";
 import { createImageModerator } from "@/server/media/moderation-core";
 import { createMediaStorage } from "@/server/media/storage-core";
+import { ZodError } from "zod";
 
 export type RuntimeConfigurationStatus = "up" | "down";
+
+export class InvalidRuntimeComponentConfigurationError extends Error {
+  constructor(component: string, fields: readonly string[]) {
+    const detail = fields.length > 0 ? ` Check: ${fields.join(", ")}.` : "";
+    super(`The ${component} configuration is missing or invalid.${detail}`);
+    this.name = "InvalidRuntimeComponentConfigurationError";
+  }
+}
+
+function validateComponent(component: string, validate: () => void) {
+  try {
+    validate();
+  } catch (error) {
+    if (!(error instanceof ZodError)) throw error;
+
+    const fields = [
+      ...new Set(
+        error.issues
+          .map((issue) => issue.path[0])
+          .filter((field): field is string => typeof field === "string"),
+      ),
+    ];
+    throw new InvalidRuntimeComponentConfigurationError(component, fields);
+  }
+}
 
 /**
  * Shared with the custom Node.js entrypoint. It deliberately has no
@@ -18,8 +44,12 @@ export function validateRuntimeConfiguration(
   const server = getServerEnvironment(source);
   const auth = getAuthEnvironment(source);
 
-  createMediaStorage(source);
-  createImageModerator(source);
+  validateComponent("media storage", () => {
+    createMediaStorage(source);
+  });
+  validateComponent("image moderation", () => {
+    createImageModerator(source);
+  });
 
   return { auth, server };
 }

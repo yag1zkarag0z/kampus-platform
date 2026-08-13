@@ -153,15 +153,26 @@ export type ServerEnvironment = z.infer<typeof serverEnvironmentSchema>;
 export type AuthEnvironment = z.infer<typeof authEnvironmentSchema>;
 
 export class InvalidServerEnvironmentError extends Error {
-  constructor() {
-    super("The server database configuration is missing or invalid.");
+  constructor(reason?: "missing" | "unresolved" | "invalid") {
+    const detail =
+      reason === "missing"
+        ? " DATABASE_URL is missing."
+        : reason === "unresolved"
+          ? " DATABASE_URL contains an unresolved variable reference."
+          : reason === "invalid"
+            ? " DATABASE_URL must be a PostgreSQL connection URL."
+            : "";
+    super(`The server database configuration is missing or invalid.${detail}`);
     this.name = "InvalidServerEnvironmentError";
   }
 }
 
 export class InvalidAuthEnvironmentError extends Error {
-  constructor() {
-    super("The server authentication configuration is missing or invalid.");
+  constructor(fields: readonly string[] = []) {
+    const detail = fields.length > 0 ? ` Check: ${fields.join(", ")}.` : "";
+    super(
+      `The server authentication configuration is missing or invalid.${detail}`,
+    );
     this.name = "InvalidAuthEnvironmentError";
   }
 }
@@ -172,7 +183,13 @@ export function getServerEnvironment(
   const result = serverEnvironmentSchema.safeParse(source);
 
   if (!result.success) {
-    throw new InvalidServerEnvironmentError();
+    const rawValue = source.DATABASE_URL?.trim();
+    const reason = !rawValue
+      ? "missing"
+      : rawValue.includes("${{")
+        ? "unresolved"
+        : "invalid";
+    throw new InvalidServerEnvironmentError(reason);
   }
 
   return result.data;
@@ -193,7 +210,14 @@ export function getAuthEnvironment(
   });
 
   if (!result.success) {
-    throw new InvalidAuthEnvironmentError();
+    const fields = [
+      ...new Set(
+        result.error.issues
+          .map((issue) => issue.path[0])
+          .filter((field): field is string => typeof field === "string"),
+      ),
+    ];
+    throw new InvalidAuthEnvironmentError(fields);
   }
 
   return result.data;

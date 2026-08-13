@@ -36,9 +36,12 @@ const mediaEnvironmentSchema = z
       .regex(/^[a-z0-9][a-z0-9_-]*$/iu)
       .default("media"),
     AWS_REGION: z.string().trim().min(1).optional(),
+    AWS_S3_REGION: z.string().trim().min(1).optional(),
     AWS_S3_BUCKET: z.string().trim().min(3).optional(),
     AWS_S3_ENDPOINT: z.url().optional(),
     AWS_S3_FORCE_PATH_STYLE: booleanValue.default(false),
+    AWS_S3_ACCESS_KEY_ID: z.string().trim().min(1).optional(),
+    AWS_S3_SECRET_ACCESS_KEY: z.string().trim().min(1).optional(),
     NODE_ENV: z.enum(["development", "test", "production"]).optional(),
   })
   .superRefine((value, context) => {
@@ -55,11 +58,11 @@ const mediaEnvironmentSchema = z
 
     if (value.MEDIA_STORAGE_DRIVER !== "s3") return;
 
-    if (!value.AWS_REGION) {
+    if (!value.AWS_S3_REGION && !value.AWS_REGION) {
       context.addIssue({
         code: "custom",
-        message: "AWS_REGION is required for S3 media storage.",
-        path: ["AWS_REGION"],
+        message: "AWS_S3_REGION or AWS_REGION is required for S3 media storage.",
+        path: ["AWS_S3_REGION"],
       });
     }
 
@@ -68,6 +71,17 @@ const mediaEnvironmentSchema = z
         code: "custom",
         message: "AWS_S3_BUCKET is required for S3 media storage.",
         path: ["AWS_S3_BUCKET"],
+      });
+    }
+
+    if (
+      Boolean(value.AWS_S3_ACCESS_KEY_ID) !==
+      Boolean(value.AWS_S3_SECRET_ACCESS_KEY)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "S3 access key and secret must be configured together.",
+        path: ["AWS_S3_ACCESS_KEY_ID"],
       });
     }
   });
@@ -229,9 +243,17 @@ function s3Storage(
   environment: z.infer<typeof mediaEnvironmentSchema>,
 ): MediaStorage {
   const client = new S3Client({
-    region: environment.AWS_REGION!,
+    region: environment.AWS_S3_REGION ?? environment.AWS_REGION!,
     endpoint: environment.AWS_S3_ENDPOINT,
     forcePathStyle: environment.AWS_S3_FORCE_PATH_STYLE,
+    credentials:
+      environment.AWS_S3_ACCESS_KEY_ID &&
+      environment.AWS_S3_SECRET_ACCESS_KEY
+        ? {
+            accessKeyId: environment.AWS_S3_ACCESS_KEY_ID,
+            secretAccessKey: environment.AWS_S3_SECRET_ACCESS_KEY,
+          }
+        : undefined,
   });
   const bucket = environment.AWS_S3_BUCKET!;
 

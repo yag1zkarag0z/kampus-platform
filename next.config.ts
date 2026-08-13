@@ -4,7 +4,21 @@ const isDevelopment = process.env.NODE_ENV === "development";
 
 function configuredWebSocketSource() {
   try {
-    const appOrigin = new URL(process.env.APP_ORIGIN ?? "");
+    const configuredOrigin = process.env.APP_ORIGIN?.trim();
+    const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN?.trim();
+    const configuredUrl = configuredOrigin
+      ? new URL(configuredOrigin)
+      : null;
+    const shouldUseRailwayOrigin =
+      railwayDomain &&
+      (!configuredUrl ||
+        ["localhost", "127.0.0.1", "::1"].includes(
+          configuredUrl.hostname,
+        ));
+    const appOrigin = shouldUseRailwayOrigin
+      ? new URL(`https://${railwayDomain}`)
+      : configuredUrl;
+    if (!appOrigin) return null;
     const protocol = appOrigin.protocol === "https:" ? "wss:" : "ws:";
 
     return `${protocol}//${appOrigin.host}`;

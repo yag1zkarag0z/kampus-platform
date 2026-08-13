@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   checkRuntimeConfiguration,
+  InvalidRuntimeComponentConfigurationError,
   validateRuntimeConfiguration,
 } from "./runtime-configuration";
 
@@ -32,5 +33,23 @@ describe("runtime configuration", () => {
         DATABASE_URL: "not-a-database-url",
       }),
     ).toBe("down");
+  });
+
+  it("names invalid production components without exposing values", () => {
+    expect(() =>
+      validateRuntimeConfiguration({
+        ...localEnvironment,
+        NODE_ENV: "production",
+        AUTH_SECRET: "C2Yd4aq0x8mUj7RfP1Lz5wBn9Hs3Kv6T",
+        APP_ORIGIN: "https://kampus.example",
+        TRUSTED_CLIENT_IP_HEADER: "x-forwarded-for",
+        SMTP_REQUIRE_TLS: "true",
+        MEDIA_STORAGE_DRIVER: "local",
+      }),
+    ).toThrowError(
+      new InvalidRuntimeComponentConfigurationError("media storage", [
+        "MEDIA_STORAGE_DRIVER",
+      ]),
+    );
   });
 });

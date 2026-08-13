@@ -15,6 +15,8 @@
     "test:e2e:ui": "npm run test:e2e:prepare && playwright test --ui",
     "test:db": "npm run db:test:migrate && vitest run --config vitest.db.config.mts",
     "test:all": "npm run lint && npm run typecheck && npm run test && npm run test:db && npm run test:e2e",
+    "deploy:check": "node --import tsx ./scripts/check-runtime-configuration.ts",
+    "deploy:migrate": "node --import tsx ./scripts/migrate-production.ts",
     "maintenance:dry-run": "tsx scripts/maintenance-worker.ts --dry-run",
     "maintenance:once": "tsx scripts/maintenance-worker.ts --once",
     "maintenance:worker": "tsx scripts/maintenance-worker.ts",

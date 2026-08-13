@@ -10,6 +10,9 @@ import {
   errorLogFields,
   logEvent,
 } from "../src/server/observability/logger";
+import { applyPlatformEnvironmentDefaults } from "../src/server/platform-environment";
+
+applyPlatformEnvironmentDefaults();
 
 function numericOption(name: string, fallback: number) {
   const argument = process.argv

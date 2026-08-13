@@ -92,3 +92,30 @@ describe("local media storage", () => {
     );
   });
 });
+
+describe("S3 media storage", () => {
+  it("accepts Railway-style credentials separately from Rekognition", () => {
+    expect(() =>
+      createMediaStorage({
+        NODE_ENV: "production",
+        MEDIA_STORAGE_DRIVER: "s3",
+        AWS_S3_REGION: "auto",
+        AWS_S3_BUCKET: "kampus-media-bucket",
+        AWS_S3_ENDPOINT: "https://storage.railway.app",
+        AWS_S3_ACCESS_KEY_ID: "bucket-access-key",
+        AWS_S3_SECRET_ACCESS_KEY: "bucket-secret-key",
+      }),
+    ).not.toThrow();
+  });
+
+  it("rejects partial explicit S3 credentials", () => {
+    expect(() =>
+      createMediaStorage({
+        MEDIA_STORAGE_DRIVER: "s3",
+        AWS_S3_REGION: "auto",
+        AWS_S3_BUCKET: "kampus-media-bucket",
+        AWS_S3_ACCESS_KEY_ID: "bucket-access-key",
+      }),
+    ).toThrow();
+  });
+});
