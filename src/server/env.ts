@@ -54,16 +54,87 @@ const positiveTimeoutMilliseconds = z.coerce
 const exampleAuthSecret =
   "replace-this-with-at-least-32-random-characters";
 
+const authCoreEnvironmentShape = {
+  AUTH_SECRET: z.string().min(32),
+  APP_ORIGIN: z.url(),
+  TRUSTED_CLIENT_IP_HEADER: z.enum([
+    "cf-connecting-ip",
+    "x-forwarded-for",
+    "x-real-ip",
+  ]),
+  NODE_ENV: z
+    .enum(["development", "test", "production"])
+    .optional(),
+};
+
+type AuthCoreEnvironmentValue = {
+  AUTH_SECRET: string;
+  APP_ORIGIN: string;
+  NODE_ENV?: "development" | "test" | "production";
+};
+
+function addAuthCoreEnvironmentIssues(
+  value: AuthCoreEnvironmentValue,
+  context: z.RefinementCtx,
+) {
+  let appOrigin: URL;
+
+  try {
+    appOrigin = new URL(value.APP_ORIGIN);
+  } catch {
+    return;
+  }
+
+  if (
+    appOrigin.username ||
+    appOrigin.password ||
+    appOrigin.pathname !== "/" ||
+    appOrigin.search ||
+    appOrigin.hash
+  ) {
+    context.addIssue({
+      code: "custom",
+      message: "APP_ORIGIN must contain only scheme, host, and port.",
+      path: ["APP_ORIGIN"],
+    });
+  }
+
+  if (value.NODE_ENV !== "production") {
+    return;
+  }
+
+  if (value.AUTH_SECRET === exampleAuthSecret) {
+    context.addIssue({
+      code: "custom",
+      message: "Production AUTH_SECRET must not use the example value.",
+      path: ["AUTH_SECRET"],
+    });
+  }
+
+  if (new Set(value.AUTH_SECRET).size < 12) {
+    context.addIssue({
+      code: "custom",
+      message: "Production AUTH_SECRET must be a high-entropy random value.",
+      path: ["AUTH_SECRET"],
+    });
+  }
+
+  if (appOrigin.protocol !== "https:") {
+    context.addIssue({
+      code: "custom",
+      message: "APP_ORIGIN must use HTTPS in production.",
+      path: ["APP_ORIGIN"],
+    });
+  }
+}
+
+const authCoreEnvironmentSchema = z
+  .object(authCoreEnvironmentShape)
+  .superRefine(addAuthCoreEnvironmentIssues);
+
 const authEnvironmentSchema = z
   .object({
-    AUTH_SECRET: z.string().min(32),
-    APP_ORIGIN: z.url(),
-    TRUSTED_CLIENT_IP_HEADER: z
-      .enum([
-        "cf-connecting-ip",
-        "x-forwarded-for",
-        "x-real-ip",
-      ]),
+    ...authCoreEnvironmentShape,
     SMTP_HOST: z.string().trim().min(1),
     SMTP_PORT: z.coerce.number().int().min(1).max(65_535),
     SMTP_SECURE: booleanEnvironmentValue,
@@ -77,11 +148,10 @@ const authEnvironmentSchema = z
     SMTP_USER: optionalNonEmptyString,
     SMTP_PASSWORD: optionalNonEmptyString,
     EMAIL_FROM: z.string().trim().min(3).max(320),
-    NODE_ENV: z
-      .enum(["development", "test", "production"])
-      .optional(),
   })
   .superRefine((value, context) => {
+    addAuthCoreEnvironmentIssues(value, context);
+
     if (Boolean(value.SMTP_USER) !== Boolean(value.SMTP_PASSWORD)) {
       context.addIssue({
         code: "custom",
@@ -90,54 +160,8 @@ const authEnvironmentSchema = z
       });
     }
 
-    let appOrigin: URL;
-
-    try {
-      appOrigin = new URL(value.APP_ORIGIN);
-    } catch {
-      return;
-    }
-
-    if (
-      appOrigin.username ||
-      appOrigin.password ||
-      appOrigin.pathname !== "/" ||
-      appOrigin.search ||
-      appOrigin.hash
-    ) {
-      context.addIssue({
-        code: "custom",
-        message: "APP_ORIGIN must contain only scheme, host, and port.",
-        path: ["APP_ORIGIN"],
-      });
-    }
-
     if (value.NODE_ENV !== "production") {
       return;
-    }
-
-    if (value.AUTH_SECRET === exampleAuthSecret) {
-      context.addIssue({
-        code: "custom",
-        message: "Production AUTH_SECRET must not use the example value.",
-        path: ["AUTH_SECRET"],
-      });
-    }
-
-    if (new Set(value.AUTH_SECRET).size < 12) {
-      context.addIssue({
-        code: "custom",
-        message: "Production AUTH_SECRET must be a high-entropy random value.",
-        path: ["AUTH_SECRET"],
-      });
-    }
-
-    if (appOrigin.protocol !== "https:") {
-      context.addIssue({
-        code: "custom",
-        message: "APP_ORIGIN must use HTTPS in production.",
-        path: ["APP_ORIGIN"],
-      });
     }
 
     if (!value.SMTP_SECURE && !value.SMTP_REQUIRE_TLS) {
@@ -150,6 +174,9 @@ const authEnvironmentSchema = z
   });
 
 export type ServerEnvironment = z.infer<typeof serverEnvironmentSchema>;
+export type AuthCoreEnvironment = z.infer<
+  typeof authCoreEnvironmentSchema
+>;
 export type AuthEnvironment = z.infer<typeof authEnvironmentSchema>;
 
 export class InvalidServerEnvironmentError extends Error {
@@ -204,6 +231,31 @@ export function getAuthEnvironment(
     // Local development keeps the familiar default. Production must name the
     // exact header overwritten by its trusted reverse proxy; silently guessing
     // here would make an attacker-supplied forwarding header authoritative.
+    TRUSTED_CLIENT_IP_HEADER:
+      source.TRUSTED_CLIENT_IP_HEADER ??
+      (isProduction ? undefined : "x-forwarded-for"),
+  });
+
+  if (!result.success) {
+    const fields = [
+      ...new Set(
+        result.error.issues
+          .map((issue) => issue.path[0])
+          .filter((field): field is string => typeof field === "string"),
+      ),
+    ];
+    throw new InvalidAuthEnvironmentError(fields);
+  }
+
+  return result.data;
+}
+
+export function getAuthCoreEnvironment(
+  source: Readonly<Record<string, string | undefined>> = process.env,
+): AuthCoreEnvironment {
+  const isProduction = source.NODE_ENV === "production";
+  const result = authCoreEnvironmentSchema.safeParse({
+    ...source,
     TRUSTED_CLIENT_IP_HEADER:
       source.TRUSTED_CLIENT_IP_HEADER ??
       (isProduction ? undefined : "x-forwarded-for"),

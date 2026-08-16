@@ -9,7 +9,7 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 
-import { getAuthEnvironment } from "@/server/env";
+import { getAuthCoreEnvironment } from "@/server/env";
 
 import {
   GUEST_SESSION_LIFETIME_MS,
@@ -34,7 +34,7 @@ type GuestTokenPayload = {
 };
 
 function deriveKey(namespace: string) {
-  const { AUTH_SECRET } = getAuthEnvironment();
+  const { AUTH_SECRET } = getAuthCoreEnvironment();
 
   return createHmac("sha256", AUTH_SECRET)
     .update(`kampus:${namespace}:v1`)

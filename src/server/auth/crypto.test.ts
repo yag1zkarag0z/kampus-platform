@@ -96,4 +96,15 @@ describe("auth cryptography", () => {
       ),
     ).toBeNull();
   });
+
+  it("creates guest tokens even when SMTP is not configured", () => {
+    delete process.env.SMTP_HOST;
+    delete process.env.SMTP_PORT;
+    delete process.env.SMTP_SECURE;
+    delete process.env.SMTP_USER;
+    delete process.env.SMTP_PASSWORD;
+    delete process.env.EMAIL_FROM;
+
+    expect(createGuestToken().token).toContain(".");
+  });
 });

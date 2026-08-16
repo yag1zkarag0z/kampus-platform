@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getAuthEnvironment,
+  getAuthCoreEnvironment,
   getServerEnvironment,
   InvalidAuthEnvironmentError,
   InvalidServerEnvironmentError,
@@ -97,6 +98,28 @@ describe("getAuthEnvironment", () => {
       expect(error).toBeInstanceOf(InvalidAuthEnvironmentError);
       expect((error as Error).message).not.toContain(secret);
     }
+  });
+
+  it("parses session authentication without SMTP settings", () => {
+    expect(
+      getAuthCoreEnvironment({
+        AUTH_SECRET: validEnvironment.AUTH_SECRET,
+        APP_ORIGIN: validEnvironment.APP_ORIGIN,
+      }),
+    ).toMatchObject({
+      AUTH_SECRET: validEnvironment.AUTH_SECRET,
+      APP_ORIGIN: validEnvironment.APP_ORIGIN,
+      TRUSTED_CLIENT_IP_HEADER: "x-forwarded-for",
+    });
+  });
+
+  it("keeps SMTP settings mandatory for email authentication", () => {
+    expect(() =>
+      getAuthEnvironment({
+        AUTH_SECRET: validEnvironment.AUTH_SECRET,
+        APP_ORIGIN: validEnvironment.APP_ORIGIN,
+      }),
+    ).toThrow(InvalidAuthEnvironmentError);
   });
 
   it("requires an explicit trusted IP header and a random secret in production", () => {

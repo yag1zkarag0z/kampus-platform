@@ -5,7 +5,7 @@ import { isIP } from "node:net";
 import { headers as requestHeaders } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { getAuthEnvironment } from "@/server/env";
+import { getAuthCoreEnvironment } from "@/server/env";
 import {
   errorLogFields,
   logEvent,
@@ -54,7 +54,7 @@ function canonicalizeIpAddress(candidate: string) {
 }
 
 export function getRequestIp(request: Request) {
-  const { TRUSTED_CLIENT_IP_HEADER } = getAuthEnvironment();
+  const { TRUSTED_CLIENT_IP_HEADER } = getAuthCoreEnvironment();
   const headerValue = request.headers.get(TRUSTED_CLIENT_IP_HEADER);
 
   if (!headerValue) {
@@ -100,7 +100,7 @@ export function assertSameOrigin(request: Request) {
   }
 
   const configuredOrigin = new URL(
-    getAuthEnvironment().APP_ORIGIN,
+    getAuthCoreEnvironment().APP_ORIGIN,
   ).origin;
 
   if (normalizedOrigin !== configuredOrigin) {
