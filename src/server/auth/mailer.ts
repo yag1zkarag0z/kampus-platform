@@ -18,15 +18,34 @@ const globalForMailer = globalThis as typeof globalThis & {
   __kampusMailer?: Transporter;
 };
 
+export function normalizeSmtpPassword(
+  host: string,
+  password: string | undefined,
+) {
+  if (!password) return password;
+
+  // Google displays 16-character app passwords in four groups. Copying that
+  // presentation verbatim is a common production failure; Gmail expects the
+  // same password without formatting whitespace. Preserve whitespace for
+  // every other SMTP provider because it may be part of a real password.
+  return host.trim().toLowerCase() === "smtp.gmail.com"
+    ? password.replace(/\s+/gu, "")
+    : password;
+}
+
 function getMailer() {
   if (globalForMailer.__kampusMailer) {
     return globalForMailer.__kampusMailer;
   }
 
   const environment = getAuthEnvironment();
+  const smtpPassword = normalizeSmtpPassword(
+    environment.SMTP_HOST,
+    environment.SMTP_PASSWORD,
+  );
   const hasCredentials =
     environment.SMTP_USER !== undefined &&
-    environment.SMTP_PASSWORD !== undefined;
+    smtpPassword !== undefined;
 
   globalForMailer.__kampusMailer = nodemailer.createTransport({
     host: environment.SMTP_HOST,
@@ -44,7 +63,7 @@ function getMailer() {
       ? {
           auth: {
             user: environment.SMTP_USER,
-            pass: environment.SMTP_PASSWORD,
+            pass: smtpPassword,
           },
         }
       : {}),

@@ -26,6 +26,10 @@ import {
   userSettings,
   users,
 } from "@/server/db/schema";
+import {
+  errorLogFields,
+  logEvent,
+} from "@/server/observability/logger";
 
 import {
   CURRENT_TERMS_VERSION,
@@ -425,7 +429,12 @@ export async function requestOtpCode(
       email,
       purpose,
     });
-  } catch {
+  } catch (error) {
+    logEvent("error", "auth.otp.delivery.failed", {
+      purpose,
+      ...errorLogFields(error),
+    });
+
     await finalizeOtpDelivery({
       challengeId: reservation.challengeId,
       completedAt: now ?? new Date(),
