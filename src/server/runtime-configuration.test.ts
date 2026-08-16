@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   checkRuntimeConfiguration,
@@ -33,6 +33,31 @@ describe("runtime configuration", () => {
         DATABASE_URL: "not-a-database-url",
       }),
     ).toBe("down");
+  });
+
+  it("can report the safe validation error to server-side diagnostics", () => {
+    const onError = vi.fn();
+
+    expect(
+      checkRuntimeConfiguration(
+        {
+          ...localEnvironment,
+          NODE_ENV: "production",
+          AUTH_SECRET: "C2Yd4aq0x8mUj7RfP1Lz5wBn9Hs3Kv6T",
+          APP_ORIGIN: "https://kampus.example",
+          TRUSTED_CLIENT_IP_HEADER: "x-forwarded-for",
+          SMTP_REQUIRE_TLS: "true",
+          MEDIA_STORAGE_DRIVER: "local",
+        },
+        onError,
+      ),
+    ).toBe("down");
+    expect(onError).toHaveBeenCalledOnce();
+    expect(onError).toHaveBeenCalledWith(
+      new InvalidRuntimeComponentConfigurationError("media storage", [
+        "MEDIA_STORAGE_DRIVER",
+      ]),
+    );
   });
 
   it("names invalid production components without exposing values", () => {

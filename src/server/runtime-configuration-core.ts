@@ -56,11 +56,13 @@ export function validateRuntimeConfiguration(
 
 export function checkRuntimeConfiguration(
   source: Readonly<Record<string, string | undefined>> = process.env,
+  onError?: (error: unknown) => void,
 ): RuntimeConfigurationStatus {
   try {
     validateRuntimeConfiguration(source);
     return "up";
-  } catch {
+  } catch (error) {
+    onError?.(error);
     return "down";
   }
 }

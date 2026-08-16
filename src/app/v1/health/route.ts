@@ -1,4 +1,8 @@
 import { checkDatabaseHealth } from "@/server/db/health";
+import {
+  errorLogFields,
+  logEvent,
+} from "@/server/observability/logger";
 import { checkRuntimeConfiguration } from "@/server/runtime-configuration";
 
 export const runtime = "nodejs";
@@ -11,7 +15,13 @@ const responseHeaders = {
 export async function GET() {
   const [database, configuration] = await Promise.all([
     checkDatabaseHealth(),
-    Promise.resolve(checkRuntimeConfiguration()),
+    Promise.resolve(
+      checkRuntimeConfiguration(process.env, (error) => {
+        logEvent("error", "health.configuration.invalid", {
+          ...errorLogFields(error),
+        });
+      }),
+    ),
   ]);
   const isHealthy = database === "up" && configuration === "up";
 
