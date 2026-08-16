@@ -9,15 +9,23 @@ import {
 export default function AvatarPresetPicker({
   selected,
   onSelect,
+  layout = "register",
+  disabled = false,
 }: {
-  selected: AvatarPresetId;
+  selected: AvatarPresetId | null;
   onSelect: (preset: AvatarPresetId) => void;
+  layout?: "register" | "profile";
+  disabled?: boolean;
 }) {
   return (
     <div
       role="radiogroup"
       aria-label="Hazır avatarlar"
-      className="mt-[16px] grid grid-cols-4 gap-[8px] sm:mt-[24px] sm:gap-[12px] lg:mt-[18px] lg:gap-[10px]"
+      className={
+        layout === "profile"
+          ? "mt-4 grid grid-cols-4 gap-2 sm:grid-cols-8 sm:gap-3"
+          : "mt-[16px] grid grid-cols-4 gap-[8px] sm:mt-[24px] sm:gap-[12px] lg:mt-[18px] lg:gap-[10px]"
+      }
     >
       {avatarPresets.map((preset) => {
         const isSelected = preset.id === selected;
@@ -29,8 +37,9 @@ export default function AvatarPresetPicker({
             role="radio"
             aria-checked={isSelected}
             aria-label={`${preset.label} avatarı`}
+            disabled={disabled}
             onClick={() => onSelect(preset.id)}
-            className={`group relative aspect-square min-w-0 overflow-hidden rounded-[13px] border bg-surface-raised p-[4px] outline-none transition duration-200 hover:-translate-y-0.5 focus-visible:ring-3 focus-visible:ring-brand/35 sm:rounded-[16px] sm:p-[6px] ${
+            className={`group relative aspect-square min-w-0 overflow-hidden rounded-[13px] border bg-surface-raised p-[4px] outline-none transition duration-200 hover:-translate-y-0.5 focus-visible:ring-3 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-55 disabled:hover:translate-y-0 sm:rounded-[16px] sm:p-[6px] ${
               isSelected
                 ? "border-brand ring-2 ring-brand/20"
                 : "border-white/9 hover:border-white/22"

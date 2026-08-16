@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import { campusAvatarUrl } from "@/avatar/catalog";
+import type { AvatarPresetId } from "@/avatar/presets";
 
 import {
   AuthClientError,
@@ -19,6 +20,7 @@ import {
   getCurrentSession,
   logoutCurrentSession,
   removeCurrentAvatar,
+  setCurrentAvatarPreset,
   updateCurrentProfile,
   updateCurrentSettings,
   uploadCurrentAvatar,
@@ -53,6 +55,7 @@ type CampusAccountContextValue = {
     updates: Partial<CampusAccountSettings>,
   ) => Promise<void>;
   updateAvatar: (file: Blob) => Promise<void>;
+  updateAvatarPreset: (presetId: AvatarPresetId) => Promise<void>;
   removeAvatar: () => Promise<void>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
@@ -408,6 +411,34 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
     [applySession, handleMutationError],
   );
 
+  const updateAvatarPreset = useCallback(
+    async (presetId: AvatarPresetId) => {
+      const expectedUserId = userIdRef.current;
+
+      if (sessionModeRef.current !== "member" || !expectedUserId) {
+        throw createMemberSessionRequiredError();
+      }
+
+      try {
+        const session = await setCurrentAvatarPreset(presetId);
+        assertMemberMutationSession(session, expectedUserId);
+
+        if (
+          sessionModeRef.current !== "member" ||
+          userIdRef.current !== expectedUserId
+        ) {
+          throw createMemberSessionRequiredError();
+        }
+
+        applySession(session);
+      } catch (error) {
+        handleMutationError(error, expectedUserId);
+        throw error;
+      }
+    },
+    [applySession, handleMutationError],
+  );
+
   const removeAvatar = useCallback(async () => {
     const expectedUserId = userIdRef.current;
 
@@ -472,6 +503,7 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
       updateProfile,
       updateSettings,
       updateAvatar,
+      updateAvatarPreset,
       removeAvatar,
       signOut,
       deleteAccount,
@@ -492,6 +524,7 @@ export function CampusAccountProvider({ children }: { children: ReactNode }) {
       updateProfile,
       updateSettings,
       updateAvatar,
+      updateAvatarPreset,
       removeAvatar,
       signOut,
       deleteAccount,

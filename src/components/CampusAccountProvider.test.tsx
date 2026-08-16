@@ -8,6 +8,7 @@ import {
   getCurrentSession,
   logoutCurrentSession,
   removeCurrentAvatar,
+  setCurrentAvatarPreset,
   updateCurrentProfile,
   updateCurrentSettings,
   uploadCurrentAvatar,
@@ -28,6 +29,7 @@ vi.mock("@/auth/client", async () => {
     getCurrentSession: vi.fn(),
     logoutCurrentSession: vi.fn(),
     removeCurrentAvatar: vi.fn(),
+    setCurrentAvatarPreset: vi.fn(),
     updateCurrentProfile: vi.fn(),
     updateCurrentSettings: vi.fn(),
     uploadCurrentAvatar: vi.fn(),
@@ -40,6 +42,7 @@ const mockedUpdateCurrentProfile = vi.mocked(updateCurrentProfile);
 const mockedUpdateCurrentSettings = vi.mocked(updateCurrentSettings);
 const mockedUploadCurrentAvatar = vi.mocked(uploadCurrentAvatar);
 const mockedRemoveCurrentAvatar = vi.mocked(removeCurrentAvatar);
+const mockedSetCurrentAvatarPreset = vi.mocked(setCurrentAvatarPreset);
 
 const memberSession = {
   mode: "member" as const,
@@ -83,6 +86,7 @@ function AccountConsumer() {
     settings,
     removeAvatar,
     updateAvatar,
+    updateAvatarPreset,
     updateProfile,
     updateSettings,
   } = useCampusAccount();
@@ -107,6 +111,18 @@ function AccountConsumer() {
       </button>
       <button type="button" onClick={() => void signOut()}>
         Çıkış
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          void updateAvatarPreset("deniz").catch((error: unknown) => {
+            setMutationError(
+              error instanceof Error ? error.message : "mutation failed",
+            );
+          });
+        }}
+      >
+        Hazır avatar seç
       </button>
       <button
         type="button"
@@ -180,6 +196,7 @@ describe("CampusAccountProvider", () => {
     mockedUpdateCurrentSettings.mockReset();
     mockedUploadCurrentAvatar.mockReset();
     mockedRemoveCurrentAvatar.mockReset();
+    mockedSetCurrentAvatarPreset.mockReset();
   });
 
   it("hydrates a member only from the server session", async () => {
@@ -518,6 +535,38 @@ describe("CampusAccountProvider", () => {
     expect(await screen.findByText("Görsel işlenemedi.")).toBeInTheDocument();
     expect(screen.getAllByText("member")).toHaveLength(2);
     expect(screen.getByText("no-avatar")).toBeInTheDocument();
+  });
+
+  it("applies a ready avatar preset returned by the API", async () => {
+    const updatedSession = {
+      ...memberSession,
+      user: {
+        ...memberSession.user,
+        profile: {
+          ...memberSession.user.profile,
+          avatarUrl: "/v1/users/kampuslu35/avatar",
+        },
+      },
+    };
+    mockedGetCurrentSession.mockResolvedValue(memberSession);
+    mockedSetCurrentAvatarPreset.mockResolvedValue(updatedSession);
+    const user = userEvent.setup();
+
+    render(
+      <CampusAccountProvider>
+        <AccountConsumer />
+      </CampusAccountProvider>,
+    );
+
+    await screen.findByText("no-avatar");
+    await user.click(
+      screen.getByRole("button", { name: "Hazır avatar seç" }),
+    );
+
+    expect(
+      await screen.findByText("/v1/users/kampuslu35/avatar"),
+    ).toBeInTheDocument();
+    expect(mockedSetCurrentAvatarPreset).toHaveBeenCalledWith("deniz");
   });
 
   it("removes the current avatar through the API", async () => {

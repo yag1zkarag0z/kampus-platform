@@ -15,6 +15,12 @@ import {
   AuthClientError,
   type UpdateCampusProfileInput,
 } from "@/auth/client";
+import {
+  avatarPresetUrl,
+  avatarPresets,
+  type AvatarPresetId,
+} from "@/avatar/presets";
+import AvatarPresetPicker from "@/components/AvatarPresetPicker";
 import { useCampusAccount } from "@/components/CampusAccountProvider";
 import { useCampusData } from "@/components/CampusDataProvider";
 import {
@@ -191,6 +197,7 @@ export default function EditCampusProfile() {
     updateProfile,
     updateSettings,
     updateAvatar,
+    updateAvatarPreset,
     removeAvatar,
   } = useCampusAccount();
   const { renameAuthoredContent } = useCampusData();
@@ -209,6 +216,7 @@ export default function EditCampusProfile() {
         updateSettings({ showDepartment })
       }
       updateAvatar={updateAvatar}
+      updateAvatarPreset={updateAvatarPreset}
       removeAvatar={removeAvatar}
       renameAuthoredContent={renameAuthoredContent}
     />
@@ -221,6 +229,7 @@ function EditProfileForm({
   updateProfile,
   updateShowDepartment,
   updateAvatar,
+  updateAvatarPreset,
   removeAvatar,
   renameAuthoredContent,
 }: {
@@ -229,6 +238,7 @@ function EditProfileForm({
   updateProfile: (updates: UpdateCampusProfileInput) => Promise<void>;
   updateShowDepartment: (showDepartment: boolean) => Promise<void>;
   updateAvatar: (file: Blob) => Promise<void>;
+  updateAvatarPreset: (presetId: AvatarPresetId) => Promise<void>;
   removeAvatar: () => Promise<void>;
   renameAuthoredContent: (
     previousUsername: string,
@@ -247,6 +257,8 @@ function EditProfileForm({
   const [avatarPreview, setAvatarPreview] = useState(
     initialProfile.avatarUrl ?? undefined,
   );
+  const [selectedAvatarPreset, setSelectedAvatarPreset] =
+    useState<AvatarPresetId | null>(null);
   const [shouldRemoveAvatar, setShouldRemoveAvatar] = useState(false);
   const [showDepartment, setShowDepartment] = useState(
     initialShowDepartment,
@@ -314,6 +326,7 @@ function EditProfileForm({
     try {
       const { previewUrl, blob } = await createAvatarAssets(file);
       setAvatarPreview(previewUrl);
+      setSelectedAvatarPreset(null);
       avatarFileRef.current = blob;
       setShouldRemoveAvatar(false);
     } catch {
@@ -326,8 +339,22 @@ function EditProfileForm({
 
   const handleRemoveAvatar = () => {
     setAvatarPreview(undefined);
+    setSelectedAvatarPreset(null);
     avatarFileRef.current = null;
     setShouldRemoveAvatar(true);
+    setAvatarError("");
+    setStatusMessage("");
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleAvatarPresetSelect = (presetId: AvatarPresetId) => {
+    setSelectedAvatarPreset(presetId);
+    setAvatarPreview(avatarPresetUrl(presetId));
+    avatarFileRef.current = null;
+    setShouldRemoveAvatar(false);
     setAvatarError("");
     setStatusMessage("");
 
@@ -415,6 +442,15 @@ function EditProfileForm({
             avatarError instanceof AuthClientError
               ? avatarError.message
               : "Profil fotoğrafı kaldırılamadı.";
+        }
+      } else if (selectedAvatarPreset) {
+        try {
+          await updateAvatarPreset(selectedAvatarPreset);
+        } catch (avatarError) {
+          avatarErrorMessage =
+            avatarError instanceof AuthClientError
+              ? avatarError.message
+              : "Hazır avatar kaydedilemedi.";
         }
       } else if (avatarFileRef.current) {
         try {
@@ -595,8 +631,7 @@ function EditProfileForm({
                   className="mt-2 text-[11px] leading-5 text-white/55"
                 >
                   PNG, JPEG veya WebP · En fazla 2 MB · Kare kırpılır ·
-                  Kaydettiğinde hesabına yüklenir · Günde en fazla 3 kez
-                  değiştirebilirsin
+                  Kaydettiğinde hesabına yüklenir
                 </p>
                 <p
                   id="profile-avatar-error"
@@ -606,6 +641,26 @@ function EditProfileForm({
                   {avatarError}
                 </p>
               </div>
+            </div>
+
+            <div className="mt-6 border-t border-white/8 pt-5">
+              <div className="flex items-baseline justify-between gap-4">
+                <h3 className="text-xs font-black tracking-[-0.01em]">
+                  Hazır avatar seç
+                </h3>
+                <span className="text-[10px] font-semibold text-white/45">
+                  {avatarPresets.length} seçenek
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] leading-5 text-white/55">
+                Kayıt olurken gördüğün KAMPÜS avatarlarından birini kullan.
+              </p>
+              <AvatarPresetPicker
+                layout="profile"
+                selected={selectedAvatarPreset}
+                onSelect={handleAvatarPresetSelect}
+                disabled={isProcessingAvatar || isSaving}
+              />
             </div>
           </section>
 
