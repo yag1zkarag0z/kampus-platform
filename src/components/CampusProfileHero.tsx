@@ -1,6 +1,12 @@
 "use client";
 
-import type { ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import CampusAuthorAvatar from "@/components/CampusAuthorAvatar";
 import CampusLogo from "@/components/CampusLogo";
@@ -48,6 +54,33 @@ export default function CampusProfileHero({
   children?: ReactNode;
 }) {
   const trimmedBio = bio?.trim();
+  const [isAvatarPreviewOpen, setIsAvatarPreviewOpen] = useState(false);
+  const avatarDialogTitleId = useId();
+  const avatarTriggerRef = useRef<HTMLButtonElement>(null);
+  const avatarCloseRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!isAvatarPreviewOpen) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const avatarTrigger = avatarTriggerRef.current;
+    document.body.style.overflow = "hidden";
+    avatarCloseRef.current?.focus();
+
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsAvatarPreviewOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousBodyOverflow;
+      avatarTrigger?.focus();
+    };
+  }, [isAvatarPreviewOpen]);
 
   return (
     <div className="mx-auto w-full max-w-6xl">
@@ -65,7 +98,13 @@ export default function CampusProfileHero({
       <div className="border-b border-white/12 px-[16px] pb-[24px] sm:px-[24px]">
         {/* Avatar kapağa taşar, eylemler sağ üstte durur. */}
         <div className="flex items-start justify-between gap-[12px]">
-          <span className="-mt-[48px] inline-flex shrink-0 rounded-full ring-4 ring-canvas sm:-mt-[80px]">
+          <button
+            ref={avatarTriggerRef}
+            type="button"
+            aria-label={`${displayName} profil fotoğrafını aç`}
+            onClick={() => setIsAvatarPreviewOpen(true)}
+            className="-mt-[48px] inline-flex shrink-0 cursor-zoom-in rounded-full bg-transparent p-0 ring-4 ring-canvas outline-none transition-transform hover:scale-[1.02] focus-visible:ring-white/55 motion-reduce:transition-none sm:-mt-[80px]"
+          >
             <CampusAuthorAvatar
               author={author}
               authorId={authorId}
@@ -73,7 +112,7 @@ export default function CampusProfileHero({
               size="md"
               className="size-[88px] text-[22px] sm:size-[128px] sm:text-[30px]"
             />
-          </span>
+          </button>
 
           {actions && (
             <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-[8px] pt-[12px] [&>a]:min-h-[44px] [&>a]:px-[14px] [&>a]:text-[14px] sm:[&>a]:px-[20px]">
@@ -138,7 +177,70 @@ export default function CampusProfileHero({
           </dl>
         )}
       </div>
+
+      {isAvatarPreviewOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={avatarDialogTitleId}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setIsAvatarPreviewOpen(false);
+            }
+          }}
+          className="fixed inset-0 z-[100] grid place-items-center bg-black/88 px-[20px] py-[72px] backdrop-blur-md"
+        >
+          <h2 id={avatarDialogTitleId} className="sr-only">
+            {displayName} profil fotoğrafı
+          </h2>
+
+          <button
+            ref={avatarCloseRef}
+            type="button"
+            aria-label="Profil fotoğrafını kapat"
+            onClick={() => setIsAvatarPreviewOpen(false)}
+            className="absolute right-[16px] top-[16px] grid size-[44px] place-items-center rounded-full border border-white/12 bg-white/6 text-white/70 outline-none transition-colors hover:bg-white/12 hover:text-white focus-visible:ring-2 focus-visible:ring-white/55 sm:right-[24px] sm:top-[24px]"
+          >
+            <CloseIcon />
+          </button>
+
+          <div className="flex max-w-full flex-col items-center gap-[18px]">
+            <CampusAuthorAvatar
+              author={author}
+              authorId={authorId}
+              avatarUrl={avatarUrl}
+              size="lg"
+              eager
+              className="size-[78vmin] max-h-[440px] max-w-[440px] border-white/16 text-[clamp(42px,12vmin,88px)] shadow-[0_28px_90px_rgba(0,0,0,0.55)]"
+            />
+            <div className="text-center">
+              <p className="text-[16px] font-black tracking-[-0.025em] text-white">
+                {displayName}
+              </p>
+              <p className="mt-[2px] text-[13px] font-semibold text-white/50">
+                @{username}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      className="size-[20px]"
+    >
+      <path d="m5 5 10 10M15 5 5 15" />
+    </svg>
   );
 }
 
