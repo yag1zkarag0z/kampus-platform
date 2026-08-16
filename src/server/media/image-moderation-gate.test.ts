@@ -74,15 +74,22 @@ describe("processImage moderation gate", () => {
     });
   });
 
-  it("scans the encoded output, not the original upload", async () => {
+  it("scans a Rekognition-compatible copy of the encoded output", async () => {
     moderationState.inspect.mockResolvedValue({ safe: true });
 
     const result = await processImage(await pngFile());
     const scanned = moderationState.inspect.mock.calls[0]![0] as Buffer;
+    const [scannedMetadata, storedMetadata] = await Promise.all([
+      sharp(scanned).metadata(),
+      sharp(result.body).metadata(),
+    ]);
 
-    // Rekognition WebP'yi de okuyor; yeniden kodlanmış gövdeyi taramak,
-    // sharp'ın attığı gizli veriyi (EXIF, ek karel-er) taramanın dışında
-    // bırakmamak için önemli.
-    expect(Buffer.compare(scanned, result.body)).toBe(0);
+    expect(scannedMetadata).toMatchObject({
+      format: "jpeg",
+      height: result.height,
+      width: result.width,
+    });
+    expect(storedMetadata.format).toBe("webp");
+    expect(Buffer.compare(scanned, result.body)).not.toBe(0);
   });
 });

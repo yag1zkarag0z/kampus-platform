@@ -246,10 +246,21 @@ export async function processImage(file: File) {
       throw invalidImageError("Görsel güvenli boyutlara indirilemedi.");
     }
 
+    // Rekognition only accepts JPEG/PNG input. Derive the moderation payload
+    // from the final, sanitized WebP so metadata and hidden frames discarded by
+    // Sharp can never bypass the scan. The stored asset remains WebP.
+    const moderationBody = await sharp(result.data, {
+      failOn: "warning",
+      limitInputPixels: MAX_INPUT_PIXELS,
+    })
+      .flatten({ background: { r: 255, g: 255, b: 255 } })
+      .jpeg({ mozjpeg: true, quality: 85 })
+      .toBuffer();
+
     // Tarama tam burada: kullanıcıdan gelen her görsel bu fonksiyondan
     // geçiyor (gönderi eki ve profil fotoğrafı), hazır avatar presetleri ise
     // processTrustedAvatarSvg'den geçtiği için doğal olarak muaf.
-    await assertImageIsSafe(result.data);
+    await assertImageIsSafe(moderationBody);
 
     return { body: result.data, width, height };
   } catch (error) {
