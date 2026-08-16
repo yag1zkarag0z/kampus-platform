@@ -385,6 +385,19 @@ export default function TermsPage() {
                     açıklanır.
                   </p>
                   <p>
+                    Güncel metne{" "}
+                    <Link
+                      href="/kvkk"
+                      className={
+                        "font-black text-brand underline decoration-brand/35 underline-offset-4 transition-colors hover:text-[#ff9e80] " +
+                        focusRing
+                      }
+                    >
+                      KVKK Aydınlatma Metni
+                    </Link>{" "}
+                    sayfasından ulaşabilirsin.
+                  </p>
+                  <p>
                     Açık rıza gerektiren isteğe bağlı bir işlem bulunursa bu
                     onay, sözleşme kabulünden ve aydınlatma metninden ayrı
                     alınır. Yalnızca hizmet için gerekli bilgiler

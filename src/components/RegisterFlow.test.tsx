@@ -104,6 +104,17 @@ describe("RegisterFlow", () => {
     });
   });
 
+  it("shows the KVKK disclosure before collecting the registration email", () => {
+    render(<RegisterFlow />);
+
+    expect(
+      screen.getByRole("link", {
+        name: /KVKK aydınlatma metnini oku/,
+      }),
+    ).toHaveAttribute("href", "/kvkk");
+    expect(screen.getByText(/hesap oluşturma ve güvenlik/)).toBeVisible();
+  });
+
   it("rejects an email that does not start with a student number", async () => {
     const user = userEvent.setup();
     render(<RegisterFlow />);
@@ -170,6 +181,11 @@ describe("RegisterFlow", () => {
       screen.getByLabelText("Sınıf"),
       "2. sınıf",
     );
+    expect(
+      screen.getByRole("link", {
+        name: /KVKK aydınlatma metnini oku/,
+      }),
+    ).toHaveAttribute("href", "/kvkk");
     await user.click(
       screen.getByLabelText(
         /Kullanım ve Topluluk Sözleşmesi’ni okudum/,

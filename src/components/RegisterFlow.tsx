@@ -462,10 +462,28 @@ export default function RegisterFlow({
               placeholder="öğrenci.no@stu.yasar.edu.tr"
               className={`${authInputClassName} ${authControlClassName} mt-2`}
               aria-invalid={invalidField === "email"}
-              aria-describedby="register-email-help register-message"
+              aria-describedby="register-privacy-summary register-email-help register-message"
               required
             />
             <FormMessage message={message} />
+
+            <div
+              id="register-privacy-summary"
+              className="mt-[14px] rounded-[12px] border border-white/10 bg-white/[0.035] px-[14px] py-[12px] text-[12px] leading-[18px] text-white/58 sm:px-[16px] sm:text-[13px] sm:leading-[20px] lg:mx-auto lg:w-[400px] xl:w-[500px] 2xl:w-[520px]"
+            >
+              E-posta adresin öğrenci doğrulaması, hesap oluşturma ve güvenlik
+              için işlenir; profilinde görünmez.{" "}
+              <Link
+                href="/kvkk"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold text-brand underline decoration-brand/35 underline-offset-4 outline-none hover:text-[#ff9e80] focus-visible:ring-2 focus-visible:ring-brand/30"
+              >
+                KVKK aydınlatma metnini oku
+                <span className="sr-only"> (yeni sekmede açılır)</span>
+                <span aria-hidden="true"> ↗</span>
+              </Link>
+            </div>
 
             <button
               type="submit"
@@ -479,7 +497,7 @@ export default function RegisterFlow({
 
             <p
               id="register-email-help"
-              className={helperTextClassName}
+              className="sr-only"
             >
               E-posta adresin profilinde görünmez.
             </p>
@@ -835,6 +853,19 @@ export default function RegisterFlow({
                   <span className="sr-only"> (yeni sekmede açılır)</span>
                   <span aria-hidden="true"> ↗</span>
                 </Link>
+                <Link
+                  href="/kvkk"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-[6px] block w-fit font-bold text-white/68 underline decoration-white/25 underline-offset-4 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white/30"
+                >
+                  KVKK aydınlatma metnini oku
+                  <span className="sr-only"> (yeni sekmede açılır)</span>
+                  <span aria-hidden="true"> ↗</span>
+                </Link>
+                <p className="mt-[5px] text-[11px] leading-[17px] text-white/42 sm:text-[12px] sm:leading-[18px]">
+                  Aydınlatma metni bir onay veya açık rıza değildir.
+                </p>
               </div>
             </div>
 

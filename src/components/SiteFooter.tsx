@@ -8,6 +8,7 @@ const footerLinks = [
   { href: "/nasil-calisir", label: "Nasıl çalışır?" },
   { href: "/guvenlik", label: "Güvenlik" },
   { href: "/sss", label: "SSS" },
+  { href: "/kvkk", label: "KVKK" },
   { href: "/sozlesme", label: "Kullanım sözleşmesi" },
 ];
 
